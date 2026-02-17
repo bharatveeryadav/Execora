@@ -6,7 +6,7 @@ import fastifyStatic from '@fastify/static';
 import path from 'path';
 import { config } from './config';
 import { logger } from './lib/logger';
-import { disconnectDB } from './lib/database';
+import { disconnectDB, ensureVoiceSchemaReady } from './lib/database';
 import { closeQueues } from './lib/queue';
 import { minioClient } from './lib/minio';
 import { registerRoutes } from './routes';
@@ -63,13 +63,21 @@ function registerWebSocket() {
 // Initialize services
 async function initializeServices() {
   try {
+    if (useEnhancedAudio) {
+      await ensureVoiceSchemaReady();
+      logger.info('Voice schema preflight check passed');
+    }
+
     // Initialize MinIO
     await minioClient.initialize();
     logger.info('MinIO initialized');
 
     logger.info('All services initialized');
   } catch (error) {
-    logger.error({ error }, 'Service initialization failed');
+    logger.error(
+      { error },
+      'Service initialization failed (check Prisma schema sync with `npm run db:push` if voice tables are missing)'
+    );
     throw error;
   }
 }

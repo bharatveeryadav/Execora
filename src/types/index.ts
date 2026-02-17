@@ -24,6 +24,7 @@ export interface IntentExtraction {
   confidence: number;
   originalText: string;
   normalizedText?: string;
+  conversationSessionId?: string;
 }
 
 // Customer search result
@@ -64,10 +65,17 @@ export enum WSMessageType {
   ERROR = 'error',
   RECORDING_STARTED = 'recording:started',
   RECORDING_STOPPED = 'recording:stopped',
+  TASK_QUEUED = 'task:queued',
+  TASK_STARTED = 'task:started',
+  TASK_COMPLETED = 'task:completed',
+  TASK_FAILED = 'task:failed',
+  TASK_CANCELLED = 'task:cancelled',
+  TASK_STATUS = 'task:status',
+  QUEUE_STATUS = 'queue:status',
 }
 
 export interface WSMessage {
-  type: WSMessageType;
+  type: WSMessageType | string;
   data?: any;
   timestamp: string;
 }

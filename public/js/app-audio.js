@@ -21,6 +21,10 @@ class ExecoraAudioClient {
         // Audio worklet for processing
         this.source = null;
         this.processor = null;
+        this.voiceStartPending = false;
+        this.voiceStartTimeout = null;
+        this.voiceStartResolve = null;
+        this.voiceStartReject = null;
 
         this.initElements();
         this.connect();
@@ -138,6 +142,10 @@ class ExecoraAudioClient {
 
             case 'voice:started':
                 this.log('Voice capture started', 'success');
+                if (this.voiceStartPending && this.voiceStartResolve) {
+                    this.voiceStartResolve();
+                    this.clearVoiceStartState();
+                }
                 break;
 
             case 'voice:stopped':
@@ -202,6 +210,10 @@ class ExecoraAudioClient {
                 console.error('❌ Error received:', message.data.error);
                 this.log(`Error: ${message.data.error}`, 'error');
                 this.responseDiv.textContent = `Error: ${message.data.error}`;
+                if (this.voiceStartPending && this.voiceStartReject) {
+                    this.voiceStartReject(new Error(message.data.error || 'Voice start failed'));
+                    this.clearVoiceStartState();
+                }
                 break;
 
             default:
@@ -268,6 +280,18 @@ class ExecoraAudioClient {
         }
 
         try {
+            console.log('📤 Sending voice:start message');
+            this.send({
+                type: 'voice:start',
+                data: {
+                    ttsProvider: this.ttsProvider
+                },
+                timestamp: new Date().toISOString(),
+            });
+            console.log('✅ voice:start sent with ttsProvider:', this.ttsProvider);
+
+            await this.waitForVoiceStarted();
+
             console.log('📱 Requesting microphone access...');
             // Request microphone access
             this.mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -342,25 +366,20 @@ class ExecoraAudioClient {
 
             this.transcriptDiv.textContent = 'Listening...';
 
-            // Send voice start message WITH TTS provider selection
-            console.log('📤 Sending voice:start message');
-            this.send({
-                type: 'voice:start',
-                data: {
-                    ttsProvider: this.ttsProvider
-                },
-                timestamp: new Date().toISOString(),
-            });
-            console.log('✅ voice:start sent with ttsProvider:', this.ttsProvider);
-
             this.log('Microphone access granted - listening', 'success');
 
         } catch (error) {
+            this.clearVoiceStartState();
             console.error('❌ Error accessing microphone:', error);
             console.error('   Error type:', error.name);
             console.error('   Error message:', error.message);
-            this.log('Microphone access denied or not available', 'error');
-            alert('Please allow microphone access to use voice features: ' + error.message);
+
+            if (error && error.message && (error.message.includes('voice:start') || error.message.includes('Failed to start voice capture'))) {
+                this.log(`Voice start failed: ${error.message}`, 'error');
+            } else {
+                this.log('Microphone access denied or not available', 'error');
+                alert('Please allow microphone access to use voice features: ' + error.message);
+            }
         }
     }
 
@@ -436,6 +455,37 @@ class ExecoraAudioClient {
         this.mediaRecorder = null;
 
         console.log('✅ Audio capture cleanup complete');
+    }
+
+    waitForVoiceStarted(timeoutMs = 5000) {
+        this.clearVoiceStartState();
+        this.voiceStartPending = true;
+
+        return new Promise((resolve, reject) => {
+            this.voiceStartResolve = resolve;
+            this.voiceStartReject = reject;
+
+            this.voiceStartTimeout = setTimeout(() => {
+                if (!this.voiceStartPending) {
+                    return;
+                }
+
+                this.clearVoiceStartState();
+                reject(new Error('Timed out waiting for voice:start acknowledgement'));
+            }, timeoutMs);
+        });
+    }
+
+    clearVoiceStartState() {
+        this.voiceStartPending = false;
+
+        if (this.voiceStartTimeout) {
+            clearTimeout(this.voiceStartTimeout);
+            this.voiceStartTimeout = null;
+        }
+
+        this.voiceStartResolve = null;
+        this.voiceStartReject = null;
     }
 
     downsampleBuffer(buffer, inputSampleRate, outputSampleRate) {

@@ -52,7 +52,7 @@ class ElevenLabsSTTService {
       },
     });
 
-    let isCommitting = false;
+    let isFinishing = false;
     let closeTimeout: NodeJS.Timeout | null = null;
 
     ws.on('open', () => {
@@ -91,16 +91,20 @@ class ElevenLabsSTTService {
           if (payload.text) {
             logger.info({ text: payload.text }, '✅ ElevenLabs FINAL transcript received');
             onTranscript(payload.text, true);
-            isCommitting = false;
+          }
 
-            // Close connection after receiving final transcript
+          if (isFinishing) {
             if (closeTimeout) {
               clearTimeout(closeTimeout);
             }
+
             setTimeout(() => {
-              ws.close();
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.close();
+              }
             }, 100);
           }
+
           return;
         }
 
@@ -140,7 +144,7 @@ class ElevenLabsSTTService {
         }
 
         logger.info('📤 Sending commit signal to ElevenLabs STT');
-        isCommitting = true;
+        isFinishing = true;
 
         // Send commit signal
         ws.send(
