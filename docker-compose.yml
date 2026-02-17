@@ -1,0 +1,126 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: execora-postgres
+    environment:
+      POSTGRES_USER: execora
+      POSTGRES_PASSWORD: execora
+      POSTGRES_DB: execora
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U execora" ]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 2s
+    networks:
+      - execora-network
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: execora-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 2s
+      retries: 3
+      start_period: 2s
+    networks:
+      - execora-network
+
+  # MinIO (S3-compatible object storage)
+  minio:
+    image: minio/minio:latest
+    container_name: execora-minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - execora-network
+
+  # Execora API Server
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: execora-app
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://execora:execora@postgres:5432/execora?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_USE_SSL: "false"
+      PORT: 3000
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - execora-network
+
+  # Execora Worker
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: execora-worker
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://execora:execora@postgres:5432/execora?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - execora-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+
+networks:
+  execora-network:
+    driver: bridge
