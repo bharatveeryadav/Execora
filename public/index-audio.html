@@ -5,10 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Execora - Voice Business Assistant (Audio Enabled)</title>
     <link rel="stylesheet" href="/css/styles.css">
+    <script>
+        (function () {
+            var savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light' || savedTheme === 'dark') {
+                document.body.setAttribute('data-theme', savedTheme);
+            } else {
+                document.body.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
 </head>
 <body>
     <div class="container">
         <header>
+            <div class="theme-toggle-wrapper">
+                <button id="themeToggleBtn" class="theme-toggle-btn" type="button" aria-label="Toggle theme">
+                    ☀️ Light
+                </button>
+            </div>
             <h1>🎙️ Execora</h1>
             <p>Voice-Based Business Assistant</p>
             <p class="version-info">🔊 Audio Enabled Version</p>
@@ -105,16 +120,6 @@
                 </div>
             </div>
 
-            <!-- Browser Compatibility Info -->
-            <div class="info-card">
-                <h3>Browser Requirements:</h3>
-                <ul class="requirements-list">
-                    <li>✅ Modern browser (Chrome, Edge, Firefox, Safari)</li>
-                    <li>✅ Microphone access permission</li>
-                    <li>✅ Web Audio API support</li>
-                    <li>✅ WebSocket support</li>
-                </ul>
-            </div>
         </main>
 
         <footer>
@@ -124,6 +129,33 @@
     </div>
 
     <!-- Use audio-enabled version -->
+    <script>
+        (function () {
+            var themeToggleBtn = document.getElementById('themeToggleBtn');
+            if (!themeToggleBtn) return;
+
+            function updateLabel(theme) {
+                themeToggleBtn.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+            }
+
+            var currentTheme = document.body.getAttribute('data-theme') || 'dark';
+            updateLabel(currentTheme);
+
+            themeToggleBtn.addEventListener('click', function () {
+                var nextTheme = (document.body.getAttribute('data-theme') || 'dark') === 'dark' ? 'light' : 'dark';
+                document.body.setAttribute('data-theme', nextTheme);
+                localStorage.setItem('theme', nextTheme);
+                updateLabel(nextTheme);
+            });
+        })();
+    </script>
     <script src="/js/app-audio.js"></script>
 </body>
 </html>
+
+
+
+
+
+
+
