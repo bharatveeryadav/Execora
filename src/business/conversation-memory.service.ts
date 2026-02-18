@@ -185,11 +185,11 @@ class ConversationMemoryService {
             // Update existing customer record
             existingCustomer.lastMentioned = new Date();
             existingCustomer.mentionCount++;
-            
+
             // Move to top of history
             memory.customerHistory = memory.customerHistory.filter(c => c.name !== existingCustomer.name);
             memory.customerHistory.push(existingCustomer);
-            
+
             logger.debug({ conversationId, customerName, existingName: existingCustomer.name }, 'Updated existing customer record');
         } else {
             // Create new customer record
@@ -201,7 +201,7 @@ class ConversationMemoryService {
             };
             memory.recentCustomers.set(customerName.toLowerCase(), customer);
             memory.customerHistory.push(customer);
-            
+
             logger.debug({ conversationId, customerName }, 'Created new customer record');
         }
 
@@ -284,10 +284,10 @@ class ConversationMemoryService {
         if (!customer) {
             const candidates = Array.from(memory.recentCustomers.values());
             const candidateNames = candidates.map(c => c.name);
-            
+
             // Use advanced fuzzy matching with 0.7 threshold
             const bestMatch = findBestMatch(customerName, candidateNames, 0.7);
-            
+
             if (bestMatch) {
                 customer = candidates.find(c => c.name === bestMatch.matched);
                 logger.info(
@@ -322,7 +322,7 @@ class ConversationMemoryService {
 
         const candidates = Array.from(memory.recentCustomers.values());
         const candidateNames = candidates.map(c => c.name);
-        
+
         const matches = candidateNames
             .map(name => {
                 const match = matchIndianName(customerName, name, threshold);

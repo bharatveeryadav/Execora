@@ -71,15 +71,15 @@ for (const test of testCases) {
     const result = matchIndianName(test.query, test.target, 0.7);
     const matched = result !== null;
     const success = matched === test.expectedMatch;
-    
+
     const icon = success ? '✅' : '❌';
     const score = result?.score.toFixed(2) || 'N/A';
     const matchType = result?.matchType || 'none';
-    
+
     console.log(`${icon} [${test.category}]`);
     console.log(`   Query: "${test.query}" → Target: "${test.target}"`);
     console.log(`   Expected: ${test.expectedMatch}, Got: ${matched}, Score: ${score}, Type: ${matchType}`);
-    
+
     if (success) {
         passed++;
     } else {
