@@ -55,9 +55,11 @@ class ExecoraAudioClient {
 
         // Display
         this.transcriptDiv = document.getElementById('transcript');
+        this.userMessageContainer = document.getElementById('userMessageContainer');
         console.log('✅ Transcript div initialized:', this.transcriptDiv);
 
         this.responseDiv = document.getElementById('response');
+        this.aiMessageContainer = document.getElementById('aiMessageContainer');
         console.log('✅ Response div initialized:', this.responseDiv);
         if (this.responseDiv) {
             console.log('   Response div content:', this.responseDiv.textContent);
@@ -226,7 +228,10 @@ class ExecoraAudioClient {
 
             case 'voice:transcript':
                 const isFinal = message.data.isFinal ? ' (final)' : ' (interim)';
-                this.transcriptDiv.textContent = message.data.text + isFinal;
+                this.transcriptDiv.textContent = message.data.text;
+                if (this.userMessageContainer) {
+                    this.userMessageContainer.style.display = 'flex';
+                }
                 console.log('📝 Transcript received:', message.data.text, 'isFinal:', message.data.isFinal);
                 this.log(`Transcript${isFinal}: ${message.data.text}`, 'info');
                 break;
@@ -241,6 +246,9 @@ class ExecoraAudioClient {
                 console.log('   Response div element:', this.responseDiv);
 
                 this.responseDiv.textContent = message.data.text;
+                if (this.aiMessageContainer) {
+                    this.aiMessageContainer.style.display = 'flex';
+                }
                 console.log('   Response div updated:', this.responseDiv.textContent);
 
                 this.log(`Response: ${message.data.text}`, 'success');
@@ -299,11 +307,42 @@ class ExecoraAudioClient {
     }
 
     attachEventListeners() {
+        // Sidebar toggle
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebar = document.getElementById('sidebar');
+        if (sidebarToggle && sidebar) {
+            // Initialize sidebar state based on viewport
+            if (window.innerWidth <= 768) {
+                sidebar.classList.add('collapsed');
+            }
+
+            sidebarToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('collapsed');
+            });
+
+            // Close sidebar when clicking outside on mobile
+            document.addEventListener('click', (e) => {
+                if (window.innerWidth <= 768 &&
+                    !sidebar.classList.contains('collapsed') &&
+                    !sidebar.contains(e.target) &&
+                    !sidebarToggle.contains(e.target)) {
+                    sidebar.classList.add('collapsed');
+                }
+            });
+
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                if (window.innerWidth > 768) {
+                    sidebar.classList.remove('collapsed');
+                }
+            });
+        }
+
         // TTS Provider dropdown
         if (this.ttsProviderDropdown) {
             this.ttsProviderDropdown.addEventListener('change', (e) => {
                 this.ttsProvider = e.target.value;
-                console.log('🔊 TTS Provider changed to:', this.ttsProvider, '(element value:', e.target.value, ')'); // Debug log
+                console.log('🔊 TTS Provider changed to:', this.ttsProvider, '(element value:', e.target.value, ')');
                 this.log(`Switched TTS provider to: ${this.ttsProvider}`, 'info');
             });
             console.log('✅ TTS Provider listener attached');
@@ -440,9 +479,14 @@ class ExecoraAudioClient {
 
             this.isListening = true;
             this.startVoiceBtn.disabled = true;
+            this.startVoiceBtn.style.display = 'none';
             this.stopVoiceBtn.disabled = false;
+            this.stopVoiceBtn.style.display = 'flex';
 
             this.transcriptDiv.textContent = 'Listening...';
+            if (this.userMessageContainer) {
+                this.userMessageContainer.style.display = 'flex';
+            }
             this.startAudioVisualizer();
 
             this.log('Microphone access granted - listening', 'success');
@@ -466,7 +510,9 @@ class ExecoraAudioClient {
         console.log('🛑 stopVoiceCapture() called');
         this.isListening = false;
         this.startVoiceBtn.disabled = false;
+        this.startVoiceBtn.style.display = 'flex';
         this.stopVoiceBtn.disabled = true;
+        this.stopVoiceBtn.style.display = 'none';
 
         this.stopAudioCapture();
 
@@ -749,8 +795,14 @@ class ExecoraAudioClient {
 
         if (connected) {
             dot.classList.add('connected');
+            if (this.connectionInfo) {
+                this.connectionInfo.textContent = `✅ ${text} • Session: ${this.sessionId ? this.sessionId.substring(0, 8) : 'N/A'}`;
+            }
         } else {
             dot.classList.remove('connected');
+            if (this.connectionInfo) {
+                this.connectionInfo.textContent = `❌ ${text} • Reconnecting...`;
+            }
         }
     }
 

@@ -9,126 +9,178 @@
         (function () {
             var savedTheme = localStorage.getItem('theme');
             if (savedTheme === 'light' || savedTheme === 'dark') {
-                document.body.setAttribute('data-theme', savedTheme);
+                document.documentElement.setAttribute('data-theme', savedTheme);
             } else {
-                document.body.setAttribute('data-theme', 'dark');
+                document.documentElement.setAttribute('data-theme', 'dark');
             }
         })();
     </script>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <div class="theme-toggle-wrapper">
-                <button id="themeToggleBtn" class="theme-toggle-btn" type="button" aria-label="Toggle theme">
-                    ☀️ Light
+    <!-- Header -->
+    <header class="chat-header">
+        <div class="header-content">
+            <div class="header-left">
+                <button id="sidebarToggle" class="sidebar-toggle-btn" type="button" aria-label="Toggle sidebar">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
                 </button>
+                <div class="brand">
+                    <div class="brand-icon">E</div>
+                    <div class="brand-text">
+                        <h1>Execora</h1>
+                        <p id="dynamicTagline" class="tagline">✨ Loading...</p>
+                    </div>
+                </div>
             </div>
-            <h1>🎙️ Execora</h1>
-            <h2 class="subtitle">Voice-Based Business Assistant</h2>
-            <p id="dynamicTagline" class="ui-work-info">✨ Loading...</p>
-        </header>
-
-        <main>
-            <!-- Status Section -->
-            <div class="status-card">
-                <div class="status-indicator" id="statusIndicator">
+            <div class="header-actions">
+                <span class="status-indicator" id="statusIndicator">
                     <span class="status-dot"></span>
                     <span id="statusText">Disconnected</span>
-                </div>
-                <div class="connection-info">
-                    <small id="connectionInfo">Waiting to connect...</small>
-                </div>
+                </span>
+                <button id="themeToggleBtn" class="theme-toggle-btn" type="button" aria-label="Toggle theme">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
             </div>
+        </div>
+    </header>
 
-            <!-- Voice Interface -->
-            <div class="voice-card">
-                <div class="voice-header">
-                    <span class="voice-title">🎤 Live Voice Input</span>
-                    <div id="audioVisualizer" class="audio-visualizer" aria-label="Live voice visualizer"></div>
-                </div>
-                
-                <!-- TTS Provider Selector -->
-                <div class="provider-selector">
-                    <label for="ttsProvider">🔊 Speech Output:</label>
-                    <select id="ttsProvider" class="provider-dropdown">
-                        <option value="browser">🆓 Browser Speech (Free)</option>
-                        <option value="openai">🚀 OpenAI TTS (Premium)</option>
-                        <option value="elevenlabs">⭐ ElevenLabs TTS (Premium)</option>
-                    </select>
-                </div>
-                
-                <div class="voice-controls">
-                    <button id="startVoiceBtn" class="btn btn-primary" disabled title="Start voice capture">
-                        <span class="btn-icon">🎤</span>
-                        Start Listening
-                    </button>
-                    <button id="stopVoiceBtn" class="btn btn-secondary" disabled>
-                        <span class="btn-icon">⏹️</span>
-                        Stop
-                    </button>
-                </div>
+    <!-- Main Layout with Sidebar -->
+    <div class="main-layout">
+        <!-- Left Sidebar -->
+        <aside id="sidebar" class="sidebar">
+            <div class="sidebar-content">
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">Settings</h3>
+                    
+                    <div class="setting-group">
+                        <label class="setting-label">Speech Output</label>
+                        <select id="ttsProvider" class="sidebar-select">
+                            <option value="browser">Browser Speech (Free)</option>
+                            <option value="openai">OpenAI TTS (Premium)</option>
+                            <option value="elevenlabs">ElevenLabs TTS (Premium)</option>
+                        </select>
+                        <p class="setting-description">Choose how AI responses are spoken</p>
+                    </div>
 
-                <div class="audio-info">
-                    <small>
-                        ℹ️ This will request microphone access. 
-                        Speak in Hindi/English mix after clicking "Start Listening".
-                    </small>
-                </div>
-
-                <!-- Transcript Display -->
-                <div class="transcript-box">
-                    <h3>Transcript:</h3>
-                    <div id="transcript" class="transcript-content">
-                        Click "Start Listening" and speak your command...
+                    <div class="setting-group">
+                        <div class="connection-status">
+                            <label class="setting-label">Connection</label>
+                            <div class="connection-details">
+                                <small id="connectionInfo">Waiting to connect...</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Response Display -->
-                <div class="response-box">
-                    <h3>Response:</h3>
-                    <div id="response" class="response-content">
-                        Waiting for command...
+                <!-- Activity Log in Sidebar -->
+                <div class="sidebar-section">
+                    <details class="sidebar-log-toggle">
+                        <summary class="sidebar-title">Activity Log</summary>
+                        <div id="activityLog" class="sidebar-log">
+                            <div class="log-entry">System started</div>
+                        </div>
+                    </details>
+                </div>
+            </div>
+        </aside>
+
+    <!-- Chat Container -->
+    <div class="chat-container">
+        <!-- Conversation Area -->
+        <div class="chat-messages" id="chatMessages">
+            <div class="welcome-message">
+                <h2>Voice-Based Business Assistant</h2>
+                <p>Start speaking or type your command below. I can help you with:</p>
+                <ul class="features-list">
+                    <li>Track customer dues and payments</li>
+                    <li>Send WhatsApp reminders</li>
+                    <li>Generate invoices</li>
+                    <li>Manage inventory</li>
+                </ul>
+            </div>
+
+            <!-- User Message (Template - will be populated by JS) -->
+            <div id="userMessageContainer" class="message user-message" style="display: none;">
+                <div class="message-avatar user-avatar">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <span class="message-label">You</span>
                     </div>
+                    <div id="transcript" class="message-text">Your message appears here</div>
                 </div>
             </div>
 
-            <!-- Text Input Alternative -->
-            <div class="text-card">
-                <h2>💬 Text Command (Test Mode)</h2>
-                <p class="text-description">
-                    <small>
-                        Test without microphone. Type commands like:
-                        <br>• "Rahul ka balance batao"
-                        <br>• "Rahul ko 500 ka reminder kal 7 baje bhejna"
-                    </small>
-                </p>
-                <div class="text-input-group">
-                    <input 
-                        type="text" 
-                        id="textInput" 
-                        class="text-input" 
-                        placeholder="Type a command..."
-                        disabled
-                    >
-                    <button id="sendTextBtn" class="btn btn-primary" disabled>Send</button>
+            <!-- AI Response (Template - will be populated by JS) -->
+            <div id="aiMessageContainer" class="message ai-message" style="display: none;">
+                <div class="message-avatar ai-avatar">
+                    <div class="ai-icon">E</div>
+                </div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <span class="message-label">Execora</span>
+                    </div>
+                    <div id="response" class="message-text">AI response appears here</div>
                 </div>
             </div>
+        </div>
 
-            <!-- Activity Log -->
-            <div class="log-card">
-                <h2>📊 Activity Log</h2>
-                <div id="activityLog" class="log-content">
-                    <div class="log-entry">System started - Audio enabled version</div>
-                </div>
+        <!-- Input Controls at Bottom -->
+        <div class="chat-input-area">
+            <!-- Voice Visualizer -->
+            <div class="voice-section">
+                <div id="audioVisualizer" class="audio-visualizer" aria-label="Live voice visualizer"></div>
             </div>
 
-        </main>
-
-        <footer>
-            <p>Execora © 2026 | Real-time Voice Business Engine with Full Audio Support</p>
-            <p><small>Using Web Audio API + Deepgram STT + ElevenLabs/OpenAI TTS</small></p>
-        </footer>
+            <!-- Input Row -->
+            <div class="input-row">
+                <input 
+                    type="text" 
+                    id="textInput" 
+                    class="chat-input" 
+                    placeholder="Message Execora..."
+                    disabled
+                >
+                <button id="startVoiceBtn" class="icon-btn voice-btn" disabled title="Start voice">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                        <line x1="12" y1="19" x2="12" y2="23"></line>
+                        <line x1="8" y1="23" x2="16" y2="23"></line>
+                    </svg>
+                </button>
+                <button id="stopVoiceBtn" class="icon-btn stop-btn" disabled title="Stop voice" style="display: none;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                        <rect x="6" y="6" width="12" height="12" rx="2"></rect>
+                    </svg>
+                </button>
+                <button id="sendTextBtn" class="icon-btn send-btn" disabled title="Send message">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
     </div>
 
     <!-- Use audio-enabled version -->
@@ -137,18 +189,20 @@
             var themeToggleBtn = document.getElementById('themeToggleBtn');
             if (!themeToggleBtn) return;
 
-            function updateLabel(theme) {
-                themeToggleBtn.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+            function updateIcon(theme) {
+                var sunIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>';
+                var moonIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';
+                themeToggleBtn.innerHTML = theme === 'dark' ? sunIcon : moonIcon;
             }
 
-            var currentTheme = document.body.getAttribute('data-theme') || 'dark';
-            updateLabel(currentTheme);
+            var currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+            updateIcon(currentTheme);
 
             themeToggleBtn.addEventListener('click', function () {
-                var nextTheme = (document.body.getAttribute('data-theme') || 'dark') === 'dark' ? 'light' : 'dark';
-                document.body.setAttribute('data-theme', nextTheme);
+                var nextTheme = (document.documentElement.getAttribute('data-theme') || 'dark') === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', nextTheme);
                 localStorage.setItem('theme', nextTheme);
-                updateLabel(nextTheme);
+                updateIcon(nextTheme);
             });
         })();
 
