@@ -66,6 +66,7 @@ console.log('📋 Running Test Cases:\n');
 
 let passed = 0;
 let failed = 0;
+const failedCases: string[] = [];
 
 for (const test of testCases) {
     const result = matchIndianName(test.query, test.target, 0.7);
@@ -84,6 +85,7 @@ for (const test of testCases) {
         passed++;
     } else {
         failed++;
+        failedCases.push(`[${test.category}] \"${test.query}\" -> \"${test.target}\"`);
     }
     console.log();
 }
@@ -160,3 +162,13 @@ for (const match of allMatches) {
 }
 
 console.log('\n✨ All tests completed!');
+
+if (failed > 0) {
+    console.error('\n❌ Test run failed. Failing cases:');
+    for (const failedCase of failedCases) {
+        console.error(`   - ${failedCase}`);
+    }
+    process.exitCode = 1;
+} else {
+    console.log('✅ Test run succeeded with zero failures.');
+}
