@@ -43,6 +43,11 @@ interface CreateCustomerFastResult {
   }>;
 }
 
+interface ParsedQuery {
+  normalized: string;
+  tokens: string[];
+}
+
 class CustomerService {
   private conversationCache: Map<string, ConversationContext> = new Map();
   private balanceCache: Map<string, { balance: number; timestamp: number }> = new Map();
@@ -157,10 +162,46 @@ class CustomerService {
   }
 
   /**
+   * Invalidate (clear) conversation cache to force fresh data fetch on next search
+   */
+  invalidateConversationCache(conversationId: string) {
+    if (this.conversationCache.has(conversationId)) {
+      const context = this.conversationCache.get(conversationId)!;
+      context.recentCustomers = [];
+      context.lastSearch = '';
+      context.timestamp = Date.now();
+      logger.info({ conversationId }, '🔄 Conversation cache invalidated');
+    }
+  }
+
+  /**
    * Check if cache is still valid
    */
   private isCacheValid(timestamp: number): boolean {
     return Date.now() - timestamp < this.cacheTimeout;
+  }
+
+  /**
+   * Normalize query and extract meaningful tokens for multi-word search
+   */
+  private parseQuery(query: string): ParsedQuery {
+    const normalized = query
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const stopWords = new Set([
+      'ka', 'ki', 'ke', 'ko', 'se', 'me', 'main', 'hai', 'ho', 'wala', 'wali', 'waale',
+      'customer', 'cust', 'bhai', 'ji', 'mr', 'mrs', 'ms', 'the', 'a', 'an',
+    ]);
+
+    const tokens = normalized
+      .split(' ')
+      .map((t) => t.trim())
+      .filter((t) => t.length >= 2 && !stopWords.has(t));
+
+    return { normalized, tokens };
   }
 
   /**
@@ -171,14 +212,17 @@ class CustomerService {
     conversationId: string
   ): Promise<CustomerSearchResult[]> {
     const context = this.getContext(conversationId);
+    const parsed = this.parseQuery(query);
 
     // Try to find in cache first
     if (this.isCacheValid(context.timestamp) && context.recentCustomers.length > 0) {
-      const cachedResults = context.recentCustomers.filter((c) =>
-        c.name.toLowerCase().includes(query.toLowerCase()) ||
-        c.nickname?.toLowerCase().includes(query.toLowerCase()) ||
-        c.phone?.includes(query)
-      );
+      const cachedResults = context.recentCustomers
+        .map((c) => ({
+          ...c,
+          matchScore: this.calculateMatchScore(parsed.normalized, c),
+        }))
+        .filter((c) => c.matchScore >= 0.35)
+        .sort((a, b) => b.matchScore - a.matchScore);
 
       if (cachedResults.length > 0) {
         logger.info(
@@ -453,25 +497,25 @@ class CustomerService {
     try {
       logger.info({ conversationId, name }, '⚡ Creating customer with name only');
 
-      // Check for similar customers first
-      const similar = await this.findSimilarCustomers(name, conversationId, 0.85);
+      // Check for exact/near-exact name match (0.95+ similarity threshold prevents same names)
+      const duplicates = await this.findSimilarCustomers(name, conversationId, 0.95);
 
-      if (similar.length > 0) {
-        logger.info(
-          { conversationId, duplicates: similar.length },
-          '⚠️ Similar customers found - user should confirm'
+      if (duplicates.length > 0) {
+        logger.warn(
+          { conversationId, name, found: duplicates[0].customer.name },
+          '🚫 Exact or near-exact duplicate customer name detected - Creation blocked'
         );
         return {
           success: false,
           duplicateFound: true,
-          suggestions: similar.map((s) => ({
+          suggestions: duplicates.map((s) => ({
             id: s.customer.id,
             name: s.customer.name,
             phone: s.customer.phone,
             landmark: s.customer.landmark,
             similarity: s.similarity,
           })),
-          message: `Found ${similar.length} similar customer(s). Please confirm if any match?`,
+          message: `Customer "${duplicates[0].customer.name}" already exists! Cannot create duplicate.`,
         };
       }
 
@@ -566,6 +610,38 @@ class CustomerService {
   }
 
   /**
+   * Update customer fields (simple API for business logic)
+   */
+  async updateCustomer(customerId: string, updates: CustomerUpdateData): Promise<boolean> {
+    try {
+      const updateData: any = {};
+
+      if (updates.name !== undefined) updateData.name = updates.name.trim();
+      if (updates.phone !== undefined) updateData.phone = updates.phone;
+      if (updates.nickname !== undefined) updateData.nickname = updates.nickname;
+      if (updates.landmark !== undefined) updateData.landmark = updates.landmark;
+      if (updates.notes !== undefined) updateData.notes = updates.notes;
+      if (updates.balance !== undefined) {
+        updateData.balance = new Decimal(updates.balance);
+      }
+
+      await prisma.customer.update({
+        where: { id: customerId },
+        data: updateData,
+      });
+
+      // Clear balance cache for this customer
+      this.balanceCache.delete(customerId);
+
+      logger.info({ customerId, fields: Object.keys(updates) }, '✅ Customer updated');
+      return true;
+    } catch (error) {
+      logger.error({ error, customerId }, 'Update customer failed');
+      return false;
+    }
+  }
+
+  /**
    * Get balance with fast cache (30-second TTL for real-time)
    */
   async getBalanceFast(customerId: string, conversationId?: string): Promise<number> {
@@ -644,39 +720,75 @@ class CustomerService {
    * Advanced match score calculation (0-1)
    */
   private calculateMatchScore(query: string, customer: CustomerSearchResult): number {
-    const q = query.toLowerCase().trim();
+    const { normalized: q, tokens } = this.parseQuery(query);
     let score = 0;
+    const name = customer.name.toLowerCase();
+    const nickname = customer.nickname?.toLowerCase() || '';
+    const landmark = customer.landmark?.toLowerCase() || '';
+    const phone = customer.phone || '';
+    const notesText = `${name} ${nickname} ${landmark}`.trim();
 
     // Exact name match: 1.0
-    if (customer.name.toLowerCase() === q) return 1.0;
+    if (name === q) return 1.0;
 
     // Name contains query: 0.8 + similarity bonus
-    if (customer.name.toLowerCase().includes(q)) {
+    if (name.includes(q) && q.length > 0) {
       score = Math.max(score, 0.8 + this.calculateSimilarity(q, customer.name) * 0.1);
     }
 
     // Exact nickname match: 0.9
-    if (customer.nickname?.toLowerCase() === q) return 0.9;
+    if (nickname === q && q.length > 0) return 0.9;
 
     // Nickname contains query: 0.7
-    if (customer.nickname?.toLowerCase().includes(q)) {
-      score = Math.max(score, 0.7 + this.calculateSimilarity(q, customer.nickname) * 0.1);
+    if (nickname.includes(q) && q.length > 0) {
+      score = Math.max(score, 0.7 + this.calculateSimilarity(q, nickname) * 0.1);
     }
 
     // Landmark match: 0.6
-    if (customer.landmark?.toLowerCase().includes(q)) {
+    if (landmark.includes(q) && q.length > 0) {
       score = Math.max(score, 0.6);
     }
 
     // Phone match: 0.95
-    if (customer.phone?.includes(q)) {
+    if (q.length > 0 && phone.includes(q)) {
       score = Math.max(score, 0.95);
+    }
+
+    // Token-based matching for multi-word disambiguation
+    if (tokens.length > 0) {
+      let matchedTokens = 0;
+      let landmarkTokenHits = 0;
+
+      for (const token of tokens) {
+        if (name.includes(token) || nickname.includes(token) || landmark.includes(token) || phone.includes(token)) {
+          matchedTokens += 1;
+          if (landmark.includes(token)) {
+            landmarkTokenHits += 1;
+          }
+        }
+      }
+
+      const tokenRatio = matchedTokens / tokens.length;
+      if (tokenRatio > 0) {
+        score = Math.max(score, 0.45 + tokenRatio * 0.4);
+      }
+      if (landmarkTokenHits > 0) {
+        score = Math.max(score, Math.min(1.0, score + 0.1 * landmarkTokenHits));
+      }
     }
 
     // Fuzzy match on name: up to 0.75
     const nameSimilarity = this.calculateSimilarity(q, customer.name);
     if (nameSimilarity > 0.6) {
       score = Math.max(score, nameSimilarity * 0.75);
+    }
+
+    // Fuzzy match on combined text for phrases like "bharat atm"
+    if (q.length > 0) {
+      const combinedSimilarity = this.calculateSimilarity(q, notesText);
+      if (combinedSimilarity > 0.55) {
+        score = Math.max(score, combinedSimilarity * 0.7);
+      }
     }
 
     return Math.min(score, 1.0);
@@ -793,6 +905,8 @@ class CustomerService {
    */
   async searchCustomer(query: string): Promise<CustomerSearchResult[]> {
     try {
+      const { normalized: searchLower, tokens } = this.parseQuery(query);
+
       // Search by exact phone match first
       if (/^\+?\d{10,15}$/.test(query.replace(/[\s-]/g, ''))) {
         const byPhone = await prisma.customer.findMany({
@@ -817,8 +931,7 @@ class CustomerService {
         }
       }
 
-      // Search by name, nickname, landmark using ILIKE
-      const searchLower = query.toLowerCase();
+      // Search by name, nickname, landmark using token-aware matching
       const customers = await prisma.customer.findMany({
         where: {
           OR: [
@@ -826,39 +939,49 @@ class CustomerService {
             { nickname: { contains: searchLower, mode: 'insensitive' } },
             { landmark: { contains: searchLower, mode: 'insensitive' } },
             { notes: { contains: searchLower, mode: 'insensitive' } },
+            ...(tokens.length > 0
+              ? [
+                {
+                  AND: tokens.map((token) => ({
+                    OR: [
+                      { name: { contains: token, mode: 'insensitive' as const } },
+                      { nickname: { contains: token, mode: 'insensitive' as const } },
+                      { landmark: { contains: token, mode: 'insensitive' as const } },
+                      { notes: { contains: token, mode: 'insensitive' as const } },
+                    ],
+                  })),
+                },
+              ]
+              : []),
           ],
         },
-        take: 10,
+        take: 20,
       });
 
       // Calculate match scores
-      const results: CustomerSearchResult[] = customers.map((c) => {
-        let score = 0;
-
-        // Exact name match
-        if (c.name.toLowerCase() === searchLower) score += 1.0;
-        else if (c.name.toLowerCase().includes(searchLower)) score += 0.7;
-
-        // Nickname match
-        if (c.nickname?.toLowerCase() === searchLower) score += 0.9;
-        else if (c.nickname?.toLowerCase().includes(searchLower)) score += 0.6;
-
-        // Landmark match
-        if (c.landmark?.toLowerCase().includes(searchLower)) score += 0.5;
-
-        return {
+      const results: CustomerSearchResult[] = customers.map((c) => ({
+        id: c.id,
+        name: c.name,
+        phone: c.phone,
+        nickname: c.nickname,
+        landmark: c.landmark,
+        balance: parseFloat(c.balance.toString()),
+        matchScore: this.calculateMatchScore(searchLower, {
           id: c.id,
           name: c.name,
           phone: c.phone,
           nickname: c.nickname,
           landmark: c.landmark,
           balance: parseFloat(c.balance.toString()),
-          matchScore: Math.min(score, 1.0),
-        };
-      });
+          matchScore: 0,
+        }),
+      }));
 
       // Sort by match score
-      return results.sort((a, b) => b.matchScore - a.matchScore);
+      return results
+        .filter((r) => r.matchScore >= 0.3)
+        .sort((a, b) => b.matchScore - a.matchScore)
+        .slice(0, 10);
     } catch (error) {
       logger.error({ error, query }, 'Customer search failed');
       return [];
@@ -895,6 +1018,23 @@ class CustomerService {
     notes?: string;
   }) {
     try {
+      // Check for exact same-name customer (prevent duplicates)
+      const existing = await prisma.customer.findMany({
+        where: {
+          name: {
+            equals: data.name.trim(),
+            mode: 'insensitive',
+          },
+        },
+        select: { id: true, name: true },
+        take: 1,
+      });
+
+      if (existing.length > 0) {
+        logger.warn({ name: data.name, existingId: existing[0].id }, '🚫 Duplicate customer name - creation blocked');
+        throw new Error(`Customer "${data.name}" already exists. Cannot create duplicate.`);
+      }
+
       const customer = await prisma.customer.create({
         data: {
           name: data.name,
@@ -926,6 +1066,11 @@ class CustomerService {
             increment: amount,
           },
         },
+      });
+
+      this.balanceCache.set(customerId, {
+        balance: parseFloat(customer.balance.toString()),
+        timestamp: Date.now(),
       });
 
       return customer;

@@ -6,6 +6,7 @@ import { businessEngine } from '../business/execution-engine';
 import { sttService } from '../services/stt.service';
 import { ttsService } from '../services/tts.service';
 import { voiceSessionService } from '../business/voice-session.service';
+import { conversationMemory } from '../business/conversation-memory.service';
 import { WSMessage, WSMessageType } from '../types';
 
 interface VoiceSession {
@@ -329,10 +330,20 @@ class EnhancedWebSocketHandler {
       const normalizedText = await openaiService.normalizeTranscript(text);
       logger.debug({ sessionId: session.sessionId, originalLength: text.length, normalizedLength: normalizedText.length }, 'Step 1 complete: Transcript normalized');
 
-      // 1. Extract intent
+      // 1. Extract intent with conversation context
       logger.debug({ sessionId: session.sessionId }, 'Step 2: Extracting intent');
-      const intent = await openaiService.extractIntent(normalizedText, text);
+      const intent = await openaiService.extractIntent(normalizedText, text, session.conversationSessionId);
       logger.debug({ sessionId: session.sessionId, intent: intent.intent, confidence: intent.confidence }, 'Step 2 complete: Intent extracted');
+
+      // Log user message to conversation memory
+      if (session.conversationSessionId) {
+        conversationMemory.addUserMessage(
+          session.conversationSessionId,
+          normalizedText,
+          intent.intent,
+          intent.entities
+        );
+      }
 
       this.sendMessage(session.ws, {
         type: WSMessageType.VOICE_INTENT,
@@ -343,13 +354,18 @@ class EnhancedWebSocketHandler {
 
       // 2. Execute business logic
       logger.debug({ sessionId: session.sessionId }, 'Step 3: Executing business logic');
-      const executionResult = await businessEngine.execute(intent);
+      const executionResult = await businessEngine.execute(intent, session.conversationSessionId);
       logger.debug({ sessionId: session.sessionId, success: executionResult.success }, 'Step 3 complete: Business logic executed');
 
-      // 3. Generate natural response
+      // 3. Generate natural response with conversation context
       logger.debug({ sessionId: session.sessionId }, 'Step 4: Generating natural response');
-      const response = await openaiService.generateResponse(executionResult, intent.intent);
+      const response = await openaiService.generateResponse(executionResult, intent.intent, session.conversationSessionId);
       logger.debug({ sessionId: session.sessionId, responseLength: response.length }, 'Step 4 complete: Response generated: ' + response);
+
+      // Log assistant response to conversation memory
+      if (session.conversationSessionId) {
+        conversationMemory.addAssistantMessage(session.conversationSessionId, response);
+      }
 
       // 4. Send text response
       logger.info({ sessionId: session.sessionId, response, wsOpen: session.ws.readyState === 1 }, 'Sending VOICE_RESPONSE message');
