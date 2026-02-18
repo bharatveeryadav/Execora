@@ -25,8 +25,8 @@
                 </button>
             </div>
             <h1>🎙️ Execora</h1>
-            <p>Voice-Based Business Assistant</p>
-            <p class="version-info">🔊 Audio Enabled Version</p>
+            <h2 class="subtitle">Voice-Based Business Assistant</h2>
+            <p id="dynamicTagline" class="ui-work-info">✨ Loading...</p>
         </header>
 
         <main>
@@ -150,6 +150,44 @@
                 localStorage.setItem('theme', nextTheme);
                 updateLabel(nextTheme);
             });
+        })();
+
+        // Dynamic rotating taglines for India SME problems
+        (function () {
+            var taglines = [
+                "✨ Track customer dues with voice—no more ledger books.",
+                "✨ Send payment reminders in seconds—your voice, their WhatsApp.",
+                "✨ Know who owes what, instantly—just ask in Hindi or English.",
+                "✨ Generate invoices while you work—speak, don't type.",
+                "✨ Never forget a collection—AI remembers every pending payment.",
+                "✨ Manage inventory by voice—perfect for busy shop owners.",
+                "✨ Your personal business assistant—built for Indian SMEs.",
+                "✨ Stop chasing payments manually—automate with your voice.",
+                "✨ Real-time business insights—no spreadsheets, just conversations.",
+                "✨ From kirana to retail—voice-first business management."
+            ];
+
+            var taglineElem = document.getElementById('dynamicTagline');
+            if (!taglineElem) return;
+
+            var currentIndex = 0;
+
+            function updateTagline() {
+                taglineElem.style.opacity = '0';
+                
+                setTimeout(function () {
+                    currentIndex = (currentIndex + 1) % taglines.length;
+                    taglineElem.textContent = taglines[currentIndex];
+                    taglineElem.style.opacity = '1';
+                }, 400);
+            }
+
+            // Set initial tagline
+            taglineElem.textContent = taglines[0];
+            taglineElem.style.opacity = '1';
+
+            // Rotate every 4 seconds
+            setInterval(updateTagline, 4000);
         })();
     </script>
     <script src="/js/app-audio.js"></script>
