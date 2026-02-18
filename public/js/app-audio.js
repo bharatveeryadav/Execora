@@ -14,6 +14,10 @@ class ExecoraAudioClient {
         this.audioChunks = [];
         this.sttProvider = null;
         this.usePcmStreaming = false;
+        this.analyser = null;
+        this.visualizerData = null;
+        this.visualizerFrameId = null;
+        this.visualizerBars = [];
 
         // TTS Provider selection
         this.ttsProvider = 'browser'; // 'browser' | 'openai' | 'elevenlabs'
@@ -67,12 +71,80 @@ class ExecoraAudioClient {
         // Activity log
         this.activityLog = document.getElementById('activityLog');
 
+        // Audio visualizer
+        this.audioVisualizer = document.getElementById('audioVisualizer');
+        this.initAudioVisualizer();
+
         // Audio playback element (hidden)
         this.audioPlayer = document.createElement('audio');
         this.audioPlayer.style.display = 'none';
         document.body.appendChild(this.audioPlayer);
 
         console.log('✅ All elements initialized');
+    }
+
+    initAudioVisualizer() {
+        if (!this.audioVisualizer) {
+            return;
+        }
+
+        const barCount = 22;
+        this.audioVisualizer.innerHTML = '';
+        this.visualizerBars = [];
+
+        for (let i = 0; i < barCount; i++) {
+            const bar = document.createElement('span');
+            bar.className = 'audio-bar';
+            this.audioVisualizer.appendChild(bar);
+            this.visualizerBars.push(bar);
+        }
+    }
+
+    startAudioVisualizer() {
+        if (!this.audioVisualizer || !this.analyser || this.visualizerBars.length === 0) {
+            return;
+        }
+
+        this.audioVisualizer.classList.add('active');
+
+        const renderFrame = () => {
+            if (!this.analyser || !this.visualizerData || !this.isListening) {
+                return;
+            }
+
+            this.analyser.getByteFrequencyData(this.visualizerData);
+
+            const binStep = Math.max(1, Math.floor(this.visualizerData.length / this.visualizerBars.length));
+            for (let i = 0; i < this.visualizerBars.length; i++) {
+                const binIndex = Math.min(this.visualizerData.length - 1, i * binStep);
+                const amplitude = this.visualizerData[binIndex] / 255;
+                const scale = Math.max(0.18, amplitude);
+                this.visualizerBars[i].style.transform = `scaleY(${scale})`;
+            }
+
+            this.visualizerFrameId = requestAnimationFrame(renderFrame);
+        };
+
+        if (this.visualizerFrameId) {
+            cancelAnimationFrame(this.visualizerFrameId);
+        }
+
+        this.visualizerFrameId = requestAnimationFrame(renderFrame);
+    }
+
+    stopAudioVisualizer() {
+        if (this.visualizerFrameId) {
+            cancelAnimationFrame(this.visualizerFrameId);
+            this.visualizerFrameId = null;
+        }
+
+        if (this.audioVisualizer) {
+            this.audioVisualizer.classList.remove('active');
+        }
+
+        this.visualizerBars.forEach((bar) => {
+            bar.style.transform = 'scaleY(0.2)';
+        });
     }
 
     connect() {
@@ -318,6 +390,12 @@ class ExecoraAudioClient {
             this.source = this.audioContext.createMediaStreamSource(this.mediaStream);
             console.log('✅ Media stream source created');
 
+            this.analyser = this.audioContext.createAnalyser();
+            this.analyser.fftSize = 128;
+            this.analyser.smoothingTimeConstant = 0.8;
+            this.visualizerData = new Uint8Array(this.analyser.frequencyBinCount);
+            this.source.connect(this.analyser);
+
             if (this.usePcmStreaming) {
                 console.log('🔊 Using PCM streaming for ElevenLabs');
                 this.processor = this.audioContext.createScriptProcessor(4096, 1, 1);
@@ -365,6 +443,7 @@ class ExecoraAudioClient {
             this.stopVoiceBtn.disabled = false;
 
             this.transcriptDiv.textContent = 'Listening...';
+            this.startAudioVisualizer();
 
             this.log('Microphone access granted - listening', 'success');
 
@@ -407,6 +486,7 @@ class ExecoraAudioClient {
 
     stopAudioCapture() {
         console.log('⏹️ stopAudioCapture() called');
+        this.stopAudioVisualizer();
 
         // Stop media recorder
         if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
@@ -453,6 +533,8 @@ class ExecoraAudioClient {
         this.source = null;
         this.processor = null;
         this.mediaRecorder = null;
+        this.analyser = null;
+        this.visualizerData = null;
 
         console.log('✅ Audio capture cleanup complete');
     }

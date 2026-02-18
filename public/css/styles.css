@@ -366,6 +366,18 @@ footer {
 }
 
 /* Audio-specific styles */
+.voice-header {
+    margin-bottom: 16px;
+}
+
+.voice-title {
+    display: inline-block;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+}
+
 .audio-info {
     margin: 12px 0;
     padding: 12px;
@@ -389,32 +401,43 @@ footer {
     line-height: 1.8;
 }
 
-/* Audio visualization (optional) */
 .audio-visualizer {
     width: 100%;
-    height: 60px;
+    height: 56px;
     background-color: var(--surface-muted);
     border-radius: 8px;
-    margin: 12px 0;
+    margin: 4px 0 0;
+    padding: 0 12px;
     display: flex;
+    gap: 6px;
     align-items: center;
     justify-content: center;
     overflow: hidden;
+    border: 1px solid var(--border-color);
 }
 
 .audio-bar {
-    width: 3px;
-    height: 100%;
+    width: 5px;
+    height: 36px;
     background-color: var(--primary-color);
-    margin: 0 2px;
-    animation: audioWave 0.5s ease-in-out infinite alternate;
+    border-radius: 999px;
+    transform-origin: center;
+    transform: scaleY(0.2);
+    opacity: 0.35;
+    transition: transform 120ms ease, opacity 120ms ease;
 }
 
-@keyframes audioWave {
-    from {
-        transform: scaleY(0.2);
+.audio-visualizer.active .audio-bar {
+    opacity: 0.95;
+}
+
+@media (max-width: 768px) {
+    .audio-visualizer {
+        gap: 4px;
+        padding: 0 8px;
     }
-    to {
-        transform: scaleY(1);
+
+    .audio-bar {
+        width: 4px;
     }
 }
