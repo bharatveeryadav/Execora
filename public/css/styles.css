@@ -64,6 +64,34 @@ html[data-theme='light'] body {
     z-index: 100;
 }
 
+.ui-version-switcher-new {
+    position: absolute;
+    top: 14px;
+    right: 180px;
+    z-index: 101;
+}
+
+.ui-switch-btn-new {
+    background: var(--message-bg);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ui-switch-btn-new:hover {
+    background: var(--input-bg);
+    border-color: var(--primary-color);
+    color: var(--text-primary);
+}
+
 .header-content {
     max-width: 100%;
     margin: 0 auto;
@@ -730,6 +758,16 @@ html[data-theme='light'] body {
 @media (max-width: 768px) {
     .chat-header {
         padding: 12px 16px;
+    }
+
+    .ui-version-switcher-new {
+        top: 12px;
+        right: 60px;
+    }
+
+    .ui-switch-btn-new {
+        padding: 6px 12px;
+        font-size: 0.75rem;
     }
 
     .sidebar {

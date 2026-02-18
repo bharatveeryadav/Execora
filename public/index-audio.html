@@ -19,6 +19,11 @@
 <body>
     <!-- Header -->
     <header class="chat-header">
+        <div class="ui-version-switcher-new">
+            <button id="uiSwitcherBtn" class="ui-switch-btn-new" title="Switch to Stable UI">
+                ⚙️ Stable UI
+            </button>
+        </div>
         <div class="header-content">
             <div class="header-left">
                 <button id="sidebarToggle" class="sidebar-toggle-btn" type="button" aria-label="Toggle sidebar">
@@ -244,6 +249,20 @@
             setInterval(updateTagline, 4000);
         })();
     </script>
+
+    <!-- UI Switcher Script -->
+    <script>
+        (function() {
+            const uiSwitcherBtn = document.getElementById('uiSwitcherBtn');
+            if (uiSwitcherBtn) {
+                uiSwitcherBtn.addEventListener('click', function() {
+                    localStorage.setItem('execora-ui-version', 'stable');
+                    window.location.href = '/index-audio-stable.html';
+                });
+            }
+        })();
+    </script>
+
     <script src="/js/app-audio.js"></script>
 </body>
 </html>
