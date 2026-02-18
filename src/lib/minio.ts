@@ -46,7 +46,9 @@ class MinioClient {
       ...metadata,
     };
 
-    await this.client.putObject(this.bucket, fileName, data, uploadMetadata);
+    const stream = Buffer.isBuffer(data) ? Readable.from(data) : data;
+
+    await this.client.putObject(this.bucket, fileName, stream, uploadMetadata as any);
     return fileName;
   }
 
