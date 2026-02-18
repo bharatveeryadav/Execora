@@ -12,6 +12,8 @@ npx ts-node src/lib/indian-fuzzy-match.test.ts
 npx ts-node src/business/conversation-memory.service.test.ts
 ```
 
+Both scripts are CI-safe and return non-zero exit code on assertion failure.
+
 ## Individual Tests
 
 ### Fuzzy Matching Only
@@ -132,6 +134,9 @@ Add to `.github/workflows/test.yml`:
     npx ts-node src/lib/indian-fuzzy-match.test.ts
     npx ts-node src/business/conversation-memory.service.test.ts
 ```
+
+Pass condition: workflow step exits with code `0`.
+Fail condition: workflow step exits with code `1` if any assertion fails.
 
 ## Manual Testing Checklist
 

@@ -200,7 +200,7 @@ interface ConversationMemory {
 ✅ All type checks passed
 
 ## Testing Instructions
-See [CONVERSATION_MEMORY_TEST.md](./CONVERSATION_MEMORY_TEST.md) for:
+See [CONVERSATION_MEMORY_TEST.md](../testing/CONVERSATION_MEMORY_TEST.md) for:
 - Detailed test scenarios
 - Expected behaviors
 - Debugging commands

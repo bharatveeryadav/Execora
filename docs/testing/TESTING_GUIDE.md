@@ -65,6 +65,8 @@ npx ts-node src/lib/indian-fuzzy-match.test.ts
 npx ts-node src/business/conversation-memory.service.test.ts
 ```
 
+Both test scripts now set a non-zero exit code when any assertion fails, so they are safe for CI pipelines.
+
 ## 📋 Test Coverage
 
 ### Test Suite 1: Fuzzy Matching Engine (31 tests)
@@ -221,7 +223,6 @@ http://localhost:3000/index-audio.html
 
 ### Test 2: Customer Switching
 ```bash
-# In voice interface
 1. "Bharat ka balance?"
 2. "Rahul ka balance?"
 3. "Pehle wale ko 200 add" ← Should switch back to Bharat
@@ -258,6 +259,20 @@ DEBUG=* npx ts-node src/business/conversation-memory.service.test.ts
 const stats = conversationMemory.getStats();
 console.log(stats);
 ```
+
+## ✅ Production CI Commands
+
+Use these exact commands in CI/CD jobs:
+
+```bash
+npm run build
+npx ts-node src/lib/indian-fuzzy-match.test.ts
+npx ts-node src/business/conversation-memory.service.test.ts
+```
+
+Expected behavior:
+- Exit code `0` when all assertions pass
+- Exit code `1` when any assertion fails
 
 ## 📈 Performance Testing
 
@@ -371,9 +386,9 @@ Before deploying:
 
 ## 📚 Related Documentation
 
-- [INDIAN_FUZZY_MATCHING.md](INDIAN_FUZZY_MATCHING.md) - API reference
-- [FUZZY_MATCHING_EXAMPLES.md](FUZZY_MATCHING_EXAMPLES.md) - Usage examples
-- [CONVERSATION_MEMORY_QUICK_REF.md](CONVERSATION_MEMORY_QUICK_REF.md) - Quick reference
+- [INDIAN_FUZZY_MATCHING.md](../features/INDIAN_FUZZY_MATCHING.md) - API reference
+- [FUZZY_MATCHING_EXAMPLES.md](../features/FUZZY_MATCHING_EXAMPLES.md) - Usage examples
+- [CONVERSATION_MEMORY_QUICK_REF.md](../features/CONVERSATION_MEMORY_QUICK_REF.md) - Quick reference
 
 ## 🤝 Contributing Tests
 

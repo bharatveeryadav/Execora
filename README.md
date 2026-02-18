@@ -239,6 +239,14 @@ Run tests:
 npm test
 ```
 
+## 📚 Documentation
+
+- Master index: [docs/README.md](docs/README.md)
+- Features: [docs/features](docs/features)
+- Architecture: [docs/architecture](docs/architecture)
+- Implementation: [docs/implementation](docs/implementation)
+- Testing: [docs/testing](docs/testing)
+
 ## 📝 Environment Variables
 
 Required:
