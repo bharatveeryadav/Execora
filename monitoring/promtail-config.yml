@@ -1,0 +1,39 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  # Execora Application Logs
+  - job_name: execora-app
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: execora-app
+          environment: production
+          service: voice-assistant
+          __path__: /app/logs/app.log
+          
+    pipeline_stages:
+      # Parse JSON logs from Pino
+      - json:
+          expressions:
+            level: level
+            timestamp: time
+            message: msg
+            error: err
+            
+      # Extract labels
+      - labels:
+          level:
+          
+      # Set timestamp from Pino (milliseconds)
+      - timestamp:
+          source: timestamp
+          format: "ms"

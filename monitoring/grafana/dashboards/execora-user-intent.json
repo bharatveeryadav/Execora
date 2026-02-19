@@ -1,0 +1,80 @@
+{
+  "title": "Execora - User Intent & Activity",
+  "tags": ["execora", "user", "intent", "activity"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 0,
+  "panels": [
+    {
+      "id": 1,
+      "title": "All App Logs (Real-time)",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "targets": [
+        {
+          "expr": "{job=\"execora-app\"}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "showLabels": false,
+        "fontSize": "12px"
+      },
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 10 }
+    },
+    {
+      "id": 2,
+      "title": "HTTP Requests & Responses",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "targets": [
+        {
+          "expr": "{job=\"execora-app\"} | json | req.url != \"/metrics\" | req.url != \"/health\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "showLabels": false,
+        "fontSize": "12px"
+      },
+      "gridPos": { "x": 0, "y": 10, "w": 24, "h": 10 }
+    },
+    {
+      "id": 3,
+      "title": "Requests by Endpoint",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "targets": [
+        {
+          "expr": "{job=\"execora-app\"} | json | req.method != \"OPTIONS\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "showLabels": false,
+        "fontSize": "12px"
+      },
+      "gridPos": { "x": 0, "y": 20, "w": 24, "h": 10 }
+    }
+  ],
+  "refresh": "2s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  }
+}

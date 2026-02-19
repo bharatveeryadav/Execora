@@ -1,0 +1,124 @@
+{
+  "title": "Execora - User Flow Real-time",
+  "tags": ["execora", "user-flow", "intent", "realtime"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 0,
+  "panels": [
+    {
+      "id": 1,
+      "title": "User Flow Complete (All Steps)",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "targets": [
+        {
+          "expr": "{job=\"execora-app\"} | json",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "showLabels": false,
+        "fontSize": "12px"
+      },
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 12 }
+    },
+    {
+      "id": 2,
+      "title": "User Input & Processing",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "targets": [
+        {
+          "expr": "{job=\"execora-app\"} | json | msg=~\"Processing final|voice:final\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "showLabels": false,
+        "fontSize": "11px"
+      },
+      "gridPos": { "x": 0, "y": 12, "w": 6, "h": 8 }
+    },
+    {
+      "id": 3,
+      "title": "Intent Detection",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "targets": [
+        {
+          "expr": "{job=\"execora-app\"} | json | msg=~\"VOICE_INTENT|Executing intent\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "showLabels": false,
+        "fontSize": "11px"
+      },
+      "gridPos": { "x": 6, "y": 12, "w": 6, "h": 8 }
+    },
+    {
+      "id": 4,
+      "title": "Business Logic Execution",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "targets": [
+        {
+          "expr": "{job=\"execora-app\"} | json | msg=~\"Executing intent\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "showLabels": false,
+        "fontSize": "11px"
+      },
+      "gridPos": { "x": 12, "y": 12, "w": 6, "h": 8 }
+    },
+    {
+      "id": 5,
+      "title": "Response & Output",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "targets": [
+        {
+          "expr": "{job=\"execora-app\"} | json | msg=~\"VOICE_RESPONSE|Sent successfully\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "showLabels": false,
+        "fontSize": "11px"
+      },
+      "gridPos": { "x": 18, "y": 12, "w": 6, "h": 8 }
+    }
+  ],
+  "refresh": "1s",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  }
+}

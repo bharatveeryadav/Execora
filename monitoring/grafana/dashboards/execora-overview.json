@@ -1,0 +1,112 @@
+{
+  "dashboard": {
+    "title": "Execora - Application Overview",
+    "tags": ["execora", "overview"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total[5m])) by (method)",
+            "legendFormat": "{{method}}"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 }
+      },
+      {
+        "id": 2,
+        "title": "Response Time (95th percentile)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "p95"
+          }
+        ],
+        "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 }
+      },
+      {
+        "id": 3,
+        "title": "Active WebSocket Connections",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "websocket_connections_active"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 8, "w": 6, "h": 4 }
+      },
+      {
+        "id": 4,
+        "title": "Voice Commands/min",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(rate(voice_commands_total[1m])) * 60"
+          }
+        ],
+        "gridPos": { "x": 6, "y": 8, "w": 6, "h": 4 }
+      },
+      {
+        "id": 5,
+        "title": "Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{status_code=~\"5..\"}[5m])) / sum(rate(http_requests_total[5m]))",
+            "legendFormat": "Error Rate"
+          }
+        ],
+        "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 }
+      },
+      {
+        "id": 6,
+        "title": "Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "process_resident_memory_bytes",
+            "legendFormat": "Memory"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 }
+      },
+      {
+        "id": 7,
+        "title": "CPU Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(process_cpu_seconds_total[5m]) * 100",
+            "legendFormat": "CPU %"
+          }
+        ],
+        "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 }
+      },
+      {
+        "id": 8,
+        "title": "Recent Error Logs",
+        "type": "logs",
+        "targets": [
+          {
+            "expr": "{job=\"execora-app\"} |= \"error\"",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "showTime": true,
+          "wrapLogMessage": true
+        },
+        "gridPos": { "x": 0, "y": 24, "w": 24, "h": 8 }
+      }
+    ],
+    "refresh": "10s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    }
+  }
+}

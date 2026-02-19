@@ -1,0 +1,199 @@
+{
+  "title": "Execora - Transcript & Response Details",
+  "tags": ["execora", "transcript", "response", "tts", "timing", "session"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 0,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Complete User Flow: Transcript → Intent → Response → TTS",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "targets": [
+        {
+          "expr": "{job=\"execora-app\"} | json | status=\"complete_flow\"",
+          "refId": "A",
+          "legendFormat": "{{flowId}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "hideFrom": {
+              "viz": false,
+              "legend": false
+            }
+          }
+        }
+      },
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": false,
+        "showLabels": false,
+        "fontSize": "12px",
+        "sortOrder": "Descending"
+      },
+      "maxDataPoints": 1000,
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 14 }
+    },
+    {
+      "id": 2,
+      "title": "User Input Received (Transcript)",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "targets": [
+        {
+          "expr": "{job=\"execora-app\"} | json | status=\"user_input_received\" | line_format \"{{.timestamp}} | Session: {{.sessionId}} | Input: {{.userInput}}\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "showLabels": false,
+        "fontSize": "11px"
+      },
+      "gridPos": { "x": 0, "y": 14, "w": 8, "h": 8 }
+    },
+    {
+      "id": 3,
+      "title": "Response Generated",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "targets": [
+        {
+          "expr": "{job=\"execora-app\"} | json | status=\"response_generated\" | line_format \"{{.timestamp}} | Session: {{.sessionId}} | Response: {{.response}} | Time: {{.responseTimeMs}}ms\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "showLabels": false,
+        "fontSize": "11px"
+      },
+      "gridPos": { "x": 8, "y": 14, "w": 8, "h": 8 }
+    },
+    {
+      "id": 4,
+      "title": "TTS Provider & Session",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "targets": [
+        {
+          "expr": "{job=\"execora-app\"} | json | status=\"complete_flow\" | line_format \"Session: {{.sessionId}} | TTS: {{.ttsProvider}} | Total Time: {{.totalResponseTimeMs}}ms\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "showLabels": false,
+        "fontSize": "11px"
+      },
+      "gridPos": { "x": 16, "y": 14, "w": 8, "h": 8 }
+    },
+    {
+      "id": 5,
+      "title": "Processing Time Breakdown",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "targets": [
+        {
+          "expr": "{job=\"execora-app\"} | json | status=\"complete_flow\" | line_format \"Session: {{.sessionId}} | Breakdown - Norm: {{.breakdown.normalizationMs}}ms | Intent: {{.breakdown.intentExtractionMs}}ms | Logic: {{.breakdown.businessLogicMs}}ms | Response: {{.breakdown.responseGenerationMs}}ms | TOTAL: {{.totalResponseTimeMs}}ms\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "showLabels": false,
+        "fontSize": "10px"
+      },
+      "gridPos": { "x": 0, "y": 22, "w": 24, "h": 8 }
+    },
+    {
+      "id": 6,
+      "title": "Quick Filter: Transcript → Intent → Response (Time in seconds)",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "targets": [
+        {
+          "expr": "{job=\"execora-app\"} | json | status=\"complete_flow\" | line_format \"Transcript: {{.userInput}} | Intent: {{.intent}} | Response: {{.response}} | ⏱️ Time: {{.totalResponseTimeMs}}ms\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "showLabels": false,
+        "fontSize": "12px",
+        "sortOrder": "Descending",
+        "dedupStrategy": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineLimit": 0
+          }
+        }
+      },
+      "gridPos": { "x": 0, "y": 30, "w": 24, "h": 10 }
+    },
+    {
+      "id": 7,
+      "title": "Separate Sections: Raw Audio → Transcript → Intent → Response",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "targets": [
+        {
+          "expr": "{job=\"execora-app\"} | json | status=\"complete_flow\" | line_format \"\\n╔════════════════════════════════════════════╗\\n║ 🎤 RAW AUDIO INPUT FROM MICROPHONE ║\\n╚════════════════════════════════════════════╝\\nRaw Audio Source: Microphone\\nAudio Format: {{.audioFormat}}\\nTotal Size: {{.rawAudioTotalBytes}} bytes\\nAudio Chunks: {{.rawAudioChunksCount}}\\n\\n╔════════════════════════════════════════════╗\\n║ 🎯 SPEECH-TO-TEXT (STT) TRANSCRIPT ║\\n╚════════════════════════════════════════════╝\\nTranscript Text: {{.userInput}}\\n\\n╔════════════════════════════════════════════╗\\n║ 🧠 LLM INTENT DETECTION ║\\n╚════════════════════════════════════════════╝\\nIntent Detected: {{.intent}}\\nFlow ID: {{.flowId}}\\n\\n╔════════════════════════════════════════════╗\\n║ 💬 RESPONSE MESSAGE ║\\n╚════════════════════════════════════════════╝\\nSystem Response: {{.response}}\\nTTS Provider: {{.ttsProvider}}\\n⏱️ Total Processing Time: {{.totalResponseTimeFormatted}} ({{.totalResponseTimeMs}}ms)\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "showLabels": false,
+        "fontSize": "11px",
+        "sortOrder": "Descending",
+        "dedupStrategy": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "lineLimit": 0
+          }
+        }
+      },
+      "gridPos": { "x": 0, "y": 40, "w": 24, "h": 16 }
+    }
+  ],
+  "refresh": "5s",
+  "time": {
+    "from": "now-2h",
+    "to": "now"
+  }
+}

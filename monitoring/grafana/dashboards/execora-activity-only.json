@@ -1,0 +1,35 @@
+{
+  "title": "Execora - Activity Only",
+  "tags": ["execora", "logs", "activity"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 0,
+  "panels": [
+    {
+      "id": 1,
+      "title": "App Activity (Exclude /metrics, /health)",
+      "type": "logs",
+      "datasource": {
+        "type": "loki",
+        "uid": "P8E80F9AEF21F6940"
+      },
+      "targets": [
+        {
+          "expr": "{job=\"execora-app\"} | json | req.url !~ \"/metrics|/health|/ready\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "showLabels": false
+      },
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 12 }
+    }
+  ],
+  "refresh": "5s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  }
+}
