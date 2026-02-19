@@ -12,6 +12,7 @@ import { minioClient } from './lib/minio';
 import { registerRoutes } from './routes';
 import { websocketHandler } from './websocket/handler';
 import { enhancedWebsocketHandler } from './websocket/enhanced-handler';
+import { metricsPlugin } from './lib/metrics-plugin';
 
 // Choose WebSocket handler based on configuration
 const useEnhancedAudio = process.env.USE_ENHANCED_AUDIO !== 'false'; // Default to enhanced
@@ -25,6 +26,9 @@ const fastify = Fastify({
 
 // Register plugins
 async function registerPlugins() {
+  // Metrics (register first to track all requests)
+  await fastify.register(metricsPlugin);
+
   // CORS
   await fastify.register(fastifyCors, {
     origin: true,
