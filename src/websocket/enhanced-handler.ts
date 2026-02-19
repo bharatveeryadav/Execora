@@ -8,6 +8,7 @@ import { ttsService } from '../services/tts.service';
 import { voiceSessionService } from '../business/voice-session.service';
 import { conversationMemory } from '../business/conversation-memory.service';
 import { WSMessage, WSMessageType } from '../types';
+import { websocketConnections, voiceCommandsProcessed } from '../lib/metrics';
 
 interface VoiceSession {
   ws: WebSocket;
@@ -24,6 +25,28 @@ interface VoiceSession {
 
 class EnhancedWebSocketHandler {
   private sessions: Map<string, VoiceSession> = new Map();
+
+  /**
+   * Format milliseconds to readable format (e.g., "3.31s" or "250ms")
+   */
+  private formatTime(ms: number): string {
+    if (ms >= 1000) {
+      return `${(ms / 1000).toFixed(2)}s`;
+    }
+    return `${ms}ms`;
+  }
+
+  /**
+   * Format milliseconds showing both seconds and milliseconds
+   */
+  private formatTimeDetailed(ms: number): string {
+    const seconds = Math.floor(ms / 1000);
+    const milliseconds = ms % 1000;
+    if (seconds > 0) {
+      return `${seconds}s ${milliseconds}ms`;
+    }
+    return `${ms}ms`;
+  }
 
   /**
    * Handle new WebSocket connection
@@ -45,6 +68,9 @@ class EnhancedWebSocketHandler {
     this.sessions.set(sessionId, session);
 
     logger.info({ sessionId }, 'WebSocket connected');
+
+    // Track active WebSocket connection
+    websocketConnections.inc();
 
     // Send welcome message
     this.sendMessage(connection, {
@@ -94,6 +120,10 @@ class EnhancedWebSocketHandler {
     // Handle close
     connection.on('close', async () => {
       logger.info({ sessionId }, 'WebSocket disconnected');
+
+      // Track disconnection
+      websocketConnections.dec();
+
       await this.cleanupSession(sessionId);
     });
 
@@ -323,17 +353,54 @@ class EnhancedWebSocketHandler {
       return;
     }
 
-    logger.info({ sessionId: session.sessionId, textLength: text.length, ttsProvider }, 'Processing final transcript');
+    // **USER ACTIVITY FLOW TRACKING**
+    const startTime = Date.now();
+    const flowId = `${session.sessionId}-${Date.now()}`;
+
+    // Log raw audio input from microphone before LLM processing
+    const totalAudioSize = session.audioChunks.reduce((sum, chunk) => sum + chunk.length, 0);
+    logger.info({
+      flowId,
+      sessionId: session.sessionId,
+      rawAudioSource: 'microphone',
+      rawAudioChunksCount: session.audioChunks.length,
+      rawAudioTotalBytes: totalAudioSize,
+      audioFormat: session.audioFormat,
+      status: 'raw_audio_captured',
+      timestamp: new Date().toISOString()
+    }, '[RAW AUDIO] Audio captured from microphone');
+
+    logger.info({
+      flowId,
+      sessionId: session.sessionId,
+      userInput: text,
+      status: 'user_input_received',
+      timestamp: new Date().toISOString()
+    }, 'User input received');
 
     try {
-      logger.debug({ sessionId: session.sessionId }, 'Step 1: Normalizing transcript');
+      const normStart = Date.now();
       const normalizedText = await openaiService.normalizeTranscript(text);
-      logger.debug({ sessionId: session.sessionId, originalLength: text.length, normalizedLength: normalizedText.length }, 'Step 1 complete: Transcript normalized');
+      const normTime = Date.now() - normStart;
+
+      logger.debug({ sessionId: session.sessionId, normalizationTimeMs: normTime }, 'Transcript normalized');
 
       // 1. Extract intent with conversation context
-      logger.debug({ sessionId: session.sessionId }, 'Step 2: Extracting intent');
+      const intentStart = Date.now();
       const intent = await openaiService.extractIntent(normalizedText, text, session.conversationSessionId);
-      logger.debug({ sessionId: session.sessionId, intent: intent.intent, confidence: intent.confidence }, 'Step 2 complete: Intent extracted');
+      const intentTime = Date.now() - intentStart;
+
+      logger.info({
+        flowId,
+        sessionId: session.sessionId,
+        userInput: text,
+        intent: intent.intent,
+        intentConfidence: intent.confidence,
+        entities: intent.entities,
+        responseTimeMs: intentTime,
+        status: 'intent_detected',
+        timestamp: new Date().toISOString()
+      }, `[USER FLOW] Intent detected: ${intent.intent}`);
 
       // Log user message to conversation memory
       if (session.conversationSessionId) {
@@ -350,17 +417,43 @@ class EnhancedWebSocketHandler {
         data: intent,
         timestamp: new Date().toISOString(),
       });
-      logger.info({ sessionId: session.sessionId }, 'VOICE_INTENT message sent');
 
       // 2. Execute business logic
-      logger.debug({ sessionId: session.sessionId }, 'Step 3: Executing business logic');
+      const execStart = Date.now();
       const executionResult = await businessEngine.execute(intent, session.conversationSessionId);
-      logger.debug({ sessionId: session.sessionId, success: executionResult.success }, 'Step 3 complete: Business logic executed');
+      const execTime = Date.now() - execStart;
+
+      logger.info({
+        flowId,
+        sessionId: session.sessionId,
+        intent: intent.intent,
+        executionSuccess: executionResult.success,
+        executionMessage: executionResult.message,
+        responseTimeMs: execTime,
+        status: 'business_logic_executed',
+        timestamp: new Date().toISOString()
+      }, `[USER FLOW] Business execution: ${executionResult.success ? 'SUCCESS' : 'FAILED'}`);
+
+      // Track voice command processing
+      voiceCommandsProcessed.inc({
+        status: executionResult.success ? 'success' : 'error',
+        provider: sttService.getProvider(),
+      });
 
       // 3. Generate natural response with conversation context
-      logger.debug({ sessionId: session.sessionId }, 'Step 4: Generating natural response');
+      const responseStart = Date.now();
       const response = await openaiService.generateResponse(executionResult, intent.intent, session.conversationSessionId);
-      logger.debug({ sessionId: session.sessionId, responseLength: response.length }, 'Step 4 complete: Response generated: ' + response);
+      const responseTime = Date.now() - responseStart;
+
+      logger.info({
+        flowId,
+        sessionId: session.sessionId,
+        intent: intent.intent,
+        response: response,
+        responseTimeMs: responseTime,
+        status: 'response_generated',
+        timestamp: new Date().toISOString()
+      }, `[USER FLOW] Response generated: ${response}`);
 
       // Log assistant response to conversation memory
       if (session.conversationSessionId) {
@@ -368,7 +461,31 @@ class EnhancedWebSocketHandler {
       }
 
       // 4. Send text response
-      logger.info({ sessionId: session.sessionId, response, wsOpen: session.ws.readyState === 1 }, 'Sending VOICE_RESPONSE message');
+      const totalTime = Date.now() - startTime;
+      const totalAudioSize = session.audioChunks.reduce((sum, chunk) => sum + chunk.length, 0);
+      const formattedTime = this.formatTimeDetailed(totalTime);
+      logger.info({
+        flowId,
+        sessionId: session.sessionId,
+        userInput: text,
+        intent: intent.intent,
+        response: response,
+        ttsProvider: ttsProvider,
+        totalResponseTimeMs: totalTime,
+        totalResponseTimeFormatted: formattedTime,
+        audioFormat: session.audioFormat,
+        rawAudioChunksCount: session.audioChunks.length,
+        rawAudioTotalBytes: totalAudioSize,
+        breakdown: {
+          normalizationMs: normTime,
+          intentExtractionMs: intentTime,
+          businessLogicMs: execTime,
+          responseGenerationMs: responseTime,
+        },
+        status: 'complete_flow',
+        timestamp: new Date().toISOString()
+      }, `[USER FLOW COMPLETE] Input → Intent → Execution → Response (${totalTime}ms)`);
+
       this.sendMessage(session.ws, {
         type: WSMessageType.VOICE_RESPONSE,
         data: {
