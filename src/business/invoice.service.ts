@@ -2,6 +2,7 @@ import { prisma } from '../lib/database';
 import { logger } from '../lib/logger';
 import { InvoiceItemInput } from '../types';
 import { Decimal } from '@prisma/client/runtime/library';
+import { invoiceOperations } from '../lib/metrics';
 
 class InvoiceService {
   /**
@@ -125,10 +126,17 @@ class InvoiceService {
           'Invoice created successfully'
         );
 
+        // Track invoice operation
+        invoiceOperations.inc({ operation: 'create', status: 'success' });
+
         return invoice;
       });
     } catch (error) {
       logger.error({ error, customerId, items }, 'Invoice creation failed');
+
+      // Track invoice operation failure
+      invoiceOperations.inc({ operation: 'create', status: 'error' });
+
       throw error;
     }
   }

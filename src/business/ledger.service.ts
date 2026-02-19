@@ -1,6 +1,7 @@
 import { prisma } from '../lib/database';
 import { logger } from '../lib/logger';
 import { Decimal } from '@prisma/client/runtime/library';
+import { paymentProcessing, paymentAmount } from '../lib/metrics';
 
 class LedgerService {
   /**
@@ -47,10 +48,18 @@ class LedgerService {
           'Payment recorded'
         );
 
+        // Track payment metrics
+        paymentProcessing.inc({ status: 'success' });
+        paymentAmount.observe({ customer_id: customerId }, amount);
+
         return entry;
       });
     } catch (error) {
       logger.error({ error, customerId, amount }, 'Payment recording failed');
+
+      // Track payment failure
+      paymentProcessing.inc({ status: 'error' });
+
       throw error;
     }
   }
