@@ -314,6 +314,8 @@ class ExecoraAudioClient {
             // Initialize sidebar state based on viewport
             if (window.innerWidth <= 768) {
                 sidebar.classList.add('collapsed');
+            } else {
+                sidebar.classList.remove('collapsed');
             }
 
             sidebarToggle.addEventListener('click', () => {
@@ -334,6 +336,8 @@ class ExecoraAudioClient {
             window.addEventListener('resize', () => {
                 if (window.innerWidth > 768) {
                     sidebar.classList.remove('collapsed');
+                } else {
+                    sidebar.classList.add('collapsed');
                 }
             });
         }

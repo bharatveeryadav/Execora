@@ -129,21 +129,23 @@ html[data-theme='light'] body {
 .brand {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 0;
     flex: 1;
 }
 
 .brand-icon {
-    width: 32px;
+    min-width: 96px;
     height: 32px;
     background: var(--primary-color);
     color: white;
-    border-radius: 6px;
+    border-radius: 999px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    font-size: 1rem;
+    font-size: 0.85rem;
+    letter-spacing: 0.3px;
+    padding: 0 12px;
 }
 
 .brand-text {
@@ -636,13 +638,14 @@ html[data-theme='light'] body {
     display: flex;
     gap: 8px;
     align-items: center;
+    border-radius: 999px;
 }
 
 .chat-input {
     flex: 1;
     padding: 12px 16px;
     border: 1px solid var(--border-color);
-    border-radius: 10px;
+    border-radius: 999px;
     font-size: 0.95rem;
     background-color: var(--input-bg);
     color: var(--text-primary);
@@ -781,6 +784,7 @@ html[data-theme='light'] body {
         left: 0;
         top: 61px;
         height: calc(100vh - 61px);
+        width: min(260px, 85vw);
         z-index: 90;
         box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
     }
@@ -935,6 +939,15 @@ html[data-theme='light'] body {
         font-size: 0.85rem;
     }
 
+    .welcome-message {
+        padding: 22px 12px;
+    }
+
+    .welcome-message h2 {
+        font-size: 1.1rem;
+        line-height: 1.4;
+    }
+
     .audio-visualizer {
         height: 36px;
     }
@@ -942,6 +955,10 @@ html[data-theme='light'] body {
     .audio-bar {
         width: 3px;
         height: 22px;
+    }
+
+    .chat-input-area {
+        padding: 10px 12px 14px;
     }
 
     .chat-input {
