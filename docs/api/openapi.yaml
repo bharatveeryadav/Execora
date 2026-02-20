@@ -1,0 +1,1378 @@
+openapi: 3.0.3
+
+info:
+  title: Execora API
+  version: 1.0.0
+  description: |
+    **Execora** is a voice-first business management engine for Indian SMEs.
+
+    This REST API exposes all business operations that the voice engine executes internally.
+    Clients can use it to build custom dashboards, mobile apps, or integrate with third-party tools.
+
+    ## Base URL
+    ```
+    http://localhost:3000
+    ```
+
+    ## Authentication
+    Currently open (no auth). Add an API key header or JWT in production before public exposure.
+
+    ## Response envelope
+    All successful responses are wrapped in a named key matching the resource:
+    ```json
+    { "customers": [...] }
+    { "invoice": { ... } }
+    { "entry": { ... } }
+    ```
+
+    ## Error format
+    ```json
+    { "error": "Human-readable message", "statusCode": 400 }
+    ```
+
+    ## Related
+    - WebSocket API: connect to `ws://localhost:3000/ws` for real-time voice pipeline
+    - Metrics: `GET /metrics` returns Prometheus-format metrics
+  contact:
+    name: Execora GitHub
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+  - url: https://your-domain.com
+    description: Production (replace with actual domain)
+
+tags:
+  - name: Health
+    description: Server liveness and readiness
+  - name: Customers
+    description: Customer master data — search, create, view
+  - name: Products
+    description: Product catalogue and inventory management
+  - name: Invoices
+    description: Invoice creation and cancellation (ACID transactions)
+  - name: Ledger
+    description: Financial ledger — payments and credit adjustments
+  - name: Reminders
+    description: Scheduled WhatsApp payment reminders via BullMQ
+  - name: Sessions
+    description: Voice session history and recording downloads
+  - name: Summary
+    description: Business analytics and daily summaries
+  - name: Webhooks
+    description: WhatsApp Business API webhook integration
+
+paths:
+
+  # ─────────────────────────────────────────────
+  # HEALTH
+  # ─────────────────────────────────────────────
+
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      description: Returns server status and current timestamp. Use for liveness probes.
+      operationId: getHealth
+      responses:
+        "200":
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: ok
+                timestamp: "2026-02-20T10:30:00.000Z"
+
+  # ─────────────────────────────────────────────
+  # CUSTOMERS
+  # ─────────────────────────────────────────────
+
+  /api/customers/search:
+    get:
+      tags: [Customers]
+      summary: Search customers
+      description: |
+        Fuzzy search across name, nickname, landmark, phone, and notes.
+
+        Uses the Hinglish-aware matching engine — handles transliteration variants
+        (e.g. "Rahul" matches "Rahu", "Rahool", "राहुल") and landmark-based disambiguation
+        ("Rahul atm wala" returns the Rahul near the ATM).
+
+        Results are ranked by `matchScore` (0–1). Only results with `matchScore ≥ 0.3` are returned.
+      operationId: searchCustomers
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query — name, phone, nickname, or landmark
+          schema:
+            type: string
+            minLength: 1
+            example: Rahul
+      responses:
+        "200":
+          description: Matching customers sorted by relevance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerSearchResponse"
+              example:
+                customers:
+                  - id: clx1abc123
+                    name: Rahul Gupta
+                    phone: "9876543210"
+                    nickname: Rahul bhai
+                    landmark: ATM ke paas
+                    balance: 1500.00
+                    matchScore: 0.92
+
+  /api/customers/{id}:
+    get:
+      tags: [Customers]
+      summary: Get customer by ID
+      description: Returns full customer profile with last 5 invoices and all scheduled reminders.
+      operationId: getCustomerById
+      parameters:
+        - $ref: "#/components/parameters/idParam"
+      responses:
+        "200":
+          description: Customer found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerDetailResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/customers:
+    post:
+      tags: [Customers]
+      summary: Create customer
+      description: |
+        Creates a new customer. Rejects creation if a customer with the exact same name
+        already exists (case-insensitive match) to prevent accidental duplicates.
+
+        Only `name` is required. All other fields can be added later via voice or a future PATCH endpoint.
+      operationId: createCustomer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCustomerBody"
+            example:
+              name: Suresh Kumar
+              phone: "9988776655"
+              nickname: Suresh bhai
+              landmark: Main bazaar ke paas
+      responses:
+        "200":
+          description: Customer created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerResponse"
+        "500":
+          description: Duplicate name — customer already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: Customer "Suresh Kumar" already exists. Cannot create duplicate.
+                statusCode: 500
+
+  # ─────────────────────────────────────────────
+  # PRODUCTS
+  # ─────────────────────────────────────────────
+
+  /api/products:
+    get:
+      tags: [Products]
+      summary: List all products
+      description: Returns the full product catalogue with current stock levels and prices.
+      operationId: listProducts
+      responses:
+        "200":
+          description: All products
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductListResponse"
+              example:
+                products:
+                  - id: clx2xyz456
+                    name: Milk
+                    description: 500ml full-fat
+                    price: 28.00
+                    stock: 150
+                    unit: packet
+                    createdAt: "2026-01-01T00:00:00.000Z"
+                    updatedAt: "2026-02-20T08:00:00.000Z"
+
+    post:
+      tags: [Products]
+      summary: Create product
+      description: Adds a new product to the catalogue with an initial stock quantity.
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductBody"
+            example:
+              name: Bread
+              price: 45
+              stock: 80
+              description: White bread 400g
+              unit: loaf
+      responses:
+        "200":
+          description: Product created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductResponse"
+
+  /api/products/low-stock:
+    get:
+      tags: [Products]
+      summary: Get low-stock products
+      description: |
+        Returns products where stock is at or below the low-stock threshold (default: 10 units).
+        Use this for reorder alerts.
+      operationId: getLowStockProducts
+      responses:
+        "200":
+          description: Products with low stock
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductListResponse"
+
+  # ─────────────────────────────────────────────
+  # INVOICES
+  # ─────────────────────────────────────────────
+
+  /api/invoices:
+    get:
+      tags: [Invoices]
+      summary: List recent invoices
+      description: Returns the most recent invoices across all customers, newest first.
+      operationId: listInvoices
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of invoices to return (default 20)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 20
+      responses:
+        "200":
+          description: Recent invoices
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceListResponse"
+
+    post:
+      tags: [Invoices]
+      summary: Create invoice
+      description: |
+        Creates an invoice in a single **ACID transaction** that atomically:
+        1. Creates the invoice record
+        2. Creates invoice line items (resolved by product name, case-insensitive)
+        3. Creates a DEBIT ledger entry
+        4. Decrements stock for each product
+        5. Increments the customer balance
+
+        If any step fails (product not found, insufficient stock, DB error), the entire
+        transaction is rolled back — no partial state.
+      operationId: createInvoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInvoiceBody"
+            example:
+              customerId: clx1abc123
+              items:
+                - productName: Milk
+                  quantity: 2
+                - productName: Bread
+                  quantity: 1
+              notes: Delivered to door
+      responses:
+        "200":
+          description: Invoice created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceResponse"
+        "500":
+          description: Product not found or insufficient stock
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                productNotFound:
+                  summary: Product not found
+                  value:
+                    error: "Product not found: Butter"
+                    statusCode: 500
+                insufficientStock:
+                  summary: Insufficient stock
+                  value:
+                    error: "Insufficient stock for Milk. Available: 1, Requested: 5"
+                    statusCode: 500
+
+  /api/invoices/{id}/cancel:
+    post:
+      tags: [Invoices]
+      summary: Cancel invoice
+      description: |
+        Cancels an existing invoice in a single **ACID transaction** that atomically:
+        1. Creates a CREDIT ledger entry (reversal)
+        2. Restores stock for all products
+        3. Decrements the customer balance
+        4. Marks the invoice status as `CANCELLED`
+
+        An already-cancelled invoice returns an error.
+      operationId: cancelInvoice
+      parameters:
+        - $ref: "#/components/parameters/idParam"
+      responses:
+        "200":
+          description: Invoice cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceResponse"
+        "500":
+          description: Invoice not found or already cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ─────────────────────────────────────────────
+  # LEDGER
+  # ─────────────────────────────────────────────
+
+  /api/ledger/payment:
+    post:
+      tags: [Ledger]
+      summary: Record payment received
+      description: |
+        Records a customer payment (cash, UPI, card, etc.).
+
+        Creates a CREDIT ledger entry and **decrements** the customer's outstanding balance.
+        The ledger is immutable — payments cannot be deleted, only reversed via a new DEBIT entry.
+      operationId: recordPayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordPaymentBody"
+            example:
+              customerId: clx1abc123
+              amount: 500
+              paymentMode: upi
+              notes: GPay received
+      responses:
+        "200":
+          description: Payment recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LedgerEntryResponse"
+              example:
+                entry:
+                  id: clx9ledger1
+                  customerId: clx1abc123
+                  type: CREDIT
+                  amount: "500.00"
+                  description: Payment received (upi)
+                  paymentMode: upi
+                  reference: null
+                  createdAt: "2026-02-20T11:00:00.000Z"
+
+  /api/ledger/credit:
+    post:
+      tags: [Ledger]
+      summary: Add credit adjustment
+      description: |
+        Adds a general credit (non-payment) to a customer's ledger —
+        for returns, discounts, or opening balance adjustments.
+
+        Creates a CREDIT ledger entry and decrements the customer balance.
+      operationId: addCredit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddCreditBody"
+            example:
+              customerId: clx1abc123
+              amount: 100
+              description: Return — 2 milk packets
+      responses:
+        "200":
+          description: Credit recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LedgerEntryResponse"
+
+  /api/ledger/{customerId}:
+    get:
+      tags: [Ledger]
+      summary: Get customer ledger
+      description: Returns all ledger entries for a customer, newest first.
+      operationId: getCustomerLedger
+      parameters:
+        - name: customerId
+          in: path
+          required: true
+          description: Customer CUID
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          description: Maximum entries to return (default 50)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 50
+      responses:
+        "200":
+          description: Customer ledger entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LedgerListResponse"
+
+  # ─────────────────────────────────────────────
+  # REMINDERS
+  # ─────────────────────────────────────────────
+
+  /api/reminders:
+    get:
+      tags: [Reminders]
+      summary: List pending reminders
+      description: Returns all reminders in SCHEDULED status, optionally filtered by customer.
+      operationId: listReminders
+      parameters:
+        - name: customerId
+          in: query
+          required: false
+          description: Filter by customer ID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Pending reminders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReminderListResponse"
+
+    post:
+      tags: [Reminders]
+      summary: Schedule a reminder
+      description: |
+        Schedules a WhatsApp payment reminder.
+
+        **datetime** accepts natural language (Hinglish) or ISO strings:
+        - `"kal 7 baje"` → tomorrow at 7 PM IST
+        - `"aaj 5 baje"` → today at 5 PM IST
+        - `"2026-02-21T19:00:00+05:30"` → ISO 8601
+
+        The reminder is stored in PostgreSQL and a BullMQ job is created with the calculated delay.
+        If the `datetime` has already passed, the job fires immediately (delay = 0).
+
+        **Consistency guarantee:** If the BullMQ queue add fails, the reminder is automatically
+        marked as `FAILED` so it is never stuck in `SCHEDULED`.
+      operationId: scheduleReminder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScheduleReminderBody"
+            examples:
+              hinglish:
+                summary: Natural language datetime
+                value:
+                  customerId: clx1abc123
+                  amount: 1500
+                  datetime: kal 7 baje
+              iso:
+                summary: ISO 8601 datetime
+                value:
+                  customerId: clx1abc123
+                  amount: 1500
+                  datetime: "2026-02-21T19:00:00+05:30"
+                  message: Suresh ji, aapka 1500 rupees baaki hai. Please pay karo.
+      responses:
+        "200":
+          description: Reminder scheduled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReminderResponse"
+        "500":
+          description: Customer not found or missing phone number
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              examples:
+                noCustomer:
+                  value:
+                    error: Customer not found
+                    statusCode: 500
+                noPhone:
+                  value:
+                    error: Customer phone number not found
+                    statusCode: 500
+
+  /api/reminders/{id}/cancel:
+    post:
+      tags: [Reminders]
+      summary: Cancel a reminder
+      description: |
+        Cancels a scheduled reminder.
+
+        Updates the reminder status to `CANCELLED` and removes the BullMQ job from the queue
+        if it has not yet fired. If the job has already executed, only the DB status is updated.
+      operationId: cancelReminder
+      parameters:
+        - $ref: "#/components/parameters/idParam"
+      responses:
+        "200":
+          description: Reminder cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReminderResponse"
+
+  # ─────────────────────────────────────────────
+  # SESSIONS & RECORDINGS
+  # ─────────────────────────────────────────────
+
+  /api/sessions:
+    get:
+      tags: [Sessions]
+      summary: List recent voice sessions
+      description: Returns recent voice conversation sessions with metadata (duration, recording count).
+      operationId: listSessions
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Maximum sessions to return (default 20)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Recent voice sessions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionListResponse"
+
+  /api/recordings/{id}/url:
+    get:
+      tags: [Sessions]
+      summary: Get recording download URL
+      description: |
+        Generates a pre-signed MinIO URL for downloading a voice recording.
+        The URL expires after **1 hour** (3600 seconds).
+      operationId: getRecordingUrl
+      parameters:
+        - $ref: "#/components/parameters/idParam"
+      responses:
+        "200":
+          description: Pre-signed download URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                    format: uri
+                    description: Pre-signed MinIO URL, valid for 1 hour
+              example:
+                url: "http://localhost:9000/execora/recordings/session-123/recording-1708420800000.webm?X-Amz-Algorithm=AWS4..."
+
+  # ─────────────────────────────────────────────
+  # SUMMARY
+  # ─────────────────────────────────────────────
+
+  /api/summary/daily:
+    get:
+      tags: [Summary]
+      summary: Daily business summary
+      description: |
+        Returns today's sales and payment summary.
+
+        Calculated from confirmed invoices and ledger CREDIT entries created today (midnight to now, IST).
+      operationId: getDailySummary
+      responses:
+        "200":
+          description: Today's summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailySummaryResponse"
+              example:
+                summary:
+                  date: "2026-02-20T00:00:00.000Z"
+                  invoiceCount: 12
+                  totalSales: 4850.00
+                  totalPayments: 3200.00
+                  cashPayments: 2000.00
+                  upiPayments: 1200.00
+                  pendingAmount: 1650.00
+
+  # ─────────────────────────────────────────────
+  # WEBHOOKS
+  # ─────────────────────────────────────────────
+
+  /api/webhook/whatsapp:
+    get:
+      tags: [Webhooks]
+      summary: WhatsApp webhook verification
+      description: |
+        Meta's webhook verification handshake. Called once when you register the webhook URL
+        in the WhatsApp Business API dashboard.
+
+        Set `WHATSAPP_WEBHOOK_VERIFY_TOKEN` in your `.env` to the same value you enter in Meta's dashboard.
+      operationId: verifyWhatsappWebhook
+      parameters:
+        - name: hub.mode
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [subscribe]
+        - name: hub.challenge
+          in: query
+          required: true
+          description: Random challenge string from Meta — returned as plain text on success
+          schema:
+            type: string
+        - name: hub.verify_token
+          in: query
+          required: true
+          description: Must match WHATSAPP_WEBHOOK_VERIFY_TOKEN env var
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Token valid — returns the challenge string as plain text
+          content:
+            text/plain:
+              schema:
+                type: string
+        "403":
+          description: Token mismatch — webhook rejected
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Forbidden
+
+    post:
+      tags: [Webhooks]
+      summary: WhatsApp webhook events
+      description: |
+        Receives real-time delivery status updates from WhatsApp Cloud API.
+
+        Processes these status values and updates `whatsapp_messages` records:
+        - `sent` — message accepted by WhatsApp
+        - `delivered` — message delivered to device (sets `deliveredAt`)
+        - `read` — message read by recipient (sets `readAt`)
+        - `failed` — delivery failed
+
+        Returns `{ "status": "ok" }` immediately (Meta requires a 200 within 20 seconds).
+      operationId: receiveWhatsappWebhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WhatsAppWebhookBody"
+      responses:
+        "200":
+          description: Webhook received
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+# ─────────────────────────────────────────────
+# COMPONENTS
+# ─────────────────────────────────────────────
+
+components:
+
+  parameters:
+    idParam:
+      name: id
+      in: path
+      required: true
+      description: CUID resource identifier
+      schema:
+        type: string
+        example: clx1abc123def456
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: Customer not found
+            statusCode: 404
+
+  schemas:
+
+    # ── Error ─────────────────────────────────
+
+    ErrorResponse:
+      type: object
+      required: [error, statusCode]
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+        statusCode:
+          type: integer
+          description: HTTP status code
+
+    # ── Health ────────────────────────────────
+
+    HealthResponse:
+      type: object
+      required: [status, timestamp]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        timestamp:
+          type: string
+          format: date-time
+
+    # ── Customer ──────────────────────────────
+
+    CustomerSearchResult:
+      type: object
+      required: [id, name, balance, matchScore]
+      properties:
+        id:
+          type: string
+          description: CUID
+        name:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        nickname:
+          type: string
+          nullable: true
+        landmark:
+          type: string
+          nullable: true
+        balance:
+          type: number
+          format: float
+          description: Outstanding balance in INR (positive = customer owes you)
+        matchScore:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Fuzzy match relevance score
+
+    Customer:
+      type: object
+      required: [id, name, balance, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        nickname:
+          type: string
+          nullable: true
+        landmark:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        balance:
+          type: string
+          description: Decimal string (e.g. "1500.00")
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CustomerWithDetails:
+      allOf:
+        - $ref: "#/components/schemas/Customer"
+        - type: object
+          properties:
+            invoices:
+              type: array
+              description: Last 5 invoices
+              items:
+                $ref: "#/components/schemas/Invoice"
+            reminders:
+              type: array
+              description: All SCHEDULED reminders
+              items:
+                $ref: "#/components/schemas/Reminder"
+
+    CreateCustomerBody:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          example: Suresh Kumar
+        phone:
+          type: string
+          example: "9988776655"
+        nickname:
+          type: string
+          example: Suresh bhai
+        landmark:
+          type: string
+          example: Main bazaar ke paas
+
+    CustomerSearchResponse:
+      type: object
+      properties:
+        customers:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomerSearchResult"
+
+    CustomerResponse:
+      type: object
+      properties:
+        customer:
+          $ref: "#/components/schemas/Customer"
+
+    CustomerDetailResponse:
+      type: object
+      properties:
+        customer:
+          $ref: "#/components/schemas/CustomerWithDetails"
+
+    # ── Product ───────────────────────────────
+
+    Product:
+      type: object
+      required: [id, name, price, stock, unit, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        price:
+          type: string
+          description: Decimal string (e.g. "28.00")
+        stock:
+          type: integer
+          description: Available units
+        unit:
+          type: string
+          default: piece
+          example: packet
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateProductBody:
+      type: object
+      required: [name, price, stock]
+      properties:
+        name:
+          type: string
+          example: Milk
+        price:
+          type: number
+          format: float
+          minimum: 0
+          example: 28
+        stock:
+          type: integer
+          minimum: 0
+          example: 150
+        description:
+          type: string
+          example: 500ml full-fat
+        unit:
+          type: string
+          default: piece
+          example: packet
+
+    ProductListResponse:
+      type: object
+      properties:
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+
+    ProductResponse:
+      type: object
+      properties:
+        product:
+          $ref: "#/components/schemas/Product"
+
+    # ── Invoice ───────────────────────────────
+
+    InvoiceItem:
+      type: object
+      required: [id, invoiceId, productId, quantity, price, total]
+      properties:
+        id:
+          type: string
+        invoiceId:
+          type: string
+        productId:
+          type: string
+        quantity:
+          type: integer
+        price:
+          type: string
+          description: Unit price as decimal string
+        total:
+          type: string
+          description: Line total as decimal string
+        createdAt:
+          type: string
+          format: date-time
+        product:
+          $ref: "#/components/schemas/Product"
+
+    Invoice:
+      type: object
+      required: [id, customerId, total, status, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+        customerId:
+          type: string
+        total:
+          type: string
+          description: Invoice total as decimal string (e.g. "101.00")
+        status:
+          type: string
+          enum: [DRAFT, CONFIRMED, CANCELLED]
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        customer:
+          $ref: "#/components/schemas/Customer"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceItem"
+
+    CreateInvoiceBody:
+      type: object
+      required: [customerId, items]
+      properties:
+        customerId:
+          type: string
+          description: Customer CUID
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [productName, quantity]
+            properties:
+              productName:
+                type: string
+                description: Product name (case-insensitive partial match)
+                example: Milk
+              quantity:
+                type: integer
+                minimum: 1
+                example: 2
+        notes:
+          type: string
+          description: Optional invoice notes
+
+    InvoiceListResponse:
+      type: object
+      properties:
+        invoices:
+          type: array
+          items:
+            $ref: "#/components/schemas/Invoice"
+
+    InvoiceResponse:
+      type: object
+      properties:
+        invoice:
+          $ref: "#/components/schemas/Invoice"
+
+    # ── Ledger ────────────────────────────────
+
+    LedgerEntry:
+      type: object
+      required: [id, customerId, type, amount, description, createdAt]
+      properties:
+        id:
+          type: string
+        customerId:
+          type: string
+        type:
+          type: string
+          enum: [DEBIT, CREDIT, OPENING_BALANCE]
+          description: |
+            - DEBIT: customer owes more (invoice created)
+            - CREDIT: customer balance reduced (payment or credit)
+            - OPENING_BALANCE: initial balance entry
+        amount:
+          type: string
+          description: Amount as decimal string (always positive)
+        description:
+          type: string
+        paymentMode:
+          type: string
+          nullable: true
+          enum: [cash, upi, card, other]
+        reference:
+          type: string
+          nullable: true
+          description: Invoice ID if this entry was generated from an invoice
+        createdAt:
+          type: string
+          format: date-time
+
+    RecordPaymentBody:
+      type: object
+      required: [customerId, amount, paymentMode]
+      properties:
+        customerId:
+          type: string
+        amount:
+          type: number
+          format: float
+          minimum: 0.01
+          example: 500
+        paymentMode:
+          type: string
+          enum: [cash, upi, card, other]
+          example: upi
+        notes:
+          type: string
+          example: GPay received
+
+    AddCreditBody:
+      type: object
+      required: [customerId, amount, description]
+      properties:
+        customerId:
+          type: string
+        amount:
+          type: number
+          format: float
+          minimum: 0.01
+          example: 100
+        description:
+          type: string
+          example: Return — 2 milk packets
+
+    LedgerEntryResponse:
+      type: object
+      properties:
+        entry:
+          $ref: "#/components/schemas/LedgerEntry"
+
+    LedgerListResponse:
+      type: object
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/LedgerEntry"
+
+    # ── Reminder ──────────────────────────────
+
+    Reminder:
+      type: object
+      required: [id, customerId, amount, message, sendAt, status, retryCount, createdAt]
+      properties:
+        id:
+          type: string
+        customerId:
+          type: string
+        amount:
+          type: string
+          description: Amount as decimal string
+        message:
+          type: string
+          description: WhatsApp message text (Hinglish)
+        sendAt:
+          type: string
+          format: date-time
+          description: Scheduled send time (UTC stored, IST interpreted)
+        status:
+          type: string
+          enum: [SCHEDULED, SENT, FAILED, CANCELLED]
+        retryCount:
+          type: integer
+          description: Number of failed send attempts
+        sentAt:
+          type: string
+          format: date-time
+          nullable: true
+        failedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        customer:
+          $ref: "#/components/schemas/Customer"
+
+    ScheduleReminderBody:
+      type: object
+      required: [customerId, amount, datetime]
+      properties:
+        customerId:
+          type: string
+        amount:
+          type: number
+          format: float
+          minimum: 0.01
+          example: 1500
+        datetime:
+          type: string
+          description: |
+            Natural language (Hinglish) or ISO 8601:
+            - `"kal 7 baje"` → tomorrow 7 PM IST
+            - `"aaj 5 baje"` → today 5 PM IST
+            - `"2026-02-21T19:00:00+05:30"` → ISO with offset
+          example: kal 7 baje
+        message:
+          type: string
+          description: |
+            Custom WhatsApp message text. If omitted, a default Hinglish message is generated:
+            "Namaste {name} ji, ₹{amount} payment pending hai..."
+
+    ReminderResponse:
+      type: object
+      properties:
+        reminder:
+          $ref: "#/components/schemas/Reminder"
+
+    ReminderListResponse:
+      type: object
+      properties:
+        reminders:
+          type: array
+          items:
+            $ref: "#/components/schemas/Reminder"
+
+    # ── Sessions ──────────────────────────────
+
+    ConversationRecording:
+      type: object
+      required: [id, sessionId, filePath, fileName, mimeType, createdAt]
+      properties:
+        id:
+          type: string
+        sessionId:
+          type: string
+        filePath:
+          type: string
+          description: MinIO object path
+        fileName:
+          type: string
+        duration:
+          type: integer
+          nullable: true
+          description: Duration in seconds
+        size:
+          type: integer
+          nullable: true
+          description: File size in bytes
+        mimeType:
+          type: string
+          default: audio/webm
+        createdAt:
+          type: string
+          format: date-time
+
+    ConversationSession:
+      type: object
+      required: [id, startedAt]
+      properties:
+        id:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: string
+          format: date-time
+          nullable: true
+        duration:
+          type: integer
+          nullable: true
+          description: Session duration in seconds
+        metadata:
+          type: object
+          nullable: true
+        recordings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConversationRecording"
+
+    SessionListResponse:
+      type: object
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConversationSession"
+
+    # ── Summary ───────────────────────────────
+
+    DailySummary:
+      type: object
+      required: [date, invoiceCount, totalSales, totalPayments, cashPayments, upiPayments, pendingAmount]
+      properties:
+        date:
+          type: string
+          format: date-time
+          description: Start of the day (midnight UTC)
+        invoiceCount:
+          type: integer
+          description: Number of confirmed invoices created today
+        totalSales:
+          type: number
+          format: float
+          description: Sum of all confirmed invoice totals today (INR)
+        totalPayments:
+          type: number
+          format: float
+          description: Sum of all CREDIT ledger entries with a payment mode today (INR)
+        cashPayments:
+          type: number
+          format: float
+          description: Subset of totalPayments received in cash
+        upiPayments:
+          type: number
+          format: float
+          description: Subset of totalPayments received via UPI
+        pendingAmount:
+          type: number
+          format: float
+          description: totalSales − totalPayments (still outstanding today)
+
+    DailySummaryResponse:
+      type: object
+      properties:
+        summary:
+          $ref: "#/components/schemas/DailySummary"
+
+    # ── WhatsApp Webhook ──────────────────────
+
+    WhatsAppWebhookBody:
+      type: object
+      description: WhatsApp Cloud API webhook payload (Meta format)
+      properties:
+        object:
+          type: string
+          example: whatsapp_business_account
+        entry:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              changes:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    value:
+                      type: object
+                      properties:
+                        messaging_product:
+                          type: string
+                        statuses:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: string
+                                description: WhatsApp message ID
+                              status:
+                                type: string
+                                enum: [sent, delivered, read, failed]
+                              timestamp:
+                                type: string
+                              recipient_id:
+                                type: string

@@ -24,7 +24,7 @@ echo ""
 # Test 1: Fuzzy Matching Engine
 echo "🧪 Test Suite 1: Fuzzy Matching Engine"
 echo "---------------------------------------"
-npx ts-node src/lib/indian-fuzzy-match.test.ts
+npx ts-node src/__tests__/fuzzy-match.test.ts
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Fuzzy matching tests failed${NC}"
@@ -37,7 +37,7 @@ echo ""
 # Test 2: Conversation Memory
 echo "🧪 Test Suite 2: Conversation Memory Integration"
 echo "------------------------------------------------"
-npx ts-node src/business/conversation-memory.service.test.ts
+npx ts-node src/__tests__/conversation.test.ts
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ Conversation memory tests failed${NC}"

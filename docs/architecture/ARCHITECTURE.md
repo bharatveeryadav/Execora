@@ -24,19 +24,21 @@
 │         └───────────┬───────────┘                            │
 │                     │                                        │
 │         ┌───────────▼──────────────┐                        │
-│         │  Business Engine         │                        │
+│         │  Voice Engine            │                        │
+│         │  (modules/voice/engine)  │                        │
 │         │  - Intent Processing     │                        │
 │         │  - Command Execution     │                        │
 │         └───────────┬──────────────┘                        │
 │                     │                                        │
 │         ┌───────────▼──────────────┐                        │
-│         │  Business Services       │                        │
-│         │  - Customer Service      │                        │
-│         │  - Invoice Service       │                        │
-│         │  - Ledger Service        │                        │
-│         │  - Reminder Service      │                        │
-│         │  - Product Service       │                        │
-│         │  - Voice Session Service │                        │
+│         │  Domain Modules          │                        │
+│         │  (src/modules/)          │                        │
+│         │  - customer/             │                        │
+│         │  - invoice/              │                        │
+│         │  - ledger/               │                        │
+│         │  - reminder/             │                        │
+│         │  - product/              │                        │
+│         │  - voice/                │                        │
 │         └───────────┬──────────────┘                        │
 └─────────────────────┼───────────────────────────────────────┘
                       │
@@ -213,20 +215,19 @@ Output: Hindi/English response
 - Session management
 - Static file serving
 
-### Business Engine
+### Voice Engine (`src/modules/voice/engine.ts`)
 - Intent interpretation
 - Command orchestration
-- Service coordination
-- Error handling
+- Module coordination
 - Response formatting
 
-### Business Services
-- **Customer Service**: Search, create, balance calculation
-- **Invoice Service**: ACID transactions, stock updates
-- **Ledger Service**: Financial records, payment tracking
-- **Reminder Service**: Scheduling, cancellation, modification
-- **Product Service**: Stock management, product catalog
-- **Voice Session Service**: Recording storage, metadata
+### Domain Modules (`src/modules/`)
+- **customer/**: Search, create, balance calculation
+- **invoice/**: ACID transactions, stock updates
+- **ledger/**: Financial records, payment tracking
+- **reminder/**: Scheduling, cancellation, modification
+- **product/**: Stock management, product catalog
+- **voice/**: Session lifecycle, conversation memory, recording
 
 ### Worker Process
 - Job polling from Redis

@@ -34,9 +34,12 @@ A production-ready, voice-first business management system built for Indian smal
 
 1. **API Server** (`src/index.ts`): Main Fastify server with REST + WebSocket
 2. **Worker** (`src/worker/index.ts`): BullMQ worker for background jobs
-3. **Business Engine** (`src/business/`): Domain logic modules
-4. **Services** (`src/services/`): External API integrations
-5. **Frontend** (`public/`): Minimal HTML/JS/CSS interface
+3. **Modules** (`src/modules/`): Business domain logic (customer, invoice, ledger, reminder, voice)
+4. **Integrations** (`src/integrations/`): External API adapters (OpenAI, Deepgram, ElevenLabs, WhatsApp)
+5. **Infrastructure** (`src/infrastructure/`): Technical plumbing (DB, queue, storage, logger, metrics)
+6. **Frontend** (`public/`): Voice UI (HTML/JS WebSocket client)
+
+> For full architecture details, migration history, error handling strategy, and Turborepo migration plan, see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## 📦 Installation
 
@@ -79,7 +82,7 @@ npm run seed
 
 6. **Access**:
 - Frontend: http://localhost:3000
-- MinIO Console: http://localhost:9001 (admin/admin)
+- MinIO Console: http://localhost:9001 (minioadmin/minioadmin)
 
 ## 🚀 Development
 

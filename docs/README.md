@@ -13,8 +13,10 @@ This directory organizes project documentation by purpose for cleaner maintenanc
 - [CONVERSATION_MEMORY_QUICK_REF.md](features/CONVERSATION_MEMORY_QUICK_REF.md)
 
 ### Architecture
-- [ARCHITECTURE.md](architecture/ARCHITECTURE.md)
-- [CONVERSATION_MEMORY_ARCHITECTURE.md](architecture/CONVERSATION_MEMORY_ARCHITECTURE.md)
+- [ARCHITECTURE.md](ARCHITECTURE.md) — **Engineering journal: restructuring, error handling, Turborepo migration plan**
+- [PRODUCTION_STRATEGY.md](PRODUCTION_STRATEGY.md) — **Senior-level: rollback, deployment patterns, real-time concerns, circuit breakers**
+- [architecture/ARCHITECTURE.md](architecture/ARCHITECTURE.md) — System design: diagrams, flows, data architecture
+- [architecture/CONVERSATION_MEMORY_ARCHITECTURE.md](architecture/CONVERSATION_MEMORY_ARCHITECTURE.md)
 
 ### Implementation
 - [DEVELOPER_GUIDE.md](implementation/DEVELOPER_GUIDE.md)
@@ -26,6 +28,10 @@ This directory organizes project documentation by purpose for cleaner maintenanc
 - [TESTING_GUIDE.md](testing/TESTING_GUIDE.md)
 - [TEST_QUICK_REF.md](testing/TEST_QUICK_REF.md)
 - [CONVERSATION_MEMORY_TEST.md](testing/CONVERSATION_MEMORY_TEST.md)
+
+### API Reference
+- [API.md](api/API.md) — Human-readable REST + WebSocket API reference
+- [openapi.yaml](api/openapi.yaml) — OpenAPI 3.0.3 spec (import into Postman / Insomnia / Swagger UI)
 
 ## Root-level docs
 

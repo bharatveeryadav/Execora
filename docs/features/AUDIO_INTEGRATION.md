@@ -141,7 +141,7 @@ Deepgram Live STT
 3. **Configuration**:
 
 ```javascript
-// Configured in src/services/stt-deepgram.service.ts
+// Configured in src/integrations/stt/deepgram.ts
 {
   model: 'nova-2',        // Latest model
   language: 'hi-en',      // Hindi-English mix
@@ -180,7 +180,7 @@ Deepgram Live STT
 3. **Configuration**:
 
 ```javascript
-// In src/services/tts-elevenlabs.service.ts
+// In src/integrations/tts/elevenlabs.ts
 {
   model_id: 'eleven_multilingual_v2',
   voice_settings: {
@@ -206,7 +206,7 @@ Deepgram Live STT
 3. **Configuration**:
 
 ```javascript
-// In src/services/tts-openai.service.ts
+// In src/integrations/tts/openai.ts
 {
   model: 'tts-1',        // or 'tts-1-hd' for HD
   voice: 'alloy',

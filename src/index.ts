@@ -1,18 +1,21 @@
 import Fastify from 'fastify';
 import fastifyWebsocket from '@fastify/websocket';
 import fastifyCors from '@fastify/cors';
+import fastifyHelmet from '@fastify/helmet';
+import fastifyRateLimit from '@fastify/rate-limit';
 import fastifyMultipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
 import path from 'path';
 import { config } from './config';
-import { logger } from './lib/logger';
-import { disconnectDB, ensureVoiceSchemaReady } from './lib/database';
-import { closeQueues } from './lib/queue';
-import { minioClient } from './lib/minio';
-import { registerRoutes } from './routes';
-import { websocketHandler } from './websocket/handler';
-import { enhancedWebsocketHandler } from './websocket/enhanced-handler';
-import { metricsPlugin } from './lib/metrics-plugin';
+import { logger } from './infrastructure/logger';
+import { disconnectDB, ensureVoiceSchemaReady } from './infrastructure/database';
+import { closeQueues } from './infrastructure/queue';
+import { minioClient } from './infrastructure/storage';
+import { registerRoutes } from './api';
+import { websocketHandler } from './ws/handler';
+import { enhancedWebsocketHandler } from './ws/enhanced-handler';
+import { metricsPlugin } from './infrastructure/metrics-plugin';
+import { ErrorHandler, AppError, setupGlobalErrorHandlers } from './infrastructure/error-handler';
 
 // Choose WebSocket handler based on configuration
 const useEnhancedAudio = process.env.USE_ENHANCED_AUDIO !== 'false'; // Default to enhanced
@@ -22,6 +25,7 @@ const wsHandler = useEnhancedAudio ? enhancedWebsocketHandler : websocketHandler
 const fastify = Fastify({
   logger: logger as any,
   trustProxy: true,
+  bodyLimit: 1048576, // 1 MB for JSON — multipart has its own 100 MB limit
 });
 
 // Register plugins
@@ -29,9 +33,32 @@ async function registerPlugins() {
   // Metrics (register first to track all requests)
   await fastify.register(metricsPlugin);
 
-  // CORS
+  // Security headers — CSP disabled here; tighten per frontend needs
+  await fastify.register(fastifyHelmet, { contentSecurityPolicy: false });
+
+  // Rate limiting — 200 req/min per IP globally
+  // Webhook routes opt out via config.rateLimit = false at the route level
+  await fastify.register(fastifyRateLimit, {
+    max: 200,
+    timeWindow: '1 minute',
+    errorResponseBuilder: () => ({
+      error: 'Too Many Requests',
+      message: 'Rate limit exceeded. Please slow down.',
+      statusCode: 429,
+    }),
+  });
+
+  // CORS — restrict to configured origins in production
+  const allowedOrigins = config.allowedOrigins
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
   await fastify.register(fastifyCors, {
-    origin: true,
+    origin:
+      config.nodeEnv === 'production' && allowedOrigins.length > 0
+        ? allowedOrigins
+        : true,
     credentials: true,
   });
 
@@ -98,6 +125,24 @@ async function start() {
     // Register WebSocket
     registerWebSocket();
 
+    // Global error handler — catches all unhandled route errors
+    fastify.setErrorHandler((error, request, reply) => {
+      const appError = error instanceof AppError ? error : new AppError(
+        error instanceof Error ? error.message : String(error),
+        error.statusCode ?? 500
+      );
+
+      ErrorHandler.logError(appError, {
+        method: request.method,
+        url: request.url,
+        ip: request.ip,
+        userAgent: request.headers['user-agent'],
+      });
+
+      const statusCode = appError.statusCode;
+      reply.code(statusCode).send(ErrorHandler.formatErrorResponse(appError));
+    });
+
     // Register routes
     await registerRoutes(fastify);
 
@@ -141,15 +186,8 @@ async function shutdown() {
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
-// Handle unhandled rejections
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error({ reason, promise }, 'Unhandled rejection');
-});
-
-process.on('uncaughtException', (error) => {
-  logger.error({ error }, 'Uncaught exception');
-  process.exit(1);
-});
+// Setup global error handlers (unhandledRejection, uncaughtException)
+setupGlobalErrorHandlers();
 
 // Start the server
 start();

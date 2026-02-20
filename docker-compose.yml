@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:
@@ -124,3 +122,4 @@ volumes:
 networks:
   execora-network:
     driver: bridge
+    name: execora-network
