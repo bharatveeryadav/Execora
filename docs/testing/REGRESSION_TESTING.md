@@ -327,7 +327,7 @@ After running regression tests in Grafana:
 - **Request Rate:** Should spike to 20-30 req/sec during test
 - **Response Time:** p95 should be < 500ms
 - **Error Rate:** Should spike during test (404s), then back to normal
-- **Most Active:** POST requests to /api/customers
+- **Most Active:** POST requests to /api/v1/customers
 
 ---
 

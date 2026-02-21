@@ -45,7 +45,7 @@ export async function registerRoutes(fastify: FastifyInstance<any, any, any, any
   });
 
   // ── Customer routes ─────────────────────────────────────────────────────────
-  fastify.get('/api/customers/search', async (request: FastifyRequest<{
+  fastify.get('/api/v1/customers/search', async (request: FastifyRequest<{
     Querystring: { q: string };
   }>, reply) => {
     const { q } = request.query;
@@ -53,7 +53,7 @@ export async function registerRoutes(fastify: FastifyInstance<any, any, any, any
     return { customers };
   });
 
-  fastify.get('/api/customers/:id', async (request: FastifyRequest<{
+  fastify.get('/api/v1/customers/:id', async (request: FastifyRequest<{
     Params: { id: string };
   }>, reply) => {
     const customer = await customerService.getCustomerById(request.params.id);
@@ -63,14 +63,14 @@ export async function registerRoutes(fastify: FastifyInstance<any, any, any, any
     return { customer };
   });
 
-  fastify.post('/api/customers', {
+  fastify.post('/api/v1/customers', {
     schema: {
       body: {
         type: 'object',
         required: ['name'],
         properties: {
-          name:     { type: 'string', minLength: 1, maxLength: 255 },
-          phone:    { type: 'string', maxLength: 20 },
+          name: { type: 'string', minLength: 1, maxLength: 255 },
+          phone: { type: 'string', maxLength: 20 },
           nickname: { type: 'string', maxLength: 100 },
           landmark: { type: 'string', maxLength: 255 },
         },
@@ -85,22 +85,22 @@ export async function registerRoutes(fastify: FastifyInstance<any, any, any, any
   });
 
   // ── Product routes ──────────────────────────────────────────────────────────
-  fastify.get('/api/products', async (request, reply) => {
+  fastify.get('/api/v1/products', async (request, reply) => {
     const products = await productService.getAllProducts();
     return { products };
   });
 
-  fastify.post('/api/products', {
+  fastify.post('/api/v1/products', {
     schema: {
       body: {
         type: 'object',
         required: ['name', 'price', 'stock'],
         properties: {
-          name:        { type: 'string', minLength: 1, maxLength: 255 },
+          name: { type: 'string', minLength: 1, maxLength: 255 },
           description: { type: 'string', maxLength: 1000 },
-          price:       { type: 'number', minimum: 0 },
-          stock:       { type: 'integer', minimum: 0 },
-          unit:        { type: 'string', maxLength: 50 },
+          price: { type: 'number', minimum: 0 },
+          stock: { type: 'integer', minimum: 0 },
+          unit: { type: 'string', maxLength: 50 },
         },
         additionalProperties: false,
       },
@@ -112,20 +112,20 @@ export async function registerRoutes(fastify: FastifyInstance<any, any, any, any
     return reply.code(201).send({ product });
   });
 
-  fastify.get('/api/products/low-stock', async (request, reply) => {
+  fastify.get('/api/v1/products/low-stock', async (request, reply) => {
     const products = await productService.getLowStockProducts();
     return { products };
   });
 
   // ── Invoice routes ──────────────────────────────────────────────────────────
-  fastify.get('/api/invoices', async (request: FastifyRequest<{
+  fastify.get('/api/v1/invoices', async (request: FastifyRequest<{
     Querystring: { limit?: string };
   }>, reply) => {
     const invoices = await invoiceService.getRecentInvoices(parseLimit(request.query.limit, 20));
     return { invoices };
   });
 
-  fastify.post('/api/invoices', {
+  fastify.post('/api/v1/invoices', {
     schema: {
       body: {
         type: 'object',
@@ -140,7 +140,7 @@ export async function registerRoutes(fastify: FastifyInstance<any, any, any, any
               required: ['productName', 'quantity'],
               properties: {
                 productName: { type: 'string', minLength: 1, maxLength: 255 },
-                quantity:    { type: 'integer', minimum: 1 },
+                quantity: { type: 'integer', minimum: 1 },
               },
               additionalProperties: false,
             },
@@ -165,7 +165,7 @@ export async function registerRoutes(fastify: FastifyInstance<any, any, any, any
     return reply.code(201).send({ invoice });
   });
 
-  fastify.post('/api/invoices/:id/cancel', async (request: FastifyRequest<{
+  fastify.post('/api/v1/invoices/:id/cancel', async (request: FastifyRequest<{
     Params: { id: string };
   }>, reply) => {
     const invoice = await invoiceService.cancelInvoice(request.params.id);
@@ -173,16 +173,16 @@ export async function registerRoutes(fastify: FastifyInstance<any, any, any, any
   });
 
   // ── Ledger routes ───────────────────────────────────────────────────────────
-  fastify.post('/api/ledger/payment', {
+  fastify.post('/api/v1/ledger/payment', {
     schema: {
       body: {
         type: 'object',
         required: ['customerId', 'amount', 'paymentMode'],
         properties: {
-          customerId:  { type: 'string', minLength: 1 },
-          amount:      { type: 'number', exclusiveMinimum: 0 },
+          customerId: { type: 'string', minLength: 1 },
+          amount: { type: 'number', exclusiveMinimum: 0 },
           paymentMode: { type: 'string', enum: ['cash', 'upi', 'card', 'other'] },
-          notes:       { type: 'string', maxLength: 500 },
+          notes: { type: 'string', maxLength: 500 },
         },
         additionalProperties: false,
       },
@@ -204,14 +204,14 @@ export async function registerRoutes(fastify: FastifyInstance<any, any, any, any
     return { entry };
   });
 
-  fastify.post('/api/ledger/credit', {
+  fastify.post('/api/v1/ledger/credit', {
     schema: {
       body: {
         type: 'object',
         required: ['customerId', 'amount', 'description'],
         properties: {
-          customerId:  { type: 'string', minLength: 1 },
-          amount:      { type: 'number', exclusiveMinimum: 0 },
+          customerId: { type: 'string', minLength: 1 },
+          amount: { type: 'number', exclusiveMinimum: 0 },
           description: { type: 'string', minLength: 1, maxLength: 500 },
         },
         additionalProperties: false,
@@ -232,7 +232,7 @@ export async function registerRoutes(fastify: FastifyInstance<any, any, any, any
     return { entry };
   });
 
-  fastify.get('/api/ledger/:customerId', async (request: FastifyRequest<{
+  fastify.get('/api/v1/ledger/:customerId', async (request: FastifyRequest<{
     Params: { customerId: string };
     Querystring: { limit?: string };
   }>, reply) => {
@@ -244,23 +244,23 @@ export async function registerRoutes(fastify: FastifyInstance<any, any, any, any
   });
 
   // ── Reminder routes ─────────────────────────────────────────────────────────
-  fastify.get('/api/reminders', async (request: FastifyRequest<{
+  fastify.get('/api/v1/reminders', async (request: FastifyRequest<{
     Querystring: { customerId?: string };
   }>, reply) => {
     const reminders = await reminderService.getPendingReminders(request.query.customerId);
     return { reminders };
   });
 
-  fastify.post('/api/reminders', {
+  fastify.post('/api/v1/reminders', {
     schema: {
       body: {
         type: 'object',
         required: ['customerId', 'amount', 'datetime'],
         properties: {
           customerId: { type: 'string', minLength: 1 },
-          amount:     { type: 'number', exclusiveMinimum: 0 },
-          datetime:   { type: 'string', minLength: 1 },
-          message:    { type: 'string', maxLength: 1000 },
+          amount: { type: 'number', exclusiveMinimum: 0 },
+          datetime: { type: 'string', minLength: 1 },
+          message: { type: 'string', maxLength: 1000 },
         },
         additionalProperties: false,
       },
@@ -282,7 +282,7 @@ export async function registerRoutes(fastify: FastifyInstance<any, any, any, any
     return reply.code(201).send({ reminder });
   });
 
-  fastify.post('/api/reminders/:id/cancel', async (request: FastifyRequest<{
+  fastify.post('/api/v1/reminders/:id/cancel', async (request: FastifyRequest<{
     Params: { id: string };
   }>, reply) => {
     const reminder = await reminderService.cancelReminder(request.params.id);
@@ -290,7 +290,7 @@ export async function registerRoutes(fastify: FastifyInstance<any, any, any, any
   });
 
   // ── Session / recording routes ──────────────────────────────────────────────
-  fastify.get('/api/sessions', async (request: FastifyRequest<{
+  fastify.get('/api/v1/sessions', async (request: FastifyRequest<{
     Querystring: { limit?: string };
   }>, reply) => {
     const sessions = await voiceSessionService.getRecentSessions(
@@ -299,7 +299,7 @@ export async function registerRoutes(fastify: FastifyInstance<any, any, any, any
     return { sessions };
   });
 
-  fastify.get('/api/recordings/:id/url', async (request: FastifyRequest<{
+  fastify.get('/api/v1/recordings/:id/url', async (request: FastifyRequest<{
     Params: { id: string };
   }>, reply) => {
     const url = await voiceSessionService.getRecordingUrl(request.params.id);
@@ -307,14 +307,14 @@ export async function registerRoutes(fastify: FastifyInstance<any, any, any, any
   });
 
   // ── Summary routes ──────────────────────────────────────────────────────────
-  fastify.get('/api/summary/daily', async (request, reply) => {
+  fastify.get('/api/v1/summary/daily', async (request, reply) => {
     const summary = await invoiceService.getDailySummary();
     return { summary };
   });
 
   // ── WhatsApp webhook routes ─────────────────────────────────────────────────
   // Rate limiting excluded — Meta sends status bursts that can exceed normal limits
-  fastify.get('/api/webhook/whatsapp', {
+  fastify.get('/api/v1/webhook/whatsapp', {
     config: { rateLimit: false },
   }, async (request: FastifyRequest<{
     Querystring: {
@@ -334,7 +334,7 @@ export async function registerRoutes(fastify: FastifyInstance<any, any, any, any
     }
   });
 
-  fastify.post('/api/webhook/whatsapp', {
+  fastify.post('/api/v1/webhook/whatsapp', {
     config: { rateLimit: false },
   }, async (request: FastifyRequest<{
     Body: any;

@@ -39,7 +39,7 @@ A production-ready, voice-first business management system built for Indian smal
 5. **Infrastructure** (`src/infrastructure/`): Technical plumbing (DB, queue, storage, logger, metrics)
 6. **Frontend** (`public/`): Voice UI (HTML/JS WebSocket client)
 
-> For full architecture details, migration history, error handling strategy, and Turborepo migration plan, see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+> For full architecture details, migration history, and error handling strategy, see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## 📦 Installation
 
@@ -123,32 +123,32 @@ npm run worker
 ### REST Endpoints
 
 #### Customers
-- `GET /api/customers/search?q={query}` - Search customers
-- `GET /api/customers/:id` - Get customer details
-- `POST /api/customers` - Create customer
+- `GET /api/v1/customers/search?q={query}` - Search customers
+- `GET /api/v1/customers/:id` - Get customer details
+- `POST /api/v1/customers` - Create customer
 
 #### Invoices
-- `GET /api/invoices` - List invoices
-- `POST /api/invoices` - Create invoice
-- `POST /api/invoices/:id/cancel` - Cancel invoice
+- `GET /api/v1/invoices` - List invoices
+- `POST /api/v1/invoices` - Create invoice
+- `POST /api/v1/invoices/:id/cancel` - Cancel invoice
 
 #### Ledger
-- `POST /api/ledger/payment` - Record payment
-- `POST /api/ledger/credit` - Add credit
-- `GET /api/ledger/:customerId` - Get ledger entries
+- `POST /api/v1/ledger/payment` - Record payment
+- `POST /api/v1/ledger/credit` - Add credit
+- `GET /api/v1/ledger/:customerId` - Get ledger entries
 
 #### Reminders
-- `GET /api/reminders` - List pending reminders
-- `POST /api/reminders` - Schedule reminder
-- `POST /api/reminders/:id/cancel` - Cancel reminder
+- `GET /api/v1/reminders` - List pending reminders
+- `POST /api/v1/reminders` - Schedule reminder
+- `POST /api/v1/reminders/:id/cancel` - Cancel reminder
 
 #### Products
-- `GET /api/products` - List all products
-- `POST /api/products` - Create product
-- `GET /api/products/low-stock` - Get low stock products
+- `GET /api/v1/products` - List all products
+- `POST /api/v1/products` - Create product
+- `GET /api/v1/products/low-stock` - Get low stock products
 
 #### Summary
-- `GET /api/summary/daily` - Get daily sales summary
+- `GET /api/v1/summary/daily` - Get daily sales summary
 
 ### WebSocket Events
 

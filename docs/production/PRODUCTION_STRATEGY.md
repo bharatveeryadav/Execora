@@ -695,7 +695,7 @@ All are already structured JSON in Pino — make sure these fields exist:
 
 ```json
 // Every request (Fastify auto-logs)
-{ "level": "info", "method": "POST", "url": "/api/invoices", "statusCode": 200, "responseTime": 45 }
+{ "level": "info", "method": "POST", "url": "/api/v1/invoices", "statusCode": 200, "responseTime": 45 }
 
 // Every voice session start
 { "level": "info", "sessionId": "ws-abc", "sttProvider": "deepgram", "msg": "WebSocket handler registered" }
@@ -707,7 +707,7 @@ All are already structured JSON in Pino — make sure these fields exist:
 { "level": "info", "jobId": "reminder-abc", "reminderId": "...", "msg": "Reminder sent successfully" }
 
 // Every error (structured, not just a message)
-{ "level": "error", "error": { "message": "...", "stack": "..." }, "url": "/api/invoices", "msg": "Request error" }
+{ "level": "error", "error": { "message": "...", "stack": "..." }, "url": "/api/v1/invoices", "msg": "Request error" }
 ```
 
 ---

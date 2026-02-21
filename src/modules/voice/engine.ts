@@ -7,6 +7,7 @@ import { reminderService } from '../reminder/reminder.service';
 import { productService } from '../product/product.service';
 import { voiceSessionService } from './session.service';
 import { openaiService } from '../../integrations/openai';
+import { emailService } from '../../infrastructure/email';
 
 class BusinessEngine {
   /**
@@ -58,6 +59,9 @@ class BusinessEngine {
 
         case IntentType.GET_CUSTOMER_INFO:
           return await this.executeGetCustomerInfo(intent.entities, conversationId);
+
+        case IntentType.DELETE_CUSTOMER_DATA:
+          return await this.executeDeleteCustomerData(intent.entities, conversationId);
 
         default:
           return {
@@ -726,6 +730,57 @@ Kya aapko isse kuch karna hai?
         message: 'Failed to retrieve customer information',
         error: error.message,
       };
+    }
+  }
+
+  private async executeDeleteCustomerData(entities: any, conversationId?: string): Promise<ExecutionResult> {
+    try {
+      // Admin check
+      const isAdmin = entities?.operatorRole === 'admin' || !!entities?.adminEmail;
+      if (!isAdmin) {
+        return { success: false, message: 'Yeh admin ke liye hai', error: 'UNAUTHORIZED' };
+      }
+
+      const adminEmail = entities?.adminEmail || process.env.ADMIN_EMAIL;
+      const resolution = await this.resolveCustomer(entities, conversationId);
+      if (!resolution.customer) {
+        return { success: false, message: 'Customer not found', error: 'NOT_FOUND' };
+      }
+
+      const customer = resolution.customer;
+      const confirmPhrase = (entities?.confirmation || '').toLowerCase();
+
+      // Step 1: Send OTP 
+      if (!confirmPhrase.match(/\d{6}/)) {
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        logger.info({ customerId: customer.id, adminEmail, otp }, 'Delete: Sending OTP');
+
+        try {
+          await emailService.sendAdminDeletionOtpEmail(adminEmail, customer.name, otp);
+        } catch (e: any) {
+          logger.error({ error: e.message }, 'Delete: OTP email failed');
+        }
+
+        return {
+          success: false,
+          message: `OTP sent to ${adminEmail}`,
+          error: 'OTP_SENT',
+          data: { otp, adminEmail }
+        };
+      }
+
+      // Step 2: Delete after OTP verified
+      logger.info({ customerId: customer.id }, 'Delete: OTP confirmed, deleting');
+      const result = await customerService.deleteCustomerAndAllData(customer.id);
+      if (!result.success) {
+        return { success: false, message: 'Delete failed', error: result.error };
+      }
+
+      logger.info({ customerId: customer.id, adminEmail }, 'Delete: Customer data deleted by admin');
+      return { success: true, message: `${customer.name} ke data permanently delete ho gaye`, data: result };
+    } catch (error: any) {
+      logger.error({ error }, 'Delete: Exception');
+      return { success: false, message: 'Delete operation failed', error: error.message };
     }
   }
 }

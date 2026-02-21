@@ -61,7 +61,7 @@ try {
   }
   // ... rest of logic
 } catch (error) {
-  ErrorHandler.handle(error, { method: 'POST', url: '/api/customers' });
+  ErrorHandler.handle(error, { method: 'POST', url: '/api/v1/customers' });
 }
 ```
 
@@ -90,7 +90,7 @@ All errors return consistent JSON structure:
     "timestamp": "2026-02-20T05:30:00Z",
     "context": {
       "method": "GET",
-      "url": "/api/customers/999",
+      "url": "/api/v1/customers/999",
       "ip": "192.168.1.1"
     },
     "severity": "medium"

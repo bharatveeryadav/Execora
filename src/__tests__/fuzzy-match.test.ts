@@ -1,174 +1,234 @@
 /**
- * Test cases for Indian name fuzzy matching
- * Run with: npx ts-node src/lib/indian-fuzzy-match.test.ts
+ * Indian Name Fuzzy Matching — Test Suite
+ * Covers exact, phonetic, aspirated, nickname, honorific, V/W, transliteration, and sibilant cases.
+ * Framework: Node.js built-in test runner (node:test + assert/strict)
  */
 
+import test from 'node:test';
+import assert from 'node:assert/strict';
 import { matchIndianName, findBestMatch, isSamePerson, findAllMatches } from '../infrastructure/fuzzy-match';
 
-console.log('🧪 Testing Indian Name Fuzzy Matching\n');
-console.log('=====================================\n');
+// ── matchIndianName — should match ──────────────────────────────────────────
 
-// Test cases
-const testCases = [
-    // Exact matches
-    { query: 'Bharat', target: 'Bharat', expectedMatch: true, category: 'Exact Match' },
-    { query: 'bharat', target: 'Bharat', expectedMatch: true, category: 'Case Insensitive' },
+test('exact match: "Bharat" matches "Bharat"', () => {
+  assert.ok(matchIndianName('Bharat', 'Bharat', 0.7) !== null);
+});
 
-    // Phonetic variations
-    { query: 'Bharat', target: 'Bharath', expectedMatch: true, category: 'Phonetic (h at end)' },
-    { query: 'Rahul', target: 'Rahool', expectedMatch: true, category: 'Phonetic (vowel variation)' },
-    { query: 'Deepak', target: 'Dipak', expectedMatch: true, category: 'Phonetic (ee → i)' },
-    { query: 'Sandeep', target: 'Sandip', expectedMatch: true, category: 'Phonetic (ee → i)' },
-    { query: 'Suresh', target: 'Sauresh', expectedMatch: true, category: 'Phonetic (vowel variation)' },
-    { query: 'Ganesh', target: 'Ganesha', expectedMatch: true, category: 'Phonetic (a at end)' },
+test('case insensitive: "bharat" matches "Bharat"', () => {
+  assert.ok(matchIndianName('bharat', 'Bharat', 0.7) !== null);
+});
 
-    // Aspirated consonants
-    { query: 'Bharat', target: 'Barat', expectedMatch: true, category: 'Aspirated (bh → b)' },
-    { query: 'Pritam', target: 'Preetam', expectedMatch: true, category: 'Aspirated + vowel' },
-    { query: 'Khatri', target: 'Katri', expectedMatch: true, category: 'Aspirated (kh → k)' },
+test('phonetic: trailing-h variation "Bharat" matches "Bharath"', () => {
+  assert.ok(matchIndianName('Bharat', 'Bharath', 0.7) !== null);
+});
 
-    // Nickname matches
-    { query: 'Raju', target: 'Rahul', expectedMatch: true, category: 'Nickname' },
-    { query: 'Sonu', target: 'Saurabh', expectedMatch: true, category: 'Nickname' },
-    { query: 'Abhi', target: 'Abhishek', expectedMatch: true, category: 'Nickname' },
-    { query: 'Sandy', target: 'Sandeep', expectedMatch: true, category: 'Nickname' },
-    { query: 'Vicky', target: 'Vivek', expectedMatch: true, category: 'Nickname' },
+test('phonetic: vowel variation "Rahul" matches "Rahool"', () => {
+  assert.ok(matchIndianName('Rahul', 'Rahool', 0.7) !== null);
+});
 
-    // Honorifics
-    { query: 'Bharat', target: 'Bharat Bhai', expectedMatch: true, category: 'Honorific (Bhai)' },
-    { query: 'Suresh bhai', target: 'Suresh', expectedMatch: true, category: 'Honorific removal' },
-    { query: 'Ramesh Ji', target: 'Ramesh', expectedMatch: true, category: 'Honorific (Ji)' },
+test('phonetic: ee→i "Deepak" matches "Dipak"', () => {
+  assert.ok(matchIndianName('Deepak', 'Dipak', 0.7) !== null);
+});
 
-    // V/W confusion
-    { query: 'Vikas', target: 'Wikas', expectedMatch: true, category: 'V/W confusion' },
-    { query: 'Vijay', target: 'Wijay', expectedMatch: true, category: 'V/W confusion' },
+test('phonetic: ee→i "Sandeep" matches "Sandip"', () => {
+  assert.ok(matchIndianName('Sandeep', 'Sandip', 0.7) !== null);
+});
 
-    // Transliteration variations
-    { query: 'Lakshmi', target: 'Laxmi', expectedMatch: true, category: 'Transliteration (ksh → x)' },
-    { query: 'Srinivas', target: 'Shreenivaas', expectedMatch: true, category: 'Transliteration (complex)' },
-    { query: 'Krishna', target: 'Kishan', expectedMatch: true, category: 'Transliteration (regional)' },
+test('phonetic: vowel variation "Suresh" matches "Sauresh"', () => {
+  assert.ok(matchIndianName('Suresh', 'Sauresh', 0.7) !== null);
+});
 
-    // Sibilant variations
-    { query: 'Ashok', target: 'Asok', expectedMatch: true, category: 'Sibilant (sh → s)' },
-    { query: 'Prakash', target: 'Prakas', expectedMatch: true, category: 'Sibilant variation' },
+test('phonetic: trailing-a "Ganesh" matches "Ganesha"', () => {
+  assert.ok(matchIndianName('Ganesh', 'Ganesha', 0.7) !== null);
+});
 
-    // Typos and minor errors
-    { query: 'Ankit', target: 'Ankitt', expectedMatch: true, category: 'Double consonant' },
-    { query: 'Aditya', target: 'Aditay', expectedMatch: true, category: 'Typo' },
+test('aspirated: bh→b "Bharat" matches "Barat"', () => {
+  assert.ok(matchIndianName('Bharat', 'Barat', 0.7) !== null);
+});
 
-    // Should NOT match (different names)
-    { query: 'Bharat', target: 'Rahul', expectedMatch: false, category: 'Different names' },
-    { query: 'Amit', target: 'Sumit', expectedMatch: false, category: 'Different names' },
-    { query: 'Ram', target: 'Shyam', expectedMatch: false, category: 'Different names' },
-];
+test('aspirated + vowel: "Pritam" matches "Preetam"', () => {
+  assert.ok(matchIndianName('Pritam', 'Preetam', 0.7) !== null);
+});
 
-console.log('📋 Running Test Cases:\n');
+test('aspirated: kh→k "Khatri" matches "Katri"', () => {
+  assert.ok(matchIndianName('Khatri', 'Katri', 0.7) !== null);
+});
 
-let passed = 0;
-let failed = 0;
-const failedCases: string[] = [];
+test('nickname: "Raju" matches "Rahul"', () => {
+  assert.ok(matchIndianName('Raju', 'Rahul', 0.7) !== null);
+});
 
-for (const test of testCases) {
-    const result = matchIndianName(test.query, test.target, 0.7);
-    const matched = result !== null;
-    const success = matched === test.expectedMatch;
+test('nickname: "Sonu" matches "Saurabh"', () => {
+  assert.ok(matchIndianName('Sonu', 'Saurabh', 0.7) !== null);
+});
 
-    const icon = success ? '✅' : '❌';
-    const score = result?.score.toFixed(2) || 'N/A';
-    const matchType = result?.matchType || 'none';
+test('nickname: "Abhi" matches "Abhishek"', () => {
+  assert.ok(matchIndianName('Abhi', 'Abhishek', 0.7) !== null);
+});
 
-    console.log(`${icon} [${test.category}]`);
-    console.log(`   Query: "${test.query}" → Target: "${test.target}"`);
-    console.log(`   Expected: ${test.expectedMatch}, Got: ${matched}, Score: ${score}, Type: ${matchType}`);
+test('nickname: "Sandy" matches "Sandeep"', () => {
+  assert.ok(matchIndianName('Sandy', 'Sandeep', 0.7) !== null);
+});
 
-    if (success) {
-        passed++;
-    } else {
-        failed++;
-        failedCases.push(`[${test.category}] \"${test.query}\" -> \"${test.target}\"`);
-    }
-    console.log();
-}
+test('nickname: "Vicky" matches "Vivek"', () => {
+  assert.ok(matchIndianName('Vicky', 'Vivek', 0.7) !== null);
+});
 
-console.log('=====================================');
-console.log(`✅ Passed: ${passed}/${testCases.length}`);
-console.log(`❌ Failed: ${failed}/${testCases.length}`);
-console.log(`📊 Success Rate: ${((passed / testCases.length) * 100).toFixed(1)}%\n`);
+test('honorific: "Bharat" matches "Bharat Bhai"', () => {
+  assert.ok(matchIndianName('Bharat', 'Bharat Bhai', 0.7) !== null);
+});
 
-// Test findBestMatch
-console.log('🔍 Testing findBestMatch:\n');
+test('honorific removal: "Suresh bhai" matches "Suresh"', () => {
+  assert.ok(matchIndianName('Suresh bhai', 'Suresh', 0.7) !== null);
+});
 
-const customerNames = [
-    'Bharat',
-    'Rahul Kumar',
-    'Saurabh Sharma',
-    'Deepak Agarwal',
-    'Priya Singh',
-    'Amit Patel'
-];
+test('honorific: "Ramesh Ji" matches "Ramesh"', () => {
+  assert.ok(matchIndianName('Ramesh Ji', 'Ramesh', 0.7) !== null);
+});
 
-const queries = [
-    'Bharath',      // Phonetic match → Bharat
-    'Raju',         // Nickname → Rahul
-    'Sonu',         // Nickname → Saurabh
-    'Dipak',        // Phonetic → Deepak
-    'Priyu',        // Nickname → Priya
-    'Amitbhai',     // Honorific → Amit
-];
+test('V/W confusion: "Vikas" matches "Wikas"', () => {
+  assert.ok(matchIndianName('Vikas', 'Wikas', 0.7) !== null);
+});
 
-for (const query of queries) {
-    const match = findBestMatch(query, customerNames, 0.7);
-    if (match) {
-        console.log(`Query: "${query}" → Matched: "${match.matched}" (score: ${match.score.toFixed(2)}, type: ${match.matchType})`);
-    } else {
-        console.log(`Query: "${query}" → No match found`);
-    }
-}
+test('V/W confusion: "Vijay" matches "Wijay"', () => {
+  assert.ok(matchIndianName('Vijay', 'Wijay', 0.7) !== null);
+});
 
-console.log('\n=====================================');
-console.log('🎯 Testing isSamePerson:\n');
+test('transliteration: ksh→x "Lakshmi" matches "Laxmi"', () => {
+  assert.ok(matchIndianName('Lakshmi', 'Laxmi', 0.7) !== null);
+});
 
-const samePersonTests = [
-    ['Bharat', 'Bharath', true],
-    ['Rahul', 'Raju', true],
-    ['Saurabh', 'Sonu', true],
-    ['Deepak', 'Dipak', true],
-    ['Amit', 'Sumit', false],
-    ['Ram', 'Shyam', false],
-];
+test('transliteration complex: "Srinivas" matches "Shreenivaas"', () => {
+  assert.ok(matchIndianName('Srinivas', 'Shreenivaas', 0.7) !== null);
+});
 
-for (const [name1, name2, expected] of samePersonTests) {
-    const result = isSamePerson(name1 as string, name2 as string);
-    const icon = result === expected ? '✅' : '❌';
-    console.log(`${icon} "${name1}" vs "${name2}": ${result} (expected: ${expected})`);
-}
+test('transliteration regional: "Krishna" matches "Kishan"', () => {
+  assert.ok(matchIndianName('Krishna', 'Kishan', 0.7) !== null);
+});
 
-console.log('\n=====================================');
-console.log('📊 Testing findAllMatches:\n');
+test('sibilant: sh→s "Ashok" matches "Asok"', () => {
+  assert.ok(matchIndianName('Ashok', 'Asok', 0.7) !== null);
+});
 
-const ambiguousQuery = 'Raju';
-const allMatches = findAllMatches(ambiguousQuery, [
-    'Rahul',
-    'Rajesh',
-    'Rajendra',
-    'Rajiv',
-    'Bharat'
-], 0.6);
+test('sibilant variation: "Prakash" matches "Prakas"', () => {
+  assert.ok(matchIndianName('Prakash', 'Prakas', 0.7) !== null);
+});
 
-console.log(`Query: "${ambiguousQuery}"\n`);
-console.log('All matches (sorted by score):');
-for (const match of allMatches) {
-    console.log(`  - ${match.matched}: ${match.score.toFixed(2)} (${match.matchType})`);
-}
+test('double consonant typo: "Ankit" matches "Ankitt"', () => {
+  assert.ok(matchIndianName('Ankit', 'Ankitt', 0.7) !== null);
+});
 
-console.log('\n✨ All tests completed!');
+test('transposition typo: "Aditya" matches "Aditay"', () => {
+  assert.ok(matchIndianName('Aditya', 'Aditay', 0.7) !== null);
+});
 
-if (failed > 0) {
-    console.error('\n❌ Test run failed. Failing cases:');
-    for (const failedCase of failedCases) {
-        console.error(`   - ${failedCase}`);
-    }
-    process.exitCode = 1;
-} else {
-    console.log('✅ Test run succeeded with zero failures.');
-}
+// ── matchIndianName — should NOT match ──────────────────────────────────────
+
+test('no match: "Bharat" does not match "Rahul"', () => {
+  assert.equal(matchIndianName('Bharat', 'Rahul', 0.7), null);
+});
+
+test('no match: "Amit" does not match "Sumit"', () => {
+  assert.equal(matchIndianName('Amit', 'Sumit', 0.7), null);
+});
+
+test('no match: "Ram" does not match "Shyam"', () => {
+  assert.equal(matchIndianName('Ram', 'Shyam', 0.7), null);
+});
+
+// ── findBestMatch ────────────────────────────────────────────────────────────
+// Matching a short query (nickname/variant) against full names (first + last)
+// scores lower than against first-name-only candidates.  Use first-name list
+// at 0.7 threshold for crisp assertions; test full-name list at 0.5.
+
+const FIRST_NAMES = ['Bharat', 'Rahul', 'Saurabh', 'Deepak', 'Priya', 'Amit'];
+const FULL_NAMES  = ['Bharat', 'Rahul Kumar', 'Saurabh Sharma', 'Deepak Agarwal', 'Priya Singh', 'Amit Patel'];
+
+test('findBestMatch: "Bharath" resolves to "Bharat" (first-name list)', () => {
+  const match = findBestMatch('Bharath', FIRST_NAMES, 0.7);
+  assert.ok(match !== null, 'should find a match');
+  assert.equal(match?.matched, 'Bharat');
+});
+
+test('findBestMatch: "Raju" resolves to "Rahul" (first-name list)', () => {
+  const match = findBestMatch('Raju', FIRST_NAMES, 0.7);
+  assert.ok(match !== null, 'should find a match');
+  assert.equal(match?.matched, 'Rahul');
+});
+
+test('findBestMatch: "Sonu" resolves to "Saurabh" (first-name list)', () => {
+  const match = findBestMatch('Sonu', FIRST_NAMES, 0.7);
+  assert.ok(match !== null, 'should find a match');
+  assert.equal(match?.matched, 'Saurabh');
+});
+
+test('findBestMatch: "Dipak" resolves to "Deepak" (first-name list)', () => {
+  const match = findBestMatch('Dipak', FIRST_NAMES, 0.7);
+  assert.ok(match !== null, 'should find a match');
+  assert.equal(match?.matched, 'Deepak');
+});
+
+test('findBestMatch: "Amitbhai" resolves to "Amit" via honorific stripping', () => {
+  const match = findBestMatch('Amitbhai', FIRST_NAMES, 0.7);
+  assert.ok(match !== null, 'should find a match');
+  assert.equal(match?.matched, 'Amit');
+});
+
+test('findBestMatch: "Bharath" still matches in full-name list at lower threshold', () => {
+  const match = findBestMatch('Bharath', FULL_NAMES, 0.5);
+  assert.ok(match !== null, 'should find a match');
+  assert.ok(match?.matched.startsWith('Bharat'));
+});
+
+test('findBestMatch: returns null when no candidates meet the threshold', () => {
+  const match = findBestMatch('Zephyr', FIRST_NAMES, 0.7);
+  assert.equal(match, null);
+});
+
+// ── isSamePerson ─────────────────────────────────────────────────────────────
+
+test('isSamePerson: "Bharat" and "Bharath" are the same', () => {
+  assert.equal(isSamePerson('Bharat', 'Bharath'), true);
+});
+
+test('isSamePerson: "Rahul" and "Raju" are the same', () => {
+  assert.equal(isSamePerson('Rahul', 'Raju'), true);
+});
+
+test('isSamePerson: "Saurabh" and "Sonu" are the same', () => {
+  assert.equal(isSamePerson('Saurabh', 'Sonu'), true);
+});
+
+test('isSamePerson: "Deepak" and "Dipak" are the same', () => {
+  assert.equal(isSamePerson('Deepak', 'Dipak'), true);
+});
+
+test('isSamePerson: "Amit" and "Sumit" are NOT the same', () => {
+  assert.equal(isSamePerson('Amit', 'Sumit'), false);
+});
+
+test('isSamePerson: "Ram" and "Shyam" are NOT the same', () => {
+  assert.equal(isSamePerson('Ram', 'Shyam'), false);
+});
+
+// ── findAllMatches ────────────────────────────────────────────────────────────
+
+test('findAllMatches: "Raju" returns >=2 matches from Raj* names, sorted by score', () => {
+  const candidates = ['Rahul', 'Rajesh', 'Rajendra', 'Rajiv', 'Bharat'];
+  const matches = findAllMatches('Raju', candidates, 0.6);
+
+  assert.ok(matches.length >= 2, `expected >=2, got ${matches.length}`);
+
+  // Verify descending score order
+  for (let i = 1; i < matches.length; i++) {
+    assert.ok(
+      matches[i - 1].score >= matches[i].score,
+      `score at [${i - 1}] (${matches[i - 1].score}) should be >= score at [${i}] (${matches[i].score})`
+    );
+  }
+});
+
+test('findAllMatches: "Bharat" does not match completely different names', () => {
+  const matches = findAllMatches('Bharat', ['Zephyr', 'Quintus', 'Xander'], 0.7);
+  assert.equal(matches.length, 0);
+});

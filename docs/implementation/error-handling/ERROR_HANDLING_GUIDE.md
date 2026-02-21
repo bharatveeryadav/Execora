@@ -213,7 +213,7 @@ catch (error) {
   "timestamp": "2026-02-20T10:30:45.123Z",
   "context": {
     "method": "GET",
-    "url": "/api/customers/999",
+    "url": "/api/v1/customers/999",
     "ip": "192.168.1.1"
   }
 }

@@ -101,6 +101,54 @@
           "wrapLogMessage": true
         },
         "gridPos": { "x": 0, "y": 24, "w": 24, "h": 8 }
+      },
+      {
+        "id": 9,
+        "title": "LLM Requests/min",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(llm_requests_total[1m])) by (operation, cache)",
+            "legendFormat": "{{operation}} {{cache}}"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 32, "w": 12, "h": 6 }
+      },
+      {
+        "id": 10,
+        "title": "LLM Tokens/sec (total)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(llm_tokens_total{type=\"total\"}[1m])) by (operation)",
+            "legendFormat": "{{operation}}"
+          }
+        ],
+        "gridPos": { "x": 12, "y": 32, "w": 12, "h": 6 }
+      },
+      {
+        "id": 11,
+        "title": "LLM Cost USD/hr",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(llm_cost_usd_total[5m])) * 3600",
+            "legendFormat": "usd_per_hr"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 38, "w": 12, "h": 6 }
+      },
+      {
+        "id": 12,
+        "title": "LLM Cache Hit Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(llm_requests_total{cache=\"hit\"}[5m])) / sum(rate(llm_requests_total[5m]))",
+            "legendFormat": "hit_rate"
+          }
+        ],
+        "gridPos": { "x": 12, "y": 38, "w": 12, "h": 6 }
       }
     ],
     "refresh": "10s",

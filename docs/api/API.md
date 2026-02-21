@@ -49,7 +49,7 @@ Use for Docker healthchecks and uptime monitors.
 
 ### Customers
 
-#### `GET /api/customers/search?q={query}`
+#### `GET /api/v1/customers/search?q={query}`
 
 Fuzzy search across name, nickname, landmark, phone, and notes.
 
@@ -61,13 +61,13 @@ The engine handles Hinglish transliteration variants and landmark-based disambig
 
 ```bash
 # Simple name
-GET /api/customers/search?q=Rahul
+GET /api/v1/customers/search?q=Rahul
 
 # Phone number — exact match takes priority
-GET /api/customers/search?q=9876543210
+GET /api/v1/customers/search?q=9876543210
 
 # Landmark disambiguation
-GET /api/customers/search?q=Rahul+atm+wala
+GET /api/v1/customers/search?q=Rahul+atm+wala
 ```
 
 ```json
@@ -90,7 +90,7 @@ GET /api/customers/search?q=Rahul+atm+wala
 
 ---
 
-#### `GET /api/customers/:id`
+#### `GET /api/v1/customers/:id`
 
 Returns full customer profile with last 5 invoices and all SCHEDULED reminders.
 
@@ -111,7 +111,7 @@ Returns full customer profile with last 5 invoices and all SCHEDULED reminders.
 
 ---
 
-#### `POST /api/customers`
+#### `POST /api/v1/customers`
 
 ```json
 // Request
@@ -132,7 +132,7 @@ Returns full customer profile with last 5 invoices and all SCHEDULED reminders.
 
 ### Products
 
-#### `GET /api/products`
+#### `GET /api/v1/products`
 
 Returns all products with current stock.
 
@@ -146,7 +146,7 @@ Returns all products with current stock.
 
 ---
 
-#### `POST /api/products`
+#### `POST /api/v1/products`
 
 ```json
 // Request
@@ -161,7 +161,7 @@ Returns all products with current stock.
 
 ---
 
-#### `GET /api/products/low-stock`
+#### `GET /api/v1/products/low-stock`
 
 Returns products where stock ≤ low-stock threshold (default 10 units). Use for reorder alerts.
 
@@ -169,7 +169,7 @@ Returns products where stock ≤ low-stock threshold (default 10 units). Use for
 
 ### Invoices
 
-#### `GET /api/invoices?limit=20`
+#### `GET /api/v1/invoices?limit=20`
 
 Returns recent invoices across all customers, newest first.
 
@@ -179,7 +179,7 @@ Returns recent invoices across all customers, newest first.
 
 ---
 
-#### `POST /api/invoices`
+#### `POST /api/v1/invoices`
 
 **Single ACID transaction** — all-or-nothing.
 
@@ -209,7 +209,7 @@ What happens atomically:
 
 ---
 
-#### `POST /api/invoices/:id/cancel`
+#### `POST /api/v1/invoices/:id/cancel`
 
 **Single ACID transaction** — reverses all invoice effects.
 
@@ -237,7 +237,7 @@ The ledger is **immutable** — entries are never deleted, only reversed via new
 
 ---
 
-#### `POST /api/ledger/payment`
+#### `POST /api/v1/ledger/payment`
 
 Records a payment received from a customer.
 
@@ -266,7 +266,7 @@ Records a payment received from a customer.
 
 ---
 
-#### `POST /api/ledger/credit`
+#### `POST /api/v1/ledger/credit`
 
 Adds a credit adjustment (return, discount, opening balance).
 
@@ -281,7 +281,7 @@ Adds a credit adjustment (return, discount, opening balance).
 
 ---
 
-#### `GET /api/ledger/:customerId?limit=50`
+#### `GET /api/v1/ledger/:customerId?limit=50`
 
 Returns customer ledger, newest first.
 
@@ -293,13 +293,13 @@ Returns customer ledger, newest first.
 
 ### Reminders
 
-#### `GET /api/reminders?customerId={id}`
+#### `GET /api/v1/reminders?customerId={id}`
 
 Returns all SCHEDULED reminders. Filter by `customerId` to get a specific customer's pending reminders.
 
 ---
 
-#### `POST /api/reminders`
+#### `POST /api/v1/reminders`
 
 Schedules a WhatsApp payment reminder via BullMQ.
 
@@ -341,7 +341,7 @@ Dhanyavad
 
 ---
 
-#### `POST /api/reminders/:id/cancel`
+#### `POST /api/v1/reminders/:id/cancel`
 
 Cancels a scheduled reminder and removes its BullMQ job if not yet fired.
 
@@ -349,7 +349,7 @@ Cancels a scheduled reminder and removes its BullMQ job if not yet fired.
 
 ### Sessions & Recordings
 
-#### `GET /api/sessions?limit=20`
+#### `GET /api/v1/sessions?limit=20`
 
 Returns recent voice conversation sessions.
 
@@ -377,7 +377,7 @@ Returns recent voice conversation sessions.
 
 ---
 
-#### `GET /api/recordings/:id/url`
+#### `GET /api/v1/recordings/:id/url`
 
 Generates a pre-signed MinIO download URL (expires in 1 hour).
 
@@ -391,7 +391,7 @@ Generates a pre-signed MinIO download URL (expires in 1 hour).
 
 ### Summary
 
-#### `GET /api/summary/daily`
+#### `GET /api/v1/summary/daily`
 
 Today's business snapshot (midnight to now, IST).
 
@@ -422,7 +422,7 @@ Today's business snapshot (midnight to now, IST).
 
 ### Webhooks
 
-#### `GET /api/webhook/whatsapp` — Verification
+#### `GET /api/v1/webhook/whatsapp` — Verification
 
 Meta calls this once when you register the webhook URL. Set `WHATSAPP_WEBHOOK_VERIFY_TOKEN` in `.env`
 to match the token you entered in the Meta dashboard.
@@ -437,7 +437,7 @@ to match the token you entered in the Meta dashboard.
 
 ---
 
-#### `POST /api/webhook/whatsapp` — Delivery Events
+#### `POST /api/v1/webhook/whatsapp` — Delivery Events
 
 Receives real-time WhatsApp delivery status updates and syncs them to the `whatsapp_messages` table.
 

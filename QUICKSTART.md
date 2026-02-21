@@ -57,10 +57,10 @@ Done! Execora is running.
 
 ```bash
 # Search customer (instant with cache)
-curl http://localhost:3000/api/customers/search?q=Rahul
+curl http://localhost:3000/api/v1/customers/search?q=Rahul
 
 # Create invoice (runs in parallel with other tasks)
-curl -X POST http://localhost:3000/api/invoices \
+curl -X POST http://localhost:3000/api/v1/invoices \
   -H "Content-Type: application/json" \
   -d '{
     "customerId": "<customer-id>",
@@ -70,7 +70,7 @@ curl -X POST http://localhost:3000/api/invoices \
   }'
 
 # Check daily summary
-curl http://localhost:3000/api/summary/daily
+curl http://localhost:3000/api/v1/summary/daily
 ```
 
 ### Performance Improvements (New!)

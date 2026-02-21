@@ -379,16 +379,52 @@ class EnhancedWebSocketHandler {
     }, 'User input received');
 
     try {
+      // ✅ CHECK FOR ADMIN KEYWORDS IN ORIGINAL TEXT BEFORE NORMALIZATION
+      const isAdminBefore = this.isAdminCommand(text);
+      logger.debug(
+        {
+          sessionId: session.sessionId,
+          originalText: text,
+          isAdminDetectedOriginal: isAdminBefore
+        },
+        'Checking admin keywords in original text'
+      );
+
       const normStart = Date.now();
       const normalizedText = await openaiService.normalizeTranscript(text);
       const normTime = Date.now() - normStart;
 
-      logger.debug({ sessionId: session.sessionId, normalizationTimeMs: normTime }, 'Transcript normalized');
+      // Check if normalization removed admin keyword
+      const isAdminAfter = this.isAdminCommand(normalizedText);
+      logger.debug({
+        sessionId: session.sessionId,
+        originalText: text,
+        normalizedText: normalizedText,
+        isAdminBefore: isAdminBefore,
+        isAdminAfter: isAdminAfter,
+        normalizationTimeMs: normTime
+      }, 'Transcript normalized and admin check comparison');
 
       // 1. Extract intent with conversation context
       const intentStart = Date.now();
       const intent = await openaiService.extractIntent(normalizedText, text, session.conversationSessionId);
       const intentTime = Date.now() - intentStart;
+
+      // ✅ AUTO-DETECT ADMIN from voice keywords (check ORIGINAL text, not normalized)
+      if (isAdminBefore) {
+        intent.entities = intent.entities || {};
+        intent.entities.operatorRole = 'admin';
+        intent.entities.adminEmail = process.env.ADMIN_EMAIL || 'bharatveeryadavg@gmail.com';
+        logger.info(
+          {
+            sessionId: session.sessionId,
+            adminEmail: intent.entities.adminEmail,
+            originalText: text,
+            normalizedText: normalizedText
+          },
+          '🔐 [ADMIN MODE DETECTED] Admin keyword found in original voice command'
+        );
+      }
 
       logger.info({
         flowId,
@@ -681,6 +717,37 @@ class EnhancedWebSocketHandler {
       data: { error },
       timestamp: new Date().toISOString(),
     });
+  }
+
+  /**
+   * Detect admin keywords in voice command
+   * Admin can say: "admin delete", "manager delete", "admin mode", etc.
+   */
+  private isAdminCommand(text: string): boolean {
+    if (!text) return false;
+    const lowerText = text.toLowerCase();
+    const englishAdminKeywords = [
+      'admin',
+      'manager',
+      'admin mode',
+      'admin operation',
+      'admin delete',
+      'admin karo',
+      'admin ke liye',
+    ];
+
+    // Check English keywords
+    if (englishAdminKeywords.some((keyword) => lowerText.includes(keyword))) {
+      return true;
+    }
+
+    // Check Hindi keywords (case-sensitive)
+    const hindiAdminKeywords = ['एडमिन', 'प्रबंधक'];
+    if (hindiAdminKeywords.some((keyword) => text.includes(keyword))) {
+      return true;
+    }
+
+    return false;
   }
 
   /**

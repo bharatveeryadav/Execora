@@ -265,7 +265,7 @@ export async function sendReminderToUser(userId: string) {
 
 ### Example 1: Validation Error
 ```
-HTTP POST /api/customers
+HTTP POST /api/v1/customers
 ├─ Route throws ValidationError
 ├─ Fastify catches
 ├─ ErrorHandler.logError() logs with category: "validation", severity: "medium"
@@ -275,7 +275,7 @@ HTTP POST /api/customers
 
 ### Example 2: Not Found Error
 ```
-HTTP GET /api/customers/999
+HTTP GET /api/v1/customers/999
 ├─ Route calls service
 ├─ Service.get() uses ErrorHandler.handle()
 ├─ DB query returns null

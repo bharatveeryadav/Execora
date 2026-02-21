@@ -1,8 +1,31 @@
 import OpenAI from 'openai';
+import crypto from 'crypto';
 import { config } from '../config';
 import { logger } from '../infrastructure/logger';
+import { llmCache } from '../infrastructure/llm-cache';
+import { llmRequestsTotal, llmTokensTotal, llmCostUsdTotal } from '../infrastructure/metrics';
+import { getRuntimeConfig } from '../infrastructure/runtime-config';
 import { IntentType, IntentExtraction, ExecutionResult } from '../types';
 import { conversationMemory } from '../modules/voice/conversation';
+
+type CachePolicy = {
+  ttlSeconds: number;
+  scope: 'conversation' | 'global';
+};
+
+const stableStringify = (value: any): string => {
+  if (value === null || value === undefined) return String(value);
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  if (typeof value === 'object') {
+    const keys = Object.keys(value).sort();
+    return `{${keys.map((key) => `${key}:${stableStringify(value[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+};
+
+const hashString = (value: string): string => {
+  return crypto.createHash('sha256').update(value).digest('hex');
+};
 
 class OpenAIService {
   private client: OpenAI;
@@ -11,6 +34,63 @@ class OpenAIService {
     this.client = new OpenAI({
       apiKey: config.openai.apiKey,
     });
+  }
+
+  private recordUsage(
+    operation: string,
+    intent: string,
+    response: any,
+    cache: 'hit' | 'miss'
+  ) {
+    const usage = response?.usage;
+    const model = response?.model || config.openai.model;
+
+    llmRequestsTotal.inc({ model, operation, intent, cache });
+
+    if (!usage) return;
+
+    const promptTokens = usage.prompt_tokens ?? 0;
+    const completionTokens = usage.completion_tokens ?? 0;
+    const totalTokens = usage.total_tokens ?? promptTokens + completionTokens;
+
+    llmTokensTotal.inc({ model, operation, intent, type: 'prompt' }, promptTokens);
+    llmTokensTotal.inc({ model, operation, intent, type: 'completion' }, completionTokens);
+    llmTokensTotal.inc({ model, operation, intent, type: 'total' }, totalTokens);
+
+    const runtimeConfig = getRuntimeConfig();
+    const costInputPer1k = runtimeConfig.llm.cost.inputPer1k;
+    const costOutputPer1k = runtimeConfig.llm.cost.outputPer1k;
+
+    if (costInputPer1k > 0 || costOutputPer1k > 0) {
+      const cost = (promptTokens / 1000) * costInputPer1k + (completionTokens / 1000) * costOutputPer1k;
+      if (cost > 0) {
+        llmCostUsdTotal.inc({ model, operation, intent }, cost);
+      }
+    }
+  }
+
+  private getResponseTokenLimit(intent: IntentType): number {
+    const runtimeConfig = getRuntimeConfig();
+    return runtimeConfig.llm.responseTokenLimits[intent] ?? 150;
+  }
+
+  private buildResponseCacheKey(
+    intent: IntentType,
+    executionResult: ExecutionResult,
+    conversationContext?: string,
+    scope: CachePolicy['scope'] = 'conversation'
+  ): string {
+    const basePayload = {
+      intent,
+      success: executionResult.success,
+      message: executionResult.message,
+      data: executionResult.data ?? null,
+    };
+    const base = stableStringify(basePayload);
+    const contextHash = scope === 'global'
+      ? 'global'
+      : (conversationContext ? hashString(conversationContext) : 'noctx');
+    return `llm:response:${intent}:${contextHash}:${hashString(base)}`;
   }
 
   /**
@@ -101,6 +181,7 @@ Available intents:
 - STOP_RECORDING: Stop voice recording
 - UPDATE_CUSTOMER_PHONE: Update customer phone number (WhatsApp, mobile)
 - GET_CUSTOMER_INFO: Get all customer information (name, phone, balance, status)
+- DELETE_CUSTOMER_DATA: Delete all customer data permanently with confirmation and OTP
 - UNKNOWN: Cannot determine intent
 
 Critical extraction rules for Indian voice patterns:
@@ -128,14 +209,22 @@ Critical extraction rules for Indian voice patterns:
    - Example: "Bharat ki sari jankari bata" → {"intent":"GET_CUSTOMER_INFO","entities":{"customer":"Bharat"}}
    - Example: "भारत की डिटेल्स बताओ" (Hindi) → {"intent":"GET_CUSTOMER_INFO","entities":{"customer":"Bharat"}}
 
-4) If user speaks references like "uska", "iska", "pichla customer", "same customer", set entities.customerRef = "active".
-5) If user says landmark style like "Bharat ATM wala" or "Bharat Agra wala", keep full phrase in entities.customer.
-6) For CREATE_CUSTOMER, map name to entities.name and optional amount to entities.amount.
-7) For UPDATE_CUSTOMER_PHONE, extract customer name to entities.customer and phone digits to entities.phone (e.g., "9568926253").
-8) If user speaks phone as digits like "नाइन फाइव सिक्स एट नाइन टू सिक्स टू फाइव थ्री", convert to "9568926253" in entities.phone.
-9) Keep customer text concise and exact; do not translate names.
-10) If customer is clearly present, always return entities.customer (except CREATE_CUSTOMER where entities.name is primary).
-11) Always extract numeric amounts for ADD_CREDIT and RECORD_PAYMENT.
+5) Recognize Indian Hinglish patterns for DELETE_CUSTOMER_DATA (permanent deletion):
+   - "CUSTOMER_NAME ka data delete karo" (delete customer data) → DELETE_CUSTOMER_DATA
+   - "CUSTOMER_NAME ke sare records delete kar do" (delete all records) → DELETE_CUSTOMER_DATA
+   - "CUSTOMER_NAME ko completely remove karo" (remove customer completely) → DELETE_CUSTOMER_DATA
+   - "CUSTOMER_NAME ka account delete karo" (delete account) → DELETE_CUSTOMER_DATA
+   - Note: User will be asked for confirmation and OTP validation before deletion
+   - Example: "Bharat ka data delete karo" → {"intent":"DELETE_CUSTOMER_DATA","entities":{"customer":"Bharat"}}
+
+6) If user speaks references like "uska", "iska", "pichla customer", "same customer", set entities.customerRef = "active".
+7) If user says landmark style like "Bharat ATM wala" or "Bharat Agra wala", keep full phrase in entities.customer.
+8) For CREATE_CUSTOMER, map name to entities.name and optional amount to entities.amount.
+9) For UPDATE_CUSTOMER_PHONE, extract customer name to entities.customer and phone digits to entities.phone (e.g., "9568926253").
+10) If user speaks phone as digits like "नाइन फाइव सिक्स एट नाइन टू सिक्स टू फाइव थ्री", convert to "9568926253" in entities.phone.
+11) Keep customer text concise and exact; do not translate names.
+12) If customer is clearly present, always return entities.customer (except CREATE_CUSTOMER where entities.name is primary).
+13) Always extract numeric amounts for ADD_CREDIT and RECORD_PAYMENT.
 
 Respond ONLY with valid JSON. No other text.
 
@@ -145,7 +234,8 @@ Example responses:
 {"intent":"RECORD_PAYMENT","entities":{"customer":"Rahul","amount":200},"confidence":0.92}
 {"intent":"CREATE_INVOICE","entities":{"customer":"Rahul","items":[{"product":"milk","quantity":2},{"product":"bread","quantity":1}]},"confidence":0.95}
 {"intent":"UPDATE_CUSTOMER_PHONE","entities":{"customer":"Bharat","phone":"9568926253"},"confidence":0.92}
-{"intent":"GET_CUSTOMER_INFO","entities":{"customer":"Bharat"},"confidence":0.93}`;
+{"intent":"GET_CUSTOMER_INFO","entities":{"customer":"Bharat"},"confidence":0.93}
+{"intent":"DELETE_CUSTOMER_DATA","entities":{"customer":"Bharat","confirmation":"delete"},"confidence":0.92}`;
 
       const response = await this.client.chat.completions.create({
         model: config.openai.model,
@@ -155,7 +245,10 @@ Example responses:
         ],
         response_format: { type: 'json_object' },
         temperature: 0.3,
+        max_tokens: 300,
       });
+
+      this.recordUsage('extract_intent', 'UNKNOWN', response, 'miss');
 
       const content = response.choices[0].message.content || '{}';
       const parsed = JSON.parse(content);
@@ -209,6 +302,8 @@ Example responses:
         temperature: 0.1,
         max_tokens: 50,
       });
+
+      this.recordUsage('transliterate_name', 'UNKNOWN', response, 'miss');
 
       return response.choices[0].message.content?.trim() || text;
     } catch (error) {
@@ -353,6 +448,8 @@ Respond with plain text only (no JSON, no quotes).`;
         max_tokens: 200,
       });
 
+      this.recordUsage('normalize_transcript', 'UNKNOWN', response, 'miss');
+
       return response.choices[0].message.content?.trim() || rawText;
     } catch (error) {
       logger.error({ error }, 'OpenAI transcript normalization failed');
@@ -373,6 +470,21 @@ Respond with plain text only (no JSON, no quotes).`;
       let conversationContext = '';
       if (conversationId) {
         conversationContext = conversationMemory.getFormattedContext(conversationId, 6);
+      }
+
+      const runtimeConfig = getRuntimeConfig();
+      const intentKey = originalIntent as IntentType;
+      const cachePolicy = runtimeConfig.llm.responseCachePolicy[intentKey];
+      const cacheKey = cachePolicy
+        ? this.buildResponseCacheKey(intentKey, executionResult, conversationContext, cachePolicy.scope)
+        : null;
+
+      if (cacheKey) {
+        const cached = await llmCache.get(cacheKey);
+        if (cached) {
+          llmRequestsTotal.inc({ model: config.openai.model, operation: 'generate_response', intent: intentKey, cache: 'hit' });
+          return cached;
+        }
       }
 
       const systemPrompt = `You are a friendly Indian business assistant speaking in Hinglish (English names/numbers mixed with Hindi).
@@ -409,10 +521,18 @@ Generate Hinglish response (English names/numbers + Hindi grammar/verbs):`;
           { role: 'user', content: userPrompt },
         ],
         temperature: 0.7,
-        max_tokens: 150,
+        max_tokens: this.getResponseTokenLimit(intentKey),
       });
 
-      return response.choices[0].message.content?.trim() || 'Theek hai.';
+      this.recordUsage('generate_response', intentKey, response, 'miss');
+
+      const finalText = response.choices[0].message.content?.trim() || 'Theek hai.';
+
+      if (cacheKey && cachePolicy) {
+        await llmCache.set(cacheKey, finalText, cachePolicy.ttlSeconds);
+      }
+
+      return finalText;
     } catch (error) {
       logger.error({ error }, 'OpenAI response generation failed');
       return 'Theek hai.';
@@ -434,6 +554,8 @@ Keep it very short and natural.`;
         temperature: 0.7,
         max_tokens: 100,
       });
+
+      this.recordUsage('generate_confirmation', 'UNKNOWN', response, 'miss');
 
       return response.choices[0].message.content?.trim() || 'Confirm karein?';
     } catch (error) {

@@ -48,6 +48,28 @@ export const invoiceOperations = new promClient.Counter({
     registers: [register],
 });
 
+// LLM Usage Metrics
+export const llmRequestsTotal = new promClient.Counter({
+    name: 'llm_requests_total',
+    help: 'Total number of LLM requests',
+    labelNames: ['model', 'operation', 'intent', 'cache'],
+    registers: [register],
+});
+
+export const llmTokensTotal = new promClient.Counter({
+    name: 'llm_tokens_total',
+    help: 'Total LLM tokens by type',
+    labelNames: ['model', 'operation', 'intent', 'type'],
+    registers: [register],
+});
+
+export const llmCostUsdTotal = new promClient.Counter({
+    name: 'llm_cost_usd_total',
+    help: 'Estimated LLM cost in USD',
+    labelNames: ['model', 'operation', 'intent'],
+    registers: [register],
+});
+
 // Payment Processing
 export const paymentProcessing = new promClient.Counter({
     name: 'payments_processed_total',

@@ -74,7 +74,7 @@ if (success) {
 
 ### In Fastify Routes
 ```typescript
-router.post('/api/customers/:id', async (request, reply) => {
+router.post('/api/v1/customers/:id', async (request, reply) => {
   // throw error → Fastify error handler catches
   // Already logs + formats response automatically
   throw new ValidationError('Invalid name');
@@ -235,7 +235,7 @@ docker logs execora-app | grep ERROR
 
 ```typescript
 // 1. ROUTE receives request
-fastify.post('/api/customers', async (request, reply) => {
+fastify.post('/api/v1/customers', async (request, reply) => {
   // 2. VALIDATE input
   if (!request.body.name) {
     throw new ValidationError('Name is required'); // ← Specific error!

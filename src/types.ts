@@ -16,6 +16,7 @@ export enum IntentType {
   STOP_RECORDING = 'STOP_RECORDING',
   UPDATE_CUSTOMER_PHONE = 'UPDATE_CUSTOMER_PHONE',
   GET_CUSTOMER_INFO = 'GET_CUSTOMER_INFO',
+  DELETE_CUSTOMER_DATA = 'DELETE_CUSTOMER_DATA',
   UNKNOWN = 'UNKNOWN',
 }
 
@@ -27,6 +28,9 @@ export interface IntentExtraction {
   originalText: string;
   normalizedText?: string;
   conversationSessionId?: string;
+  adminEmail?: string;
+  operatorId?: string;
+  operatorRole?: 'admin' | 'user';
 }
 
 // Customer search result
@@ -34,6 +38,7 @@ export interface CustomerSearchResult {
   id: string;
   name: string;
   phone?: string | null;
+  email?: string | null;
   nickname?: string | null;
   landmark?: string | null;
   balance: number;

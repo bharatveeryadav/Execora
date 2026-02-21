@@ -11,11 +11,19 @@ import { logger } from './infrastructure/logger';
 import { disconnectDB, ensureVoiceSchemaReady } from './infrastructure/database';
 import { closeQueues } from './infrastructure/queue';
 import { minioClient } from './infrastructure/storage';
+import { llmCache } from './infrastructure/llm-cache';
+import {
+  getRuntimeConfig,
+  initRuntimeConfig,
+  startRuntimeConfigPolling,
+  stopRuntimeConfigPolling,
+} from './infrastructure/runtime-config';
 import { registerRoutes } from './api';
 import { websocketHandler } from './ws/handler';
 import { enhancedWebsocketHandler } from './ws/enhanced-handler';
 import { metricsPlugin } from './infrastructure/metrics-plugin';
 import { ErrorHandler, AppError, setupGlobalErrorHandlers } from './infrastructure/error-handler';
+import { emailService } from './infrastructure/email';
 
 // Choose WebSocket handler based on configuration
 const useEnhancedAudio = process.env.USE_ENHANCED_AUDIO !== 'false'; // Default to enhanced
@@ -30,6 +38,8 @@ const fastify = Fastify({
 
 // Register plugins
 async function registerPlugins() {
+  const runtimeConfig = getRuntimeConfig();
+
   // Metrics (register first to track all requests)
   await fastify.register(metricsPlugin);
 
@@ -39,8 +49,8 @@ async function registerPlugins() {
   // Rate limiting — 200 req/min per IP globally
   // Webhook routes opt out via config.rateLimit = false at the route level
   await fastify.register(fastifyRateLimit, {
-    max: 200,
-    timeWindow: '1 minute',
+    max: runtimeConfig.ops.rateLimit.max,
+    timeWindow: runtimeConfig.ops.rateLimit.timeWindow,
     errorResponseBuilder: () => ({
       error: 'Too Many Requests',
       message: 'Rate limit exceeded. Please slow down.',
@@ -49,10 +59,7 @@ async function registerPlugins() {
   });
 
   // CORS — restrict to configured origins in production
-  const allowedOrigins = config.allowedOrigins
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const allowedOrigins = runtimeConfig.ops.allowedOrigins;
 
   await fastify.register(fastifyCors, {
     origin:
@@ -103,6 +110,9 @@ async function initializeServices() {
     await minioClient.initialize();
     logger.info('MinIO initialized');
 
+    // Initialize Email Service
+    await emailService.initialize();
+
     logger.info('All services initialized');
   } catch (error) {
     logger.error(
@@ -116,6 +126,9 @@ async function initializeServices() {
 // Start server
 async function start() {
   try {
+    await initRuntimeConfig();
+    startRuntimeConfigPolling();
+
     // Initialize services
     await initializeServices();
 
@@ -174,6 +187,12 @@ async function shutdown() {
 
     // Close queues
     await closeQueues();
+
+    // Close cache
+    await llmCache.close();
+
+    // Close runtime config poller
+    await stopRuntimeConfigPolling();
 
     logger.info('Shutdown complete');
     process.exit(0);

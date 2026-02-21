@@ -17,9 +17,8 @@
 6. [Observability Stack](#6-observability-stack)
 7. [Docker & Networking](#7-docker--networking)
 8. [Database Schema](#8-database-schema)
-9. [Future: Turborepo Monorepo Migration](#9-future-turborepo-monorepo-migration)
-10. [Technology-Agnostic Design Principles](#10-technology-agnostic-design-principles)
-11. [Open-Source Contribution Guide](#11-open-source-contribution-guide)
+9. [Technology-Agnostic Design Principles](#9-technology-agnostic-design-principles)
+10. [Open-Source Contribution Guide](#10-open-source-contribution-guide)
 
 ---
 
@@ -213,7 +212,7 @@ src/
 | No boundaries between domains | Changing invoice logic required understanding all of `business/` |
 | `lib/` contained unrelated things (logger, metrics, MinIO, queue, fuzzy-match) | Hard to know what to edit for a specific change |
 | `services/` mixed integrations (OpenAI, Deepgram, WhatsApp) | Swapping providers required grep-ing the whole folder |
-| Impossible to extract a domain to a separate package | Monorepo migration would require major rewrite |
+| Impossible to extract a domain to a separate package | Large refactors required for package extraction |
 | `config/index.ts` and `types/index.ts` unnecessary wrappers | Adds indirection for no reason |
 
 ### 4.2 Decision: module-based over layer-based
@@ -225,14 +224,14 @@ We evaluated two alternatives:
 src/controllers/ + src/services/ + src/repositories/
 ```
 - Good for: small CRUD apps
-- Bad for: domain-heavy apps, monorepo migration
+- Bad for: domain-heavy apps, future package extraction
 
 **Option B — Module-based (what we chose)**
 ```
 src/modules/<domain>/ + src/infrastructure/ + src/integrations/
 ```
 - Good for: domain clarity, future package extraction, open-source contributor navigation
-- Based on: NestJS conventions, Fastify production repos, Turborepo official examples (karakeep, openclaw)
+- Based on: NestJS conventions, Fastify production repos
 
 **Why module-based wins for Execora:**
 - Each `modules/<domain>` folder is a **complete vertical slice** — if we extract `modules/invoice/` into a separate npm package, zero refactoring is needed
@@ -562,129 +561,7 @@ npm run seed          # populate dev data
 
 ---
 
-## 9. Future: Turborepo Monorepo Migration
-
-The current module-based structure was designed explicitly to make this migration zero-pain.
-
-### The migration map
-
-Current (single repo) → Target (Turborepo monorepo):
-
-```
-execora/                              execora-mono/
-├── src/                              ├── apps/
-│   ├── index.ts          →           │   ├── api/          (Fastify server)
-│   ├── worker/           →           │   ├── worker/       (BullMQ workers)
-│   └── public/           →           │   └── web/          (React frontend, NEW)
-│                                     │
-│   ├── modules/customer/ →           ├── packages/
-│   ├── modules/invoice/  →           │   ├── customer/
-│   ├── modules/ledger/   →           │   ├── invoice/
-│   ├── modules/product/  →           │   ├── ledger/
-│   ├── modules/reminder/ →           │   ├── reminder/
-│   ├── modules/voice/    →           │   ├── voice/
-│   │                                 │   │
-│   ├── infrastructure/   →           │   ├── db/           (Prisma client + schema)
-│   ├── integrations/     →           │   ├── integrations/ (STT/TTS/WhatsApp/OpenAI)
-│   ├── types.ts          →           │   └── types/        (shared TypeScript types)
-│   └── config.ts         →           │
-│                                     ├── turbo.json
-│                                     └── package.json
-```
-
-### Step-by-step migration plan
-
-**Phase 1 — Bootstrap (1 day)**
-```bash
-npx create-turbo@latest execora-mono
-# Copy current execora/ → execora-mono/apps/api/
-# Copy current worker/ → execora-mono/apps/worker/
-# Configure turbo.json pipeline: build → test → lint
-```
-
-**Phase 2 — Extract shared packages (2-3 days)**
-```bash
-# For each module:
-mkdir -p packages/invoice
-cp src/modules/invoice/ packages/invoice/src/
-# Add package.json with name: "@execora/invoice"
-# Update apps/api to import from "@execora/invoice"
-```
-
-Each package gets:
-```json
-{
-  "name": "@execora/invoice",
-  "main": "./dist/index.ts",
-  "types": "./dist/index.d.ts"
-}
-```
-
-**Phase 3 — React frontend (3-5 days)**
-```bash
-cd apps/
-npx create-next-app@latest web --typescript --tailwind
-# OR: npm create vite@latest web -- --template react-ts
-```
-
-Replace `public/index-audio.html` with a proper React app:
-```
-apps/web/
-├── src/
-│   ├── components/
-│   │   ├── VoiceButton.tsx      # Mic recording + WebSocket
-│   │   ├── CustomerCard.tsx     # Customer list
-│   │   ├── InvoiceList.tsx      # Invoices
-│   │   └── LedgerView.tsx       # Ledger/payments
-│   ├── hooks/
-│   │   ├── useVoice.ts          # WebSocket + audio pipeline hook
-│   │   └── useBusinessData.ts   # API fetch hooks
-│   └── App.tsx
-```
-
-**Phase 4 — Shared types (1 day)**
-```bash
-# Move src/types.ts → packages/types/src/index.ts
-# All apps import from "@execora/types"
-# Single source of truth for API contract
-```
-
-### Turborepo pipeline config
-
-```json
-// turbo.json
-{
-  "pipeline": {
-    "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
-    },
-    "test": {
-      "dependsOn": ["build"]
-    },
-    "dev": {
-      "cache": false,
-      "persistent": true
-    }
-  }
-}
-```
-
-This means: `turbo run build` builds all packages in dependency order automatically.
-
-### Running the monorepo
-
-```bash
-turbo run dev                   # starts all apps in watch mode
-turbo run build                 # builds everything in correct order
-turbo run test                  # runs all test suites
-turbo run build --filter=api    # build only the API app
-turbo run dev --filter=web      # dev only the React frontend
-```
-
----
-
-## 10. Technology-Agnostic Design Principles
+## 9. Technology-Agnostic Design Principles
 
 The architecture is designed so that **swapping any layer requires touching only one file or folder**. This is the most important property for long-term maintainability and open-source adoption.
 
@@ -790,7 +667,7 @@ node dist/worker/index.js &
 
 ---
 
-## 11. Open-Source Contribution Guide
+## 10. Open-Source Contribution Guide
 
 ### Setting up locally
 

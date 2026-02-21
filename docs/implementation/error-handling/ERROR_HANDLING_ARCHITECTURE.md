@@ -90,7 +90,7 @@
 Browser/Client
      │
      ▼
-GET /api/customers
+GET /api/v1/customers
      │
      ▼
 ┌─────────────────────┐
@@ -134,7 +134,7 @@ Browser/Client
 Browser/Client
      │
      ▼
-GET /api/customers/invalid-id
+GET /api/v1/customers/invalid-id
      │
      ▼
 ┌─────────────────────┐

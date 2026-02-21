@@ -12,6 +12,7 @@ model Customer {
   name      String
   nickname  String?
   phone     String?
+  email     String?
   landmark  String?
   notes     String?
   balance   Decimal  @default(0) @db.Decimal(12, 2)
@@ -24,6 +25,7 @@ model Customer {
 
   @@index([name])
   @@index([phone])
+  @@index([email])
   @@map("customers")
 }
 

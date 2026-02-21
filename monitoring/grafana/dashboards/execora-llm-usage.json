@@ -1,0 +1,316 @@
+{
+  "title": "Execora - LLM Usage",
+  "tags": ["execora", "llm", "usage"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 0,
+  "panels": [
+    {
+      "id": 1,
+      "title": "LLM Requests/min",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "sum(rate(llm_requests_total[1m])) by (operation, cache)",
+          "legendFormat": "{{operation}} {{cache}}"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 6 }
+    },
+    {
+      "id": 2,
+      "title": "LLM Tokens/sec (total)",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "sum(rate(llm_tokens_total{type=\"total\"}[1m])) by (operation)",
+          "legendFormat": "{{operation}}"
+        }
+      ],
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 6 }
+    },
+    {
+      "id": 3,
+      "title": "LLM Tokens/sec (prompt vs completion)",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "sum(rate(llm_tokens_total{type=\"prompt\"}[1m])) by (operation)",
+          "legendFormat": "{{operation}} prompt"
+        },
+        {
+          "expr": "sum(rate(llm_tokens_total{type=\"completion\"}[1m])) by (operation)",
+          "legendFormat": "{{operation}} completion"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 6, "w": 12, "h": 6 }
+    },
+    {
+      "id": 4,
+      "title": "LLM Cost USD/hr",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "sum(rate(llm_cost_usd_total[5m])) * 3600",
+          "legendFormat": "usd_per_hr"
+        }
+      ],
+      "gridPos": { "x": 12, "y": 6, "w": 12, "h": 6 }
+    },
+    {
+      "id": 5,
+      "title": "LLM Cache Hit Rate",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "sum(rate(llm_requests_total{cache=\"hit\"}[5m])) / sum(rate(llm_requests_total[5m]))",
+          "legendFormat": "hit_rate"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 6 }
+    },
+    {
+      "id": 6,
+      "title": "LLM Requests by Intent",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "sum(rate(llm_requests_total[5m])) by (intent)",
+          "legendFormat": "{{intent}}"
+        }
+      ],
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 6 }
+    },
+    {
+      "id": 7,
+      "title": "LLM Requests by Model",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "sum(rate(llm_requests_total[5m])) by (model)",
+          "legendFormat": "{{model}}"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 18, "w": 12, "h": 6 }
+    },
+    {
+      "id": 8,
+      "title": "LLM Cost by Operation (USD/hr)",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "sum(rate(llm_cost_usd_total[5m])) by (operation) * 3600",
+          "legendFormat": "{{operation}}"
+        }
+      ],
+      "gridPos": { "x": 12, "y": 18, "w": 12, "h": 6 }
+    },
+    {
+      "id": 9,
+      "title": "Total Requests (Last Hour)",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(increase(llm_requests_total[1h]))",
+          "legendFormat": "Total Requests"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "orientation": "auto",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 100 },
+              { "color": "red", "value": 500 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "x": 0, "y": 24, "w": 6, "h": 6 }
+    },
+    {
+      "id": 10,
+      "title": "Total Tokens Used (Last Hour)",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(increase(llm_tokens_total{type=\"total\"}[1h]))",
+          "legendFormat": "Total Tokens"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "orientation": "auto",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 10000 },
+              { "color": "red", "value": 50000 }
+            ]
+          }
+        }
+      },
+      "gridPos": { "x": 6, "y": 24, "w": 6, "h": 6 }
+    },
+    {
+      "id": 11,
+      "title": "Total Cost (Last Hour) - USD",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(increase(llm_cost_usd_total[1h]))",
+          "legendFormat": "Total Cost USD"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "orientation": "auto",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          },
+          "unit": "currencyUSD"
+        }
+      },
+      "gridPos": { "x": 12, "y": 24, "w": 6, "h": 6 }
+    },
+    {
+      "id": 12,
+      "title": "Cache Hit Percentage (%)",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "(sum(increase(llm_requests_total{cache=\"hit\"}[1h])) / sum(increase(llm_requests_total[1h]))) * 100",
+          "legendFormat": "Hit Rate %"
+        }
+      ],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "orientation": "auto",
+        "textMode": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "percentage",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 30 },
+              { "color": "green", "value": 60 }
+            ]
+          },
+          "unit": "percent"
+        }
+      },
+      "gridPos": { "x": 18, "y": 24, "w": 6, "h": 6 }
+    },
+    {
+      "id": 13,
+      "title": "Most Used Intent",
+      "type": "piechart",
+      "targets": [
+        {
+          "expr": "topk(5, sum(increase(llm_requests_total[1h])) by (intent))",
+          "legendFormat": "{{intent}}"
+        }
+      ],
+      "options": {
+        "pieType": "pie",
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "gridPos": { "x": 0, "y": 30, "w": 12, "h": 8 }
+    },
+    {
+      "id": 14,
+      "title": "Cost Breakdown by Intent",
+      "type": "piechart",
+      "targets": [
+        {
+          "expr": "topk(5, sum(increase(llm_cost_usd_total[1h])) by (intent))",
+          "legendFormat": "{{intent}}"
+        }
+      ],
+      "options": {
+        "pieType": "pie",
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "gridPos": { "x": 12, "y": 30, "w": 12, "h": 8 }
+    },
+    {
+      "id": 15,
+      "title": "Avg Tokens per Request by Operation",
+      "type": "barchart",
+      "targets": [
+        {
+          "expr": "sum(increase(llm_tokens_total{type=\"total\"}[1h])) by (operation) / sum(increase(llm_requests_total[1h])) by (operation)",
+          "legendFormat": "{{operation}}"
+        }
+      ],
+      "options": {
+        "barMode": "normal",
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "gridPos": { "x": 0, "y": 38, "w": 12, "h": 6 }
+    },
+    {
+      "id": 16,
+      "title": "Cached vs Non-Cached Requests",
+      "type": "barchart",
+      "targets": [
+        {
+          "expr": "sum(increase(llm_requests_total{cache=\"hit\"}[1h])) by (operation)",
+          "legendFormat": "{{operation}} (cached)"
+        },
+        {
+          "expr": "sum(increase(llm_requests_total{cache=\"miss\"}[1h])) by (operation)",
+          "legendFormat": "{{operation}} (non-cached)"
+        }
+      ],
+      "options": {
+        "barMode": "stacked",
+        "tooltip": { "mode": "single" },
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "gridPos": { "x": 12, "y": 38, "w": 12, "h": 6 }
+    }
+  ],
+  "refresh": "10s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  }
+}
