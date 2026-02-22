@@ -3,8 +3,91 @@ import { logger } from '../../infrastructure/logger';
 import { InvoiceItemInput } from '../../types';
 import { Decimal } from '@prisma/client/runtime/library';
 import { invoiceOperations } from '../../infrastructure/metrics';
+import { invoiceEmailService } from './invoice.email.service';
 
 class InvoiceService {
+  private async resolveInvoiceItems(tx: any, items: InvoiceItemInput[]) {
+    let total = 0;
+    const invoiceItems: Array<{
+      productId: string;
+      productName: string;
+      quantity: number;
+      price: number;
+      total: number;
+      stockBefore: number;
+      stockAfter: number;
+    }> = [];
+
+    for (const item of items) {
+      const product = await tx.product.findFirst({
+        where: {
+          name: {
+            contains: item.productName,
+            mode: 'insensitive',
+          },
+        },
+      });
+
+      if (!product) {
+        throw new Error(`Product not found: ${item.productName}`);
+      }
+
+      if (product.stock < item.quantity) {
+        throw new Error(
+          `Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`
+        );
+      }
+
+      const itemTotal = parseFloat(product.price.toString()) * item.quantity;
+      total += itemTotal;
+
+      invoiceItems.push({
+        productId: product.id,
+        productName: product.name,
+        quantity: item.quantity,
+        price: parseFloat(product.price.toString()),
+        total: itemTotal,
+        stockBefore: product.stock,
+        stockAfter: product.stock - item.quantity,
+      });
+    }
+
+    return { total, invoiceItems };
+  }
+
+  async previewInvoice(customerId: string, items: InvoiceItemInput[]) {
+    if (!customerId || typeof customerId !== 'string' || !customerId.trim()) {
+      throw new Error('Customer ID is required');
+    }
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new Error('Invoice must contain at least one item');
+    }
+    for (const item of items) {
+      if (!item.productName || typeof item.productName !== 'string' || !item.productName.trim()) {
+        throw new Error('Each item must have a valid product name');
+      }
+      if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+        throw new Error(`Item quantity must be a positive integer (got: ${item.quantity})`);
+      }
+    }
+
+    const customer = await prisma.customer.findUnique({ where: { id: customerId } });
+    if (!customer) {
+      throw new Error('Customer not found');
+    }
+
+    const { total, invoiceItems } = await this.resolveInvoiceItems(prisma, items);
+
+    return {
+      customerId,
+      customerName: customer.name,
+      currentBalance: parseFloat(customer.balance.toString()),
+      projectedBalance: parseFloat(customer.balance.toString()) + total,
+      total,
+      items: invoiceItems,
+    };
+  }
+
   /**
    * Create invoice with atomic transaction
    */
@@ -31,46 +114,7 @@ class InvoiceService {
 
       return await prisma.$transaction(async (tx) => {
         // 1. Resolve products and calculate total
-        let total = 0;
-        const invoiceItems: Array<{
-          productId: string;
-          quantity: number;
-          price: number;
-          total: number;
-        }> = [];
-
-        for (const item of items) {
-          // Find product by name (case insensitive)
-          const product = await tx.product.findFirst({
-            where: {
-              name: {
-                contains: item.productName,
-                mode: 'insensitive',
-              },
-            },
-          });
-
-          if (!product) {
-            throw new Error(`Product not found: ${item.productName}`);
-          }
-
-          // Check stock
-          if (product.stock < item.quantity) {
-            throw new Error(
-              `Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`
-            );
-          }
-
-          const itemTotal = parseFloat(product.price.toString()) * item.quantity;
-          total += itemTotal;
-
-          invoiceItems.push({
-            productId: product.id,
-            quantity: item.quantity,
-            price: parseFloat(product.price.toString()),
-            total: itemTotal,
-          });
-        }
+        const { total, invoiceItems } = await this.resolveInvoiceItems(tx, items);
 
         // 2. Create invoice
         const invoice = await tx.invoice.create({
@@ -357,6 +401,20 @@ class InvoiceService {
       upiPayments,
       pendingAmount: totalSales - totalPayments,
     };
+  }
+
+  /**
+   * Send invoice to customer via email (immediate or scheduled)
+   */
+  async sendInvoiceByEmail(invoiceId: string, toEmail: string, sendAt?: Date) {
+    return invoiceEmailService.sendInvoiceEmail(invoiceId, toEmail, sendAt);
+  }
+
+  /**
+   * Schedule invoice email reminder (calls sendInvoiceByEmail with sendAt)
+   */
+  async scheduleInvoiceEmailReminder(invoiceId: string, toEmail: string, sendAt: Date) {
+    return this.sendInvoiceByEmail(invoiceId, toEmail, sendAt);
   }
 }
 

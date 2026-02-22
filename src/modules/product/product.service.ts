@@ -3,6 +3,37 @@ import { logger } from '../../infrastructure/logger';
 import { Decimal } from '@prisma/client/runtime/library';
 
 class ProductService {
+  private catalogCache: { entries: string; fetchedAt: number } | null = null;
+  private static CATALOG_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+  /**
+   * Get product catalog formatted for LLM system prompt.
+   * Cached in memory with 5-minute TTL.
+   */
+  async getProductCatalog(): Promise<string> {
+    const now = Date.now();
+    if (this.catalogCache && now - this.catalogCache.fetchedAt < ProductService.CATALOG_TTL_MS) {
+      return this.catalogCache.entries;
+    }
+
+    const products = await prisma.product.findMany({
+      select: { name: true, description: true, unit: true },
+      orderBy: { name: 'asc' },
+    });
+
+    const entries = products
+      .map((p) => `- ${p.name}${p.description ? ` (${p.description})` : ''} [unit: ${p.unit}]`)
+      .join('\n');
+
+    this.catalogCache = { entries, fetchedAt: now };
+
+    logger.info({ productCount: products.length }, 'Product catalog refreshed for LLM prompt');
+    return entries;
+  }
+
+  invalidateCatalogCache(): void {
+    this.catalogCache = null;
+  }
   /**
    * Create new product
    */

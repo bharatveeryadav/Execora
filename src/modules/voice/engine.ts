@@ -1,6 +1,7 @@
 import { logger } from '../../infrastructure/logger';
 import { IntentType, IntentExtraction, ExecutionResult } from '../../types';
 import { customerService } from '../customer/customer.service';
+import { CustomerUpdateData } from '../../types';
 import { invoiceService } from '../invoice/invoice.service';
 import { ledgerService } from '../ledger/ledger.service';
 import { reminderService } from '../reminder/reminder.service';
@@ -10,12 +11,115 @@ import { openaiService } from '../../integrations/openai';
 import { emailService } from '../../infrastructure/email';
 
 class BusinessEngine {
+  private pendingInvoiceDrafts: Map<
+    string,
+    {
+      customerId: string;
+      customerName: string;
+      items: any[];
+      notes?: string;
+      createdAt: string;
+    }
+  > = new Map();
+
+  private isInvoiceConfirmation(entities: any, originalText?: string): boolean {
+    const confirmation = String(
+      entities?.confirmation || entities?.confirm || entities?.action || originalText || ''
+    ).toLowerCase();
+
+    return /\b(confirm|confirmed|final|finalize|yes|haan|ha|ok|okay|done|pakka|create now|final invoice)\b/.test(
+      confirmation
+    );
+  }
+
+  private async finalizePendingInvoice(conversationId: string): Promise<ExecutionResult> {
+    const draft = this.pendingInvoiceDrafts.get(conversationId);
+    if (!draft) {
+      return {
+        success: false,
+        message: 'No pending invoice found. Please share items first.',
+        error: 'NO_PENDING_INVOICE',
+      };
+    }
+
+    const invoice = await invoiceService.createInvoice(draft.customerId, draft.items, draft.notes);
+    this.pendingInvoiceDrafts.delete(conversationId);
+
+    return {
+      success: true,
+      message: `Invoice created for ${draft.customerName}. Total: ₹${invoice.total}`,
+      data: {
+        invoiceId: invoice.id,
+        customer: draft.customerName,
+        total: parseFloat(invoice.total.toString()),
+        confirmed: true,
+        items: invoice.items.map((item) => ({
+          product: item.product.name,
+          quantity: item.quantity,
+          price: parseFloat(item.price.toString()),
+          total: parseFloat(item.total.toString()),
+        })),
+      },
+    };
+  }
+
+  /**
+   * Confirm pending invoice via UI button click
+   */
+  async confirmPendingInvoice(conversationId: string): Promise<ExecutionResult> {
+    if (!conversationId) {
+      return { success: false, message: 'No session found.', error: 'NO_SESSION' };
+    }
+    return await this.finalizePendingInvoice(conversationId);
+  }
+
+  /**
+   * Cancel pending invoice draft via UI button click
+   */
+  cancelPendingInvoice(conversationId: string): ExecutionResult {
+    if (!conversationId) {
+      return { success: false, message: 'No session found.', error: 'NO_SESSION' };
+    }
+
+    const draft = this.pendingInvoiceDrafts.get(conversationId);
+    if (!draft) {
+      return { success: false, message: 'No pending invoice to cancel.', error: 'NO_PENDING_INVOICE' };
+    }
+
+    const customerName = draft.customerName;
+    this.pendingInvoiceDrafts.delete(conversationId);
+
+    return {
+      success: true,
+      message: `Invoice draft for ${customerName} cancelled.`,
+      data: { cancelled: true, customer: customerName },
+    };
+  }
+
   /**
    * Execute business logic based on intent
    */
   async execute(intent: IntentExtraction, conversationId?: string): Promise<ExecutionResult> {
     try {
       logger.info({ intent: intent.intent, entities: intent.entities, conversationId }, 'Executing intent');
+
+      // Check for pending invoice confirmation BEFORE intent routing.
+      // User might say "yes", "confirm", "confirm invoice", "haan pakka" etc.
+      // LLM may classify these as UNKNOWN or CREATE_INVOICE - either way,
+      // if a pending draft exists and text matches confirmation pattern, finalize it.
+      if (
+        conversationId &&
+        this.pendingInvoiceDrafts.has(conversationId)
+      ) {
+        const confirmText = (intent.originalText || intent.normalizedText || '').toLowerCase();
+        const hasItems = Array.isArray(intent.entities?.items) && intent.entities.items.length > 0;
+
+        // If text matches confirmation AND this is NOT a new invoice with fresh items
+        if (this.isInvoiceConfirmation(intent.entities, confirmText) && !hasItems) {
+          logger.info({ conversationId, confirmText }, 'Pending invoice confirmation detected');
+          return await this.finalizePendingInvoice(conversationId);
+        }
+      }
 
       switch (intent.intent) {
         case IntentType.CREATE_INVOICE:
@@ -63,6 +167,25 @@ class BusinessEngine {
         case IntentType.DELETE_CUSTOMER_DATA:
           return await this.executeDeleteCustomerData(intent.entities, conversationId);
 
+        // --- Email/Invoice extensions ---
+        case IntentType.SEND_INVOICE_EMAIL:
+          return await this.executeSendInvoiceEmail(intent.entities, conversationId);
+
+        case IntentType.CONFIRM_SEND_INVOICE_EMAIL:
+          return await this.executeConfirmSendInvoiceEmail(intent.entities, conversationId);
+
+        case IntentType.SCHEDULE_INVOICE_EMAIL:
+          return await this.executeScheduleInvoiceEmail(intent.entities, conversationId);
+
+        case IntentType.EDIT_SCHEDULED_EMAIL:
+          return await this.executeEditScheduledEmail(intent.entities, conversationId);
+
+        case IntentType.DELETE_SCHEDULED_EMAIL:
+          return await this.executeDeleteScheduledEmail(intent.entities, conversationId);
+
+        case IntentType.ADD_CUSTOMER_EMAIL:
+          return await this.executeAddCustomerEmail(intent.entities, conversationId);
+
         default:
           return {
             success: false,
@@ -78,6 +201,113 @@ class BusinessEngine {
         error: error.message,
       };
     }
+  }
+
+  // --- Email/Invoice intent handlers (moved outside execute) ---
+  /**
+   * Handle: "Send invoice by email" intent
+   * - If customer email missing, prompt for email
+   * - Otherwise, ask for confirmation to send
+   */
+  private async executeSendInvoiceEmail(entities: any, conversationId?: string): Promise<ExecutionResult> {
+    const resolution = await this.resolveCustomer(entities, conversationId);
+    if (!resolution.customer) {
+      return { success: false, message: 'Customer not found', error: 'CUSTOMER_NOT_FOUND' };
+    }
+    const customer = resolution.customer;
+    const invoice = await invoiceService.getLastInvoice(customer.id);
+    if (!invoice) {
+      return { success: false, message: `No invoice found for ${customer.name}`, error: 'NO_INVOICE' };
+    }
+    if (!customer.email) {
+      return {
+        success: false,
+        message: `${customer.name} ka email nahi hai. Kripya email batao (e.g. 'add email for ${customer.name}')`,
+        error: 'NO_EMAIL',
+        data: { customerId: customer.id, askForEmail: true },
+      };
+    }
+    return {
+      success: true,
+      message: `Invoice #${invoice.id.substring(0, 8)} ${customer.name} ko email bhejna hai? Boliye 'confirm send' ya 'schedule email' agar baad me bhejna hai.`,
+      data: { invoiceId: invoice.id, customerId: customer.id, email: customer.email, requiresConfirmation: true },
+    };
+  }
+
+  /**
+   * Handle: "Confirm send invoice email" intent
+   */
+  private async executeConfirmSendInvoiceEmail(entities: any, conversationId?: string): Promise<ExecutionResult> {
+    const resolution = await this.resolveCustomer(entities, conversationId);
+    if (!resolution.customer) {
+      return { success: false, message: 'Customer not found', error: 'CUSTOMER_NOT_FOUND' };
+    }
+    const customer = resolution.customer;
+    const invoice = await invoiceService.getLastInvoice(customer.id);
+    if (!invoice) {
+      return { success: false, message: `No invoice found for ${customer.name}`, error: 'NO_INVOICE' };
+    }
+    if (!customer.email) {
+      return { success: false, message: `${customer.name} ka email nahi hai. Pehle email add karo.`, error: 'NO_EMAIL', data: { customerId: customer.id, askForEmail: true } };
+    }
+    await invoiceService.sendInvoiceByEmail(invoice.id, customer.email);
+    return { success: true, message: `Invoice ${invoice.id.substring(0, 8)} ${customer.name} ko email se bhej diya gaya.`, data: { sent: true } };
+  }
+
+  /**
+   * Handle: "Schedule invoice email" intent
+   */
+  private async executeScheduleInvoiceEmail(entities: any, conversationId?: string): Promise<ExecutionResult> {
+    const resolution = await this.resolveCustomer(entities, conversationId);
+    if (!resolution.customer) {
+      return { success: false, message: 'Customer not found', error: 'CUSTOMER_NOT_FOUND' };
+    }
+    const customer = resolution.customer;
+    const invoice = await invoiceService.getLastInvoice(customer.id);
+    if (!invoice) {
+      return { success: false, message: `No invoice found for ${customer.name}`, error: 'NO_INVOICE' };
+    }
+    if (!customer.email) {
+      return { success: false, message: `${customer.name} ka email nahi hai. Pehle email add karo.`, error: 'NO_EMAIL', data: { customerId: customer.id, askForEmail: true } };
+    }
+    const { datetime } = entities;
+    if (!datetime) {
+      return { success: false, message: 'Kab bhejna hai? Date/time batao (e.g. "kal 7 baje")', error: 'MISSING_DATETIME', data: { askForDatetime: true } };
+    }
+    const sendAt = new Date(datetime); // In production, use NLP date parsing
+    await invoiceService.sendInvoiceByEmail(invoice.id, customer.email, sendAt);
+    return { success: true, message: `Invoice ${invoice.id.substring(0, 8)} ${customer.name} ko ${sendAt.toLocaleString()} par bhejne ke liye schedule ho gaya.`, data: { scheduled: true, sendAt } };
+  }
+
+  /**
+   * Handle: "Edit scheduled invoice email" intent
+   */
+  private async executeEditScheduledEmail(entities: any, conversationId?: string): Promise<ExecutionResult> {
+    return { success: true, message: 'Scheduled email edit feature coming soon.', data: { editable: true } };
+  }
+
+  /**
+   * Handle: "Delete scheduled invoice email" intent
+   */
+  private async executeDeleteScheduledEmail(entities: any, conversationId?: string): Promise<ExecutionResult> {
+    return { success: true, message: 'Scheduled email delete feature coming soon.', data: { deletable: true } };
+  }
+
+  /**
+   * Handle: "Add customer email" intent
+   */
+  private async executeAddCustomerEmail(entities: any, conversationId?: string): Promise<ExecutionResult> {
+    const resolution = await this.resolveCustomer(entities, conversationId);
+    if (!resolution.customer) {
+      return { success: false, message: 'Customer not found', error: 'CUSTOMER_NOT_FOUND' };
+    }
+    const customer = resolution.customer;
+    const { email } = entities;
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      return { success: false, message: 'Valid email address batao.', error: 'INVALID_EMAIL' };
+    }
+    await customerService.updateCustomer(customer.id, { email } as CustomerUpdateData);
+    return { success: true, message: `${customer.name} ka email update ho gaya: ${email}`, data: { emailUpdated: true, email } };
   }
 
   private async resolveCustomer(entities: any, conversationId?: string) {
@@ -119,6 +349,33 @@ class BusinessEngine {
    */
   private async executeCreateInvoice(entities: any, conversationId?: string): Promise<ExecutionResult> {
     const { items } = entities;
+    const hasItems = Array.isArray(items) && items.length > 0;
+    const isConfirm = this.isInvoiceConfirmation(entities);
+
+    if (conversationId && isConfirm && !hasItems) {
+      return await this.finalizePendingInvoice(conversationId);
+    }
+
+    if (conversationId && !hasItems && this.pendingInvoiceDrafts.has(conversationId)) {
+      const draft = this.pendingInvoiceDrafts.get(conversationId)!;
+      return {
+        success: true,
+        message: `Draft ready for ${draft.customerName}. Say 'confirm invoice' to create final invoice.`,
+        data: {
+          requiresConfirmation: true,
+          isPreview: true,
+        },
+      };
+    }
+
+    if (!hasItems) {
+      return {
+        success: false,
+        message: 'Invoice items missing. Please tell item names and quantities.',
+        error: 'MISSING_ITEMS',
+      };
+    }
+
     const resolution = await this.resolveCustomer(entities, conversationId);
 
     if (resolution.multiple) {
@@ -139,6 +396,38 @@ class BusinessEngine {
     }
 
     const customer = resolution.customer;
+
+    if (conversationId) {
+      const preview = await invoiceService.previewInvoice(customer.id, items);
+      this.pendingInvoiceDrafts.set(conversationId, {
+        customerId: customer.id,
+        customerName: customer.name,
+        items,
+        notes: entities?.notes,
+        createdAt: new Date().toISOString(),
+      });
+
+      return {
+        success: true,
+        message: `Invoice preview ready for ${customer.name}. Please confirm to create final invoice.`,
+        data: {
+          requiresConfirmation: true,
+          isPreview: true,
+          customer: customer.name,
+          total: preview.total,
+          currentBalance: preview.currentBalance,
+          projectedBalance: preview.projectedBalance,
+          items: preview.items.map((item) => ({
+            product: item.productName,
+            quantity: item.quantity,
+            price: item.price,
+            total: item.total,
+            stockBefore: item.stockBefore,
+            stockAfter: item.stockAfter,
+          })),
+        },
+      };
+    }
 
     // Create invoice
     const invoice = await invoiceService.createInvoice(customer.id, items);

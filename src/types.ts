@@ -1,3 +1,13 @@
+// Customer update data (shared)
+export interface CustomerUpdateData {
+  name?: string;
+  phone?: string;
+  nickname?: string;
+  landmark?: string;
+  notes?: string;
+  balance?: number;
+  email?: string;
+}
 // Intent types
 export enum IntentType {
   CREATE_INVOICE = 'CREATE_INVOICE',
@@ -17,6 +27,13 @@ export enum IntentType {
   UPDATE_CUSTOMER_PHONE = 'UPDATE_CUSTOMER_PHONE',
   GET_CUSTOMER_INFO = 'GET_CUSTOMER_INFO',
   DELETE_CUSTOMER_DATA = 'DELETE_CUSTOMER_DATA',
+  // --- Email/Invoice extensions ---
+  SEND_INVOICE_EMAIL = 'SEND_INVOICE_EMAIL',
+  CONFIRM_SEND_INVOICE_EMAIL = 'CONFIRM_SEND_INVOICE_EMAIL',
+  SCHEDULE_INVOICE_EMAIL = 'SCHEDULE_INVOICE_EMAIL',
+  EDIT_SCHEDULED_EMAIL = 'EDIT_SCHEDULED_EMAIL',
+  DELETE_SCHEDULED_EMAIL = 'DELETE_SCHEDULED_EMAIL',
+  ADD_CUSTOMER_EMAIL = 'ADD_CUSTOMER_EMAIL',
   UNKNOWN = 'UNKNOWN',
 }
 
@@ -79,6 +96,7 @@ export enum WSMessageType {
   TASK_CANCELLED = 'task:cancelled',
   TASK_STATUS = 'task:status',
   QUEUE_STATUS = 'queue:status',
+  DASHBOARD_UPDATE = 'dashboard:update',
 }
 
 export interface WSMessage {

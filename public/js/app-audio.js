@@ -73,9 +73,23 @@ class ExecoraAudioClient {
         // Activity log
         this.activityLog = document.getElementById('activityLog');
 
+        // Active invoice card reference (for confirm/cancel updates)
+        this._activeInvoiceCard = null;
+
         // Audio visualizer
         this.audioVisualizer = document.getElementById('audioVisualizer');
         this.initAudioVisualizer();
+
+        // Live dashboard elements
+        this.dashTotalSales = document.getElementById('dashTotalSales');
+        this.dashInvoiceCount = document.getElementById('dashInvoiceCount');
+        this.dashTotalPayments = document.getElementById('dashTotalPayments');
+        this.dashPendingAmount = document.getElementById('dashPendingAmount');
+        this.dashActiveCustomer = document.getElementById('dashActiveCustomer');
+        this.dashCustomerName = document.getElementById('dashCustomerName');
+        this.dashCustomerBalance = document.getElementById('dashCustomerBalance');
+        this.dashLowStock = document.getElementById('dashLowStock');
+        this.dashLowStockList = document.getElementById('dashLowStockList');
 
         // Audio playback element (hidden)
         this.audioPlayer = document.createElement('audio');
@@ -267,6 +281,18 @@ class ExecoraAudioClient {
 
                 if (message.data.executionResult) {
                     console.log('📊 Execution result:', message.data.executionResult);
+
+                    // If this is a response to confirm/cancel, update existing card
+                    if (message.data.invoiceAction && this._activeInvoiceCard) {
+                        this.updateInvoiceCard(
+                            this._activeInvoiceCard,
+                            message.data.invoiceAction,
+                            message.data.executionResult
+                        );
+                        this._activeInvoiceCard = null;
+                    } else {
+                        this.renderInvoiceDashboard(message.data.executionResult);
+                    }
                 }
                 break;
 
@@ -286,6 +312,11 @@ class ExecoraAudioClient {
                 this.log('Recording stopped', 'info');
                 break;
 
+            case 'dashboard:update':
+                console.log('📊 Dashboard update received:', message.data);
+                this.updateDashboard(message.data);
+                break;
+
             case 'error':
                 console.error('❌ Error received:', message.data.error);
                 this.log(`Error: ${message.data.error}`, 'error');
@@ -298,6 +329,239 @@ class ExecoraAudioClient {
 
             default:
                 console.warn('⚠️  Unknown message type:', message.type, message);
+        }
+    }
+
+    formatCurrency(value) {
+        const amount = Number(value);
+        if (!Number.isFinite(amount)) {
+            return '₹0';
+        }
+        return `₹${amount.toFixed(2)}`;
+    }
+
+    renderInvoiceDashboard(executionResult) {
+        if (!executionResult || !executionResult.data) {
+            return;
+        }
+
+        const data = executionResult.data;
+        const isPreview = !!data.isPreview;
+        const isConfirmed = !!data.confirmed;
+        const isCancelled = !!data.cancelled;
+        const items = Array.isArray(data.items) ? data.items : [];
+
+        // Only render card for preview, confirmed, or cancelled states
+        if (!isPreview && !isConfirmed && !isCancelled && !data.invoiceId) {
+            return;
+        }
+
+        const chatMessages = document.getElementById('chatMessages');
+        if (!chatMessages) return;
+
+        // Build status text and CSS class
+        let statusText, statusClass;
+        if (isPreview) {
+            statusText = 'Invoice Preview - Confirm to create';
+            statusClass = 'preview';
+        } else if (isConfirmed) {
+            statusText = 'Invoice Created Successfully';
+            statusClass = 'confirmed';
+        } else if (isCancelled) {
+            statusText = 'Invoice Draft Cancelled';
+            statusClass = 'cancelled';
+        } else {
+            statusText = 'Invoice Created';
+            statusClass = 'confirmed';
+        }
+
+        // Build items table rows
+        const itemRows = items.map(item => {
+            const lineTotal = this.formatCurrency(item.total);
+            const price = this.formatCurrency(item.price);
+            return `<tr>
+                <td>${item.product || item.productName || '-'}</td>
+                <td class="text-center">${item.quantity}</td>
+                <td class="text-right">${price}</td>
+                <td class="text-right">${lineTotal}</td>
+            </tr>`;
+        }).join('');
+
+        // Build balance section (only for preview)
+        let balanceSection = '';
+        if (isPreview && typeof data.currentBalance === 'number') {
+            balanceSection = `
+                <div class="invoice-card-balance">
+                    <div class="balance-row">
+                        <span>Current Balance:</span>
+                        <span>${this.formatCurrency(data.currentBalance)}</span>
+                    </div>
+                    ${typeof data.projectedBalance === 'number' ? `
+                    <div class="balance-row projected">
+                        <span>After Invoice:</span>
+                        <span>${this.formatCurrency(data.projectedBalance)}</span>
+                    </div>` : ''}
+                </div>`;
+        }
+
+        // Build action buttons (only for preview)
+        let actionsSection = '';
+        if (isPreview) {
+            actionsSection = `
+                <div class="invoice-card-actions">
+                    <button class="invoice-btn invoice-btn-confirm" data-action="confirm">
+                        Confirm Invoice
+                    </button>
+                    <button class="invoice-btn invoice-btn-cancel" data-action="cancel">
+                        Cancel
+                    </button>
+                </div>`;
+        }
+
+        // Create the card element
+        const cardWrapper = document.createElement('div');
+        cardWrapper.className = 'message ai-message';
+        cardWrapper.innerHTML = `
+            <div class="message-avatar ai-avatar">
+                <div class="ai-icon">E</div>
+            </div>
+            <div class="message-content">
+                <div class="message-header">
+                    <span class="message-label">Execora</span>
+                </div>
+                <div class="invoice-card ${statusClass}">
+                    <div class="invoice-card-status">${statusText}</div>
+                    <div class="invoice-card-customer">
+                        <strong>Customer:</strong> ${data.customer || data.customerName || '-'}
+                    </div>
+                    <table class="invoice-card-table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th class="text-center">Qty</th>
+                                <th class="text-right">Price</th>
+                                <th class="text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>${itemRows}</tbody>
+                        <tfoot>
+                            <tr class="invoice-total-row">
+                                <td colspan="3"><strong>Total</strong></td>
+                                <td class="text-right"><strong>${this.formatCurrency(data.total || 0)}</strong></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    ${balanceSection}
+                    ${actionsSection}
+                </div>
+            </div>`;
+
+        chatMessages.appendChild(cardWrapper);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        // Attach button click handlers (only for preview cards)
+        if (isPreview) {
+            const confirmBtn = cardWrapper.querySelector('[data-action="confirm"]');
+            const cancelBtn = cardWrapper.querySelector('[data-action="cancel"]');
+
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', () => {
+                    this.send({
+                        type: 'invoice:confirm',
+                        timestamp: new Date().toISOString(),
+                    });
+                    confirmBtn.disabled = true;
+                    if (cancelBtn) cancelBtn.disabled = true;
+                    confirmBtn.textContent = 'Confirming...';
+                });
+            }
+
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', () => {
+                    this.send({
+                        type: 'invoice:cancel',
+                        timestamp: new Date().toISOString(),
+                    });
+                    if (confirmBtn) confirmBtn.disabled = true;
+                    cancelBtn.disabled = true;
+                    cancelBtn.textContent = 'Cancelling...';
+                });
+            }
+
+            // Store reference for later state update
+            this._activeInvoiceCard = cardWrapper;
+        }
+    }
+
+    updateInvoiceCard(cardWrapper, action, executionResult) {
+        const card = cardWrapper.querySelector('.invoice-card');
+        if (!card) return;
+
+        const statusEl = card.querySelector('.invoice-card-status');
+        const actionsEl = card.querySelector('.invoice-card-actions');
+
+        if (action === 'confirmed') {
+            card.classList.remove('preview');
+            card.classList.add('confirmed');
+            if (statusEl) statusEl.textContent = 'Invoice Created Successfully';
+            if (actionsEl) actionsEl.remove();
+        } else if (action === 'cancelled') {
+            card.classList.remove('preview');
+            card.classList.add('cancelled');
+            if (statusEl) statusEl.textContent = 'Invoice Draft Cancelled';
+            if (actionsEl) actionsEl.remove();
+        }
+    }
+
+    updateDashboard(data) {
+        if (!data) return;
+
+        // Update daily summary
+        if (data.dailySummary) {
+            const s = data.dailySummary;
+            if (this.dashTotalSales) {
+                this.dashTotalSales.textContent = this.formatCurrency(s.totalSales || 0);
+                this.dashTotalSales.classList.add('stat-flash');
+                setTimeout(() => this.dashTotalSales.classList.remove('stat-flash'), 600);
+            }
+            if (this.dashInvoiceCount) {
+                this.dashInvoiceCount.textContent = s.invoiceCount || 0;
+            }
+            if (this.dashTotalPayments) {
+                this.dashTotalPayments.textContent = this.formatCurrency(s.totalPayments || 0);
+            }
+            if (this.dashPendingAmount) {
+                const pending = s.pendingAmount || 0;
+                this.dashPendingAmount.textContent = this.formatCurrency(pending);
+                this.dashPendingAmount.classList.toggle('stat-warning', pending > 0);
+            }
+        }
+
+        // Update active customer
+        if (data.activeCustomer && this.dashActiveCustomer) {
+            this.dashActiveCustomer.style.display = 'block';
+            if (this.dashCustomerName) {
+                this.dashCustomerName.textContent = data.activeCustomer.name;
+            }
+            if (this.dashCustomerBalance) {
+                const bal = data.activeCustomer.balance || 0;
+                this.dashCustomerBalance.textContent = this.formatCurrency(bal);
+                this.dashCustomerBalance.classList.add('stat-flash');
+                setTimeout(() => this.dashCustomerBalance.classList.remove('stat-flash'), 600);
+            }
+        }
+
+        // Update low stock alerts
+        if (data.lowStock && data.lowStock.length > 0 && this.dashLowStock && this.dashLowStockList) {
+            this.dashLowStock.style.display = 'block';
+            this.dashLowStockList.innerHTML = data.lowStock.map(item =>
+                `<div class="low-stock-item">
+                    <span class="low-stock-name">${item.name}</span>
+                    <span class="low-stock-qty">${item.stock} ${item.unit}</span>
+                </div>`
+            ).join('');
+        } else if (this.dashLowStock) {
+            this.dashLowStock.style.display = 'none';
         }
     }
 

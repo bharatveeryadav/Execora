@@ -7,8 +7,11 @@ import { sttService } from '../integrations/stt';
 import { ttsService } from '../integrations/tts';
 import { voiceSessionService } from '../modules/voice/session.service';
 import { conversationMemory } from '../modules/voice/conversation';
-import { WSMessage, WSMessageType } from '../types';
+import { WSMessage, WSMessageType, IntentType } from '../types';
 import { websocketConnections, voiceCommandsProcessed } from '../infrastructure/metrics';
+import { invoiceService } from '../modules/invoice/invoice.service';
+import { productService } from '../modules/product/product.service';
+import { customerService } from '../modules/customer/customer.service';
 
 interface VoiceSession {
   ws: WebSocket;
@@ -205,6 +208,16 @@ class EnhancedWebSocketHandler {
       case 'recording:stop':
         logger.info({ sessionId }, 'recording:stop message received');
         await this.handleRecordingStop(session);
+        break;
+
+      case 'invoice:confirm':
+        logger.info({ sessionId }, 'invoice:confirm message received');
+        await this.handleInvoiceConfirm(session);
+        break;
+
+      case 'invoice:cancel':
+        logger.info({ sessionId }, 'invoice:cancel message received');
+        await this.handleInvoiceCancel(session);
         break;
 
       default:
@@ -532,6 +545,9 @@ class EnhancedWebSocketHandler {
       });
       logger.info({ sessionId: session.sessionId }, 'VOICE_RESPONSE message sent successfully');
 
+      // Push real-time dashboard update after business operation
+      await this.pushDashboardUpdate(session, intent.intent, executionResult);
+
       // 5. Generate and send TTS audio (only for paid providers, not for browser speech)
       if (ttsService.isAvailable() && ttsProvider !== 'browser') {
         logger.info({ sessionId: session.sessionId, ttsProvider }, 'Generating TTS for paid provider');
@@ -637,6 +653,82 @@ class EnhancedWebSocketHandler {
   }
 
   /**
+   * Handle invoice confirmation from UI button
+   */
+  private async handleInvoiceConfirm(session: VoiceSession) {
+    try {
+      const executionResult = await businessEngine.confirmPendingInvoice(
+        session.conversationSessionId || ''
+      );
+
+      const response = await openaiService.generateResponse(
+        executionResult,
+        IntentType.CREATE_INVOICE,
+        session.conversationSessionId
+      );
+
+      if (session.conversationSessionId) {
+        conversationMemory.addAssistantMessage(session.conversationSessionId, response);
+      }
+
+      this.sendMessage(session.ws, {
+        type: WSMessageType.VOICE_RESPONSE,
+        data: {
+          text: response,
+          executionResult,
+          invoiceAction: 'confirmed',
+        },
+        timestamp: new Date().toISOString(),
+      });
+
+      await this.pushDashboardUpdate(session, IntentType.CREATE_INVOICE, executionResult);
+
+      if (ttsService.isAvailable() && session.ttsProvider !== 'browser') {
+        await this.generateAndSendTTS(session, response, session.ttsProvider);
+      }
+    } catch (error: any) {
+      logger.error({ error: error.message, sessionId: session.sessionId }, 'Invoice confirm failed');
+      this.sendError(session.ws, 'Invoice confirmation failed');
+    }
+  }
+
+  /**
+   * Handle invoice cancellation from UI button
+   */
+  private async handleInvoiceCancel(session: VoiceSession) {
+    try {
+      const executionResult = businessEngine.cancelPendingInvoice(
+        session.conversationSessionId || ''
+      );
+
+      const response = await openaiService.generateResponse(
+        executionResult,
+        IntentType.CANCEL_INVOICE,
+        session.conversationSessionId
+      );
+
+      if (session.conversationSessionId) {
+        conversationMemory.addAssistantMessage(session.conversationSessionId, response);
+      }
+
+      this.sendMessage(session.ws, {
+        type: WSMessageType.VOICE_RESPONSE,
+        data: {
+          text: response,
+          executionResult,
+          invoiceAction: 'cancelled',
+        },
+        timestamp: new Date().toISOString(),
+      });
+
+      await this.pushDashboardUpdate(session, IntentType.CANCEL_INVOICE, executionResult);
+    } catch (error: any) {
+      logger.error({ error: error.message, sessionId: session.sessionId }, 'Invoice cancel failed');
+      this.sendError(session.ws, 'Invoice cancellation failed');
+    }
+  }
+
+  /**
    * Save recorded audio
    */
   private async saveRecording(session: VoiceSession) {
@@ -717,6 +809,55 @@ class EnhancedWebSocketHandler {
       data: { error },
       timestamp: new Date().toISOString(),
     });
+  }
+
+  /**
+   * Push real-time dashboard data to client after business operations
+   */
+  private async pushDashboardUpdate(session: VoiceSession, intent: string, executionResult: any) {
+    try {
+      // Gather live summary data
+      const dailySummary = await invoiceService.getDailySummary();
+      const lowStockProducts = await productService.getLowStockProducts(10);
+
+      // Get active customer balance if available
+      let activeCustomerData: any = null;
+      if (session.conversationSessionId) {
+        const activeCustomer = await customerService.getActiveCustomer(session.conversationSessionId);
+        if (activeCustomer) {
+          const balance = await customerService.getBalance(activeCustomer.id);
+          activeCustomerData = {
+            name: activeCustomer.name,
+            balance,
+          };
+        }
+      }
+
+      this.sendMessage(session.ws, {
+        type: WSMessageType.DASHBOARD_UPDATE,
+        data: {
+          lastAction: intent,
+          dailySummary: {
+            invoiceCount: dailySummary.invoiceCount,
+            totalSales: dailySummary.totalSales,
+            totalPayments: dailySummary.totalPayments,
+            pendingAmount: dailySummary.pendingAmount,
+          },
+          activeCustomer: activeCustomerData,
+          lowStock: lowStockProducts.slice(0, 5).map((p: any) => ({
+            name: p.name,
+            stock: p.stock,
+            unit: p.unit,
+          })),
+          timestamp: new Date().toISOString(),
+        },
+        timestamp: new Date().toISOString(),
+      });
+
+      logger.debug({ sessionId: session.sessionId, intent }, 'Dashboard update pushed');
+    } catch (error) {
+      logger.error({ error, sessionId: session.sessionId }, 'Failed to push dashboard update');
+    }
   }
 
   /**

@@ -277,3 +277,40 @@ test('getLastInvoice: returns null when no invoices', async () => {
     restoreAll(restores);
   }
 });
+
+// ── sendInvoiceByEmail ─────────────────────────────────────────────────────
+
+test('sendInvoiceByEmail: sends email immediately', async () => {
+  const restores: RestoreFn[] = [];
+  try {
+    const invoice = makeInvoice({ id: 'inv-001', customerId: 'cust-001', customer: { id: 'cust-001', name: 'Test Customer', email: 'test@example.com' }, items: [makeProduct({ name: 'Butter' })], total: dec(100) });
+    restores.push(patchMethod(prisma.invoice as any, 'findUnique', async () => invoice));
+    restores.push(patchMethod(prisma.reminder as any, 'create', async () => ({})));
+    restores.push(patchMethod(prisma.reminder as any, 'update', async () => ({})));
+    restores.push(patchMethod(prisma.customer as any, 'findUnique', async () => invoice.customer));
+    restores.push(patchMethod(require('../integrations/email').emailService, 'sendMail', async () => ({ messageId: 'msg-001' })));
+
+    const result = await invoiceService.sendInvoiceByEmail('inv-001', 'test@example.com');
+    assert.ok(result.sent);
+  } finally {
+    restoreAll(restores);
+  }
+});
+
+test('sendInvoiceByEmail: schedules reminder if sendAt is future', async () => {
+  const restores: RestoreFn[] = [];
+  try {
+    const invoice = makeInvoice({ id: 'inv-002', customerId: 'cust-002', customer: { id: 'cust-002', name: 'Test Customer 2', email: 'test2@example.com' }, items: [makeProduct({ name: 'Jam' })], total: dec(200) });
+    restores.push(patchMethod(prisma.invoice as any, 'findUnique', async () => invoice));
+    restores.push(patchMethod(prisma.reminder as any, 'create', async () => ({})));
+    restores.push(patchMethod(prisma.reminder as any, 'update', async () => ({})));
+    restores.push(patchMethod(prisma.customer as any, 'findUnique', async () => invoice.customer));
+    restores.push(patchMethod(require('../integrations/email').emailService, 'sendMail', async () => ({ messageId: 'msg-002' })));
+
+    const future = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+    const result = await invoiceService.sendInvoiceByEmail('inv-002', 'test2@example.com', future);
+    assert.ok(result.scheduled);
+  } finally {
+    restoreAll(restores);
+  }
+});
