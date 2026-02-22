@@ -1,0 +1,64 @@
+name: Database Backup
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    name: Backup Production Database
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Create backup
+        env:
+          PGPASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          pg_dump -h ${{ secrets.DB_HOST }} \
+                  -U ${{ secrets.DB_USER }} \
+                  -d ${{ secrets.DB_NAME }} \
+                  -F c \
+                  -f backup-$(date +%Y%m%d-%H%M%S).dump
+
+      - name: Upload to S3/MinIO
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.BACKUP_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.BACKUP_SECRET_KEY }}
+          aws-region: us-east-1
+
+      - name: Upload backup
+        run: |
+          aws s3 cp backup-*.dump \
+            s3://${{ secrets.BACKUP_BUCKET }}/execora-backups/ \
+            --endpoint-url ${{ secrets.BACKUP_ENDPOINT }}
+
+      - name: Clean old backups (keep last 30 days)
+        run: |
+          aws s3 ls s3://${{ secrets.BACKUP_BUCKET }}/execora-backups/ \
+            --endpoint-url ${{ secrets.BACKUP_ENDPOINT }} | \
+            awk '{print $4}' | \
+            sort -r | \
+            tail -n +31 | \
+            xargs -I {} aws s3 rm s3://${{ secrets.BACKUP_BUCKET }}/execora-backups/{} \
+              --endpoint-url ${{ secrets.BACKUP_ENDPOINT }}
+
+      - name: Notify on failure
+        if: failure()
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            ⚠️ Database backup failed!
+            
+            Date: $(date)
+            Check logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}

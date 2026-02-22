@@ -603,7 +603,7 @@ Target these metrics for new code:
 - **README.md** - User-facing overview
 - **IMPLEMENTATION_DETAILS.md** - Detailed technical breakdown
 - **ARCHITECTURE.md** - System design and flow diagrams
-- **DEPLOYMENT.md** - Deployment and production setup
+- **docs/production/README.md** - Deployment and production setup
 
 ---
 

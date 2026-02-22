@@ -193,7 +193,7 @@ docker-compose up -d
 - **Error Handling:** [../implementation/error-handling/](../implementation/error-handling/)
 - **Monitoring:** [../monitoring/](../monitoring/)
 - **Testing:** [../testing/](../testing/)
-- **Deployment:** [../DEPLOYMENT.md](../DEPLOYMENT.md)
+- **Production Audit:** [../audit/PRODUCTION_READINESS_AUDIT.md](../audit/PRODUCTION_READINESS_AUDIT.md)
 
 ---
 

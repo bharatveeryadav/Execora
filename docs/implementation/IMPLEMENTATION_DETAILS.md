@@ -1079,7 +1079,7 @@ WebSocket notification + Response
 - **README.md** - Main project documentation
 - **IMPLEMENTATION_DETAILS.md** - This file (current implementations)
 - **ARCHITECTURE.md** - System architecture and design
-- **DEPLOYMENT.md** - Deployment and production setup
+- **docs/production/README.md** - Deployment and production setup
 
 ---
 

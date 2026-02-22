@@ -7,13 +7,13 @@ Complete guide to running and understanding the Execora regression test suite.
 ### Run Once
 ```bash
 cd /home/bharat/Music/execora-complete-with-audio/execora
-bash regression-test.sh
+bash scripts/testing/regression-test.sh
 # When prompted: Press 'n' for single run
 ```
 
 ### Continuous Monitoring (5-min live test)
 ```bash
-bash regression-test.sh
+bash scripts/testing/regression-test.sh
 # When prompted: Press 'y' for continuous mode
 # Dashboard updates every 10 seconds
 # Press Ctrl+C to stop
@@ -21,7 +21,7 @@ bash regression-test.sh
 
 ### Background Testing
 ```bash
-bash regression-test.sh &
+bash scripts/testing/regression-test.sh &
 # Your test runs in background
 # Continue with other work
 ```
@@ -208,7 +208,7 @@ Generated 5 errors → Visible in dashboard now
 ### Scenario 1: Demo/Presentation
 ```bash
 # Start test in continuous mode
-bash regression-test.sh
+bash scripts/testing/regression-test.sh
 # y (select continuous)
 # Keep dashboard open in browser
 # Show live monitoring updating every 10 seconds
@@ -217,14 +217,14 @@ bash regression-test.sh
 ### Scenario 2: Load Testing
 ```bash
 # Run in background for 5 minutes
-timeout 300 bash regression-test.sh &
+timeout 300 bash scripts/testing/regression-test.sh &
 # Check metrics, response times under load
 ```
 
 ### Scenario 3: Finding Issues
 ```bash
 # Monitor while making code changes
-bash regression-test.sh  # y for continuous
+bash scripts/testing/regression-test.sh  # y for continuous
 # Make changes to code
 # Watch dashboard for new errors appearing
 # Ctrl+C when done
@@ -235,7 +235,7 @@ bash regression-test.sh  # y for continuous
 ## 🛠️ Advanced Usage
 
 ### Run Specific Count
-Modify `regression-test.sh`:
+Modify `scripts/testing/regression-test.sh`:
 ```bash
 # Change line with "for i in {1..15}" to desired count
 for i in {1..30}  # Run 30 rapid requests
@@ -243,18 +243,18 @@ for i in {1..30}  # Run 30 rapid requests
 
 ### Extract Just Errors
 ```bash
-bash regression-test.sh 2>&1 | grep "✗"
+bash scripts/testing/regression-test.sh 2>&1 | grep "✗"
 ```
 
 ### Get Pass Rate Only
 ```bash
-bash regression-test.sh 2>&1 | grep "Pass Rate"
+bash scripts/testing/regression-test.sh 2>&1 | grep "Pass Rate"
 ```
 
 ### Schedule Regular Tests
 ```bash
 # Run test every 6 hours (Linux cron)
-0 */6 * * * /home/bharat/Music/execora-complete-with-audio/execora/regression-test.sh
+0 */6 * * * /home/bharat/Music/execora-complete-with-audio/execora/scripts/testing/regression-test.sh
 ```
 
 ---
@@ -351,6 +351,6 @@ After running regression tests in Grafana:
 ---
 
 **Last Updated:** Feb 20, 2026  
-**Script Location:** `/regression-test.sh`  
+**Script Location:** `/scripts/testing/regression-test.sh`  
 **Dashboard:** http://localhost:3001/d/execora-errors-prod  
 **Maintained By:** QA Team

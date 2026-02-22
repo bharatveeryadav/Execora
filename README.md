@@ -1,11 +1,42 @@
-# Execora - Real-time Voice-Driven SME Business Engine
+# 🎙️ Execora — Real-Time Voice-Driven Business Engine
 
-A production-ready, voice-first business management system built for Indian small and medium enterprises.
+**Production-Grade Voice Processing System** for small merchants managing invoices, payments, customers, and reminders through voice commands.
 
-## 🎯 Features
+| Grade | Status | Details |
+|-------|--------|---------|
+| **Overall** | B+ | Production-ready for SME use with security hardening |
+| **Architecture** | A+ | Modular, transaction-safe, scalable |
+| **Security** | D | Critical gaps to fix (JWT, WebSocket auth, secrets) |
+| **Timeline** | 2-3 weeks | To production-grade deployment |
+
+---
+
+## 📚 Documentation Hub (Lifecycle Order)
+
+### 1) Quickstart
+→ [QUICKSTART.md](QUICKSTART.md), [docs/QUICKSTART.md](docs/QUICKSTART.md), [START_HERE.md](START_HERE.md)
+
+### 2) Development
+→ [docs/audit/CODE_AUDIT_SUMMARY.md](docs/audit/CODE_AUDIT_SUMMARY.md), [docs/implementation/DEVELOPER_GUIDE.md](docs/implementation/DEVELOPER_GUIDE.md)
+
+### 3) Testing
+→ [docs/testing/README.md](docs/testing/README.md), [docs/testing/REGRESSION_TESTING.md](docs/testing/REGRESSION_TESTING.md)
+
+### 4) Deployment & CI/CD
+→ [docs/cicd/CICD_QUICK_START.md](docs/cicd/CICD_QUICK_START.md), [docs/cicd/GITHUB_ACTIONS_SETUP.md](docs/cicd/GITHUB_ACTIONS_SETUP.md), [docs/production/README.md](docs/production/README.md)
+
+### 5) Operations & Monitoring
+→ [docs/ops/ENVIRONMENT_MANAGEMENT.md](docs/ops/ENVIRONMENT_MANAGEMENT.md), [docs/monitoring/README.md](docs/monitoring/README.md), [docs/ops/PRODUCTION_QUICK_REFERENCE.md](docs/ops/PRODUCTION_QUICK_REFERENCE.md)
+
+### 6) Audit & Security
+→ [docs/security/SECURITY_HARDENING_GUIDE.md](docs/security/SECURITY_HARDENING_GUIDE.md), [docs/audit/PRODUCTION_READINESS_AUDIT.md](docs/audit/PRODUCTION_READINESS_AUDIT.md), [docs/audit/AUDIT_EXECUTIVE_SUMMARY.md](docs/audit/AUDIT_EXECUTIVE_SUMMARY.md), [docs/audit/AUDIT_DOCUMENTS_INDEX.md](docs/audit/AUDIT_DOCUMENTS_INDEX.md)
+
+---
+
+## 🏗️ Core Features
 
 - **Voice Commands**: Real-time Hindi/English voice processing
-- **Invoice Management**: Create, track, and cancel invoices atomically
+- **Invoice Management**: Create, track, and cancel invoices with atomic transactions
 - **Credit Management**: Track customer balances with complete ledger
 - **Payment Reminders**: Schedule WhatsApp reminders via BullMQ
 - **Stock Management**: Automatic stock updates with invoices
@@ -17,168 +48,70 @@ A production-ready, voice-first business management system built for Indian smal
 - **Parallel Processing**: Multi-task execution with 3 concurrent slots
 - **Auto-caching**: 3-layer caching for 95% latency reduction
 
-## 🏗️ Architecture
+### Technology Stack
 
-### Tech Stack
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| **Language** | TypeScript 5.3 | Type safety |
+| **Runtime** | Node.js 20+ | JavaScript server |
+| **Web Framework** | Fastify 4.26 | High-performance HTTP server |
+| **Real-time** | WebSocket (ws) | Bidirectional communication |
+| **Database** | PostgreSQL 15 + Prisma 5.9 | Data persistence & ORM |
+| **Cache** | Redis 7 | Session & query caching |
+| **Queue** | BullMQ 5.1 | Job processing |
+| **Storage** | MinIO 7.1 | S3-compatible object storage |
+| **LLM** | OpenAI GPT-4 | Intent extraction |
+| **STT** | Deepgram 3.4 | Speech-to-text streaming |
+| **TTS** | ElevenLabs | Voice synthesis |
+| **Email** | Nodemailer 6.9 | SMTP email delivery |
+| **Logging** | Pino 8.19 | Structured logging |
+| **Monitoring** | Prometheus 15.1 | Metrics collection |
+| **Dashboard** | Grafana | Visualization |
+| **Testing** | Node:test | Native test runner |
 
-- **Backend**: Fastify + TypeScript
-- **Database**: PostgreSQL 15
-- **Queue**: Redis + BullMQ
-- **Storage**: MinIO (S3-compatible)
-- **AI**: OpenAI GPT-4
-- **Voice**: WebRTC + WebSocket
-- **Messaging**: WhatsApp Cloud API
-- **Deployment**: Docker Compose
+---
 
-### Components
-
-1. **API Server** (`src/index.ts`): Main Fastify server with REST + WebSocket
-2. **Worker** (`src/worker/index.ts`): BullMQ worker for background jobs
-3. **Modules** (`src/modules/`): Business domain logic (customer, invoice, ledger, reminder, voice)
-4. **Integrations** (`src/integrations/`): External API adapters (OpenAI, Deepgram, ElevenLabs, WhatsApp)
-5. **Infrastructure** (`src/infrastructure/`): Technical plumbing (DB, queue, storage, logger, metrics)
-6. **Frontend** (`public/`): Voice UI (HTML/JS WebSocket client)
-
-> For full architecture details, migration history, and error handling strategy, see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
-
-## 📦 Installation
+## 🚀 Quick Start
 
 ### Prerequisites
+- Node.js ≥ 20
+- PostgreSQL 15+
+- Redis 7+
+- Docker & Docker Compose (recommended)
 
-- Node.js 20+
-- Docker & Docker Compose
-- OpenAI API key
-- WhatsApp Business API credentials (optional)
+### Installation (5 minutes)
 
-### Quick Start
-
-1. **Clone and setup**:
 ```bash
-git clone <repository>
+# Clone & install
+git clone <repo-url>
 cd execora
 npm install
-```
 
-2. **Configure environment**:
-```bash
+# Configure environment
 cp .env.example .env
-# Edit .env and add your API keys
+# Edit with your API keys, database URL, etc.
+
+# Setup database
+npm run db:push
+
+# Start development
+npm run dev
 ```
 
-3. **Start with Docker**:
+**Access:**
+- API: `http://localhost:3000`
+- WebSocket: `ws://localhost:3000/ws`
+- Metrics: `http://localhost:3000/metrics`
+- Health: `http://localhost:3000/health`
+
+### Docker Quick Start
 ```bash
 docker-compose up -d
-```
-
-4. **Initialize database**:
-```bash
 npm run db:push
-```
-
-5. **Add sample data** (optional):
-```bash
 npm run seed
 ```
 
-6. **Access**:
-- Frontend: http://localhost:3000
-- MinIO Console: http://localhost:9001 (minioadmin/minioadmin)
-
-## 🚀 Development
-
-### Run locally (without Docker)
-
-1. **Start services**:
-```bash
-# Terminal 1: PostgreSQL (Docker)
-docker run -p 5432:5432 -e POSTGRES_PASSWORD=execora postgres:15-alpine
-
-# Terminal 2: Redis (Docker)
-docker run -p 6379:6379 redis:7-alpine
-
-# Terminal 3: MinIO (Docker)
-docker run -p 9000:9000 -p 9001:9001 \
-  -e MINIO_ROOT_USER=minioadmin \
-  -e MINIO_ROOT_PASSWORD=minioadmin \
-  minio/minio server /data --console-address ":9001"
-```
-
-2. **Generate Prisma client**:
-```bash
-npm run db:generate
-npm run db:push
-```
-
-3. **Run application**:
-```bash
-# Terminal 4: API Server
-npm run dev
-
-# Terminal 5: Worker
-npm run worker
-```
-
-## 📖 API Documentation
-
-### REST Endpoints
-
-#### Customers
-- `GET /api/v1/customers/search?q={query}` - Search customers
-- `GET /api/v1/customers/:id` - Get customer details
-- `POST /api/v1/customers` - Create customer
-
-#### Invoices
-- `GET /api/v1/invoices` - List invoices
-- `POST /api/v1/invoices` - Create invoice
-- `POST /api/v1/invoices/:id/cancel` - Cancel invoice
-
-#### Ledger
-- `POST /api/v1/ledger/payment` - Record payment
-- `POST /api/v1/ledger/credit` - Add credit
-- `GET /api/v1/ledger/:customerId` - Get ledger entries
-
-#### Reminders
-- `GET /api/v1/reminders` - List pending reminders
-- `POST /api/v1/reminders` - Schedule reminder
-- `POST /api/v1/reminders/:id/cancel` - Cancel reminder
-
-#### Products
-- `GET /api/v1/products` - List all products
-- `POST /api/v1/products` - Create product
-- `GET /api/v1/products/low-stock` - Get low stock products
-
-#### Summary
-- `GET /api/v1/summary/daily` - Get daily sales summary
-
-### WebSocket Events
-
-**Client → Server**:
-- `voice:transcript` - Streaming transcript
-- `voice:final` - Final transcript to process
-- `recording:start` - Start recording
-- `recording:stop` - Stop recording
-
-**Server → Client**:
-- `voice:start` - Connection established
-- `voice:transcript` - Transcript update
-- `voice:intent` - Intent extracted
-- `voice:response` - Natural language response
-- `voice:tts-stream` - TTS audio stream
-- `error` - Error message
-
-## 🗄️ Database Schema
-
-### Core Tables
-
-- `customers` - Customer master data
-- `products` - Product catalog with stock
-- `invoices` - Invoice headers
-- `invoice_items` - Invoice line items
-- `ledger_entries` - Financial transactions (immutable)
-- `reminders` - Scheduled WhatsApp reminders
-- `whatsapp_messages` - Message delivery tracking
-- `conversation_sessions` - Voice session metadata
-- `conversation_recordings` - Audio file references
+---
 
 ## 🎙️ Voice Commands (Hindi/English)
 
@@ -213,79 +146,411 @@ npm run worker
 "Aaj kitna sale hua?"
 ```
 
-## 🔐 Security Notes
+---
 
-- Never commit `.env` file
-- Use strong database passwords in production
-- Enable SSL for MinIO in production
-- Use WhatsApp Business API with proper verification
-- Implement rate limiting for production
+## 📁 Project Structure
 
-## 📊 Monitoring
-
-View logs:
-```bash
-# API Server logs
-docker-compose logs -f app
-
-# Worker logs
-docker-compose logs -f worker
-
-# All logs
-docker-compose logs -f
 ```
+src/
+├── index.ts              # Entry point & server bootstrap
+├── config.ts             # Configuration management
+├── types.ts              # TypeScript type definitions
+│
+├── api/                  # REST API routes
+│   └── index.ts          # Route registration
+│
+├── ws/                   # WebSocket handlers
+│   ├── handler.ts        # Basic WebSocket
+│   └── enhanced-handler.ts  # Audio/voice handler
+│
+├── modules/              # Business logic (organized by domain)
+│   ├── customer/         # Customer CRUD, search, deletion
+│   ├── invoice/          # Invoicing with transactions
+│   ├── ledger/           # Payment recording
+│   ├── reminder/         # Scheduled reminders
+│   ├── product/          # Product inventory
+│   └── voice/            # Voice processing & intent
+│
+├── infrastructure/       # Cross-cutting concerns
+│   ├── database.ts       # Prisma ORM singleton
+│   ├── logger.ts         # Structured logging (Pino)
+│   ├── error-handler.ts  # Centralized error handling
+│   ├── metrics.ts        # Prometheus monitoring
+│   ├── queue.ts          # BullMQ job queue
+│   ├── email.ts          # Email service (SMTP)
+│   ├── storage.ts        # MinIO object storage
+│   ├── llm-cache.ts      # Multi-tier caching
+│   ├── runtime-config.ts # Dynamic configuration
+│   └── metrics-plugin.ts # Fastify metrics middleware
+│
+├── integrations/         # External service integrations
+│   ├── openai.ts         # GPT-4 API
+│   ├── stt/              # STT providers (Deepgram, ElevenLabs)
+│   ├── tts/              # TTS providers (ElevenLabs, OpenAI)
+│   └── whatsapp.ts       # WhatsApp API
+│
+└── __tests__/            # Test suite
+    ├── helpers/          # Test fixtures & mocking
+    └── *.test.ts         # Unit tests
+
+prisma/
+├── schema.prisma         # Database schema
+├── migrations/           # Migration files
+└── seed.ts               # Seed data script
+
+monitoring/
+├── prometheus.yml        # Metrics config
+├── grafana/              # Grafana dashboard definitions
+└── README.md             # Monitoring setup guide
+
+docker-compose.yml       # Development stack
+docker-compose.monitoring.yml  # Observability stack
+Dockerfile               # API container
+Dockerfile.worker        # Worker container
+
+public/
+├── index.html           # Main voice interface
+├── index-audio.html     # Audio version
+└── css/, js/            # Frontend resources
+
+scripts/
+├── manual-tests/         # One-off/manual test scripts
+└── testing/              # Regression and test runners
+
+docs/
+├── QUICKSTART.md         # User guide
+├── README.md             # Documentation overview
+├── api/                  # API documentation
+├── architecture/         # Architecture & design
+├── features/             # Feature guides
+├── implementation/        # Implementation details
+├── monitoring/           # Observability guides
+├── production/           # Production deployment
+└── testing/              # Testing strategy
+```
+
+---
+
+## 📊 API Documentation
+
+### REST Endpoints
+
+#### Customers
+- `GET /api/v1/customers/search?q={query}` - Search customers
+- `GET /api/v1/customers/:id` - Get customer details
+- `POST /api/v1/customers` - Create customer
+
+#### Invoices
+- `GET /api/v1/invoices` - List invoices
+- `POST /api/v1/invoices` - Create invoice
+- `POST /api/v1/invoices/:id/cancel` - Cancel invoice
+
+#### Ledger
+- `POST /api/v1/ledger/payment` - Record payment
+- `POST /api/v1/ledger/credit` - Add credit
+- `GET /api/v1/ledger/:customerId` - Get ledger entries
+
+#### Reminders
+- `GET /api/v1/reminders` - List pending reminders
+- `POST /api/v1/reminders` - Schedule reminder
+- `POST /api/v1/reminders/:id/cancel` - Cancel reminder
+
+#### Products
+- `GET /api/v1/products` - List all products
+- `POST /api/v1/products` - Create product
+- `GET /api/v1/products/low-stock` - Get low stock products
+
+#### Summary
+- `GET /api/v1/summary/daily` - Get daily sales summary
+
+See [docs/api/API.md](docs/api/API.md) for complete OpenAPI specification.
+
+### WebSocket Events
+
+**Client → Server**:
+- `voice:transcript` - Streaming transcript
+- `voice:final` - Final transcript to process
+- `recording:start` - Start recording
+- `recording:stop` - Stop recording
+
+**Server → Client**:
+- `voice:start` - Connection established
+- `voice:transcript` - Transcript update
+- `voice:intent` - Intent extracted
+- `voice:response` - Natural language response
+- `voice:tts-stream` - TTS audio stream
+- `error` - Error message
+
+---
+
+## 🔧 Development Commands
+
+```bash
+# Development
+npm run dev              # Start with hot reload
+npm run build            # Compile TypeScript
+npm run start            # Run compiled JS
+
+# Database
+npm run db:push          # Sync schema to DB
+npm run db:migrate       # Create migration
+npm run db:studio        # Open Prisma Studio
+npm run seed             # Seed test data
+npm run db:generate      # Generate Prisma client
+
+# Testing
+npm run test             # Run all tests
+npm test -- src/modules/customer  # Test one module
+
+# Other
+npm run worker           # Start background worker
+npm run build:watch      # Watch TypeScript compilation
+```
+
+---
 
 ## 🧪 Testing
 
-Run tests:
+Tests use **Node.js built-in test runner** (no external framework).
+
 ```bash
-npm test
+npm run test
+
+# Run specific test
+npm test -- src/__tests__/customer.service.test.ts
+
+# Run with coverage
+NODE_TEST_COVERAGE=1 npm test
 ```
 
-## 📚 Documentation
+**Coverage:**
+- Customer service: >85%
+- Invoice service: >80%
+- Ledger service: >80%
+- Error handling: >90%
 
-- Master index: [docs/README.md](docs/README.md)
-- Features: [docs/features](docs/features)
-- Architecture: [docs/architecture](docs/architecture)
-- Implementation: [docs/implementation](docs/implementation)
-- Testing: [docs/testing](docs/testing)
+---
 
-## 📝 Environment Variables
+## 🗄️ Database Schema
 
-Required:
-- `DATABASE_URL` - PostgreSQL connection string
-- `OPENAI_API_KEY` - OpenAI API key
+### Core Tables
 
-Optional:
-- `WHATSAPP_ACCESS_TOKEN` - WhatsApp Business API token
-- `WHATSAPP_PHONE_NUMBER_ID` - WhatsApp phone number ID
-- `DEEPGRAM_API_KEY` - For STT
-- `ELEVENLABS_API_KEY` - For TTS
+- `customers` - Customer master data
+- `products` - Product catalog with stock
+- `invoices` - Invoice headers
+- `invoice_items` - Invoice line items
+- `ledger_entries` - Financial transactions (immutable)
+- `reminders` - Scheduled WhatsApp reminders
+- `whatsapp_messages` - Message delivery tracking
+- `conversation_sessions` - Voice session metadata
+- `conversation_recordings` - Audio file references
+
+Full schema: [prisma/schema.prisma](prisma/schema.prisma)
+
+---
+
+## 🎯 Environment Setup
+
+### Required: .env File
+
+```bash
+# Database
+DATABASE_URL=postgresql://user:pass@localhost:5432/execora
+
+# Redis
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+# OpenAI
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-4-turbo-preview
+
+# Deepgram (STT)
+DEEPGRAM_API_KEY=...
+
+# ElevenLabs (TTS)
+ELEVENLABS_API_KEY=...
+ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM
+
+# WhatsApp
+WHATSAPP_PHONE_NUMBER_ID=...
+WHATSAPP_ACCESS_TOKEN=...
+WHATSAPP_WEBHOOK_VERIFY_TOKEN=...
+
+# Email
+EMAIL_PROVIDER=gmail
+EMAIL_FROM=noreply@execora.com
+EMAIL_GMAIL_USER=...
+EMAIL_GMAIL_PASSWORD=...
+
+# Server
+PORT=3000
+NODE_ENV=development
+LOG_LEVEL=info
+```
+
+See [.env.example](.env.example) for complete template.
+
+---
+
+## 🚀 Production Deployment
+
+### Before Going Live ✅
+
+**Security** (2-3 days)
+- [ ] Add JWT authentication
+- [ ] Secure WebSocket with tokens
+- [ ] Migrate secrets to vault
+- [ ] Enable webhook signature verification
+
+**Reliability** (2 days)
+- [ ] Fix database migration race condition
+- [ ] Add per-user rate limiting
+- [ ] Tune database connection pool
+- [ ] Configure health checks
+
+**Observability** (2 days)
+- [ ] Setup APM (Datadog/New Relic)
+- [ ] Add distributed tracing
+- [ ] Configure alerting
+- [ ] Create incident response runbooks
+
+**Testing** (3 days)
+- [ ] Load test (100 → 1000 concurrent)
+- [ ] Security audit
+- [ ] Backup/restore test
+- [ ] Failover test
+
+### Security Hardening
+
+See [docs/security/SECURITY_HARDENING_GUIDE.md](docs/security/SECURITY_HARDENING_GUIDE.md) for step-by-step implementation of all 7 critical security fixes.
+
+### Deploy to Production
+
+```bash
+# Using Docker Compose
+docker-compose -f docker-compose.yml up -d
+
+# Or manual deployment
+npm run build
+npm run db:migrate
+npm start
+```
+
+---
+
+## 📊 Production Audit Summary
+
+```
+Overall Grade: B+
+├─ Architecture: A+ (Excellent modular design)
+├─ Security: D ⚠️ (Critical gaps to fix)
+├─ Reliability: B (Good, needs APM)
+├─ Performance: A- (Great caching, optimized)
+└─ Operations: B (Monitoring ready, runbooks needed)
+
+Critical Fixes Required:
+1. API Authentication (JWT) — 2-3 days
+2. WebSocket Authentication — 1 day
+3. Secrets Management (Vault) — 1 day
+4. Production Timeline: 2-3 weeks
+
+Detailed audit: [docs/audit/PRODUCTION_READINESS_AUDIT.md](docs/audit/PRODUCTION_READINESS_AUDIT.md) (40+ pages)
+```
+
+---
+
+## 🔐 Security Notes
+
+⚠️ **Before Production:**
+- [ ] Enable JWT authentication (see [docs/security/SECURITY_HARDENING_GUIDE.md](docs/security/SECURITY_HARDENING_GUIDE.md))
+- [ ] Secure WebSocket with bearer tokens
+- [ ] Never hardcode secrets in code
+- [ ] Use strong database passwords
+- [ ] Enable SSL for all external connections
+- [ ] Enable webhook signature verification
+- [ ] Setup rate limiting per customer
+- [ ] Implement audit logging for data deletion
+
+---
+
+## 📞 Support & Contributing
+
+### Getting Help
+1. Check [docs/](docs/) for documentation
+2. Review [docs/audit/CODE_AUDIT_SUMMARY.md](docs/audit/CODE_AUDIT_SUMMARY.md) for architecture patterns
+3. Search existing issues
+4. Create detailed issue with reproduction steps
+
+### Contributing
+- See [docs/implementation/DEVELOPER_GUIDE.md](docs/implementation/DEVELOPER_GUIDE.md)
+- Follow code patterns in [docs/audit/CODE_AUDIT_SUMMARY.md](docs/audit/CODE_AUDIT_SUMMARY.md)
+- Run tests: `npm test`
+- Update docs for new features
+
+### Reporting Security Issues
+⚠️ **Do NOT create public issues for security problems**  
+→ Contact security team privately
+
+---
+
+## 📖 Complete Documentation
+
+| Purpose | Link |
+|---------|------|
+| **Getting Started** | [docs/QUICKSTART.md](docs/QUICKSTART.md) |
+| **Start Here** | [START_HERE.md](START_HERE.md) |
+| **Developer Guide** | [docs/implementation/DEVELOPER_GUIDE.md](docs/implementation/DEVELOPER_GUIDE.md) |
+| **Testing Guide** | [docs/testing/README.md](docs/testing/README.md) |
+| **Regression Testing** | [docs/testing/REGRESSION_TESTING.md](docs/testing/REGRESSION_TESTING.md) |
+| **CI/CD Quick Start** | [docs/cicd/CICD_QUICK_START.md](docs/cicd/CICD_QUICK_START.md) |
+| **Production Strategy** | [docs/production/README.md](docs/production/README.md) |
+| **Monitoring & Observability** | [docs/monitoring/README.md](docs/monitoring/README.md) |
+| **Environment Management** | [docs/ops/ENVIRONMENT_MANAGEMENT.md](docs/ops/ENVIRONMENT_MANAGEMENT.md) |
+| **Security Fixes** | [docs/security/SECURITY_HARDENING_GUIDE.md](docs/security/SECURITY_HARDENING_GUIDE.md) |
+| **Executive Summary** | [AUDIT_EXECUTIVE_SUMMARY.md](AUDIT_EXECUTIVE_SUMMARY.md) |
+| **Full Production Audit** | [docs/audit/PRODUCTION_READINESS_AUDIT.md](docs/audit/PRODUCTION_READINESS_AUDIT.md) |
+| **Code Architecture** | [docs/audit/CODE_AUDIT_SUMMARY.md](docs/audit/CODE_AUDIT_SUMMARY.md) |
+| **Doc Navigation** | [docs/audit/AUDIT_DOCUMENTS_INDEX.md](docs/audit/AUDIT_DOCUMENTS_INDEX.md) |
+| **API Reference** | [docs/api/API.md](docs/api/API.md) |
+| **Architecture Deep Dive** | [docs/architecture/](docs/architecture/) |
+| **Quick Reference** | [docs/ops/PRODUCTION_QUICK_REFERENCE.md](docs/ops/PRODUCTION_QUICK_REFERENCE.md) |
+
+---
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create feature branch
-3. Commit changes
-4. Push to branch
-5. Create Pull Request
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open Pull Request
+
+---
 
 ## 📄 License
 
 MIT License
 
+---
+
 ## 🙏 Acknowledgments
 
 Built with:
-- Fastify
-- Prisma
-- BullMQ
-- OpenAI
-- PostgreSQL
-- Redis
-- MinIO
+- Fastify (high-performance HTTP)
+- Prisma (ORM)
+- BullMQ (job queue)
+- OpenAI (LLM)
+- PostgreSQL (database)
+- Redis (cache)
+- MinIO (object storage)
 - WhatsApp Cloud API
 
 ---
 
-**Execora** - Transforming Indian SME business operations through voice.
+**Execora** — Transforming Indian SME business operations through voice.
+
+**Last Updated:** February 21, 2026  
+**Status:** ✅ Production-Ready (with security hardening required)  
+**Version:** 1.0.0  
+**Audit Grade:** B+ (A+ Architecture, D Security)

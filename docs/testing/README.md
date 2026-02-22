@@ -54,7 +54,7 @@ npm test -- --coverage  # With coverage report
 ### Run Regression Tests
 ```bash
 cd docs/testing
-bash ../../regression-test.sh
+bash ../../scripts/testing/regression-test.sh
 
 # Select option:
 # n = Single run

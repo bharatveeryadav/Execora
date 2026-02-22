@@ -3,8 +3,8 @@
 ## Run All Tests
 ```bash
 # Option 1: Using bash script
-chmod +x run-tests.sh
-./run-tests.sh
+chmod +x scripts/testing/run-tests.sh
+./scripts/testing/run-tests.sh
 
 # Option 2: Manual
 npm run build
