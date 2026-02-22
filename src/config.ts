@@ -37,6 +37,16 @@ export const config = {
     model: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
   },
 
+  // Email
+  email: {
+    host: process.env.EMAIL_HOST || '',
+    port: parseInt(process.env.EMAIL_PORT || '587', 10),
+    secure: process.env.EMAIL_SECURE === 'true',
+    user: process.env.EMAIL_USER || '',
+    pass: process.env.EMAIL_PASS || '',
+    from: process.env.EMAIL_FROM || 'no-reply@execora.com',
+  },
+
   // WhatsApp
   whatsapp: {
     phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || '',

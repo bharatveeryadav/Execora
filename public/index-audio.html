@@ -87,6 +87,44 @@
                     </div>
                 </div>
 
+                <!-- Live Dashboard Panel -->
+                <div class="sidebar-section">
+                    <h3 class="sidebar-title">Live Dashboard</h3>
+                    <div id="liveDashboard" class="live-dashboard">
+                        <div class="dashboard-card">
+                            <div class="dashboard-stat">
+                                <span class="stat-label">Today's Sales</span>
+                                <span class="stat-value" id="dashTotalSales">--</span>
+                            </div>
+                            <div class="dashboard-stat">
+                                <span class="stat-label">Invoices</span>
+                                <span class="stat-value" id="dashInvoiceCount">--</span>
+                            </div>
+                            <div class="dashboard-stat">
+                                <span class="stat-label">Payments</span>
+                                <span class="stat-value" id="dashTotalPayments">--</span>
+                            </div>
+                            <div class="dashboard-stat">
+                                <span class="stat-label">Pending</span>
+                                <span class="stat-value stat-pending" id="dashPendingAmount">--</span>
+                            </div>
+                        </div>
+
+                        <div id="dashActiveCustomer" class="dashboard-active-customer" style="display: none;">
+                            <span class="stat-label">Active Customer</span>
+                            <div class="active-customer-info">
+                                <span id="dashCustomerName">--</span>
+                                <span id="dashCustomerBalance" class="customer-balance">--</span>
+                            </div>
+                        </div>
+
+                        <div id="dashLowStock" class="dashboard-low-stock" style="display: none;">
+                            <span class="stat-label">Low Stock Alert</span>
+                            <div id="dashLowStockList" class="low-stock-list"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Activity Log in Sidebar -->
                 <div class="sidebar-section">
                     <details class="sidebar-log-toggle">

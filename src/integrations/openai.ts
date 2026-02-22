@@ -7,6 +7,7 @@ import { llmRequestsTotal, llmTokensTotal, llmCostUsdTotal } from '../infrastruc
 import { getRuntimeConfig } from '../infrastructure/runtime-config';
 import { IntentType, IntentExtraction, ExecutionResult } from '../types';
 import { conversationMemory } from '../modules/voice/conversation';
+import { productService } from '../modules/product/product.service';
 
 type CachePolicy = {
   ttlSeconds: number;
@@ -146,6 +147,14 @@ class OpenAIService {
         conversationContext = conversationMemory.getFormattedContext(conversationId, 6);
       }
 
+      // Fetch product catalog for multilanguage name resolution
+      let productCatalog = '';
+      try {
+        productCatalog = await productService.getProductCatalog();
+      } catch (err) {
+        logger.warn({ err }, 'Failed to fetch product catalog for intent extraction');
+      }
+
       const systemPrompt = `You are an intent extraction system for an Indian SME business assistant.
 Extract the intent and entities from the Hindi/English mixed voice command.
 
@@ -183,6 +192,27 @@ Available intents:
 - GET_CUSTOMER_INFO: Get all customer information (name, phone, balance, status)
 - DELETE_CUSTOMER_DATA: Delete all customer data permanently with confirmation and OTP
 - UNKNOWN: Cannot determine intent
+
+=== PRODUCT CATALOG ===
+The following products are available in the business database:
+${productCatalog}
+
+=== CRITICAL PRODUCT NAME NORMALIZATION RULES ===
+For CREATE_INVOICE and CHECK_STOCK intents:
+1. ALWAYS map the user's product reference to the EXACT product name from the catalog above.
+2. The user may refer to products in ANY Indian language (Hindi, Tamil, Bengali, Marathi, Kannada, Telugu, Gujarati, Punjabi, Malayalam, Odia, etc.) or English.
+3. Map examples:
+   - Hindi: "aata", "atta", "गेहूं का आटा" → "Aata"
+   - Hindi: "cheeni", "shakkar", "चीनी", "शक्कर" → "Cheeni"
+   - Tamil: "சக்கரை" (sakkarai) → "Cheeni"
+   - Bengali: "চিনি" (chini) → "Cheeni"
+   - Tamil: "கோதுமை மாவு" (godhumai maavu) → "Aata"
+   - English: "sugar" → "Cheeni", "flour"/"wheat flour" → "Aata", "salt" → "Namak"
+   - English: "milk" → "Doodh" or "Milk", "rice" → "Chawal" or "Rice", "tea" → "Chai"
+   - English: "oil"/"cooking oil" → "Oil", "mustard oil"/"sarson ka tel" → "Sarso Tel"
+4. Product names in items array MUST match EXACTLY one of the catalog names above.
+5. If no catalog match is found, use the closest phonetic match from the catalog.
+6. Never invent product names not in the catalog.
 
 Critical extraction rules for Indian voice patterns:
 1) Recognize Indian Hinglish patterns for ADD_CREDIT:
@@ -232,7 +262,7 @@ Example responses:
 {"intent":"ADD_CREDIT","entities":{"customer":"Bharat","amount":500},"confidence":0.95}
 {"intent":"RECORD_PAYMENT","entities":{"customer":"Bharat","amount":300},"confidence":0.94}
 {"intent":"RECORD_PAYMENT","entities":{"customer":"Rahul","amount":200},"confidence":0.92}
-{"intent":"CREATE_INVOICE","entities":{"customer":"Rahul","items":[{"product":"milk","quantity":2},{"product":"bread","quantity":1}]},"confidence":0.95}
+{"intent":"CREATE_INVOICE","entities":{"customer":"Rahul","items":[{"productName":"Doodh","quantity":2},{"productName":"Bread","quantity":1}]},"confidence":0.95}
 {"intent":"UPDATE_CUSTOMER_PHONE","entities":{"customer":"Bharat","phone":"9568926253"},"confidence":0.92}
 {"intent":"GET_CUSTOMER_INFO","entities":{"customer":"Bharat"},"confidence":0.93}
 {"intent":"DELETE_CUSTOMER_DATA","entities":{"customer":"Bharat","confirmation":"delete"},"confidence":0.92}`;
@@ -423,6 +453,14 @@ Example responses:
       if (parsedPhone) {
         normalized.phone = parsedPhone;
       }
+    }
+
+    // Normalize invoice item field names (LLM may output "product" instead of "productName")
+    if (Array.isArray(normalized.items)) {
+      normalized.items = normalized.items.map((item: any) => ({
+        productName: item.productName || item.product || item.name,
+        quantity: typeof item.quantity === 'number' ? item.quantity : parseInt(item.quantity, 10) || 1,
+      }));
     }
 
     return normalized;

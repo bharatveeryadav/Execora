@@ -64,6 +64,96 @@ async function main() {
         unit: 'liter',
       },
     }),
+    prisma.product.create({
+      data: {
+        name: 'Aata',
+        description: 'Wheat flour',
+        price: new Decimal(45),
+        stock: 100,
+        unit: 'kg',
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Cheeni',
+        description: 'Sugar',
+        price: new Decimal(42),
+        stock: 100,
+        unit: 'kg',
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Dal',
+        description: 'Lentils (mixed)',
+        price: new Decimal(90),
+        stock: 50,
+        unit: 'kg',
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Namak',
+        description: 'Salt',
+        price: new Decimal(20),
+        stock: 50,
+        unit: 'packet',
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Chai',
+        description: 'Tea leaves',
+        price: new Decimal(80),
+        stock: 30,
+        unit: 'packet',
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Doodh',
+        description: 'Fresh milk 1L',
+        price: new Decimal(60),
+        stock: 50,
+        unit: 'packet',
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Ghee',
+        description: 'Desi ghee',
+        price: new Decimal(500),
+        stock: 20,
+        unit: 'liter',
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Sarso Tel',
+        description: 'Mustard oil',
+        price: new Decimal(160),
+        stock: 20,
+        unit: 'liter',
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Maida',
+        description: 'Refined flour',
+        price: new Decimal(35),
+        stock: 50,
+        unit: 'kg',
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: 'Chawal',
+        description: 'Rice',
+        price: new Decimal(60),
+        stock: 100,
+        unit: 'kg',
+      },
+    }),
   ]);
 
   console.log(`✅ Created ${products.length} products`);
@@ -120,7 +210,7 @@ async function main() {
   console.log(`✅ Created ${customers.length} customers`);
 
   console.log('📝 Creating sample invoices...');
-  
+
   // Create invoice for Rahul
   const invoice1 = await prisma.invoice.create({
     data: {
@@ -160,7 +250,7 @@ async function main() {
   console.log('✅ Created sample invoices and ledger entries');
 
   console.log('📅 Creating sample reminders...');
-  
+
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   tomorrow.setHours(19, 0, 0, 0);
@@ -178,7 +268,7 @@ async function main() {
   console.log('✅ Created sample reminders');
 
   console.log('💰 Setting opening balances...');
-  
+
   await prisma.ledgerEntry.create({
     data: {
       customerId: customers[2].id, // Suresh
