@@ -37,6 +37,12 @@ export const config = {
     model: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
   },
 
+  // Groq — fast LPU inference for intent extraction (~150ms vs ~1400ms from India)
+  // Get free API key at https://console.groq.com
+  groq: {
+    apiKey: process.env.GROQ_API_KEY || '',
+  },
+
   // WhatsApp
   whatsapp: {
     phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || '',

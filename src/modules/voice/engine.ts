@@ -11,6 +11,41 @@ import { emailService } from '../../infrastructure/email';
 
 class BusinessEngine {
   /**
+   * Get total pending amount for voice/intent queries
+   */
+  private async executeTotalPendingAmount(entities: any, conversationId?: string): Promise<ExecutionResult> {
+    const totalPending = await customerService.getTotalPendingAmount();
+    return {
+      success: true,
+      message: `Total pending amount hai ₹${totalPending}.`,
+      data: { totalPending },
+    };
+  }
+  /**
+   * List all customers with pending balances
+   */
+  private async executeListCustomerBalances(entities: any, conversationId?: string): Promise<ExecutionResult> {
+    // Fetch all customers with non-zero balance
+    const customers = await customerService.getAllCustomersWithPendingBalance();
+    if (!customers.length) {
+      return {
+        success: true,
+        message: 'Sab customers ka balance zero hai.',
+        data: { customers: [] },
+      };
+    }
+    // Calculate total pending balance
+    const total = customers.reduce((sum, c) => sum + (c.balance || 0), 0);
+    return {
+      success: true,
+      message: `Total ${customers.length} customers ke paas ₹${total} baki hai.`,
+      data: {
+        customers: customers.map((c) => ({ name: c.name, balance: c.balance, landmark: c.landmark || '', phone: c.phone || '' })),
+        totalPending: total,
+      },
+    };
+  }
+  /**
    * Execute business logic based on intent
    */
   async execute(intent: IntentExtraction, conversationId?: string): Promise<ExecutionResult> {
@@ -18,6 +53,8 @@ class BusinessEngine {
       logger.info({ intent: intent.intent, entities: intent.entities, conversationId }, 'Executing intent');
 
       switch (intent.intent) {
+        case IntentType.TOTAL_PENDING_AMOUNT:
+          return await this.executeTotalPendingAmount(intent.entities, conversationId);
         case IntentType.CREATE_INVOICE:
           return await this.executeCreateInvoice(intent.entities, conversationId);
 
@@ -62,6 +99,8 @@ class BusinessEngine {
 
         case IntentType.DELETE_CUSTOMER_DATA:
           return await this.executeDeleteCustomerData(intent.entities, conversationId);
+        case IntentType.LIST_CUSTOMER_BALANCES:
+          return await this.executeListCustomerBalances(intent.entities, conversationId);
 
         default:
           return {

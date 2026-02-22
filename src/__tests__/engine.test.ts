@@ -181,6 +181,42 @@ test('RECORD_PAYMENT works with active customer pronoun reference', async () => 
     }
 });
 
+test('LIST_CUSTOMER_BALANCES returns all customers with pending balances', async () => {
+    const restores: RestoreFn[] = [];
+    try {
+        restores.push(patchMethod(customerService as any, 'getAllCustomersWithPendingBalance', async () => [
+            { id: 'c1', name: 'Amit', balance: 500 },
+            { id: 'c2', name: 'Rina', balance: 200 },
+        ]));
+        const result = await businessEngine.execute(
+            buildIntent(IntentType.LIST_CUSTOMER_BALANCES, {}),
+            'conv-test'
+        );
+        assert.equal(result.success, true);
+        assert.equal(result.data.customers.length, 2);
+        assert.equal(result.data.totalPending, 700);
+        assert.match(result.message, /Total 2 customers ke paas ₹700 baki hai/);
+    } finally {
+        restores.forEach((restore) => restore());
+    }
+});
+
+test('TOTAL_PENDING_AMOUNT returns sum of all pending balances', async () => {
+    const restores: RestoreFn[] = [];
+    try {
+        restores.push(patchMethod(customerService as any, 'getTotalPendingAmount', async () => 700));
+        const result = await businessEngine.execute(
+            buildIntent(IntentType.TOTAL_PENDING_AMOUNT, {}),
+            'conv-test'
+        );
+        assert.equal(result.success, true);
+        assert.equal(result.data.totalPending, 700);
+        assert.match(result.message, /Total pending amount hai ₹700/);
+    } finally {
+        restores.forEach((restore) => restore());
+    }
+});
+
 // Cleanup: Disconnect database after all tests
 test.after(async () => {
     try {

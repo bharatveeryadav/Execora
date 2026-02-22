@@ -29,11 +29,23 @@ const hashString = (value: string): string => {
 
 class OpenAIService {
   private client: OpenAI;
+  private groqClient: OpenAI | null = null;
 
   constructor() {
     this.client = new OpenAI({
       apiKey: config.openai.apiKey,
     });
+
+    // Groq: OpenAI-compatible API with LPU hardware — ~150ms vs ~1400ms from India
+    if (config.groq.apiKey) {
+      this.groqClient = new OpenAI({
+        apiKey: config.groq.apiKey,
+        baseURL: 'https://api.groq.com/openai/v1',
+      });
+      logger.info('Groq client initialized — fast response generation enabled');
+    } else {
+      logger.warn('GROQ_API_KEY not set — falling back to OpenAI for response generation (~1400ms)');
+    }
   }
 
   private recordUsage(
@@ -147,6 +159,9 @@ class OpenAIService {
       }
 
       const systemPrompt = `You are an intent extraction system for an Indian SME business assistant.
+15) Recognize Hindi/English patterns for total pending payment queries:
+  - "total pending payment kitna hai", "टोटल पेंडिंग पेमेंट कितना है", "pending amount batao", "pending balance kitna hai", "kitna paisa baki hai", "sab ka total baki kitna hai", "total kitna baki hai", "total pending kitna hai", "pending kitna hai", "pending payment kitna hai", "pending balance kitna hai", "pending amount kitna hai", "total baki kitna hai", "total amount pending hai", "total payment pending hai", "total balance pending hai" → TOTAL_PENDING_AMOUNT
+  - Example: "टोटल पेंडिंग पेमेंट कितना है" → {"intent":"TOTAL_PENDING_AMOUNT","entities":{},"confidence":0.98}
 Extract the intent and entities from the Hindi/English mixed voice command.
 
 ${conversationContext}
@@ -182,13 +197,22 @@ Available intents:
 - UPDATE_CUSTOMER_PHONE: Update customer phone number (WhatsApp, mobile)
 - GET_CUSTOMER_INFO: Get all customer information (name, phone, balance, status)
 - DELETE_CUSTOMER_DATA: Delete all customer data permanently with confirmation and OTP
+- SWITCH_LANGUAGE: Change the TTS/response language (entities.language = BCP-47 code)
 - UNKNOWN: Cannot determine intent
 
 Critical extraction rules for Indian voice patterns:
 1) Recognize Indian Hinglish patterns for ADD_CREDIT:
    - "CUSTOMER_NAME ka AMOUNT add karo" → ADD_CREDIT
    - "CUSTOMER_NAME ko AMOUNT add kar do" → ADD_CREDIT
+   - "CUSTOMER_NAME ke mein AMOUNT likh do" (write in ledger) → ADD_CREDIT
+   - "CUSTOMER_NAME ka AMOUNT likh do" (note/record in ledger) → ADD_CREDIT
+   - "CUSTOMER_NAME ko AMOUNT likh do" → ADD_CREDIT
+   - "CUSTOMER_NAME ka AMOUNT note karo" → ADD_CREDIT
+   - "CUSTOMER_NAME ko AMOUNT udhaar do" (give credit) → ADD_CREDIT
+   - CRITICAL: "likh do/likh dena/note karo" with a customer name + amount = ADD_CREDIT (ledger entry), NOT CREATE_INVOICE
    - Example: "Bharat ka 500 add karo" → {"intent":"ADD_CREDIT","entities":{"customer":"Bharat","amount":500}}
+   - Example: "Bharat ke mein 400 likh do" → {"intent":"ADD_CREDIT","entities":{"customer":"Bharat","amount":400}}
+   - Example: "Bharat ka 400 likh do" → {"intent":"ADD_CREDIT","entities":{"customer":"Bharat","amount":400}}
 
 2) Recognize Indian Hinglish patterns for RECORD_PAYMENT (payment received):
    - "CUSTOMER_NAME ka AMOUNT aa gaya" (amount arrived) → RECORD_PAYMENT
@@ -222,47 +246,81 @@ Critical extraction rules for Indian voice patterns:
 8) For CREATE_CUSTOMER, map name to entities.name and optional amount to entities.amount.
 9) For UPDATE_CUSTOMER_PHONE, extract customer name to entities.customer and phone digits to entities.phone (e.g., "9568926253").
 10) If user speaks phone as digits like "नाइन फाइव सिक्स एट नाइन टू सिक्स टू फाइव थ्री", convert to "9568926253" in entities.phone.
-11) Keep customer text concise and exact; do not translate names.
+11) If customer or name values contain Devanagari script, transliterate to English phonetics in your JSON (e.g., "राहुल" → "Rahul", "अजय" → "Ajay"). Phonetic only — do not translate meaning.
 12) If customer is clearly present, always return entities.customer (except CREATE_CUSTOMER where entities.name is primary).
 13) Always extract numeric amounts for ADD_CREDIT and RECORD_PAYMENT.
+14) Recognize SWITCH_LANGUAGE in ANY language — user wants to change response language:
+   - Language code mapping: hi=Hindi/Hinglish, en=English, bn=Bengali/Bangla, ta=Tamil,
+     te=Telugu, mr=Marathi, gu=Gujarati, kn=Kannada, pa=Punjabi, ml=Malayalam,
+     ur=Urdu, ar=Arabic, es=Spanish, fr=French, de=German, ja=Japanese, zh=Chinese
+   - "Switch to Tamil" → {"intent":"SWITCH_LANGUAGE","entities":{"language":"ta"}}
+   - "Bengali mein bolo" (Hindi: speak in Bengali) → {"intent":"SWITCH_LANGUAGE","entities":{"language":"bn"}}
+   - "English mode" → {"intent":"SWITCH_LANGUAGE","entities":{"language":"en"}}
+   - "தமிழில் பேசு" (Tamil: speak in Tamil) → {"intent":"SWITCH_LANGUAGE","entities":{"language":"ta"}}
+   - "اردو میں بولو" (Urdu: speak in Urdu) → {"intent":"SWITCH_LANGUAGE","entities":{"language":"ur"}}
+   - Any phrase meaning "change language to X" in any language → SWITCH_LANGUAGE
+
+Also include a "normalized" field: a cleaned version of the input transcript — remove filler words (um, uh, acha suno, haan ji), fix obvious ASR errors, convert spoken numbers to digits. Keep meaning identical.
 
 Respond ONLY with valid JSON. No other text.
 
 Example responses:
-{"intent":"ADD_CREDIT","entities":{"customer":"Bharat","amount":500},"confidence":0.95}
-{"intent":"RECORD_PAYMENT","entities":{"customer":"Bharat","amount":300},"confidence":0.94}
-{"intent":"RECORD_PAYMENT","entities":{"customer":"Rahul","amount":200},"confidence":0.92}
-{"intent":"CREATE_INVOICE","entities":{"customer":"Rahul","items":[{"product":"milk","quantity":2},{"product":"bread","quantity":1}]},"confidence":0.95}
-{"intent":"UPDATE_CUSTOMER_PHONE","entities":{"customer":"Bharat","phone":"9568926253"},"confidence":0.92}
-{"intent":"GET_CUSTOMER_INFO","entities":{"customer":"Bharat"},"confidence":0.93}
-{"intent":"DELETE_CUSTOMER_DATA","entities":{"customer":"Bharat","confirmation":"delete"},"confidence":0.92}`;
+{"normalized":"Bharat ka 500 add karo","intent":"ADD_CREDIT","entities":{"customer":"Bharat","amount":500},"confidence":0.95}
+{"normalized":"Bharat ka 300 aa gaya","intent":"RECORD_PAYMENT","entities":{"customer":"Bharat","amount":300},"confidence":0.94}
+{"normalized":"Rahul ka 200 mil gaya","intent":"RECORD_PAYMENT","entities":{"customer":"Rahul","amount":200},"confidence":0.92}
+{"normalized":"Rahul ke liye 2 milk 1 bread ka bill banao","intent":"CREATE_INVOICE","entities":{"customer":"Rahul","items":[{"product":"milk","quantity":2},{"product":"bread","quantity":1}]},"confidence":0.95}
+{"normalized":"Bharat ka phone 9568926253 update karo","intent":"UPDATE_CUSTOMER_PHONE","entities":{"customer":"Bharat","phone":"9568926253"},"confidence":0.92}
+{"normalized":"Bharat ki details batao","intent":"GET_CUSTOMER_INFO","entities":{"customer":"Bharat"},"confidence":0.93}
+{"normalized":"Bharat ka data delete karo","intent":"DELETE_CUSTOMER_DATA","entities":{"customer":"Bharat","confirmation":"delete"},"confidence":0.92}
+{"normalized":"switch to Tamil","intent":"SWITCH_LANGUAGE","entities":{"language":"ta"},"confidence":0.98}
+{"normalized":"Bengali mein bolo","intent":"SWITCH_LANGUAGE","entities":{"language":"bn"},"confidence":0.97}
+{"normalized":"English mode","intent":"SWITCH_LANGUAGE","entities":{"language":"en"},"confidence":0.98}`;
 
+      // gpt-4o-mini for intent: strict JSON format requires a model that reliably follows it.
+      // Groq/llama is fast but cannot follow the complex 13-rule intent prompt accurately.
       const response = await this.client.chat.completions.create({
-        model: config.openai.model,
+        model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: transcript },
         ],
         response_format: { type: 'json_object' },
         temperature: 0.3,
-        max_tokens: 300,
+        max_tokens: 200,
       });
 
       this.recordUsage('extract_intent', 'UNKNOWN', response, 'miss');
 
       const content = response.choices[0].message.content || '{}';
-      const parsed = JSON.parse(content);
+
+      // Llama/Groq sometimes wraps JSON in markdown or adds a preamble — extract the object
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        logger.warn({ content, provider: this.groqClient ? 'groq' : 'openai' }, 'Intent response contained no JSON object — raw content logged');
+        throw new Error('No JSON object found in intent response');
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]);
+
+      // Normalize intent to UPPERCASE to handle models returning mixed-case values
+      const rawIntent = (parsed.intent || 'UNKNOWN').toString().toUpperCase().replace(/ /g, '_');
+      const intent = Object.values(IntentType).includes(rawIntent as IntentType)
+        ? (rawIntent as IntentType)
+        : IntentType.UNKNOWN;
+
+      logger.debug({ rawIntent, intent }, 'Intent parsed');
+
       const entities = await this.normalizeEntities(parsed.entities || {}, transcript);
 
       return {
-        intent: parsed.intent as IntentType,
+        intent,
         entities,
         confidence: parsed.confidence || 0.5,
         originalText: rawText || transcript,
-        normalizedText: rawText ? transcript : undefined,
+        normalizedText: parsed.normalized || transcript,
       };
     } catch (error) {
-      logger.error({ error }, 'OpenAI intent extraction failed');
+      logger.error({ error }, 'Intent extraction failed');
       return {
         intent: IntentType.UNKNOWN,
         entities: {},
@@ -287,7 +345,7 @@ Example responses:
 
     try {
       const response = await this.client.chat.completions.create({
-        model: config.openai.model,
+        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -439,13 +497,13 @@ Keep the meaning identical and keep the text concise.
 Respond with plain text only (no JSON, no quotes).`;
 
       const response = await this.client.chat.completions.create({
-        model: config.openai.model,
+        model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: rawText },
         ],
         temperature: 0.2,
-        max_tokens: 200,
+        max_tokens: 100,
       });
 
       this.recordUsage('normalize_transcript', 'UNKNOWN', response, 'miss');
@@ -458,77 +516,145 @@ Respond with plain text only (no JSON, no quotes).`;
   }
 
   /**
+   * Map a BCP-47 language code to a response style description for the LLM prompt.
+   */
+  private getLangStyle(code: string): string {
+    const styles: Record<string, string> = {
+      hi: 'Hinglish (Hindi verbs + English names/numbers)',
+      'hi-en': 'Hinglish (Hindi verbs + English names/numbers)',
+      en: 'English',
+      bn: 'Bengali',
+      ta: 'Tamil',
+      te: 'Telugu',
+      mr: 'Marathi',
+      gu: 'Gujarati',
+      kn: 'Kannada',
+      pa: 'Punjabi',
+      ml: 'Malayalam',
+      ur: 'Urdu',
+      ar: 'Arabic',
+      es: 'Spanish',
+      fr: 'French',
+      de: 'German',
+      ja: 'Japanese',
+      zh: 'Chinese',
+      pt: 'Portuguese',
+    };
+    return styles[code] ?? 'Hinglish (Hindi verbs + English names/numbers)';
+  }
+
+  /**
    * Generate natural language response from execution result
    */
   async generateResponse(
     executionResult: ExecutionResult,
     originalIntent: string,
-    conversationId?: string
+    conversationId?: string,
+    onChunk?: (chunk: string) => void,
+    options?: { userLanguage?: string }
   ): Promise<string> {
     try {
-      // Inject conversation history for coherent multi-turn responses
-      let conversationContext = '';
-      if (conversationId) {
-        conversationContext = conversationMemory.getFormattedContext(conversationId, 6);
-      }
-
       const runtimeConfig = getRuntimeConfig();
       const intentKey = originalIntent as IntentType;
       const cachePolicy = runtimeConfig.llm.responseCachePolicy[intentKey];
       const cacheKey = cachePolicy
-        ? this.buildResponseCacheKey(intentKey, executionResult, conversationContext, cachePolicy.scope)
+        ? this.buildResponseCacheKey(intentKey, executionResult, undefined, cachePolicy.scope)
         : null;
+
+      // Groq for response generation: free-form text where llama-3.3-70b excels,
+      // and Groq LPU hardware gives ~200ms vs ~1400ms from India to OpenAI.
+      const responseClient = this.groqClient ?? this.client;
+      const responseModel = this.groqClient ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini';
 
       if (cacheKey) {
         const cached = await llmCache.get(cacheKey);
         if (cached) {
-          llmRequestsTotal.inc({ model: config.openai.model, operation: 'generate_response', intent: intentKey, cache: 'hit' });
+          llmRequestsTotal.inc({ model: responseModel, operation: 'generate_response', intent: intentKey, cache: 'hit' });
+          if (onChunk) onChunk(cached);
           return cached;
         }
       }
 
-      const systemPrompt = `You are a friendly Indian business assistant speaking in Hinglish (English names/numbers mixed with Hindi).
+      const langStyle = this.getLangStyle(options?.userLanguage ?? 'hi');
 
-${conversationContext}
-Use the conversation history above to generate coherent responses that reference earlier context when relevant.
+      const systemPrompt = `You are a voice assistant for an Indian shop. Respond in ${langStyle}.
 
-CRITICAL RULES FOR RESPONSE:
-1) ALWAYS use English for customer names, product names, and numbers (NOT Hindi numerals).
-2) Use Hindi verbs and structure: "Bharat ko 500 add karo", "Rahul ka balance 300 hai", "milk ka stock 120 hai"
-3) Keep mixing natural: avoid full sentences in pure Hindi or pure English.
-4) If customer not found, respond: "Bharat ka record nahi mil raha. Name confirm karo ya naya customer add kar du?"
-5) For errors, use friendly Hinglish: "Lag raha hai phone number nahi hai. Add kar du first?"
-6) For ambiguity, ask: "Bharat ATM wala ya Agra wala? Batao na?"
+BREVITY — MOST IMPORTANT RULE:
+- MAX 1 sentence for simple results (balance, payment, credit, stock).
+- MAX 2 sentences only if you need to ask a follow-up.
+- NEVER say the same information twice.
+- NO filler endings: no "theek hai?", no "aur kuch?", no "check ho gaya".
 
-Examples:
-- "Theek hai. Rahul ke liye 500 ka reminder kal 7 PM bhej denge. Phone confirm hai?"
-- "Bill ban gaya. Total 120 hai. Bharat se payment le liya?"
-- "Bharat ka balance 300 remaining hai. Usko 200 add karu?"
-- "Milk ka stock 10 packets hai abhi. Order karna hai?"
-- "Naya customer Rajesh add kar diya. Phone number update kar du isme baad me?"
-- "Bharat ATM wala ya Agra wala? Batao na."
-- "Bharat ka record nahi mil raha. Name confirm karo?"`;
+FORMAT RULES:
+- Always use English for customer names and numbers (regardless of response language).
+- Customer not found: tell the user the name was not found and ask to confirm.
+- Multiple matches: list the options briefly.
+
+Examples (1 sentence, no filler):
+- CHECK_BALANCE → "Nitin ka balance 1000 hai." (Hinglish) / "Nitin's balance is 1000." (English)
+- RECORD_PAYMENT → "Rahul se 500 mila. Remaining 300 hai."
+- ADD_CREDIT → "Bharat ko 400 add kar diya. Total 900 hai."
+- CREATE_INVOICE → "Bill ban gaya. Total 120 rupees."
+- CHECK_STOCK → "Milk ka stock 10 packets hai."
+- CREATE_CUSTOMER → "Rajesh add ho gaya."
+- NOT_FOUND → "Nitin ka record nahi mila. Naam confirm karo."`;
 
       const userPrompt = `Original intent: ${originalIntent}
 Result: ${JSON.stringify(executionResult)}
 
-Generate Hinglish response (English names/numbers + Hindi grammar/verbs):`;
+Generate response in ${langStyle} (always use English for names and numbers):`;
 
-      const response = await this.client.chat.completions.create({
-        model: config.openai.model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        temperature: 0.7,
-        max_tokens: this.getResponseTokenLimit(intentKey),
-      });
+      let finalText = '';
+      let lastUsage: any = null;
 
-      this.recordUsage('generate_response', intentKey, response, 'miss');
+      if (this.groqClient) {
+        // Groq: non-streaming — avoids OpenAI-specific stream_options and iterator casting.
+        // Still fast (~200ms) since Groq LPU processes tokens in parallel.
+        const groqResponse = await responseClient.chat.completions.create({
+          model: responseModel,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          temperature: 0.7,
+          max_tokens: this.getResponseTokenLimit(intentKey),
+        });
+        finalText = groqResponse.choices[0]?.message?.content?.trim() || '';
+        lastUsage = groqResponse.usage;
+        if (finalText && onChunk) onChunk(finalText); // deliver whole response at once
+      } else {
+        // OpenAI: stream tokens so client hears first words sooner
+        const stream = await this.client.chat.completions.create({
+          model: responseModel,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          temperature: 0.7,
+          max_tokens: this.getResponseTokenLimit(intentKey),
+          stream: true,
+          stream_options: { include_usage: true },
+        });
+        for await (const chunk of stream) {
+          const token = chunk.choices[0]?.delta?.content || '';
+          if (token) {
+            finalText += token;
+            if (onChunk) onChunk(token);
+          }
+          if (chunk.usage) lastUsage = chunk.usage;
+        }
+        finalText = finalText.trim();
+      }
 
-      const finalText = response.choices[0].message.content?.trim() || 'Theek hai.';
+      if (!finalText) {
+        logger.warn({ responseModel, originalIntent }, 'generateResponse: got empty content from LLM');
+        finalText = 'Theek hai.';
+      }
 
-      if (cacheKey && cachePolicy) {
+      this.recordUsage('generate_response', intentKey, { usage: lastUsage, model: responseModel }, 'miss');
+
+      // Never cache the fallback — it would poison all future requests for this intent
+      if (cacheKey && cachePolicy && finalText !== 'Theek hai.') {
         await llmCache.set(cacheKey, finalText, cachePolicy.ttlSeconds);
       }
 
@@ -549,7 +675,7 @@ Details: ${JSON.stringify(details)}
 Keep it very short and natural.`;
 
       const response = await this.client.chat.completions.create({
-        model: config.openai.model,
+        model: 'gpt-4o-mini',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
         max_tokens: 100,

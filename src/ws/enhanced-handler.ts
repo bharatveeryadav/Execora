@@ -7,8 +7,9 @@ import { sttService } from '../integrations/stt';
 import { ttsService } from '../integrations/tts';
 import { voiceSessionService } from '../modules/voice/session.service';
 import { conversationMemory } from '../modules/voice/conversation';
-import { WSMessage, WSMessageType } from '../types';
+import { WSMessage, WSMessageType, IntentExtraction, IntentType } from '../types';
 import { websocketConnections, voiceCommandsProcessed } from '../infrastructure/metrics';
+import { responseTemplateService } from '../modules/voice/response-template';
 
 interface VoiceSession {
   ws: WebSocket;
@@ -21,7 +22,52 @@ interface VoiceSession {
   audioFormat?: 'webm' | 'pcm';
   sttConnection: any; // Deepgram connection
   ttsProvider?: string; // TTS provider selected by client ('browser' | 'openai' | 'elevenlabs')
+  pendingIntent?: IntentExtraction; // Set when awaiting user confirmation before execution
+  ttsLanguage: string; // Active response language (BCP-47 code, default 'hi')
 }
+
+// Confidence thresholds for automatic execution vs confirmation
+const CONFIDENCE_THRESHOLD_EXECUTE = 0.85; // ≥ this → auto-execute immediately
+const CONFIDENCE_THRESHOLD_CONFIRM = 0.65;  // < this → ask to repeat; in-between → confirm first
+const LARGE_AMOUNT_THRESHOLD = 5000;        // amounts above this always need confirmation
+
+// System messages per language (repeat-command, yes/no prompt, cancelled, confirm suffix)
+const SYSTEM_MSGS: Record<string, { repeat: string; askYesNo: string; cancelled: string; confirmSuffix: string }> = {
+  hi: { repeat: 'Dobara boliye, samajh nahi aaya.', askYesNo: 'Haan ya nahi boliye.', cancelled: 'Theek hai, cancel kiya.', confirmSuffix: 'Haan ya nahi?' },
+  en: { repeat: 'Please repeat, I did not understand.', askYesNo: 'Please say yes or no.', cancelled: 'Okay, cancelled.', confirmSuffix: 'Yes or no?' },
+  bn: { repeat: 'আবার বলুন, বুঝতে পারিনি।', askYesNo: 'হ্যাঁ বা না বলুন।', cancelled: 'ঠিক আছে, বাতিল।', confirmSuffix: 'হ্যাঁ বা না?' },
+  ta: { repeat: 'மீண்டும் சொல்லுங்கள், புரியவில்லை.', askYesNo: 'ஆம் அல்லது இல்லை சொல்லுங்கள்.', cancelled: 'சரி, ரத்து செய்யப்பட்டது.', confirmSuffix: 'ஆம் அல்லது இல்லை?' },
+  te: { repeat: 'మళ్ళీ చెప్పండి, అర్థం కాలేదు.', askYesNo: 'అవును లేదా కాదు చెప్పండి.', cancelled: 'సరే, రద్దు చేయబడింది.', confirmSuffix: 'అవును లేదా కాదు?' },
+  mr: { repeat: 'पुन्हा सांगा, समजले नाही.', askYesNo: 'हो किंवा नाही सांगा.', cancelled: 'ठीक आहे, रद्द केले.', confirmSuffix: 'हो किंवा नाही?' },
+  gu: { repeat: 'ફરી કહો, સમજ ન આવ્યું.', askYesNo: 'હા અથવા ના કહો.', cancelled: 'ઠીક છે, રદ કર્યું.', confirmSuffix: 'હા અથવા ના?' },
+  kn: { repeat: 'ಮತ್ತೆ ಹೇಳಿ, ಅರ್ಥವಾಗಲಿಲ್ಲ.', askYesNo: 'ಹೌದು ಅಥವಾ ಇಲ್ಲ ಹೇಳಿ.', cancelled: 'ಸರಿ, ರದ್ದು ಮಾಡಲಾಗಿದೆ.', confirmSuffix: 'ಹೌದು ಅಥವಾ ಇಲ್ಲ?' },
+  pa: { repeat: 'ਦੁਬਾਰਾ ਕਹੋ, ਸਮਝ ਨਹੀਂ ਆਇਆ।', askYesNo: 'ਹਾਂ ਜਾਂ ਨਹੀਂ ਕਹੋ।', cancelled: 'ਠੀਕ ਹੈ, ਰੱਦ ਕੀਤਾ।', confirmSuffix: 'ਹਾਂ ਜਾਂ ਨਹੀਂ?' },
+  ml: { repeat: 'വീണ്ടും പറയൂ, മനസ്സിലായില്ല.', askYesNo: 'അതെ അല്ലെങ്കിൽ അല്ല പറയൂ.', cancelled: 'ശരി, റദ്ദാക്കി.', confirmSuffix: 'അതെ അല്ലെങ്കിൽ അല്ല?' },
+  ur: { repeat: 'دوبارہ بولیں، سمجھ نہیں آیا۔', askYesNo: 'ہاں یا نہیں کہیں۔', cancelled: 'ٹھیک ہے، منسوخ کیا۔', confirmSuffix: 'ہاں یا نہیں؟' },
+  ar: { repeat: 'كرر من فضلك، لم أفهم.', askYesNo: 'قل نعم أو لا.', cancelled: 'حسناً، تم الإلغاء.', confirmSuffix: 'نعم أم لا؟' },
+  es: { repeat: 'Repite por favor, no entendí.', askYesNo: 'Di sí o no.', cancelled: 'De acuerdo, cancelado.', confirmSuffix: '¿Sí o no?' },
+  fr: { repeat: 'Répétez s\'il vous plaît, je n\'ai pas compris.', askYesNo: 'Dites oui ou non.', cancelled: 'D\'accord, annulé.', confirmSuffix: 'Oui ou non?' },
+};
+
+const getSysMsgs = (lang: string) => SYSTEM_MSGS[lang] ?? SYSTEM_MSGS['hi'];
+
+// Confirmation message in each language after switching
+const LANG_SWITCH_ACK: Record<string, string> = {
+  hi: 'Hindi language set. Ab Hindi mein bolunga.',
+  en: 'Language changed to English.',
+  bn: 'বাংলা ভাষা সেট হয়েছে।',
+  ta: 'தமிழ் மொழி அமைக்கப்பட்டது.',
+  te: 'తెలుగు భాష సెట్ చేయబడింది.',
+  mr: 'मराठी भाषा सेट केली.',
+  gu: 'ગુજરાતી ભાષા સ્થાપિત.',
+  kn: 'ಕನ್ನಡ ಭಾಷೆ ಹೊಂದಿಸಲಾಗಿದೆ.',
+  pa: 'ਪੰਜਾਬੀ ਭਾਸ਼ਾ ਸੈੱਟ ਕੀਤੀ।',
+  ml: 'മലയാളം ഭാഷ സജ്ജമാക്കി.',
+  ur: 'اردو زبان سیٹ ہو گئی۔',
+  ar: 'تم ضبط اللغة على العربية.',
+  es: 'Idioma cambiado a español.',
+  fr: 'Langue changée en français.',
+};
 
 class EnhancedWebSocketHandler {
   private sessions: Map<string, VoiceSession> = new Map();
@@ -63,6 +109,7 @@ class EnhancedWebSocketHandler {
       audioChunks: [],
       audioFormat: sttService.getProvider() === 'elevenlabs' ? 'pcm' : 'webm',
       sttConnection: null,
+      ttsLanguage: 'hi', // Default to Hinglish; changed at runtime via voice command
     };
 
     this.sessions.set(sessionId, session);
@@ -353,6 +400,12 @@ class EnhancedWebSocketHandler {
       return;
     }
 
+    // If awaiting confirmation for a pending intent, handle that first
+    if (session.pendingIntent) {
+      await this.handlePendingConfirmation(session, text, ttsProvider);
+      return;
+    }
+
     // **USER ACTIVITY FLOW TRACKING**
     const startTime = Date.now();
     const flowId = `${session.sessionId}-${Date.now()}`;
@@ -378,6 +431,13 @@ class EnhancedWebSocketHandler {
       timestamp: new Date().toISOString()
     }, 'User input received');
 
+    // Acknowledge immediately so UI can show a spinner — zero latency
+    this.sendMessage(session.ws, {
+      type: 'voice:thinking',
+      data: { transcript: text },
+      timestamp: new Date().toISOString(),
+    });
+
     try {
       // ✅ CHECK FOR ADMIN KEYWORDS IN ORIGINAL TEXT BEFORE NORMALIZATION
       const isAdminBefore = this.isAdminCommand(text);
@@ -390,25 +450,25 @@ class EnhancedWebSocketHandler {
         'Checking admin keywords in original text'
       );
 
-      const normStart = Date.now();
-      const normalizedText = await openaiService.normalizeTranscript(text);
-      const normTime = Date.now() - normStart;
+      // 1. Extract intent + normalize in one LLM call (merged for speed)
+      const intentStart = Date.now();
+      const intent = await openaiService.extractIntent(text, text, session.conversationSessionId);
+      const intentTime = Date.now() - intentStart;
+
+      // Normalized text comes back inside the intent response (no extra round-trip)
+      const normalizedText = intent.normalizedText || text;
+      const normTime = 0; // merged into intent extraction above
 
       // Check if normalization removed admin keyword
       const isAdminAfter = this.isAdminCommand(normalizedText);
       logger.debug({
         sessionId: session.sessionId,
         originalText: text,
-        normalizedText: normalizedText,
+        normalizedText,
         isAdminBefore: isAdminBefore,
         isAdminAfter: isAdminAfter,
         normalizationTimeMs: normTime
-      }, 'Transcript normalized and admin check comparison');
-
-      // 1. Extract intent with conversation context
-      const intentStart = Date.now();
-      const intent = await openaiService.extractIntent(normalizedText, text, session.conversationSessionId);
-      const intentTime = Date.now() - intentStart;
+      }, 'Transcript normalized (merged into intent extraction)');
 
       // ✅ AUTO-DETECT ADMIN from voice keywords (check ORIGINAL text, not normalized)
       if (isAdminBefore) {
@@ -454,6 +514,71 @@ class EnhancedWebSocketHandler {
         timestamp: new Date().toISOString(),
       });
 
+      // --- LANGUAGE SWITCH ---
+      if (intent.intent === IntentType.SWITCH_LANGUAGE) {
+        const newLang = intent.entities?.language as string | undefined;
+        if (newLang) {
+          session.ttsLanguage = newLang;
+          const ack = LANG_SWITCH_ACK[newLang] ?? `Language set to ${newLang}.`;
+          logger.info({ sessionId: session.sessionId, ttsLanguage: newLang }, 'TTS language switched');
+          this.sendMessage(session.ws, {
+            type: 'voice:language_changed',
+            data: { language: newLang, text: ack },
+            timestamp: new Date().toISOString(),
+          });
+          this.sendMessage(session.ws, {
+            type: WSMessageType.VOICE_RESPONSE,
+            data: { text: ack },
+            timestamp: new Date().toISOString(),
+          });
+          if (ttsProvider !== 'browser' && ttsService.isAvailable()) {
+            await this.generateAndSendTTS(session, ack, ttsProvider);
+          }
+        }
+        session.transcript = '';
+        return;
+      }
+
+      // --- CONFIDENCE GATE ---
+      if (intent.confidence < CONFIDENCE_THRESHOLD_CONFIRM) {
+        // Too uncertain — ask to repeat without executing
+        const repeatText = getSysMsgs(session.ttsLanguage).repeat;
+        logger.info({ sessionId: session.sessionId, confidence: intent.confidence, intent: intent.intent }, 'Confidence too low — asking to repeat');
+        this.sendMessage(session.ws, {
+          type: WSMessageType.VOICE_RESPONSE,
+          data: { text: repeatText },
+          timestamp: new Date().toISOString(),
+        });
+        if (ttsProvider !== 'browser' && ttsService.isAvailable()) {
+          await this.generateAndSendTTS(session, repeatText, ttsProvider);
+        }
+        session.transcript = '';
+        return;
+      }
+
+      if (this.intentNeedsConfirmation(intent)) {
+        // Store intent and ask for verbal confirmation before executing
+        session.pendingIntent = intent;
+        const confirmText = this.buildConfirmMessage(intent, session.ttsLanguage);
+        logger.info({ sessionId: session.sessionId, confirmText, intent: intent.intent, confidence: intent.confidence }, 'Confirmation required before execution');
+        this.sendMessage(session.ws, {
+          type: 'voice:confirm_needed',
+          data: { text: confirmText, intent: intent.intent, confidence: intent.confidence },
+          timestamp: new Date().toISOString(),
+        });
+        this.sendMessage(session.ws, {
+          type: WSMessageType.VOICE_RESPONSE,
+          data: { text: confirmText },
+          timestamp: new Date().toISOString(),
+        });
+        if (ttsProvider !== 'browser' && ttsService.isAvailable()) {
+          await this.generateAndSendTTS(session, confirmText, ttsProvider);
+        }
+        session.transcript = '';
+        return;
+      }
+      // --- END CONFIDENCE GATE ---
+
       // 2. Execute business logic
       const execStart = Date.now();
       const executionResult = await businessEngine.execute(intent, session.conversationSessionId);
@@ -476,20 +601,37 @@ class EnhancedWebSocketHandler {
         provider: sttService.getProvider(),
       });
 
-      // 3. Generate natural response with conversation context
-      const responseStart = Date.now();
-      const response = await openaiService.generateResponse(executionResult, intent.intent, session.conversationSessionId);
-      const responseTime = Date.now() - responseStart;
-
-      logger.info({
-        flowId,
-        sessionId: session.sessionId,
-        intent: intent.intent,
-        response: response,
-        responseTimeMs: responseTime,
-        status: 'response_generated',
-        timestamp: new Date().toISOString()
-      }, `[USER FLOW] Response generated: ${response}`);
+      // 3. Generate response
+      let response: string;
+      if (intent.intent === 'LIST_CUSTOMER_BALANCES' && responseTemplateService.canUseTemplate(intent.intent)) {
+        response = responseTemplateService.generateFastResponse(intent.intent, executionResult) || executionResult.message;
+      } else {
+        // Stream tokens to client as they arrive
+        const responseStart = Date.now();
+        response = await openaiService.generateResponse(
+          executionResult,
+          intent.intent,
+          session.conversationSessionId,
+          (chunk) => {
+            this.sendMessage(session.ws, {
+              type: 'voice:response:chunk',
+              data: { text: chunk },
+              timestamp: new Date().toISOString(),
+            });
+          },
+          { userLanguage: session.ttsLanguage }
+        );
+        const responseTime = Date.now() - responseStart;
+        logger.info({
+          flowId,
+          sessionId: session.sessionId,
+          intent: intent.intent,
+          response: response,
+          responseTimeMs: responseTime,
+          status: 'response_generated',
+          timestamp: new Date().toISOString()
+        }, `[USER FLOW] Response generated: ${response}`);
+      }
 
       // Log assistant response to conversation memory
       if (session.conversationSessionId) {
@@ -516,7 +658,6 @@ class EnhancedWebSocketHandler {
           normalizationMs: normTime,
           intentExtractionMs: intentTime,
           businessLogicMs: execTime,
-          responseGenerationMs: responseTime,
         },
         status: 'complete_flow',
         timestamp: new Date().toISOString()
@@ -552,6 +693,158 @@ class EnhancedWebSocketHandler {
         sessionId: session.sessionId
       }, 'Final transcript processing failed');
       this.sendError(session.ws, 'Processing failed');
+    }
+  }
+
+  /**
+   * Handle the user's verbal yes/no response to a confirmation prompt.
+   * Executes the pending intent on "haan", cancels on "nahi", asks again if unclear.
+   */
+  private async handlePendingConfirmation(session: VoiceSession, text: string, ttsProvider: string) {
+    const pendingIntent = session.pendingIntent!;
+    const lowerText = text.toLowerCase().trim().replace(/[।,!?.]/g, '');
+    const words = new Set(lowerText.split(/\s+/));
+
+    const YES_WORDS = new Set(['haan', 'ha', 'haa', 'yes', 'bilkul', 'ok', 'okay']);
+    const NO_WORDS = new Set(['nahi', 'nai', 'no', 'nope', 'cancel']);
+    const NO_PHRASES = ['mat karo', 'band karo', 'cancel karo', 'nahi chahiye', 'ruk jao'];
+    const YES_PHRASES = ['theek hai', 'theek h'];
+
+    const isYes = [...words].some((w) => YES_WORDS.has(w)) || YES_PHRASES.some((p) => lowerText.includes(p));
+    const isNo = [...words].some((w) => NO_WORDS.has(w)) || NO_PHRASES.some((p) => lowerText.includes(p));
+
+    if (!isYes && !isNo) {
+      // Response was unclear — ask again, keep pendingIntent set
+      const askAgain = getSysMsgs(session.ttsLanguage).askYesNo;
+      this.sendMessage(session.ws, {
+        type: WSMessageType.VOICE_RESPONSE,
+        data: { text: askAgain },
+        timestamp: new Date().toISOString(),
+      });
+      if (ttsProvider !== 'browser' && ttsService.isAvailable()) {
+        await this.generateAndSendTTS(session, askAgain, ttsProvider);
+      }
+      return;
+    }
+
+    // Clear pending intent before proceeding
+    session.pendingIntent = undefined;
+    session.transcript = '';
+
+    if (isNo) {
+      const cancelText = getSysMsgs(session.ttsLanguage).cancelled;
+      logger.info({ sessionId: session.sessionId, intent: pendingIntent.intent }, 'User cancelled pending intent');
+      this.sendMessage(session.ws, {
+        type: WSMessageType.VOICE_RESPONSE,
+        data: { text: cancelText },
+        timestamp: new Date().toISOString(),
+      });
+      if (ttsProvider !== 'browser' && ttsService.isAvailable()) {
+        await this.generateAndSendTTS(session, cancelText, ttsProvider);
+      }
+      return;
+    }
+
+    // User confirmed — execute the stored intent now
+    logger.info({ sessionId: session.sessionId, intent: pendingIntent.intent }, 'User confirmed — executing pending intent');
+    try {
+      const execStart = Date.now();
+      const executionResult = await businessEngine.execute(pendingIntent, session.conversationSessionId);
+      const execTime = Date.now() - execStart;
+      logger.info({
+        sessionId: session.sessionId,
+        intent: pendingIntent.intent,
+        executionSuccess: executionResult.success,
+        executionMessage: executionResult.message,
+        responseTimeMs: execTime,
+      }, '[CONFIRMED INTENT] Business logic executed');
+
+      voiceCommandsProcessed.inc({
+        status: executionResult.success ? 'success' : 'error',
+        provider: sttService.getProvider(),
+      });
+
+      const responseStart = Date.now();
+      const response = await openaiService.generateResponse(
+        executionResult,
+        pendingIntent.intent,
+        session.conversationSessionId,
+        (chunk) => {
+          this.sendMessage(session.ws, {
+            type: 'voice:response:chunk',
+            data: { text: chunk },
+            timestamp: new Date().toISOString(),
+          });
+        },
+        { userLanguage: session.ttsLanguage }
+      );
+      const responseTime = Date.now() - responseStart;
+      logger.info({ sessionId: session.sessionId, response, responseTimeMs: responseTime }, '[CONFIRMED INTENT] Response generated');
+
+      if (session.conversationSessionId) {
+        conversationMemory.addAssistantMessage(session.conversationSessionId, response);
+      }
+
+      this.sendMessage(session.ws, {
+        type: WSMessageType.VOICE_RESPONSE,
+        data: { text: response, executionResult },
+        timestamp: new Date().toISOString(),
+      });
+
+      if (ttsService.isAvailable() && ttsProvider !== 'browser') {
+        await this.generateAndSendTTS(session, response, ttsProvider);
+      }
+    } catch (error: any) {
+      logger.error({ error: error.message, sessionId: session.sessionId }, 'Failed to execute confirmed intent');
+      this.sendError(session.ws, 'Processing failed');
+    }
+  }
+
+  /**
+   * Returns true when an intent must be confirmed by the user before execution:
+   * low confidence, high-risk action (delete/cancel), or large amount (>₹5000).
+   */
+  private intentNeedsConfirmation(intent: IntentExtraction): boolean {
+    const HIGH_RISK_INTENTS = new Set<string>([
+      IntentType.DELETE_CUSTOMER_DATA,
+      IntentType.CANCEL_INVOICE,
+      IntentType.CANCEL_REMINDER,
+    ]);
+
+    if (intent.confidence < CONFIDENCE_THRESHOLD_EXECUTE) return true;
+    if (HIGH_RISK_INTENTS.has(intent.intent)) return true;
+    const amount = intent.entities?.amount;
+    if (typeof amount === 'number' && amount > LARGE_AMOUNT_THRESHOLD) return true;
+    return false;
+  }
+
+  /**
+   * Build a confirmation question for the given intent in the session's active language.
+   * Customer names and amounts stay in English; only the suffix changes per language.
+   */
+  private buildConfirmMessage(intent: IntentExtraction, lang: string = 'hi'): string {
+    const customer = (intent.entities?.customer || intent.entities?.customerName || '') as string;
+    const amount = intent.entities?.amount as number | undefined;
+    const amountStr = amount ? `₹${amount}` : '';
+    const yn = getSysMsgs(lang).confirmSuffix;
+
+    switch (intent.intent) {
+      case IntentType.ADD_CREDIT:
+        return `${customer} ko ${amountStr} credit add karna hai — ${yn}`;
+      case IntentType.RECORD_PAYMENT:
+        return `${customer} se ${amountStr} payment leni hai — ${yn}`;
+      case IntentType.CREATE_INVOICE:
+        return `${customer} ka ${amountStr} invoice banana hai — ${yn}`;
+      case IntentType.CANCEL_INVOICE:
+        return `${customer} ka invoice cancel karna hai — ${yn}`;
+      case IntentType.CANCEL_REMINDER:
+        return `Reminder cancel karna hai — ${yn}`;
+      case IntentType.DELETE_CUSTOMER_DATA:
+        return `${customer} ka data permanently delete karna hai — ${yn}`;
+      case IntentType.CREATE_CUSTOMER:
+        return `${customer} ko naya customer add karna hai — ${yn}`;
+      default:
+        return `${intent.intent.replace(/_/g, ' ')} — ${yn}`;
     }
   }
 

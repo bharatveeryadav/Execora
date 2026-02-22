@@ -49,6 +49,43 @@ interface ParsedQuery {
 }
 
 class CustomerService {
+  /**
+   * Get total pending amount (sum of all customer balances > 0)
+   */
+  async getTotalPendingAmount(): Promise<number> {
+    const result = await prisma.customer.aggregate({
+      _sum: { balance: true },
+      where: { balance: { gt: 0 } },
+    });
+    return parseFloat(result._sum.balance?.toString() || '0');
+  }
+  /**
+   * Get all customers with non-zero (pending) balance
+   */
+  async getAllCustomersWithPendingBalance(): Promise<Array<{ id: string; name: string; balance: number; landmark?: string; phone?: string }>> {
+    const customers = await prisma.customer.findMany({
+      where: {
+        balance: {
+          gt: 0,
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        balance: true,
+        landmark: true,
+        phone: true,
+      },
+      orderBy: { balance: 'desc' },
+    });
+    return customers.map((c) => ({
+      id: c.id,
+      name: c.name,
+      balance: parseFloat(c.balance.toString()),
+      landmark: c.landmark === null ? undefined : c.landmark,
+      phone: c.phone === null ? undefined : c.phone,
+    }));
+  }
   private conversationCache: Map<string, ConversationContext> = new Map();
   private balanceCache: Map<string, { balance: number; timestamp: number }> = new Map();
   private cacheTimeout = 5 * 60 * 1000; // 5 minutes

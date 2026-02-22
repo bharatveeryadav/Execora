@@ -232,3 +232,33 @@ test('calculateBalanceFromLedger: returns 0 for no entries', async () => {
     restoreAll(restores);
   }
 });
+
+// ── getAllCustomersWithPendingBalance ─────────────────────────────────────
+test('getAllCustomersWithPendingBalance: returns customers with positive balance', async () => {
+  const restores: RestoreFn[] = [];
+  try {
+    const customers = [
+      makeCustomer({ id: 'c1', name: 'Amit', balance: dec(500) }),
+      makeCustomer({ id: 'c2', name: 'Rina', balance: dec(200) }),
+    ];
+    restores.push(patchMethod(prisma.customer as any, 'findMany', async () => customers));
+    const result = await customerService.getAllCustomersWithPendingBalance();
+    assert.ok(Array.isArray(result));
+    assert.equal(result.length, 2);
+    assert.equal(result[0].name, 'Amit');
+    assert.equal(result[1].balance, 200);
+  } finally {
+    restoreAll(restores);
+  }
+});
+
+test('getTotalPendingAmount: sums all positive balances', async () => {
+  const restores: RestoreFn[] = [];
+  try {
+    restores.push(patchMethod(prisma.customer as any, 'aggregate', async () => ({ _sum: { balance: dec(700) } })));
+    const total = await customerService.getTotalPendingAmount();
+    assert.equal(total, 700);
+  } finally {
+    restoreAll(restores);
+  }
+});

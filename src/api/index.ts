@@ -16,10 +16,17 @@ function parseLimit(raw: unknown, defaultVal: number, maxVal = 100): number {
 }
 
 export async function registerRoutes(fastify: FastifyInstance<any, any, any, any>) {
+  // ── Custom: Customer balances API ─────────────────────────────────────────
+  const customerBalancesApi = require('./customer-balances').default;
+  await customerBalancesApi(fastify);
   // Ignore Chrome DevTools probe endpoint to avoid noisy 404 logs
   fastify.get('/.well-known/appspecific/com.chrome.devtools.json', async (request, reply) => {
     return reply.code(204).send();
   });
+
+  // ── Custom: Customer total pending API ───────────────────────────────
+  const customerTotalPendingApi = require('./customer-total-pending').default;
+  await customerTotalPendingApi(fastify);
 
   // ── Health check ────────────────────────────────────────────────────────────
   // Returns 503 if any dependency is down so orchestrators can act accordingly

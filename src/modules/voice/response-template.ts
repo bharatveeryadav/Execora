@@ -58,6 +58,19 @@ class ResponseTemplateService {
             case 'CREATE_CUSTOMER':
                 return `✅ ${data.name} add ho gaya${data.balance ? ` (₹${data.balance})` : ''}`;
 
+            // CUSTOMER INFO
+            case 'GET_CUSTOMER_INFO':
+                return `${data.name} ki puri jankari mil gayi hai.\n- Naam: ${data.name}\n- Phone: ${data.phone ? data.phone : 'Nahi hai'}${data.nickname ? `\n- Nickname: ${data.nickname}` : ''}${data.landmark ? `\n- Landmark: ${data.landmark}` : ''}\n- Balance: ₹${data.balance || 0} rupees\nKya aapko isse kuch karna hai?`;
+
+            // LIST CUSTOMER BALANCES
+            case 'LIST_CUSTOMER_BALANCES': {
+                if (!data.customers || !data.customers.length) {
+                    return 'Sab customers ka balance zero hai.';
+                }
+                const lines = data.customers.map((c: any) => `- ${c.name}: ₹${c.balance}${c.landmark ? ` (${c.landmark})` : ''}`);
+                return `Total ${data.customers.length} customers ke paas ₹${data.totalPending || 0} baki hai.\n${lines.join('\n')}`;
+            }
+
             // STOCK
             case 'CHECK_STOCK':
                 return `${data.product} ka stock ${data.stock || 0} units hai`;
@@ -66,6 +79,10 @@ class ResponseTemplateService {
             case 'DAILY_SUMMARY':
                 return `Aaj ${data.totalInvoices || 0} bills, ₹${data.totalAmount || 0} ka transaction${data.pendingPayments ? ` and ₹${data.pendingPayments} pending` : ''
                     }`;
+
+            // TOTAL PENDING AMOUNT
+            case 'TOTAL_PENDING_AMOUNT':
+                return `Total pending amount hai ₹${data.totalPending || 0}`;
 
             default:
                 return null;
@@ -106,8 +123,11 @@ class ResponseTemplateService {
             'CANCEL_REMINDER',
             'LIST_REMINDERS',
             'CREATE_CUSTOMER',
+            'GET_CUSTOMER_INFO',
             'CHECK_STOCK',
             'DAILY_SUMMARY',
+            'LIST_CUSTOMER_BALANCES',
+            'TOTAL_PENDING_AMOUNT',
         ];
         return templateIntents.includes(intent);
     }

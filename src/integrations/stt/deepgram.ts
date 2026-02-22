@@ -37,13 +37,13 @@ class DeepgramService {
 
     try {
       const connection = this.deepgram.listen.live({
-        model: 'nova-2',
+        model: 'nova-3',
         language: 'hi-en', // Hindi-English mix
         smart_format: true,
         punctuate: true,
         interim_results: true,
-        endpointing: 300, // 300ms silence for endpoint
-        utterance_end_ms: 1000,
+        endpointing: 200, // 200ms silence for endpoint
+        utterance_end_ms: 500,
       });
 
       // Handle transcript events
