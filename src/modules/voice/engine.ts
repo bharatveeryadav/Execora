@@ -1,5 +1,6 @@
 import { logger } from '../../infrastructure/logger';
 import { IntentType, IntentExtraction, ExecutionResult } from '../../types';
+import { conversationMemory } from './conversation';
 import { customerService } from '../customer/customer.service';
 import { invoiceService } from '../invoice/invoice.service';
 import { ledgerService } from '../ledger/ledger.service';
@@ -102,6 +103,22 @@ class BusinessEngine {
         case IntentType.LIST_CUSTOMER_BALANCES:
           return await this.executeListCustomerBalances(intent.entities, conversationId);
 
+        case IntentType.PROVIDE_EMAIL:
+          return await this.executeProvideEmail(intent.entities, conversationId);
+
+        case IntentType.SWITCH_LANGUAGE:
+          return {
+            success: true,
+            message: `Language switched to ${intent.entities?.language || 'hi'}`,
+            data: { language: intent.entities?.language || 'hi' },
+          };
+
+        case IntentType.START_RECORDING:
+          return { success: true, message: 'Recording started', data: { recording: true } };
+
+        case IntentType.STOP_RECORDING:
+          return { success: true, message: 'Recording stopped', data: { recording: false } };
+
         default:
           return {
             success: false,
@@ -124,9 +141,21 @@ class BusinessEngine {
     const needsActive = entities?.customerRef === 'active' || !rawQuery;
 
     if (needsActive && conversationId) {
+      // 1. Check in-memory cache first (fast path)
       const active = await customerService.getActiveCustomer(conversationId);
       if (active) {
         return { customer: active, multiple: false };
+      }
+
+      // 2. Fall back to Redis — restores active customer after process restart
+      const memActive = await conversationMemory.getActiveCustomer(conversationId);
+      if (memActive) {
+        // Re-populate in-memory cache and return full CustomerSearchResult from DB
+        const fallback = await customerService.getActiveCustomerById(memActive.id, conversationId);
+        if (fallback) {
+          customerService.setActiveCustomer(conversationId, fallback.id);
+          return { customer: fallback, multiple: false };
+        }
       }
     }
 
@@ -148,6 +177,8 @@ class BusinessEngine {
 
     if (conversationId) {
       customerService.setActiveCustomer(conversationId, candidates[0].id);
+      // Persist to Redis so active customer survives across turns and restarts
+      await conversationMemory.setActiveCustomer(conversationId, candidates[0].id, candidates[0].name);
     }
 
     return { customer: candidates[0], multiple: false, query: rawQuery };
@@ -157,7 +188,21 @@ class BusinessEngine {
    * Create invoice
    */
   private async executeCreateInvoice(entities: any, conversationId?: string): Promise<ExecutionResult> {
-    const { items } = entities;
+    // Map LLM item format { product, quantity } → service format { productName, quantity }
+    const rawItems: any[] = Array.isArray(entities.items) ? entities.items : [];
+    const items = rawItems.map((item: any) => ({
+      productName: (item.productName || item.product || item.name || '').trim(),
+      quantity:    Math.max(1, Math.round(Number(item.quantity) || 1)),
+    })).filter((i) => i.productName.length > 0);
+
+    if (items.length === 0) {
+      return {
+        success: false,
+        message: 'Bill ke liye items batao — product name aur quantity.',
+        error: 'MISSING_ITEMS',
+      };
+    }
+
     const resolution = await this.resolveCustomer(entities, conversationId);
 
     if (resolution.multiple) {
@@ -179,22 +224,131 @@ class BusinessEngine {
 
     const customer = resolution.customer;
 
-    // Create invoice
-    const invoice = await invoiceService.createInvoice(customer.id, items);
+    // Create invoice — auto-creates unknown products with price=0
+    const { invoice, autoCreatedProducts } = await invoiceService.createInvoice(customer.id, items);
+
+    const invoiceData = {
+      invoiceId: invoice.id,
+      customer: customer.name,
+      total: parseFloat(invoice.total.toString()),
+      items: invoice.items.map((item) => ({
+        product:  item.product?.name ?? item.productName,
+        quantity: Number(item.quantity),
+        price:    parseFloat((item.unitPrice ?? 0).toString()),
+        total:    parseFloat((item.total ?? 0).toString()),
+      })),
+      autoCreatedProducts,
+    };
+
+    // Build suffix for auto-created product warning
+    const newProductNote = autoCreatedProducts.length > 0
+      ? ` Note: ${autoCreatedProducts.join(', ')} naye products hain — catalog mein price update karo.`
+      : '';
+
+    // Send invoice email if customer has an address; otherwise ask for it
+    if (customer.email) {
+      const shopName = process.env.SHOP_NAME || 'Execora Shop';
+      emailService.sendInvoiceEmail(
+        customer.email,
+        customer.name,
+        invoice.id,
+        invoiceData.items,
+        invoiceData.total,
+        shopName
+      ).catch((err) => logger.error({ err, customerId: customer.id }, 'Failed to send invoice email'));
+
+      return {
+        success: true,
+        message: `Invoice created for ${customer.name}. Total: ₹${invoice.total}. Invoice email sent to ${customer.email}.${newProductNote}`,
+        data: invoiceData,
+      };
+    }
+
+    // No email — store context so next PROVIDE_EMAIL turn can send the invoice
+    if (conversationId) {
+      await conversationMemory.setContext(conversationId, 'pendingInvoiceEmail', {
+        customerId:  customer.id,
+        customerName: customer.name,
+        invoiceId:   invoice.id,
+        items:       invoiceData.items,
+        total:       invoiceData.total,
+      });
+    }
 
     return {
       success: true,
-      message: `Invoice created for ${customer.name}. Total: ₹${invoice.total}`,
+      message: `Invoice created for ${customer.name}. Total: ₹${invoice.total}. Email address batao to invoice bhej dete hain.${newProductNote}`,
+      data: { ...invoiceData, awaitingEmail: true },
+    };
+  }
+
+  /**
+   * Handle user-provided email after invoice creation (multi-turn flow).
+   * Reads pendingInvoiceEmail from Redis context, saves the email on the customer,
+   * sends the invoice email, then clears the pending context.
+   */
+  private async executeProvideEmail(entities: any, conversationId?: string): Promise<ExecutionResult> {
+    const rawEmail: string = (entities?.email || '').trim().toLowerCase();
+
+    if (!rawEmail || !rawEmail.includes('@')) {
+      return {
+        success: false,
+        message: 'Valid email address nahi mila. Please email dobara batao.',
+        error: 'INVALID_EMAIL',
+      };
+    }
+
+    if (!conversationId) {
+      return { success: false, message: 'Session context not available.', error: 'NO_SESSION' };
+    }
+
+    const pending = await conversationMemory.getContext(conversationId, 'pendingInvoiceEmail');
+
+    if (!pending) {
+      // No pending invoice — just update the active customer's email
+      const active = await conversationMemory.getActiveCustomer(conversationId);
+      if (!active) {
+        return {
+          success: false,
+          message: 'Koi active customer nahi hai jiske liye email save karein.',
+          error: 'NO_ACTIVE_CUSTOMER',
+        };
+      }
+      await customerService.updateCustomer(active.id, { email: rawEmail });
+      return {
+        success: true,
+        message: `${active.name} ka email ${rawEmail} save ho gaya.`,
+        data: { customerId: active.id, email: rawEmail },
+      };
+    }
+
+    // Save the email on the customer record
+    await customerService.updateCustomer(pending.customerId, { email: rawEmail });
+
+    // Send the queued invoice email
+    const shopName = process.env.SHOP_NAME || 'Execora Shop';
+    await emailService.sendInvoiceEmail(
+      rawEmail,
+      pending.customerName,
+      pending.invoiceId,
+      pending.items,
+      pending.total,
+      shopName
+    );
+
+    // Clear pending context so we don't re-send on the next turn
+    await conversationMemory.setContext(conversationId, 'pendingInvoiceEmail', null);
+
+    logger.info({ conversationId, customerId: pending.customerId, email: rawEmail }, 'Invoice email sent after PROVIDE_EMAIL turn');
+
+    return {
+      success: true,
+      message: `Invoice email ${rawEmail} par bhej diya gaya. ${pending.customerName} ka email bhi save ho gaya.`,
       data: {
-        invoiceId: invoice.id,
-        customer: customer.name,
-        total: parseFloat(invoice.total.toString()),
-        items: invoice.items.map((item) => ({
-          product: item.product.name,
-          quantity: item.quantity,
-          price: parseFloat(item.price.toString()),
-          total: parseFloat(item.total.toString()),
-        })),
+        invoiceId:    pending.invoiceId,
+        customerName: pending.customerName,
+        email:        rawEmail,
+        total:        pending.total,
       },
     };
   }
@@ -203,7 +357,12 @@ class BusinessEngine {
    * Create reminder
    */
   private async executeCreateReminder(entities: any, conversationId?: string): Promise<ExecutionResult> {
-    const { amount, datetime } = entities;
+    const amount   = Number(entities.amount);
+    const datetime = entities.datetime || entities.date || entities.time;
+
+    if (!isFinite(amount) || amount <= 0) {
+      return { success: false, message: 'Reminder amount required', error: 'MISSING_AMOUNT' };
+    }
     const resolution = await this.resolveCustomer(entities, conversationId);
 
     if (resolution.multiple) {
@@ -247,7 +406,7 @@ class BusinessEngine {
         reminderId: reminder.id,
         customer: customer.name,
         amount,
-        sendAt: reminder.sendAt,
+        scheduledTime: (reminder as any).scheduledTime,
       },
     };
   }
@@ -256,9 +415,10 @@ class BusinessEngine {
    * Record payment
    */
   private async executeRecordPayment(entities: any, conversationId?: string): Promise<ExecutionResult> {
-    const { amount, mode = 'cash' } = entities;
+    const amount = Number(entities.amount);
+    const mode   = entities.mode || 'cash';
 
-    if (!amount) {
+    if (!isFinite(amount) || amount <= 0) {
       return {
         success: false,
         message: 'Payment amount not provided',
@@ -290,6 +450,9 @@ class BusinessEngine {
     // Record payment
     await ledgerService.recordPayment(customer.id, amount, mode);
 
+    // Invalidate stale cache so getBalanceFast reads fresh from DB
+    customerService.invalidateBalanceCache(customer.id);
+
     // Get updated balance
     const balance = conversationId
       ? await customerService.getBalanceFast(customer.id, conversationId)
@@ -311,9 +474,10 @@ class BusinessEngine {
    * Add credit
    */
   private async executeAddCredit(entities: any, conversationId?: string): Promise<ExecutionResult> {
-    const { amount, description } = entities;
+    const amount      = Number(entities.amount);
+    const description = entities.description;
 
-    if (!amount) {
+    if (!isFinite(amount) || amount <= 0) {
       return {
         success: false,
         message: 'Credit amount not provided',
@@ -348,6 +512,9 @@ class BusinessEngine {
       amount,
       description || `Credit added`
     );
+
+    // Invalidate stale cache so getBalanceFast reads fresh from DB
+    customerService.invalidateBalanceCache(customer.id);
 
     // Get updated balance
     const balance = conversationId
@@ -407,7 +574,15 @@ class BusinessEngine {
    * Check stock
    */
   private async executeCheckStock(entities: any): Promise<ExecutionResult> {
-    const { product: productQuery } = entities;
+    const productQuery = entities.product || entities.productName || entities.name;
+
+    if (!productQuery) {
+      return {
+        success: false,
+        message: 'Product name batao — kaunsa stock check karna hai?',
+        error: 'MISSING_PRODUCT',
+      };
+    }
 
     const stock = await productService.getStock(productQuery);
 
@@ -426,6 +601,15 @@ class BusinessEngine {
    */
   private async executeCancelInvoice(entities: any, conversationId?: string): Promise<ExecutionResult> {
     const resolution = await this.resolveCustomer(entities, conversationId);
+
+    if (resolution.multiple) {
+      return {
+        success: false,
+        message: `Multiple customers found. Please specify: ${(resolution.candidates || []).slice(0, 3).map((c: any) => c.name).join(', ')}`,
+        error: 'MULTIPLE_CUSTOMERS',
+        data: { customers: (resolution.candidates || []).slice(0, 3) },
+      };
+    }
 
     if (!resolution.customer) {
       return {
@@ -465,6 +649,15 @@ class BusinessEngine {
    */
   private async executeCancelReminder(entities: any, conversationId?: string): Promise<ExecutionResult> {
     const resolution = await this.resolveCustomer(entities, conversationId);
+
+    if (resolution.multiple) {
+      return {
+        success: false,
+        message: `Multiple customers found. Please specify customer name with landmark.`,
+        error: 'MULTIPLE_CUSTOMERS',
+        data: { customers: (resolution.candidates || []).slice(0, 3) },
+      };
+    }
 
     if (!resolution.customer) {
       return {
@@ -511,9 +704,9 @@ class BusinessEngine {
       data: {
         count: reminders.length,
         reminders: reminders.map((r) => ({
-          customer: r.customer.name,
-          amount: parseFloat(r.amount.toString()),
-          sendAt: r.sendAt,
+          customer:      r.customer?.name ?? '(unknown)',
+          amount:        parseFloat((r as any).notes || '0'),
+          scheduledTime: r.scheduledTime,
         })),
       },
     };
@@ -523,7 +716,9 @@ class BusinessEngine {
    * Create customer
    */
   private async executeCreateCustomer(entities: any, conversationId?: string): Promise<ExecutionResult> {
-    const { name, phone, nickname, landmark, notes, amount } = entities;
+    // LLM may put the name in either entities.name (preferred) or entities.customer (fallback)
+    const name = entities.name || entities.customer;
+    const { phone, nickname, landmark, notes, amount } = entities;
 
     if (!name) {
       return {
@@ -548,6 +743,12 @@ class BusinessEngine {
         await customerService.updateBalance(result.customer.id, Number(amount));
       }
 
+      // Set new customer as active so "uska/iska" works in the very next turn
+      if (result.customer) {
+        customerService.setActiveCustomer(conversationId, result.customer.id);
+        await conversationMemory.setActiveCustomer(conversationId, result.customer.id, result.customer.name);
+      }
+
       return {
         success: true,
         message: result.message,
@@ -565,6 +766,12 @@ class BusinessEngine {
       await customerService.updateBalance(customer.id, Number(amount));
     }
 
+    // Set new customer as active so "uska/iska" works in the very next turn
+    if (conversationId) {
+      customerService.setActiveCustomer(conversationId, customer.id);
+      await conversationMemory.setActiveCustomer(conversationId, customer.id, customer.name);
+    }
+
     return {
       success: true,
       message: `Customer ${name} created`,
@@ -579,8 +786,22 @@ class BusinessEngine {
    * Modify reminder
    */
   private async executeModifyReminder(entities: any, conversationId?: string): Promise<ExecutionResult> {
-    const { datetime } = entities;
+    const datetime = entities.datetime || entities.date || entities.time;
+
+    if (!datetime) {
+      return { success: false, message: 'New reminder time required', error: 'MISSING_DATETIME' };
+    }
+
     const resolution = await this.resolveCustomer(entities, conversationId);
+
+    if (resolution.multiple) {
+      return {
+        success: false,
+        message: `Multiple customers found. Please specify customer name with landmark.`,
+        error: 'MULTIPLE_CUSTOMERS',
+        data: { customers: (resolution.candidates || []).slice(0, 3) },
+      };
+    }
 
     if (!resolution.customer) {
       return {
@@ -622,9 +843,35 @@ class BusinessEngine {
   private async executeDailySummary(entities: any): Promise<ExecutionResult> {
     const summary = await invoiceService.getDailySummary();
 
+    // Fire-and-forget: send daily summary email to admin/owner
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (adminEmail && emailService.isEnabled()) {
+      const today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      emailService.sendDailySummaryEmail(adminEmail, {
+        date:             today,
+        totalSales:       Number(summary.totalSales    ?? 0),
+        invoiceCount:     Number(summary.invoiceCount  ?? 0),
+        paymentsReceived: Number(summary.totalPayments ?? 0),
+        pendingAmount:    Number(summary.pendingAmount ?? 0),
+        newCustomers:     0,
+      }).catch((err) => logger.error({ err }, 'Failed to send daily summary email'));
+    }
+
+    const extraPayments = (summary as any).extraPayments ?? 0;
+    const summaryMsg = [
+      `Aaj ka summary:`,
+      `Sales ₹${summary.totalSales} (${summary.invoiceCount} invoices),`,
+      `payments ₹${summary.totalPayments}.`,
+      summary.pendingAmount > 0
+        ? `Pending ₹${summary.pendingAmount} abhi baki hai.`
+        : extraPayments > 0
+          ? `Sab sales clear — ₹${extraPayments} purana udhaar bhi wapas aaya.`
+          : `Sab clear hai.`,
+    ].join(' ');
+
     return {
       success: true,
-      message: `Today's summary`,
+      message: summaryMsg,
       data: summary,
     };
   }

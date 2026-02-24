@@ -356,12 +356,12 @@ export async function registerRoutes(fastify: FastifyInstance<any, any, any, any
       if (statuses.length > 0) {
         await prisma.$transaction(
           statuses.map((status: any) =>
-            prisma.whatsAppMessage.updateMany({
-              where: { messageId: status.id },
+            prisma.messageLog.updateMany({
+              where: { providerMessageId: status.id },
               data: {
-                status: status.status.toUpperCase(),
+                status:      status.status as any,
                 deliveredAt: status.status === 'delivered' ? new Date() : undefined,
-                readAt: status.status === 'read' ? new Date() : undefined,
+                readAt:      status.status === 'read' ? new Date() : undefined,
               },
             })
           )

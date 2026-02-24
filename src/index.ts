@@ -9,6 +9,7 @@ import path from 'path';
 import { config } from './config';
 import { logger } from './infrastructure/logger';
 import { disconnectDB, ensureVoiceSchemaReady } from './infrastructure/database';
+import { bootstrapSystem } from './infrastructure/bootstrap';
 import { closeQueues } from './infrastructure/queue';
 import { minioClient } from './infrastructure/storage';
 import { llmCache } from './infrastructure/llm-cache';
@@ -24,6 +25,7 @@ import { enhancedWebsocketHandler } from './ws/enhanced-handler';
 import { metricsPlugin } from './infrastructure/metrics-plugin';
 import { ErrorHandler, AppError, setupGlobalErrorHandlers } from './infrastructure/error-handler';
 import { emailService } from './infrastructure/email';
+import { startWorkers, closeWorkers } from './infrastructure/workers';
 
 // Choose WebSocket handler based on configuration
 const useEnhancedAudio = process.env.USE_ENHANCED_AUDIO !== 'false'; // Default to enhanced
@@ -101,6 +103,9 @@ function registerWebSocket() {
 // Initialize services
 async function initializeServices() {
   try {
+    // Bootstrap default tenant + user (must run before any DB writes that need SYSTEM_TENANT_ID)
+    await bootstrapSystem();
+
     if (useEnhancedAudio) {
       await ensureVoiceSchemaReady();
       logger.info('Voice schema preflight check passed');
@@ -112,6 +117,9 @@ async function initializeServices() {
 
     // Initialize Email Service
     await emailService.initialize();
+
+    // Start queue workers (reminder delivery via email; WhatsApp TODO)
+    startWorkers();
 
     logger.info('All services initialized');
   } catch (error) {
@@ -184,6 +192,9 @@ async function shutdown() {
 
     // Close database
     await disconnectDB();
+
+    // Close workers
+    await closeWorkers();
 
     // Close queues
     await closeQueues();

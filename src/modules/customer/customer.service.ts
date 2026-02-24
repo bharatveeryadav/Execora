@@ -1,7 +1,9 @@
 import { prisma } from '../../infrastructure/database';
 import { logger } from '../../infrastructure/logger';
+import { SYSTEM_TENANT_ID } from '../../infrastructure/bootstrap';
 import { CustomerSearchResult } from '../../types';
 import { Decimal } from '@prisma/client/runtime/library';
+import { ReminderStatus } from '@prisma/client';
 
 interface ConversationContext {
   recentCustomers: CustomerSearchResult[];
@@ -14,6 +16,7 @@ interface ConversationContext {
 interface CustomerUpdateData {
   name?: string;
   phone?: string;
+  email?: string;
   nickname?: string;
   landmark?: string;
   notes?: string;
@@ -186,7 +189,7 @@ class CustomerService {
       id: customer.id,
       name: customer.name,
       phone: customer.phone,
-      nickname: customer.nickname,
+      nickname: customer.nickname[0] ?? null,
       landmark: customer.landmark,
       balance: parseFloat(customer.balance.toString()),
       matchScore: 1.0,
@@ -194,6 +197,41 @@ class CustomerService {
 
     context.recentCustomers = [result, ...context.recentCustomers.filter((c) => c.id !== result.id)].slice(0, 10);
     context.timestamp = Date.now();
+
+    return result;
+  }
+
+  /**
+   * Load a customer by ID and register them as active in the conversation cache.
+   * Used by resolveCustomer to restore active customer from Redis after a restart.
+   */
+  async getActiveCustomerById(
+    customerId: string,
+    conversationId: string
+  ): Promise<CustomerSearchResult | null> {
+    const customer = await prisma.customer.findUnique({
+      where:  { id: customerId },
+      select: { id: true, name: true, phone: true, email: true, nickname: true, landmark: true, balance: true },
+    });
+
+    if (!customer) return null;
+
+    const result: CustomerSearchResult = {
+      id:         customer.id,
+      name:       customer.name,
+      phone:      customer.phone,
+      email:      customer.email,
+      nickname:   Array.isArray(customer.nickname) ? (customer.nickname[0] ?? null) : null,
+      landmark:   customer.landmark,
+      balance:    parseFloat(customer.balance.toString()),
+      matchScore: 1.0,
+    };
+
+    // Populate in-memory cache so subsequent calls in this process are fast
+    const context = this.getContext(conversationId);
+    context.activeCustomerId  = customerId;
+    context.recentCustomers   = [result, ...context.recentCustomers.filter((c) => c.id !== customerId)].slice(0, 10);
+    context.timestamp         = Date.now();
 
     return result;
   }
@@ -305,7 +343,7 @@ class CustomerService {
         id: c.id,
         name: c.name,
         phone: c.phone,
-        nickname: c.nickname,
+        nickname: Array.isArray(c.nickname) ? (c.nickname[0] ?? null) : c.nickname,
         landmark: c.landmark,
         balance: parseFloat(c.balance.toString()),
         matchScore: 1.0,
@@ -399,7 +437,7 @@ class CustomerService {
         id: c.id,
         name: c.name,
         phone: c.phone,
-        nickname: c.nickname,
+        nickname: Array.isArray(c.nickname) ? (c.nickname[0] ?? null) : c.nickname,
         landmark: c.landmark,
         balance: parseFloat(c.balance.toString()),
         matchScore: 0.7,
@@ -504,7 +542,7 @@ class CustomerService {
           id: c.id,
           name: c.name,
           phone: c.phone,
-          nickname: c.nickname,
+          nickname: Array.isArray(c.nickname) ? (c.nickname[0] ?? null) : c.nickname,
           landmark: c.landmark,
           balance: parseFloat(c.balance.toString()),
           matchScore: this.calculateSimilarity(name, c.name),
@@ -563,9 +601,10 @@ class CustomerService {
       // Create customer with only name
       const customer = await prisma.customer.create({
         data: {
-          name: name.trim(),
-          balance: 0,
-        },
+          tenantId: SYSTEM_TENANT_ID,
+          name:     name.trim(),
+          balance:  0,
+        } as any,
       });
 
       logger.info({ customerId: customer.id, name: customer.name }, '✅ Customer created instantly');
@@ -623,6 +662,7 @@ class CustomerService {
       // Add only provided fields
       if (updates.name !== undefined) updateData.name = updates.name.trim();
       if (updates.phone !== undefined) updateData.phone = updates.phone;
+      if (updates.email !== undefined) updateData.email = updates.email;
       if (updates.nickname !== undefined) updateData.nickname = updates.nickname;
       if (updates.landmark !== undefined) updateData.landmark = updates.landmark;
       if (updates.notes !== undefined) updateData.notes = updates.notes;
@@ -673,6 +713,7 @@ class CustomerService {
 
       if (updates.name !== undefined) updateData.name = updates.name.trim();
       if (updates.phone !== undefined) updateData.phone = updates.phone;
+      if (updates.email !== undefined) updateData.email = updates.email;
       if (updates.nickname !== undefined) updateData.nickname = updates.nickname;
       if (updates.landmark !== undefined) updateData.landmark = updates.landmark;
       if (updates.notes !== undefined) updateData.notes = updates.notes;
@@ -694,6 +735,15 @@ class CustomerService {
       logger.error({ error, customerId }, 'Update customer failed');
       return false;
     }
+  }
+
+  /**
+   * Invalidate the balance cache for a customer.
+   * Call this immediately after any operation that mutates the customer's balance
+   * (addCredit, recordPayment) so the next getBalanceFast reads fresh from DB.
+   */
+  invalidateBalanceCache(customerId: string): void {
+    this.balanceCache.delete(customerId);
   }
 
   /**
@@ -925,7 +975,7 @@ class CustomerService {
         id: customer.id,
         name: customer.name,
         phone: customer.phone,
-        nickname: customer.nickname,
+        nickname: Array.isArray(customer.nickname) ? (customer.nickname[0] ?? null) : customer.nickname,
         landmark: customer.landmark,
         balance: parseFloat(customer.balance.toString()),
         matchScore: 1.0,
@@ -978,7 +1028,7 @@ class CustomerService {
             id: c.id,
             name: c.name,
             phone: c.phone,
-            nickname: c.nickname,
+            nickname: Array.isArray(c.nickname) ? (c.nickname[0] ?? null) : c.nickname,
             landmark: c.landmark,
             balance: parseFloat(c.balance.toString()),
             matchScore: 1.0,
@@ -986,12 +1036,12 @@ class CustomerService {
         }
       }
 
-      // Search by name, nickname, landmark using token-aware matching
+      // Search by name, landmark, notes (nickname is String[] — use has for exact match)
       const customers = await prisma.customer.findMany({
         where: {
           OR: [
             { name: { contains: searchLower, mode: 'insensitive' } },
-            { nickname: { contains: searchLower, mode: 'insensitive' } },
+            { nickname: { has: searchLower } },
             { landmark: { contains: searchLower, mode: 'insensitive' } },
             { notes: { contains: searchLower, mode: 'insensitive' } },
             ...(tokens.length > 0
@@ -1000,7 +1050,7 @@ class CustomerService {
                   AND: tokens.map((token) => ({
                     OR: [
                       { name: { contains: token, mode: 'insensitive' as const } },
-                      { nickname: { contains: token, mode: 'insensitive' as const } },
+                      { nickname: { has: token } },
                       { landmark: { contains: token, mode: 'insensitive' as const } },
                       { notes: { contains: token, mode: 'insensitive' as const } },
                     ],
@@ -1018,14 +1068,14 @@ class CustomerService {
         id: c.id,
         name: c.name,
         phone: c.phone,
-        nickname: c.nickname,
+        nickname: Array.isArray(c.nickname) ? (c.nickname[0] ?? null) : c.nickname,
         landmark: c.landmark,
         balance: parseFloat(c.balance.toString()),
         matchScore: this.calculateMatchScore(searchLower, {
           id: c.id,
           name: c.name,
           phone: c.phone,
-          nickname: c.nickname,
+          nickname: Array.isArray(c.nickname) ? (c.nickname[0] ?? null) : c.nickname,
           landmark: c.landmark,
           balance: parseFloat(c.balance.toString()),
           matchScore: 0,
@@ -1055,8 +1105,8 @@ class CustomerService {
           take: 5,
         },
         reminders: {
-          where: { status: 'SCHEDULED' },
-          orderBy: { sendAt: 'asc' },
+          where: { status: ReminderStatus.pending },
+          orderBy: { scheduledTime: 'asc' as const },
         },
       },
     });
@@ -1097,13 +1147,14 @@ class CustomerService {
 
       const customer = await prisma.customer.create({
         data: {
-          name: data.name,
-          phone: data.phone,
+          tenantId: SYSTEM_TENANT_ID,
+          name:     data.name,
+          phone:    data.phone,
           nickname: data.nickname,
           landmark: data.landmark,
-          notes: data.notes,
-          balance: 0,
-        },
+          notes:    data.notes,
+          balance:  0,
+        } as any,
       });
 
       logger.info({ customerId: customer.id, name: customer.name }, 'Customer created');
@@ -1160,29 +1211,27 @@ class CustomerService {
   }
 
   /**
-   * Calculate balance from ledger entries
+   * Calculate balance from invoices minus payments (replaces old ledgerEntry approach)
    */
   async calculateBalanceFromLedger(customerId: string): Promise<number> {
-    const entries = await prisma.ledgerEntry.findMany({
-      where: { customerId },
-      select: { type: true, amount: true },
-    });
+    const [invoiceAgg, paymentAgg] = await Promise.all([
+      prisma.invoice.aggregate({
+        where: { customerId, status: { not: 'cancelled' } },
+        _sum: { total: true },
+      }),
+      prisma.payment.aggregate({
+        where: { customerId, status: 'completed' },
+        _sum: { amount: true },
+      }),
+    ]);
 
-    let balance = 0;
-    for (const entry of entries) {
-      const amount = parseFloat(entry.amount.toString());
-      if (entry.type === 'DEBIT' || entry.type === 'OPENING_BALANCE') {
-        balance += amount;
-      } else if (entry.type === 'CREDIT') {
-        balance -= amount;
-      }
-    }
-
-    return balance;
+    const totalInvoiced = parseFloat(invoiceAgg._sum.total?.toString() || '0');
+    const totalPaid     = parseFloat(paymentAgg._sum.amount?.toString() || '0');
+    return totalInvoiced - totalPaid;
   }
 
   /**
-   * Sync balance with ledger
+   * Sync balance with calculated value from invoices/payments
    */
   async syncBalance(customerId: string) {
     const calculatedBalance = await this.calculateBalanceFromLedger(customerId);
@@ -1209,36 +1258,42 @@ class CustomerService {
     error?: string;
     deletedRecords: {
       invoices: number;
-      ledgerEntries: number;
+      payments: number;
       reminders: number;
-      whatsappMessages: number;
-      conversationRecords: number;
+      messageLogs: number;
+      invoiceItems: number;
       customer: number;
     };
   }> {
     try {
       const result = await prisma.$transaction(async (tx) => {
-        // Step 1: Find all reminders to delete associated WhatsApp messages
+        // Step 1: Delete message logs linked to customer's reminders
         const reminders = await tx.reminder.findMany({
           where: { customerId },
           select: { id: true },
         });
 
-        let whatsappDeleted = 0;
+        let messageLogsDeleted = 0;
         if (reminders.length > 0) {
           const reminderIds = reminders.map((r) => r.id);
-          const whatsappDelete = await tx.whatsAppMessage.deleteMany({
+          const msgDelete = await tx.messageLog.deleteMany({
             where: { reminderId: { in: reminderIds } },
           });
-          whatsappDeleted = whatsappDelete.count;
+          messageLogsDeleted = msgDelete.count;
         }
+
+        // Also delete message logs directly linked to customer
+        const directMsgDelete = await tx.messageLog.deleteMany({
+          where: { customerId },
+        });
+        messageLogsDeleted += directMsgDelete.count;
 
         // Step 2: Delete reminders
         const remindersDeleted = await tx.reminder.deleteMany({
           where: { customerId },
         });
 
-        // Step 3: Find all invoices and delete their items
+        // Step 3: Delete invoice items then invoices
         const invoices = await tx.invoice.findMany({
           where: { customerId },
           select: { id: true },
@@ -1257,8 +1312,8 @@ class CustomerService {
           where: { customerId },
         });
 
-        // Step 4: Delete ledger entries
-        const ledgerEntries = await tx.ledgerEntry.deleteMany({
+        // Step 4: Delete payments
+        const paymentsDeleted = await tx.payment.deleteMany({
           where: { customerId },
         });
 
@@ -1268,12 +1323,12 @@ class CustomerService {
         });
 
         return {
-          invoices: invoicesDeleted.count,
-          ledgerEntries: ledgerEntries.count,
-          reminders: remindersDeleted.count,
-          whatsappMessages: whatsappDeleted,
-          conversationRecords: invoiceItemsDeleted, // Reuse for now as placeholder
-          customer: customerDeleted.count,
+          invoices:     invoicesDeleted.count,
+          payments:     paymentsDeleted.count,
+          reminders:    remindersDeleted.count,
+          messageLogs:  messageLogsDeleted,
+          invoiceItems: invoiceItemsDeleted,
+          customer:     customerDeleted.count,
         };
       });
 
@@ -1290,12 +1345,12 @@ class CustomerService {
         success: false,
         error: error.message,
         deletedRecords: {
-          invoices: 0,
-          ledgerEntries: 0,
-          reminders: 0,
-          whatsappMessages: 0,
-          conversationRecords: 0,
-          customer: 0,
+          invoices:     0,
+          payments:     0,
+          reminders:    0,
+          messageLogs:  0,
+          invoiceItems: 0,
+          customer:     0,
         },
       };
     }

@@ -155,7 +155,7 @@ class OpenAIService {
       // Inject conversation history for multi-turn context
       let conversationContext = '';
       if (conversationId) {
-        conversationContext = conversationMemory.getFormattedContext(conversationId, 6);
+        conversationContext = await conversationMemory.getFormattedContext(conversationId, 6);
       }
 
       const systemPrompt = `You are an intent extraction system for an Indian SME business assistant.
@@ -198,6 +198,9 @@ Available intents:
 - GET_CUSTOMER_INFO: Get all customer information (name, phone, balance, status)
 - DELETE_CUSTOMER_DATA: Delete all customer data permanently with confirmation and OTP
 - SWITCH_LANGUAGE: Change the TTS/response language (entities.language = BCP-47 code)
+- LIST_CUSTOMER_BALANCES: List all customers who have pending balance
+- TOTAL_PENDING_AMOUNT: Get total outstanding amount owed by all customers
+- PROVIDE_EMAIL: User is providing an email address (after being asked, or to save/update on customer record)
 - UNKNOWN: Cannot determine intent
 
 Critical extraction rules for Indian voice patterns:
@@ -246,10 +249,22 @@ Critical extraction rules for Indian voice patterns:
 8) For CREATE_CUSTOMER, map name to entities.name and optional amount to entities.amount.
 9) For UPDATE_CUSTOMER_PHONE, extract customer name to entities.customer and phone digits to entities.phone (e.g., "9568926253").
 10) If user speaks phone as digits like "नाइन फाइव सिक्स एट नाइन टू सिक्स टू फाइव थ्री", convert to "9568926253" in entities.phone.
-11) If customer or name values contain Devanagari script, transliterate to English phonetics in your JSON (e.g., "राहुल" → "Rahul", "अजय" → "Ajay"). Phonetic only — do not translate meaning.
+11) ALL text values in the JSON response must be in Roman/English characters — never Devanagari/Hindi script. Transliterate to English phonetics:
+   - entities.customer, entities.name → "राहुल"→"Rahul", "भारत"→"Bharat"
+   - entities.items[].product → "चीनी"→"cheeni", "आटा/आटे"→"aata", "दूध/दूध"→"doodh", "चावल"→"chawal", "तेल"→"tel", "नमक"→"namak", "दाल"→"dal", "बिस्किट"→"biscuit", "साबुन"→"sabun", "शक्कर"→"shakkar"
+   - For unknown product names in Devanagari, transliterate phonetically (match how the shopkeeper would likely write it in Roman script)
+   - NEVER output Devanagari characters anywhere in the JSON
 12) If customer is clearly present, always return entities.customer (except CREATE_CUSTOMER where entities.name is primary).
 13) Always extract numeric amounts for ADD_CREDIT and RECORD_PAYMENT.
-14) Recognize SWITCH_LANGUAGE in ANY language — user wants to change response language:
+14) Recognize DAILY_SUMMARY patterns in Hindi and English:
+   - "aaj ka summary", "daily summary", "aaj ki report", "aaj ka hisaab", "aaj kitna hua"
+   - "आज का समरी", "आज का समरी बताओ", "डेली समरी", "आज की रिपोर्ट", "आज का हिसाब बताओ"
+   - "aaj ka business summary", "daily report batao", "aaj ka sales batao", "sales report"
+   - "aaj kitna bikaa", "aaj kitna mila", "aaj ka total", "din ka summary"
+   - Example: "आज का समरी बताओ" → {"intent":"DAILY_SUMMARY","entities":{}}
+   - Example: "daily report batao" → {"intent":"DAILY_SUMMARY","entities":{}}
+
+15) Recognize SWITCH_LANGUAGE in ANY language — user wants to change response language:
    - Language code mapping: hi=Hindi/Hinglish, en=English, bn=Bengali/Bangla, ta=Tamil,
      te=Telugu, mr=Marathi, gu=Gujarati, kn=Kannada, pa=Punjabi, ml=Malayalam,
      ur=Urdu, ar=Arabic, es=Spanish, fr=French, de=German, ja=Japanese, zh=Chinese
@@ -259,6 +274,25 @@ Critical extraction rules for Indian voice patterns:
    - "தமிழில் பேசு" (Tamil: speak in Tamil) → {"intent":"SWITCH_LANGUAGE","entities":{"language":"ta"}}
    - "اردو میں بولو" (Urdu: speak in Urdu) → {"intent":"SWITCH_LANGUAGE","entities":{"language":"ur"}}
    - Any phrase meaning "change language to X" in any language → SWITCH_LANGUAGE
+
+16) Recognize complex CREATE_INVOICE with multiple items, Hindi numbers and units:
+   - Hindi number words → digits: "ek"=1, "do"=2, "teen"=3, "char"=4, "paanch"=5, "chhe"=6, "saat"=7, "aath"=8, "nau"=9, "das"=10
+   - Items may be separated by comma or "aur" (and)
+   - Units like "kilo/kg", "liter/litre/litr", "packet/pack/pkt", "piece/pcs/pice" can appear with item names — keep unit in productName
+   - "Rahul ke liye do kilo chawal aur teen packet biscuit ka bill banao" → CREATE_INVOICE, items: [{product:"chawal",quantity:2},{product:"biscuit",quantity:3}]
+   - "Sunny ka bill: 1 bread, 2 milk, 3 egg" → CREATE_INVOICE, items: [{product:"bread",quantity:1},{product:"milk",quantity:2},{product:"egg",quantity:3}]
+   - "Ek liter doodh, do kilo aata, paanch anda Priya ke liye bill" → CREATE_INVOICE, entities.customer="Priya", 3 items
+   - For items without quantity, default quantity = 1
+   - Always output entities.items as array of {product, quantity} objects; quantities must be numbers
+
+17) Recognize PROVIDE_EMAIL — user is giving an email address:
+   - Spoken email: "rahul at gmail dot com" → "rahul@gmail.com", "info at shop dot in" → "info@shop.in"
+   - Convert "dot" → ".", "at" → "@", "underscore" → "_", "dash/hyphen" → "-"
+   - Also recognise direct typed email (already contains @)
+   - "mera email rahul@gmail.com hai" → PROVIDE_EMAIL, entities.email="rahul@gmail.com"
+   - "rahul at gmail dot com" → PROVIDE_EMAIL, entities.email="rahul@gmail.com"
+   - "iska email bhej do info at myshop dot in" → PROVIDE_EMAIL, entities.email="info@myshop.in"
+   - ONLY use this intent when the user is explicitly providing/sharing an email address; do NOT use if they are asking to check a balance or add credit that coincidentally contains digits resembling an address
 
 Also include a "normalized" field: a cleaned version of the input transcript — remove filler words (um, uh, acha suno, haan ji), fix obvious ASR errors, convert spoken numbers to digits. Keep meaning identical.
 
@@ -274,7 +308,13 @@ Example responses:
 {"normalized":"Bharat ka data delete karo","intent":"DELETE_CUSTOMER_DATA","entities":{"customer":"Bharat","confirmation":"delete"},"confidence":0.92}
 {"normalized":"switch to Tamil","intent":"SWITCH_LANGUAGE","entities":{"language":"ta"},"confidence":0.98}
 {"normalized":"Bengali mein bolo","intent":"SWITCH_LANGUAGE","entities":{"language":"bn"},"confidence":0.97}
-{"normalized":"English mode","intent":"SWITCH_LANGUAGE","entities":{"language":"en"},"confidence":0.98}`;
+{"normalized":"English mode","intent":"SWITCH_LANGUAGE","entities":{"language":"en"},"confidence":0.98}
+{"normalized":"aaj ka summary batao","intent":"DAILY_SUMMARY","entities":{},"confidence":0.97}
+{"normalized":"daily report batao","intent":"DAILY_SUMMARY","entities":{},"confidence":0.97}
+{"normalized":"Rahul ke liye 2 kilo chawal aur 3 packet biscuit ka bill banao","intent":"CREATE_INVOICE","entities":{"customer":"Rahul","items":[{"product":"chawal","quantity":2},{"product":"biscuit","quantity":3}]},"confidence":0.96}
+{"normalized":"Priya ka bill: 1 liter doodh, 2 kilo aata, 5 anda","intent":"CREATE_INVOICE","entities":{"customer":"Priya","items":[{"product":"doodh","quantity":1},{"product":"aata","quantity":2},{"product":"anda","quantity":5}]},"confidence":0.95}
+{"normalized":"mera email rahul@gmail.com hai","intent":"PROVIDE_EMAIL","entities":{"email":"rahul@gmail.com"},"confidence":0.97}
+{"normalized":"rahul at gmail dot com","intent":"PROVIDE_EMAIL","entities":{"email":"rahul@gmail.com"},"confidence":0.96}`;
 
       // gpt-4o-mini for intent: strict JSON format requires a model that reliably follows it.
       // Groq/llama is fast but cannot follow the complex 13-rule intent prompt accurately.

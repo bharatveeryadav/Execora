@@ -1,7 +1,9 @@
 import { prisma } from '../../infrastructure/database';
 import { logger } from '../../infrastructure/logger';
 import { minioClient } from '../../infrastructure/storage';
-import { Readable } from 'stream';
+import { SYSTEM_TENANT_ID, SYSTEM_USER_ID } from '../../infrastructure/bootstrap';
+
+const BUCKET_NAME = process.env.MINIO_BUCKET || 'execora-audio';
 
 class VoiceSessionService {
   /**
@@ -11,8 +13,10 @@ class VoiceSessionService {
     try {
       const session = await prisma.conversationSession.create({
         data: {
-          metadata: metadata || {},
-        },
+          tenantId:   SYSTEM_TENANT_ID,
+          userId:     SYSTEM_USER_ID,
+          contextStack: metadata ? { current: { stage: 'idle', intent: null, entities: {}, pending_input: false }, metadata: { turn_count: 0, started_at: null, ...metadata } } : undefined,
+        } as any,
       });
 
       logger.info({ sessionId: session.id }, 'Conversation session created');
@@ -30,10 +34,7 @@ class VoiceSessionService {
     try {
       const session = await prisma.conversationSession.update({
         where: { id: sessionId },
-        data: {
-          endedAt: new Date(),
-          duration,
-        },
+        data:  { status: 'completed' } as any,
       });
 
       logger.info({ sessionId, duration }, 'Session ended');
@@ -45,7 +46,7 @@ class VoiceSessionService {
   }
 
   /**
-   * Save audio recording
+   * Save audio recording to MinIO and database
    */
   async saveRecording(
     sessionId: string,
@@ -57,32 +58,27 @@ class VoiceSessionService {
     }
   ) {
     try {
-      // Upload to MinIO
-      const filePath = `recordings/${sessionId}/${metadata.fileName}`;
-      
-      await minioClient.uploadFile(filePath, audioBuffer, {
+      const objectKey = `recordings/${sessionId}/${metadata.fileName}`;
+
+      await minioClient.uploadFile(objectKey, audioBuffer, {
         contentType: metadata.mimeType || 'audio/webm',
       });
 
-      // Save recording metadata
-      const recording = await prisma.conversationRecording.create({
+      const recording = await prisma.voiceRecording.create({
         data: {
+          tenantId:        SYSTEM_TENANT_ID,
           sessionId,
-          filePath,
-          fileName: metadata.fileName,
-          duration: metadata.duration,
-          size: audioBuffer.length,
-          mimeType: metadata.mimeType || 'audio/webm',
-        },
+          recordingUrl:    `${BUCKET_NAME}/${objectKey}`,
+          recordingFormat: metadata.mimeType || 'audio/webm',
+          durationSeconds: metadata.duration ? Math.round(metadata.duration) : undefined,
+          fileSizeBytes:   BigInt(audioBuffer.length),
+          bucketName:      BUCKET_NAME,
+          objectKey,
+        } as any,
       });
 
       logger.info(
-        {
-          recordingId: recording.id,
-          sessionId,
-          fileName: metadata.fileName,
-          size: audioBuffer.length,
-        },
+        { recordingId: recording.id, sessionId, fileName: metadata.fileName, size: audioBuffer.length },
         'Recording saved'
       );
 
@@ -98,15 +94,13 @@ class VoiceSessionService {
    */
   async getRecordingUrl(recordingId: string, expirySeconds: number = 3600): Promise<string> {
     try {
-      const recording = await prisma.conversationRecording.findUnique({
+      const recording = await prisma.voiceRecording.findUnique({
         where: { id: recordingId },
       });
 
-      if (!recording) {
-        throw new Error('Recording not found');
-      }
+      if (!recording) throw new Error('Recording not found');
 
-      return await minioClient.getPresignedUrl(recording.filePath, expirySeconds);
+      return await minioClient.getPresignedUrl((recording as any).objectKey, expirySeconds);
     } catch (error) {
       logger.error({ error, recordingId }, 'Get recording URL failed');
       throw error;
@@ -114,11 +108,11 @@ class VoiceSessionService {
   }
 
   /**
-   * Get session recordings
+   * Get recordings for a session
    */
   async getSessionRecordings(sessionId: string) {
-    return await prisma.conversationRecording.findMany({
-      where: { sessionId },
+    return await prisma.voiceRecording.findMany({
+      where:   { sessionId },
       orderBy: { createdAt: 'asc' },
     });
   }
@@ -128,15 +122,15 @@ class VoiceSessionService {
    */
   async getRecentSessions(limit: number = 20) {
     return await prisma.conversationSession.findMany({
-      take: limit,
-      orderBy: { startedAt: 'desc' },
+      take:    limit,
+      orderBy: { sessionStart: 'desc' },
       include: {
-        recordings: {
+        voiceRecordings: {
           select: {
-            id: true,
-            fileName: true,
-            duration: true,
-            createdAt: true,
+            id:              true,
+            objectKey:       true,
+            durationSeconds: true,
+            createdAt:       true,
           },
         },
       },
@@ -144,24 +138,21 @@ class VoiceSessionService {
   }
 
   /**
-   * Delete recording
+   * Delete recording from MinIO and database
    */
   async deleteRecording(recordingId: string) {
     try {
-      const recording = await prisma.conversationRecording.findUnique({
+      const recording = await prisma.voiceRecording.findUnique({
         where: { id: recordingId },
       });
 
-      if (!recording) {
-        throw new Error('Recording not found');
-      }
+      if (!recording) throw new Error('Recording not found');
 
-      // Delete from MinIO
-      await minioClient.deleteFile(recording.filePath);
+      await minioClient.deleteFile((recording as any).objectKey);
 
-      // Delete from database
-      await prisma.conversationRecording.delete({
+      await prisma.voiceRecording.update({
         where: { id: recordingId },
+        data:  { isDeleted: true },
       });
 
       logger.info({ recordingId }, 'Recording deleted');

@@ -43,7 +43,7 @@ export const getMissingTables = async (
  * Ensure voice capture tables exist before accepting live voice traffic.
  */
 export const ensureVoiceSchemaReady = async () => {
-  const requiredVoiceTables = ['conversation_sessions', 'conversation_recordings'];
+  const requiredVoiceTables = ['conversation_sessions', 'voice_recordings'];
   const missingTables = await getMissingTables(requiredVoiceTables);
 
   if (missingTables.length > 0) {

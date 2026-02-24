@@ -1,6 +1,7 @@
 import { Queue, QueueEvents, type ConnectionOptions } from 'bullmq';
 import { Redis } from 'ioredis';
 import { config } from '../config';
+import { closeRedisClient } from './redis-client';
 
 // Redis connection
 const connection: ConnectionOptions = {
@@ -62,6 +63,7 @@ export const closeQueues = async () => {
   await mediaQueue.close();
   await reminderQueueEvents.close();
   await whatsappQueueEvents.close();
+  await closeRedisClient();
 };
 
 // Redis health check — single short-lived client, reused across calls
