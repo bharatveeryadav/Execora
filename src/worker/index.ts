@@ -23,21 +23,23 @@ const reminderWorker = new Worker<ReminderJobData>(
 
       if (result.success) {
         // Mark reminder as sent
-        await reminderService.markAsSent(reminderId, result.messageId);
+        await reminderService.markAsSent(reminderId);
 
-        // Create WhatsApp message record — log failure but don't re-throw (message was already sent)
+        // Create message log — log failure but don't re-throw (message was already sent)
         try {
-          await prisma.whatsAppMessage.create({
+          await prisma.messageLog.create({
             data: {
+              tenantId:         process.env.SYSTEM_TENANT_ID || 'system-tenant-001',
               reminderId,
-              phone,
-              message,
-              messageId: result.messageId,
-              status: 'SENT',
-            },
+              recipient:        phone,
+              messageContent:   message,
+              channel:          'whatsapp',
+              providerMessageId: result.messageId,
+              status:           'sent',
+            } as any,
           });
         } catch (dbError) {
-          logger.error({ dbError, reminderId }, 'Failed to create WhatsApp message record (message was sent)');
+          logger.error({ dbError, reminderId }, 'Failed to create message log (message was sent)');
         }
 
         logger.info({ reminderId, messageId: result.messageId }, 'Reminder sent successfully');
@@ -46,19 +48,21 @@ const reminderWorker = new Worker<ReminderJobData>(
         // Mark as failed
         await reminderService.markAsFailed(reminderId);
 
-        // Create failed message record
+        // Create failed message log
         try {
-          await prisma.whatsAppMessage.create({
+          await prisma.messageLog.create({
             data: {
+              tenantId:       process.env.SYSTEM_TENANT_ID || 'system-tenant-001',
               reminderId,
-              phone,
-              message,
-              status: 'FAILED',
-              errorMessage: result.error,
-            },
+              recipient:      phone,
+              messageContent: message,
+              channel:        'whatsapp',
+              status:         'failed',
+              errorMessage:   result.error,
+            } as any,
           });
         } catch (dbError) {
-          logger.error({ dbError, reminderId }, 'Failed to create failed WhatsApp message record');
+          logger.error({ dbError, reminderId }, 'Failed to create failed message log');
         }
 
         logger.error({ reminderId, error: result.error }, 'Reminder send failed');
@@ -87,19 +91,21 @@ const whatsappWorker = new Worker<WhatsAppJobData>(
       const result = await whatsappService.sendTextMessage(phone, message);
 
       if (result.success) {
-        // Create message record — log failure but don't re-throw (message was already sent)
+        // Create message log — log failure but don't re-throw (message was already sent)
         try {
-          await prisma.whatsAppMessage.create({
+          await prisma.messageLog.create({
             data: {
+              tenantId:          process.env.SYSTEM_TENANT_ID || 'system-tenant-001',
               reminderId,
-              phone,
-              message,
-              messageId: result.messageId,
-              status: 'SENT',
-            },
+              recipient:         phone,
+              messageContent:    message,
+              channel:           'whatsapp',
+              providerMessageId: result.messageId,
+              status:            'sent',
+            } as any,
           });
         } catch (dbError) {
-          logger.error({ dbError, phone }, 'Failed to create WhatsApp message record (message was sent)');
+          logger.error({ dbError, phone }, 'Failed to create message log (message was sent)');
         }
 
         logger.info({ messageId: result.messageId }, 'WhatsApp message sent');

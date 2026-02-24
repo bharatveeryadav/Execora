@@ -296,6 +296,173 @@ class EmailService {
     }
 
     /**
+     * Send payment reminder email to a customer
+     */
+    async sendPaymentReminderEmail(
+        to: string,
+        customerName: string,
+        amount: number,
+        shopName: string = 'Execora Shop'
+    ): Promise<boolean> {
+        const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #fff3cd; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 5px solid #ffc107;">
+          <h2 style="color: #856404; margin: 0 0 6px 0;">💰 Payment Reminder</h2>
+          <p style="margin: 0; color: #856404; font-size: 14px;">${shopName}</p>
+        </div>
+
+        <p style="font-size: 16px;">Namaste <strong>${customerName}</strong> ji,</p>
+
+        <p style="font-size: 15px;">Aapka <strong style="color: #dc3545; font-size: 22px;">₹${amount}</strong> payment abhi pending hai.</p>
+
+        <p style="color: #495057;">Kripya jaldi se payment kar dein. Koi bhi sawal ho toh humse milein.</p>
+
+        <div style="background-color: #e7f3fe; border-left: 4px solid #2196F3; padding: 15px; margin: 20px 0; border-radius: 4px;">
+          <p style="margin: 0; color: #0c5460; font-size: 14px;">
+            🙏 Dhanyavad aapke business ke liye. Hum aapki service mein hamesha khush hain.
+          </p>
+        </div>
+
+        <div style="border-top: 1px solid #dee2e6; margin-top: 30px; padding-top: 15px; color: #6c757d; font-size: 12px;">
+          <p style="margin: 5px 0;">© 2026 ${shopName}. All rights reserved.</p>
+          <p style="margin: 5px 0;">This is an automated payment reminder.</p>
+        </div>
+      </div>
+    `;
+
+        return this.sendEmail({
+            to,
+            subject: `💰 Payment Reminder — ₹${amount} pending — ${shopName}`,
+            html,
+            text: `Namaste ${customerName} ji, aapka ₹${amount} payment pending hai. Kripya jaldi payment kar dein. — ${shopName}`,
+        });
+    }
+
+    /**
+     * Send invoice email to a customer after purchase
+     */
+    async sendInvoiceEmail(
+        to: string,
+        customerName: string,
+        invoiceId: string,
+        items: Array<{ product: string; quantity: number; price: number; total: number }>,
+        grandTotal: number,
+        shopName: string = 'Execora Shop'
+    ): Promise<boolean> {
+        const shortId = invoiceId.slice(-8).toUpperCase();
+        const itemRows = items
+            .map(
+                (item) => `
+          <tr>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6;">${item.product}</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6; text-align: center;">${item.quantity}</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6; text-align: right;">₹${item.price.toFixed(2)}</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #dee2e6; text-align: right;"><strong>₹${item.total.toFixed(2)}</strong></td>
+          </tr>`
+            )
+            .join('');
+
+        const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #28a745; padding: 20px; border-radius: 8px; margin-bottom: 20px; color: white;">
+          <h2 style="margin: 0 0 6px 0;">🧾 Invoice #${shortId}</h2>
+          <p style="margin: 0; font-size: 14px; opacity: 0.9;">${shopName}</p>
+        </div>
+
+        <p>Namaste <strong>${customerName}</strong> ji,</p>
+        <p>Aapke purchase ki receipt neeche hai:</p>
+
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+          <thead>
+            <tr style="background-color: #f8f9fa;">
+              <th style="padding: 10px 12px; text-align: left; border-bottom: 2px solid #dee2e6;">Product</th>
+              <th style="padding: 10px 12px; text-align: center; border-bottom: 2px solid #dee2e6;">Qty</th>
+              <th style="padding: 10px 12px; text-align: right; border-bottom: 2px solid #dee2e6;">Price</th>
+              <th style="padding: 10px 12px; text-align: right; border-bottom: 2px solid #dee2e6;">Total</th>
+            </tr>
+          </thead>
+          <tbody>${itemRows}</tbody>
+          <tfoot>
+            <tr style="background-color: #e9f5e9;">
+              <td colspan="3" style="padding: 12px; font-weight: bold; text-align: right; border-top: 2px solid #28a745;">Grand Total</td>
+              <td style="padding: 12px; font-weight: bold; text-align: right; border-top: 2px solid #28a745; color: #28a745; font-size: 18px;">₹${grandTotal.toFixed(2)}</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <div style="border-top: 1px solid #dee2e6; margin-top: 30px; padding-top: 15px; color: #6c757d; font-size: 12px;">
+          <p style="margin: 5px 0;">© 2026 ${shopName}. Dhanyavad for your business!</p>
+        </div>
+      </div>
+    `;
+
+        return this.sendEmail({
+            to,
+            subject: `🧾 Invoice #${shortId} — ₹${grandTotal.toFixed(2)} — ${shopName}`,
+            html,
+            text: `Invoice #${shortId} for ${customerName}. Grand Total: ₹${grandTotal.toFixed(2)}. Thank you! — ${shopName}`,
+        });
+    }
+
+    /**
+     * Send daily business summary email to the shop owner
+     */
+    async sendDailySummaryEmail(
+        to: string,
+        summary: {
+            date: string;
+            totalSales: number;
+            invoiceCount: number;
+            paymentsReceived: number;
+            pendingAmount: number;
+            newCustomers: number;
+        }
+    ): Promise<boolean> {
+        const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #4a90d9; padding: 20px; border-radius: 8px; margin-bottom: 20px; color: white;">
+          <h2 style="margin: 0 0 6px 0;">📊 Aaj ka Business Summary</h2>
+          <p style="margin: 0; font-size: 14px; opacity: 0.9;">${summary.date}</p>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; margin: 10px 0 20px 0;">
+          <tr style="background-color: #f8f9fa;">
+            <td style="padding: 14px 16px; font-size: 15px; color: #495057;">💰 Total Sales Today</td>
+            <td style="padding: 14px 16px; font-size: 18px; font-weight: bold; color: #28a745; text-align: right;">₹${summary.totalSales.toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 14px 16px; font-size: 15px; color: #495057;">🧾 Invoices Created</td>
+            <td style="padding: 14px 16px; font-size: 18px; font-weight: bold; text-align: right;">${summary.invoiceCount}</td>
+          </tr>
+          <tr style="background-color: #f8f9fa;">
+            <td style="padding: 14px 16px; font-size: 15px; color: #495057;">✅ Payments Received</td>
+            <td style="padding: 14px 16px; font-size: 18px; font-weight: bold; color: #28a745; text-align: right;">₹${summary.paymentsReceived.toFixed(2)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 14px 16px; font-size: 15px; color: #495057;">⏳ Total Pending Amount</td>
+            <td style="padding: 14px 16px; font-size: 18px; font-weight: bold; color: #dc3545; text-align: right;">₹${summary.pendingAmount.toFixed(2)}</td>
+          </tr>
+          <tr style="background-color: #f8f9fa;">
+            <td style="padding: 14px 16px; font-size: 15px; color: #495057;">👤 New Customers</td>
+            <td style="padding: 14px 16px; font-size: 18px; font-weight: bold; text-align: right;">${summary.newCustomers}</td>
+          </tr>
+        </table>
+
+        <div style="border-top: 1px solid #dee2e6; margin-top: 20px; padding-top: 15px; color: #6c757d; font-size: 12px;">
+          <p style="margin: 5px 0;">© 2026 Execora. Automated daily report.</p>
+        </div>
+      </div>
+    `;
+
+        return this.sendEmail({
+            to,
+            subject: `📊 Daily Summary — ${summary.date} — Sales ₹${summary.totalSales.toFixed(2)}`,
+            html,
+            text: `Daily Summary for ${summary.date}: Sales ₹${summary.totalSales}, Invoices: ${summary.invoiceCount}, Payments: ₹${summary.paymentsReceived}, Pending: ₹${summary.pendingAmount}, New customers: ${summary.newCustomers}`,
+        });
+    }
+
+    /**
      * Check if email service is enabled
      */
     isEnabled(): boolean {

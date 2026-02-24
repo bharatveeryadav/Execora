@@ -1,9 +1,9 @@
 import { prisma } from '../../infrastructure/database';
 import { logger } from '../../infrastructure/logger';
 import { reminderQueue } from '../../infrastructure/queue';
-import { Decimal } from '@prisma/client/runtime/library';
+import { SYSTEM_TENANT_ID } from '../../infrastructure/bootstrap';
 import { ReminderJobData } from '../../types';
-import { parseISO, addDays, addHours, setHours, setMinutes } from 'date-fns';
+import { addDays, addHours, setHours, setMinutes } from 'date-fns';
 import { fromZonedTime } from 'date-fns-tz';
 import { config } from '../../config';
 
@@ -23,7 +23,7 @@ class ReminderService {
       const timeMatch = lowerStr.match(/(\d+)\s*(baje|pm|am)/);
       if (timeMatch) {
         const hour = parseInt(timeMatch[1], 10);
-        date = setHours(date, hour >= 12 ? hour : hour + 12); // Assume evening if not specified
+        date = setHours(date, hour >= 12 ? hour : hour + 12);
         date = setMinutes(date, 0);
       } else {
         // Default to 7 PM
@@ -38,7 +38,6 @@ class ReminderService {
     if (lowerStr.includes('aaj') || lowerStr.includes('today')) {
       let date = now;
 
-      // Extract time
       const timeMatch = lowerStr.match(/(\d+)\s*(baje|pm|am)/);
       if (timeMatch) {
         const hour = parseInt(timeMatch[1], 10);
@@ -56,7 +55,6 @@ class ReminderService {
       let date = setHours(now, hour >= 12 ? hour : hour + 12);
       date = setMinutes(date, 0);
 
-      // If time has passed, schedule for tomorrow
       if (date < now) {
         date = addDays(date, 1);
       }
@@ -88,81 +86,64 @@ class ReminderService {
         throw new Error('Date/time is required for scheduling a reminder');
       }
 
-      // Get customer details
       const customer = await prisma.customer.findUnique({
         where: { id: customerId },
       });
 
-      if (!customer) {
-        throw new Error('Customer not found');
-      }
+      if (!customer) throw new Error('Customer not found');
+      if (!customer.phone) throw new Error('Customer phone number not found');
 
-      if (!customer.phone) {
-        throw new Error('Customer phone number not found');
-      }
+      const scheduledTime = this.parseDateTime(dateTimeStr);
 
-      // Parse date/time
-      const sendAt = this.parseDateTime(dateTimeStr);
-
-      // Create default message if not provided
       const message =
         customMessage ||
         `Namaste ${customer.name} ji,\n\n₹${amount} payment pending hai. Kripya payment kar dein. 🙏\n\nDhanyavad`;
 
-      // Create reminder in database
+      // Create reminder — amount stored in notes for job re-queuing
       const reminder = await prisma.reminder.create({
         data: {
+          tenantId:      SYSTEM_TENANT_ID,
           customerId,
-          amount: new Decimal(amount),
-          message,
-          sendAt,
-          status: 'SCHEDULED',
-        },
+          reminderType:  'payment_due',
+          scheduledTime,
+          customMessage: message,
+          status:        'pending',
+          notes:         amount.toString(),
+        } as any,
         include: {
           customer: true,
         },
       });
 
-      // Schedule job in BullMQ
-      const delay = sendAt.getTime() - Date.now();
+      const delay = scheduledTime.getTime() - Date.now();
 
       try {
         await reminderQueue.add(
           'send-reminder',
           {
-            reminderId: reminder.id,
-            customerId: customer.id,
+            reminderId:   reminder.id,
+            customerId:   customer.id,
             customerName: customer.name,
-            phone: customer.phone,
+            phone:        customer.phone,
             amount,
             message,
           } as ReminderJobData,
           {
-            delay: delay > 0 ? delay : 0,
+            delay:  delay > 0 ? delay : 0,
             jobId: `reminder-${reminder.id}`,
           }
         );
       } catch (queueError) {
-        // Queue add failed — mark reminder as failed to avoid orphaned SCHEDULED record
         await prisma.reminder.update({
           where: { id: reminder.id },
-          data: { status: 'FAILED' },
+          data:  { status: 'failed' },
         }).catch((updateErr) => {
           logger.error({ updateErr, reminderId: reminder.id }, 'Failed to mark reminder as failed after queue error');
         });
         throw queueError;
       }
 
-      logger.info(
-        {
-          reminderId: reminder.id,
-          customerId,
-          sendAt,
-          delay,
-        },
-        'Reminder scheduled'
-      );
-
+      logger.info({ reminderId: reminder.id, customerId, scheduledTime, delay }, 'Reminder scheduled');
       return reminder;
     } catch (error) {
       logger.error({ error, customerId, amount, dateTimeStr }, 'Schedule reminder failed');
@@ -175,24 +156,19 @@ class ReminderService {
    */
   async cancelReminder(reminderId: string) {
     try {
-      // Update reminder status
       const reminder = await prisma.reminder.update({
         where: { id: reminderId },
-        data: { status: 'CANCELLED' },
+        data:  { status: 'cancelled' },
       });
 
-      // Remove job from queue if not already processed
       try {
         const job = await reminderQueue.getJob(`reminder-${reminderId}`);
-        if (job) {
-          await job.remove();
-        }
+        if (job) await job.remove();
       } catch (err) {
         logger.warn({ err, reminderId }, 'Job not found in queue or already processed');
       }
 
       logger.info({ reminderId }, 'Reminder cancelled');
-
       return reminder;
     } catch (error) {
       logger.error({ error, reminderId }, 'Cancel reminder failed');
@@ -205,48 +181,44 @@ class ReminderService {
    */
   async modifyReminderTime(reminderId: string, newDateTimeStr: string) {
     try {
-      const newSendAt = this.parseDateTime(newDateTimeStr);
+      const newScheduledTime = this.parseDateTime(newDateTimeStr);
 
-      // Update reminder
       const reminder = await prisma.reminder.update({
         where: { id: reminderId },
-        data: { sendAt: newSendAt },
+        data:  { scheduledTime: newScheduledTime },
         include: {
           customer: true,
         },
       });
 
-      // Remove old job
       try {
         const oldJob = await reminderQueue.getJob(`reminder-${reminderId}`);
-        if (oldJob) {
-          await oldJob.remove();
-        }
+        if (oldJob) await oldJob.remove();
       } catch (err) {
         logger.warn({ err, reminderId }, 'Old job not found');
       }
 
-      // Schedule new job
-      const delay = newSendAt.getTime() - Date.now();
+      const delay   = newScheduledTime.getTime() - Date.now();
+      const amount  = parseFloat((reminder as any).notes || '0');
+      const message = (reminder as any).customMessage || 'Payment reminder';
 
       await reminderQueue.add(
         'send-reminder',
         {
-          reminderId: reminder.id,
-          customerId: reminder.customerId,
-          customerName: reminder.customer.name,
-          phone: reminder.customer.phone!,
-          amount: parseFloat(reminder.amount.toString()),
-          message: reminder.message,
+          reminderId:   reminder.id,
+          customerId:   reminder.customerId!,
+          customerName: (reminder as any).customer?.name || '',
+          phone:        (reminder as any).customer?.phone || '',
+          amount,
+          message,
         } as ReminderJobData,
         {
-          delay: delay > 0 ? delay : 0,
+          delay:  delay > 0 ? delay : 0,
           jobId: `reminder-${reminder.id}`,
         }
       );
 
-      logger.info({ reminderId, newSendAt }, 'Reminder time modified');
-
+      logger.info({ reminderId, newScheduledTime }, 'Reminder time modified');
       return reminder;
     } catch (error) {
       logger.error({ error, reminderId, newDateTimeStr }, 'Modify reminder failed');
@@ -260,16 +232,13 @@ class ReminderService {
   async getPendingReminders(customerId?: string) {
     return await prisma.reminder.findMany({
       where: {
-        status: 'SCHEDULED',
+        status: 'pending',
         ...(customerId && { customerId }),
       },
-      orderBy: { sendAt: 'asc' },
+      orderBy: { scheduledTime: 'asc' },
       include: {
         customer: {
-          select: {
-            name: true,
-            phone: true,
-          },
+          select: { name: true, phone: true },
         },
       },
     });
@@ -280,15 +249,12 @@ class ReminderService {
    */
   async getCustomerReminders(customerId: string, limit: number = 10) {
     return await prisma.reminder.findMany({
-      where: { customerId },
+      where:   { customerId },
       orderBy: { createdAt: 'desc' },
-      take: limit,
+      take:    limit,
       include: {
         customer: {
-          select: {
-            name: true,
-            phone: true,
-          },
+          select: { name: true, phone: true },
         },
       },
     });
@@ -297,13 +263,10 @@ class ReminderService {
   /**
    * Mark reminder as sent
    */
-  async markAsSent(reminderId: string, messageId?: string) {
+  async markAsSent(reminderId: string) {
     return await prisma.reminder.update({
       where: { id: reminderId },
-      data: {
-        status: 'SENT',
-        sentAt: new Date(),
-      },
+      data:  { status: 'sent', sentAt: new Date() },
     });
   }
 
@@ -314,11 +277,9 @@ class ReminderService {
     return await prisma.reminder.update({
       where: { id: reminderId },
       data: {
-        status: 'FAILED',
-        failedAt: new Date(),
-        retryCount: {
-          increment: 1,
-        },
+        status:     'failed',
+        lastAttempt: new Date(),
+        retryCount: { increment: 1 },
       },
     });
   }
@@ -329,14 +290,10 @@ class ReminderService {
   async getDueReminders() {
     return await prisma.reminder.findMany({
       where: {
-        status: 'SCHEDULED',
-        sendAt: {
-          lte: new Date(),
-        },
+        status:        'pending',
+        scheduledTime: { lte: new Date() },
       },
-      include: {
-        customer: true,
-      },
+      include: { customer: true },
     });
   }
 }

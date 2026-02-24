@@ -44,7 +44,7 @@ export const voiceCommandsProcessed = new promClient.Counter({
 export const invoiceOperations = new promClient.Counter({
     name: 'invoice_operations_total',
     help: 'Total number of invoice operations',
-    labelNames: ['operation', 'status'],
+    labelNames: ['operation', 'status', 'tenantId'],
     registers: [register],
 });
 

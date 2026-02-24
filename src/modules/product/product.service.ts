@@ -1,5 +1,6 @@
 import { prisma } from '../../infrastructure/database';
 import { logger } from '../../infrastructure/logger';
+import { SYSTEM_TENANT_ID } from '../../infrastructure/bootstrap';
 import { Decimal } from '@prisma/client/runtime/library';
 
 class ProductService {
@@ -26,12 +27,14 @@ class ProductService {
 
       const product = await prisma.product.create({
         data: {
-          name: data.name,
+          tenantId:    SYSTEM_TENANT_ID,
+          name:        data.name,
           description: data.description,
-          price: new Decimal(data.price),
-          stock: data.stock,
-          unit: data.unit || 'piece',
-        },
+          category:    'general',
+          price:       new Decimal(data.price),
+          stock:       data.stock,
+          unit:        data.unit || 'piece',
+        } as any,
       });
 
       logger.info({ productId: product.id, name: product.name }, 'Product created');
