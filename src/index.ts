@@ -190,14 +190,14 @@ async function shutdown() {
     // Close Fastify
     await fastify.close();
 
-    // Close database
-    await disconnectDB();
-
     // Close workers
     await closeWorkers();
 
     // Close queues
     await closeQueues();
+
+    // Close database
+    await disconnectDB();
 
     // Close cache
     await llmCache.close();

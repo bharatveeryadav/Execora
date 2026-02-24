@@ -40,6 +40,7 @@ export async function bootstrapSystem(): Promise<void> {
           passwordHash: process.env.ADMIN_PASSWORD_HASH || 'changeme',
           name:         process.env.ADMIN_NAME  || 'Admin',
           role:         'owner',
+          permissions:  [],
           isActive:     true,
         },
       });

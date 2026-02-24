@@ -34,7 +34,7 @@ class VoiceSessionService {
     try {
       const session = await prisma.conversationSession.update({
         where: { id: sessionId },
-        data:  { status: 'completed' } as any,
+        data:  { status: 'ended' } as any,
       });
 
       logger.info({ sessionId, duration }, 'Session ended');

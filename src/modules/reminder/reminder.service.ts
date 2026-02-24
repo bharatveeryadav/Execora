@@ -107,6 +107,7 @@ class ReminderService {
           reminderType:  'payment_due',
           scheduledTime,
           customMessage: message,
+          channels:      ['whatsapp', 'email'],
           status:        'pending',
           notes:         amount.toString(),
         } as any,

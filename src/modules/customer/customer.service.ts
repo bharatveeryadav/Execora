@@ -601,9 +601,15 @@ class CustomerService {
       // Create customer with only name
       const customer = await prisma.customer.create({
         data: {
-          tenantId: SYSTEM_TENANT_ID,
-          name:     name.trim(),
-          balance:  0,
+          tenantId:               SYSTEM_TENANT_ID,
+          name:                   name.trim(),
+          balance:                0,
+          alternatePhone:         [],
+          nickname:               [],
+          preferredPaymentMethod: [],
+          preferredDays:          [],
+          tags:                   [],
+          commonPhrases:          [],
         } as any,
       });
 
@@ -663,7 +669,7 @@ class CustomerService {
       if (updates.name !== undefined) updateData.name = updates.name.trim();
       if (updates.phone !== undefined) updateData.phone = updates.phone;
       if (updates.email !== undefined) updateData.email = updates.email;
-      if (updates.nickname !== undefined) updateData.nickname = updates.nickname;
+      if (updates.nickname !== undefined) updateData.nickname = updates.nickname ? [updates.nickname] : [];
       if (updates.landmark !== undefined) updateData.landmark = updates.landmark;
       if (updates.notes !== undefined) updateData.notes = updates.notes;
       if (updates.balance !== undefined) {
@@ -714,7 +720,7 @@ class CustomerService {
       if (updates.name !== undefined) updateData.name = updates.name.trim();
       if (updates.phone !== undefined) updateData.phone = updates.phone;
       if (updates.email !== undefined) updateData.email = updates.email;
-      if (updates.nickname !== undefined) updateData.nickname = updates.nickname;
+      if (updates.nickname !== undefined) updateData.nickname = updates.nickname ? [updates.nickname] : [];
       if (updates.landmark !== undefined) updateData.landmark = updates.landmark;
       if (updates.notes !== undefined) updateData.notes = updates.notes;
       if (updates.balance !== undefined) {
@@ -1147,13 +1153,18 @@ class CustomerService {
 
       const customer = await prisma.customer.create({
         data: {
-          tenantId: SYSTEM_TENANT_ID,
-          name:     data.name,
-          phone:    data.phone,
-          nickname: data.nickname,
-          landmark: data.landmark,
-          notes:    data.notes,
-          balance:  0,
+          tenantId:               SYSTEM_TENANT_ID,
+          name:                   data.name,
+          phone:                  data.phone,
+          nickname:               data.nickname ? [data.nickname] : [],
+          landmark:               data.landmark,
+          notes:                  data.notes,
+          balance:                0,
+          alternatePhone:         [],
+          preferredPaymentMethod: [],
+          preferredDays:          [],
+          tags:                   [],
+          commonPhrases:          [],
         } as any,
       });
 
