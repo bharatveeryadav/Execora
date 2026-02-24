@@ -7,7 +7,10 @@ import { productService } from '../modules/product/product.service';
 import { voiceSessionService } from '../modules/voice/session.service';
 import { whatsappService } from '../integrations/whatsapp';
 import { prisma } from '../infrastructure/database';
-import { checkRedisHealth } from '../infrastructure/queue';
+import { checkRedisHealth, reminderQueue, whatsappQueue, mediaQueue } from '../infrastructure/queue';
+import { createBullBoard } from '@bull-board/api';
+import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
+import { FastifyAdapter } from '@bull-board/fastify';
 
 /** Safely parse a query limit: string|number → integer, capped at maxVal */
 function parseLimit(raw: unknown, defaultVal: number, maxVal = 100): number {
@@ -16,6 +19,23 @@ function parseLimit(raw: unknown, defaultVal: number, maxVal = 100): number {
 }
 
 export async function registerRoutes(fastify: FastifyInstance<any, any, any, any>) {
+  // ── Bull Board — BullMQ queue dashboard ──────────────────────────────────
+  // Accessible at http://localhost:3000/admin/queues
+  const serverAdapter = new FastifyAdapter();
+  createBullBoard({
+    queues: [
+      new BullMQAdapter(reminderQueue) as any,
+      new BullMQAdapter(whatsappQueue) as any,
+      new BullMQAdapter(mediaQueue) as any,
+    ],
+    serverAdapter,
+  });
+  serverAdapter.setBasePath('/admin/queues');
+  await fastify.register(serverAdapter.registerPlugin(), {
+    prefix: '/admin/queues',
+    basePath: '/admin/queues',
+  });
+
   // ── Custom: Customer balances API ─────────────────────────────────────────
   const customerBalancesApi = require('./customer-balances').default;
   await customerBalancesApi(fastify);

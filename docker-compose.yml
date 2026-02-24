@@ -1,33 +1,9 @@
 services:
-  # pgAdmin (PostgreSQL Web UI)
-  pgadmin:
-    image: dpage/pgadmin4
-    container_name: execora-pgadmin
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-    ports:
-      - "5050:80"
-    depends_on:
-      - postgres
-    networks:
-      - execora-network
-
-  # Adminer (Alternative lightweight DB UI)
-  adminer:
-    image: adminer
-    container_name: execora-adminer
-    restart: always
-    ports:
-      - "8081:8080"
-    depends_on:
-      - postgres
-    networks:
-      - execora-network
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
     container_name: execora-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_USER: execora
       POSTGRES_PASSWORD: execora
@@ -49,10 +25,12 @@ services:
   redis:
     image: redis:7-alpine
     container_name: execora-redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    command: redis-server --appendonly yes   # AOF persistence — survive restarts
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
@@ -66,12 +44,13 @@ services:
   minio:
     image: minio/minio:latest
     container_name: execora-minio
+    restart: unless-stopped
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     ports:
       - "9000:9000"
-      - "9001:9001"
+      - "9001:9001"    # MinIO Web Console → http://localhost:9001
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
@@ -84,12 +63,30 @@ services:
     networks:
       - execora-network
 
+  # MinIO bucket init — creates 'execora' bucket on first run then exits
+  minio-init:
+    image: minio/mc:latest
+    container_name: execora-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set local http://minio:9000 minioadmin minioadmin &&
+        mc mb --ignore-existing local/execora &&
+        mc anonymous set download local/execora &&
+        echo 'MinIO bucket execora ready.'
+      "
+    networks:
+      - execora-network
+
   # Execora API Server
   app:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: execora-app
+    restart: unless-stopped
     env_file:
       - .env
     environment:
@@ -97,14 +94,15 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       MINIO_ENDPOINT: minio
-      MINIO_PORT: 9000
+      MINIO_PORT: "9000"
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: execora
       MINIO_USE_SSL: "false"
-      PORT: 3000
+      PORT: "3010"
       NODE_ENV: production
     ports:
-      - "3000:3000"
+      - "3010:3010"
     depends_on:
       postgres:
         condition: service_healthy
@@ -112,23 +110,32 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
     volumes:
       - ./logs:/app/logs
     networks:
       - execora-network
 
-  # Execora Worker
+  # Execora Worker (BullMQ job processor)
   worker:
     build:
       context: .
       dockerfile: Dockerfile.worker
     container_name: execora-worker
+    restart: unless-stopped
     env_file:
       - .env
     environment:
       DATABASE_URL: postgresql://execora:execora@postgres:5432/execora?schema=public
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: "9000"
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: execora
+      MINIO_USE_SSL: "false"
       NODE_ENV: production
     depends_on:
       postgres:
@@ -138,11 +145,56 @@ services:
     networks:
       - execora-network
 
+  # ── Dev / Admin UIs ──────────────────────────────────────────────────────────
+
+  # pgAdmin 4 — PostgreSQL Web UI → http://localhost:5050
+  # Login: admin@admin.com / admin
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: execora-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - execora-network
+
+  # Adminer — Lightweight DB UI → http://localhost:8081
+  # System: PostgreSQL | Server: postgres | User: execora | Pass: execora
+  adminer:
+    image: adminer
+    container_name: execora-adminer
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    depends_on:
+      - postgres
+    networks:
+      - execora-network
+
+  # Redis Commander — Redis key browser → http://localhost:8082
+  # Inspect conv:{id}:mem, shop:{tenantId}:pending_invoice, BullMQ keys
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: execora-redis-commander
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: "local:redis:6379"
+    ports:
+      - "8082:8081"
+    depends_on:
+      - redis
+    networks:
+      - execora-network
+
 volumes:
   postgres_data:
   redis_data:
   minio_data:
-
 
 networks:
   execora-network:
