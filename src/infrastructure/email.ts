@@ -17,6 +17,11 @@ interface SendEmailOptions {
     subject: string;
     html: string;
     text?: string;
+    attachments?: Array<{
+        filename: string;
+        content:  Buffer;
+        contentType: string;
+    }>;
 }
 
 class EmailService {
@@ -97,6 +102,7 @@ class EmailService {
                 subject: options.subject,
                 html: options.html,
                 text: options.text || options.html,
+                attachments: options.attachments,
             });
 
             logger.info(
@@ -339,7 +345,8 @@ class EmailService {
     }
 
     /**
-     * Send invoice email to a customer after purchase
+     * Send invoice email to a customer after purchase.
+     * Pass pdfBuffer to attach the PDF and pdfUrl to include a download link.
      */
     async sendInvoiceEmail(
         to: string,
@@ -347,7 +354,9 @@ class EmailService {
         invoiceId: string,
         items: Array<{ product: string; quantity: number; price: number; total: number }>,
         grandTotal: number,
-        shopName: string = 'Execora Shop'
+        shopName: string = 'Execora Shop',
+        pdfBuffer?: Buffer,
+        pdfUrl?: string
     ): Promise<boolean> {
         const shortId = invoiceId.slice(-8).toUpperCase();
         const itemRows = items
@@ -361,6 +370,20 @@ class EmailService {
           </tr>`
             )
             .join('');
+
+        const pdfSection = pdfUrl
+            ? `<div style="text-align: center; margin: 24px 0;">
+                 <a href="${pdfUrl}"
+                    style="background-color:#28a745;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:bold;">
+                   📄 Download Invoice PDF
+                 </a>
+                 <p style="font-size:11px;color:#6c757d;margin-top:8px;">Link valid for 7 days</p>
+               </div>`
+            : '';
+
+        const attachmentNote = pdfBuffer
+            ? `<p style="color:#495057;font-size:13px;">Invoice PDF is also attached to this email.</p>`
+            : '';
 
         const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -390,6 +413,9 @@ class EmailService {
           </tfoot>
         </table>
 
+        ${pdfSection}
+        ${attachmentNote}
+
         <div style="border-top: 1px solid #dee2e6; margin-top: 30px; padding-top: 15px; color: #6c757d; font-size: 12px;">
           <p style="margin: 5px 0;">© 2026 ${shopName}. Dhanyavad for your business!</p>
         </div>
@@ -401,6 +427,9 @@ class EmailService {
             subject: `🧾 Invoice #${shortId} — ₹${grandTotal.toFixed(2)} — ${shopName}`,
             html,
             text: `Invoice #${shortId} for ${customerName}. Grand Total: ₹${grandTotal.toFixed(2)}. Thank you! — ${shopName}`,
+            attachments: pdfBuffer
+                ? [{ filename: `invoice-${shortId}.pdf`, content: pdfBuffer, contentType: 'application/pdf' }]
+                : undefined,
         });
     }
 

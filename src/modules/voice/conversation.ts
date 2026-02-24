@@ -2,6 +2,13 @@ import { logger } from '../../infrastructure/logger';
 import { redisClient, CONV_TTL_SECONDS } from '../../infrastructure/redis-client';
 import { matchIndianName, findBestMatch, isSamePerson } from '../../infrastructure/fuzzy-match';
 
+const SHOP_TENANT = process.env.SYSTEM_TENANT_ID || 'system-tenant-001';
+
+// Shop-level (session-independent) keys — survive WebSocket reconnects within 4-hour TTL.
+const SHOP_PENDING_INVOICE_KEY    = `shop:${SHOP_TENANT}:pending_invoice`;
+const SHOP_PENDING_EMAIL_KEY      = `shop:${SHOP_TENANT}:pending_email`;       // awaiting send contact
+const SHOP_PENDING_SEND_CONF_KEY  = `shop:${SHOP_TENANT}:pending_send_conf`;   // awaiting confirm on new contact
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface ConversationMessage {
@@ -208,7 +215,16 @@ class ConversationMemoryService {
    */
   async getFormattedContext(conversationId: string, limit: number = 6): Promise<string> {
     const history = await this.getConversationHistory(conversationId, limit);
-    if (history.length === 0) return '';
+
+    // Always fetch shop-level context summary — shop keys (pending invoice, pending email,
+    // pending send-confirm) survive WebSocket reconnects and must be injected even when
+    // the new session has zero conversation history.
+    const contextSummary = await this.getContextSummary(conversationId);
+
+    if (history.length === 0) {
+      // Fresh/reconnected session: no history, but pending states may exist at shop level.
+      return contextSummary || '';
+    }
 
     const formatted = history
       .map((msg) =>
@@ -218,7 +234,6 @@ class ConversationMemoryService {
       )
       .join('\n');
 
-    const contextSummary = await this.getContextSummary(conversationId);
     return `\n\nPrevious conversation:\n${formatted}${contextSummary}\n`;
   }
 
@@ -374,21 +389,65 @@ class ConversationMemoryService {
   }
 
   /**
-   * Returns a summary string of recent customers for LLM injection.
+   * Returns a summary string of recent customers + any pending invoice for LLM injection.
+   * Injecting a pending invoice here ensures that "haan / confirm" on the NEXT turn
+   * is classified as CONFIRM_INVOICE even after a WebSocket reconnect.
    */
   async getContextSummary(conversationId: string): Promise<string> {
     const data = await this.load(conversationId);
-    if (data.customerHistory.length === 0) return '';
+    let summary = '';
 
-    const recent = data.customerHistory.slice(-3).reverse();
-    let summary  = '\n\nRecent customers in this conversation:\n';
+    if (data.customerHistory.length > 0) {
+      const recent = data.customerHistory.slice(-3).reverse();
+      summary += '\n\nRecent customers in this conversation:\n';
 
-    for (const customer of recent) {
-      summary += `- ${customer.name}`;
-      if (customer.latestBalance !== undefined) summary += ` (balance: ${customer.latestBalance})`;
-      if (customer.latestAmount  !== undefined) summary += ` (amount: ${customer.latestAmount})`;
-      if (data.activeCustomer?.name === customer.name) summary += ' [CURRENT]';
-      summary += '\n';
+      for (const customer of recent) {
+        summary += `- ${customer.name}`;
+        if (customer.latestBalance !== undefined) summary += ` (balance: ${customer.latestBalance})`;
+        if (customer.latestAmount  !== undefined) summary += ` (amount: ${customer.latestAmount})`;
+        if (data.activeCustomer?.name === customer.name) summary += ' [CURRENT]';
+        summary += '\n';
+      }
+    }
+
+    // Inject pending invoice draft so LLM knows to classify "haan/confirm" as CONFIRM_INVOICE.
+    // Check session-level first; fall back to shop-level (cross-session recovery).
+    const sessionDraft  = data.context.pendingInvoice ?? null;
+    const pendingInvoice = sessionDraft ?? await this.getShopPendingInvoice();
+
+    if (pendingInvoice) {
+      const itemSummary = (pendingInvoice.resolvedItems as any[] || [])
+        .map((i: any) => `${i.productName} ×${i.quantity}`)
+        .join(', ');
+      summary +=
+        `\n⚠️  PENDING INVOICE (awaiting confirmation) for ${pendingInvoice.customerName}:\n` +
+        `   Items: ${itemSummary}\n` +
+        `   Total: ₹${pendingInvoice.subtotal}\n` +
+        `   → If the user says "haan / confirm / ok / theek hai / bhej do", use intent CONFIRM_INVOICE.\n` +
+        `   → If the user says "nahi / cancel / mat banao", use intent CANCEL_INVOICE.\n`;
+    }
+
+    // Inject pending send-confirmation so LLM routes "haan" to CONFIRM_INVOICE (which then
+    // routes to executeConfirmSend) — works even after a WebSocket reconnect.
+    const pendingSendConf = data.context.pendingSendConfirm ?? await this.getShopPendingSendConfirm();
+    if (pendingSendConf) {
+      const channelLabel = pendingSendConf.channel === 'email'
+        ? `email ${pendingSendConf.contact}`
+        : `WhatsApp ${pendingSendConf.contact}`;
+      summary +=
+        `\n📧 PENDING SEND CONFIRMATION — waiting for user to confirm sending invoice via ${channelLabel}:\n` +
+        `   → "haan / ok / theek hai / haan bhej do" → use intent CONFIRM_INVOICE\n` +
+        `   → "nahi / mat bhejo / cancel" → use intent CANCEL_INVOICE\n`;
+    }
+
+    // Inject pending email state so LLM knows we're waiting for an email/phone.
+    const pendingEmail = data.context.pendingInvoiceEmail ?? await this.getShopPendingEmail();
+    if (pendingEmail && !pendingSendConf) {
+      summary +=
+        `\n📬 AWAITING SEND CONTACT — invoice for ${pendingEmail.customerName} confirmed but not yet sent.\n` +
+        `   User needs to provide email address or WhatsApp number.\n` +
+        `   → Email address → use intent SEND_INVOICE with entities.channel="email"\n` +
+        `   → Phone number  → use intent SEND_INVOICE with entities.channel="whatsapp"\n`;
     }
 
     return summary;
@@ -436,6 +495,80 @@ class ConversationMemoryService {
       return { activeConversations: keys.length };
     } catch {
       return { activeConversations: 0 };
+    }
+  }
+
+  // ── Shop-level (session-independent) draft persistence ────────────────────
+
+  /**
+   * Persist a pending invoice draft at shop level.
+   * Pass null to clear the key (e.g. after confirmation or cancellation).
+   * This key survives WebSocket reconnects and process restarts within TTL.
+   */
+  async setShopPendingInvoice(draft: any | null): Promise<void> {
+    try {
+      if (draft === null) {
+        await redisClient.del(SHOP_PENDING_INVOICE_KEY);
+      } else {
+        await redisClient.setex(SHOP_PENDING_INVOICE_KEY, CONV_TTL_SECONDS, JSON.stringify(draft));
+      }
+    } catch (err) {
+      logger.warn({ err }, 'Redis write failed — shop pending invoice not persisted');
+    }
+  }
+
+  /**
+   * Retrieve the shop-level pending invoice draft, or null if none exists.
+   */
+  async getShopPendingInvoice(): Promise<any | null> {
+    try {
+      const raw = await redisClient.get(SHOP_PENDING_INVOICE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (err) {
+      logger.warn({ err }, 'Redis read failed — shop pending invoice not loaded');
+      return null;
+    }
+  }
+
+  // ── Shop-level pending email / send-confirmation ───────────────────────────
+  // These survive WebSocket reconnects so the "awaiting email" state is not
+  // lost when a client disconnects mid-conversation.
+
+  async setShopPendingEmail(data: any | null): Promise<void> {
+    try {
+      if (data === null) await redisClient.del(SHOP_PENDING_EMAIL_KEY);
+      else await redisClient.setex(SHOP_PENDING_EMAIL_KEY, CONV_TTL_SECONDS, JSON.stringify(data));
+    } catch (err) {
+      logger.warn({ err }, 'Redis write failed — shop pending email not persisted');
+    }
+  }
+
+  async getShopPendingEmail(): Promise<any | null> {
+    try {
+      const raw = await redisClient.get(SHOP_PENDING_EMAIL_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (err) {
+      logger.warn({ err }, 'Redis read failed — shop pending email not loaded');
+      return null;
+    }
+  }
+
+  async setShopPendingSendConfirm(data: any | null): Promise<void> {
+    try {
+      if (data === null) await redisClient.del(SHOP_PENDING_SEND_CONF_KEY);
+      else await redisClient.setex(SHOP_PENDING_SEND_CONF_KEY, CONV_TTL_SECONDS, JSON.stringify(data));
+    } catch (err) {
+      logger.warn({ err }, 'Redis write failed — shop pending send-confirm not persisted');
+    }
+  }
+
+  async getShopPendingSendConfirm(): Promise<any | null> {
+    try {
+      const raw = await redisClient.get(SHOP_PENDING_SEND_CONF_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (err) {
+      logger.warn({ err }, 'Redis read failed — shop pending send-confirm not loaded');
+      return null;
     }
   }
 }

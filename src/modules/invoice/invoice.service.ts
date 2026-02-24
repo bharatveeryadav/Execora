@@ -5,11 +5,32 @@ import { SYSTEM_TENANT_ID } from '../../infrastructure/bootstrap';
 import { InvoiceItemInput } from '../../types';
 import { Decimal } from '@prisma/client/runtime/library';
 import { invoiceOperations } from '../../infrastructure/metrics';
+import { gstService, type SupplyType } from '../gst/gst.service';
 
-function generateInvoiceNo(): string {
-  const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const rand = Math.random().toString(36).substring(2, 7).toUpperCase();
-  return `INV-${date}-${rand}`;
+/**
+ * Generate a GST-compliant sequential invoice number per financial year.
+ * Format: "2024-25/INV/0001"  (Rule 46, CGST Rules 2017)
+ * Uses an atomic upsert on `invoice_counters` — safe under concurrent requests.
+ * Must be called INSIDE a Prisma transaction to avoid sequence gaps on rollback.
+ */
+async function generateInvoiceNo(tx: any): Promise<string> {
+  const now   = new Date();
+  const month = now.getMonth() + 1;           // 1–12
+  const year  = now.getFullYear();
+  const fyStart = month >= 4 ? year : year - 1;
+  const fy = `${fyStart}-${String(fyStart + 1).slice(-2)}`; // e.g. "2024-25"
+
+  // Atomic increment: insert row for this FY on first invoice, else increment
+  const result = await tx.$queryRaw<Array<{ last_seq: number }>>`
+    INSERT INTO invoice_counters (fy, last_seq)
+    VALUES (${fy}, 1)
+    ON CONFLICT (fy) DO UPDATE
+      SET last_seq = invoice_counters.last_seq + 1
+    RETURNING last_seq
+  `;
+
+  const seq = Number(result[0].last_seq);
+  return `${fy}/INV/${String(seq).padStart(4, '0')}`;
 }
 
 class InvoiceService {
@@ -43,7 +64,8 @@ class InvoiceService {
     // Pass 2: fuzzy — best character-overlap across all active products
     const allProducts = await tx.product.findMany({
       where: { tenantId: SYSTEM_TENANT_ID, isActive: true },
-      select: { id: true, name: true, price: true, stock: true, unit: true },
+      select: { id: true, name: true, price: true, stock: true, unit: true,
+                hsnCode: true, gstRate: true, cess: true, isGstExempt: true },
     });
 
     const q = norm(productName);
@@ -84,6 +106,199 @@ class InvoiceService {
     );
 
     return { product: created, autoCreated: true };
+  }
+
+  /**
+   * Preview invoice — resolves products (auto-creates unknowns at ₹0), optionally
+   * calculates GST per line item, and returns fully priced items WITHOUT committing to the DB.
+   * The caller should store the result in Redis and wait for user confirmation.
+   *
+   * @param withGst  — Default FALSE. Pass true only when user explicitly requests GST billing.
+   * @param supplyType — Only relevant when withGst=true. Determines CGST+SGST vs IGST split.
+   */
+  async previewInvoice(
+    customerId: string,
+    items: InvoiceItemInput[],
+    withGst: boolean = false,
+    supplyType: SupplyType = 'INTRASTATE'
+  ): Promise<{
+    resolvedItems: Array<{
+      productId: string; productName: string; unit: string; hsnCode: string | null;
+      quantity: number; unitPrice: number; gstRate: number; cessRate: number;
+      isGstExempt: boolean; cgst: number; sgst: number; igst: number; cess: number;
+      subtotal: number; totalTax: number; total: number; autoCreated: boolean;
+    }>;
+    subtotal: number;
+    totalCgst: number; totalSgst: number; totalIgst: number;
+    totalCess: number; totalTax: number; grandTotal: number;
+    autoCreatedProducts: string[];
+  }> {
+    if (!customerId?.trim()) throw new Error('Customer ID is required');
+    if (!Array.isArray(items) || items.length === 0) throw new Error('No items provided');
+
+    const resolvedItems: Array<{
+      productId: string; productName: string; unit: string; hsnCode: string | null;
+      quantity: number; unitPrice: number; gstRate: number; cessRate: number;
+      isGstExempt: boolean; cgst: number; sgst: number; igst: number; cess: number;
+      subtotal: number; totalTax: number; total: number; autoCreated: boolean;
+    }> = [];
+    const autoCreatedProducts: string[] = [];
+
+    // Run inside a transaction so auto-created products are committed atomically
+    await prisma.$transaction(async (tx) => {
+      for (const item of items) {
+        if (!item.productName?.trim()) continue;
+        const { product, autoCreated } = await this.findOrCreateProduct(tx, item.productName);
+        if (autoCreated) autoCreatedProducts.push(product.name);
+
+        const unitPrice   = parseFloat(product.price.toString());
+        const gstRate     = parseFloat((product.gstRate ?? 0).toString());
+        const cessRate    = parseFloat((product.cess    ?? 0).toString());
+        const isGstExempt = product.isGstExempt ?? false;
+        const hsnCode     = product.hsnCode ?? null;
+
+        // Calculate GST only when explicitly requested; otherwise zero out all tax fields
+        const subtotal = Math.round(unitPrice * item.quantity * 100) / 100;
+        let cgst = 0, sgst = 0, igst = 0, cess = 0, totalTax = 0;
+
+        if (withGst) {
+          const gstLine = gstService.calculateLineItem(
+            { productName: product.name, hsnCode, quantity: item.quantity,
+              unitPrice, gstRate, cessRate, isGstExempt },
+            supplyType
+          );
+          cgst     = gstLine.cgst;
+          sgst     = gstLine.sgst;
+          igst     = gstLine.igst;
+          cess     = gstLine.cess;
+          totalTax = gstLine.totalTax;
+        }
+
+        resolvedItems.push({
+          productId:   product.id,
+          productName: product.name,
+          unit:        product.unit,
+          hsnCode,
+          quantity:    item.quantity,
+          unitPrice,
+          gstRate,
+          cessRate,
+          isGstExempt,
+          cgst,
+          sgst,
+          igst,
+          cess,
+          subtotal,
+          totalTax,
+          total: Math.round((subtotal + totalTax) * 100) / 100,
+          autoCreated,
+        });
+      }
+    });
+
+    const totals = withGst
+      ? gstService.calculateInvoiceTotals(resolvedItems.map((i) => ({ ...i, isGstExempt: i.isGstExempt })))
+      : {
+          subtotal:   resolvedItems.reduce((s, i) => Math.round((s + i.subtotal) * 100) / 100, 0),
+          totalCgst:  0, totalSgst: 0, totalIgst: 0, totalCess: 0, totalTax: 0,
+          grandTotal: resolvedItems.reduce((s, i) => Math.round((s + i.total) * 100) / 100, 0),
+          supplyType: 'INTRASTATE' as SupplyType,
+        };
+
+    return { resolvedItems, ...totals, autoCreatedProducts };
+  }
+
+  /**
+   * Confirm invoice — creates the DB record from already-resolved items (with GST).
+   * Call this after the user confirms the preview returned by previewInvoice().
+   */
+  async confirmInvoice(
+    customerId: string,
+    resolvedItems: Array<{
+      productId: string; productName: string; unit: string; hsnCode?: string | null;
+      quantity: number; unitPrice: number; gstRate?: number; cessRate?: number;
+      isGstExempt?: boolean; cgst?: number; sgst?: number; igst?: number; cess?: number;
+      subtotal?: number; totalTax?: number; total: number;
+    }>,
+    notes?: string
+  ) {
+    // Re-calculate totals from resolved items (source of truth)
+    const subtotal   = resolvedItems.reduce((s, i) => s + (i.subtotal ?? i.total), 0);
+    const totalCgst  = resolvedItems.reduce((s, i) => s + (i.cgst  ?? 0), 0);
+    const totalSgst  = resolvedItems.reduce((s, i) => s + (i.sgst  ?? 0), 0);
+    const totalIgst  = resolvedItems.reduce((s, i) => s + (i.igst  ?? 0), 0);
+    const totalCess  = resolvedItems.reduce((s, i) => s + (i.cess  ?? 0), 0);
+    const totalTax   = totalCgst + totalSgst + totalIgst + totalCess;
+    const grandTotal = subtotal + totalTax;
+
+    try {
+      return await prisma.$transaction(async (tx) => {
+        const invoice = await tx.invoice.create({
+          data: {
+            tenantId:  SYSTEM_TENANT_ID,
+            invoiceNo: await generateInvoiceNo(tx),
+            customerId,
+            subtotal:  new Decimal(subtotal),
+            tax:       new Decimal(totalTax),
+            cgst:      new Decimal(totalCgst),
+            sgst:      new Decimal(totalSgst),
+            igst:      new Decimal(totalIgst),
+            cess:      new Decimal(totalCess),
+            total:     new Decimal(grandTotal),
+            status:    'pending',
+            notes,
+            items: {
+              create: resolvedItems.map((i) => ({
+                productId:   i.productId,
+                productName: i.productName,
+                unit:        i.unit,
+                hsnCode:     i.hsnCode  ?? null,
+                gstRate:     new Decimal(i.gstRate  ?? 0),
+                cgst:        new Decimal(i.cgst     ?? 0),
+                sgst:        new Decimal(i.sgst     ?? 0),
+                igst:        new Decimal(i.igst     ?? 0),
+                cess:        new Decimal(i.cess     ?? 0),
+                quantity:    new Decimal(i.quantity),
+                unitPrice:   new Decimal(i.unitPrice),
+                subtotal:    new Decimal(i.subtotal ?? i.total),
+                total:       new Decimal(i.total),
+              })),
+            },
+          },
+          include: { items: { include: { product: true } }, customer: true },
+        });
+
+        for (const i of resolvedItems) {
+          await tx.product.update({
+            where: { id: i.productId },
+            data:  { stock: { decrement: i.quantity } },
+          });
+        }
+
+        // Customer balance tracks grand total (tax-inclusive amount owed)
+        await tx.customer.update({
+          where: { id: customerId },
+          data: {
+            balance:        { increment: grandTotal },
+            totalPurchases: { increment: grandTotal },
+            lastVisit:      new Date(),
+            visitCount:     { increment: 1 },
+          },
+        });
+
+        logger.info(
+          { invoiceId: invoice.id, customerId, subtotal, totalTax, grandTotal,
+            itemCount: resolvedItems.length, tenantId: SYSTEM_TENANT_ID },
+          'Invoice confirmed and created'
+        );
+        invoiceOperations.inc({ operation: 'create', status: 'success', tenantId: SYSTEM_TENANT_ID });
+        return invoice;
+      });
+    } catch (error) {
+      logger.error({ error, customerId, tenantId: SYSTEM_TENANT_ID }, 'Invoice confirm failed');
+      invoiceOperations.inc({ operation: 'create', status: 'error', tenantId: SYSTEM_TENANT_ID });
+      throw error;
+    }
   }
 
   /**
@@ -155,7 +370,7 @@ class InvoiceService {
         const invoice = await tx.invoice.create({
           data: {
             tenantId: SYSTEM_TENANT_ID,
-            invoiceNo: generateInvoiceNo(),
+            invoiceNo: await generateInvoiceNo(tx),
             customerId,
             subtotal: new Decimal(subtotal),
             total: new Decimal(subtotal),
@@ -302,6 +517,18 @@ class InvoiceService {
       orderBy: { invoiceDate: 'desc' },
       include: { items: { include: { product: true } } },
     });
+  }
+
+  /**
+   * Persist the MinIO object key (and presigned URL) on an invoice record.
+   * Called after the PDF is uploaded so the URL can be regenerated any time.
+   */
+  async savePdfUrl(invoiceId: string, pdfObjectKey: string, pdfUrl: string): Promise<void> {
+    await prisma.invoice.update({
+      where: { id: invoiceId },
+      data:  { pdfObjectKey, pdfUrl },
+    });
+    logger.info({ invoiceId, pdfObjectKey }, 'Invoice PDF URL saved to DB');
   }
 
   /**

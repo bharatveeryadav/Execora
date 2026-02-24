@@ -180,13 +180,16 @@ MULTI-CUSTOMER CONTEXT SWITCHING:
 Extract the intent and entities from the Hindi/English mixed voice command.
 
 Available intents:
-- CREATE_INVOICE: Creating bill/invoice for customer
+- CREATE_INVOICE: Creating bill/invoice for customer (shows draft first, waits for CONFIRM_INVOICE)
+- CONFIRM_INVOICE: User confirms pending invoice draft ("haan", "confirm", "theek hai", "ok", "bhej do", "bana do")
+- SHOW_PENDING_INVOICE: Show current pending/draft invoice details ("bill dikhao", "draft dikhao", "kitna hua")
+- TOGGLE_GST: Toggle GST on/off for pending invoice draft ("GST add karo", "GST hata do", "with GST", "without GST")
 - CREATE_REMINDER: Schedule payment reminder
 - RECORD_PAYMENT: Customer made a payment
 - ADD_CREDIT: Add credit/debt to customer account
 - CHECK_BALANCE: Check customer balance
 - CHECK_STOCK: Check product stock
-- CANCEL_INVOICE: Cancel last invoice
+- CANCEL_INVOICE: Cancel last invoice (confirmed invoice, not just draft)
 - CANCEL_REMINDER: Cancel a reminder
 - LIST_REMINDERS: List pending reminders
 - CREATE_CUSTOMER: Add new customer
@@ -194,13 +197,15 @@ Available intents:
 - DAILY_SUMMARY: Get daily sales summary
 - START_RECORDING: Start voice recording
 - STOP_RECORDING: Stop voice recording
-- UPDATE_CUSTOMER_PHONE: Update customer phone number (WhatsApp, mobile)
+- UPDATE_CUSTOMER: Update any customer field (phone, email, name, address, GSTIN, PAN, notes, etc.)
+- UPDATE_CUSTOMER_PHONE: Update customer phone number (WhatsApp, mobile) — alias for UPDATE_CUSTOMER
 - GET_CUSTOMER_INFO: Get all customer information (name, phone, balance, status)
 - DELETE_CUSTOMER_DATA: Delete all customer data permanently with confirmation and OTP
 - SWITCH_LANGUAGE: Change the TTS/response language (entities.language = BCP-47 code)
 - LIST_CUSTOMER_BALANCES: List all customers who have pending balance
 - TOTAL_PENDING_AMOUNT: Get total outstanding amount owed by all customers
 - PROVIDE_EMAIL: User is providing an email address (after being asked, or to save/update on customer record)
+- SEND_INVOICE: User explicitly says where to send (email X / WhatsApp Y) — entities.email or entities.phone + entities.channel
 - UNKNOWN: Cannot determine intent
 
 Critical extraction rules for Indian voice patterns:
@@ -265,7 +270,7 @@ Critical extraction rules for Indian voice patterns:
    - Example: "daily report batao" → {"intent":"DAILY_SUMMARY","entities":{}}
 
 15) Recognize SWITCH_LANGUAGE in ANY language — user wants to change response language:
-   - Language code mapping: hi=Hindi/Hinglish, en=English, bn=Bengali/Bangla, ta=Tamil,
+   - Language code mapping: hi=Hindi/Hinglish, hi-en=Hinglish (explicit), en=English, bn=Bengali/Bangla, ta=Tamil,
      te=Telugu, mr=Marathi, gu=Gujarati, kn=Kannada, pa=Punjabi, ml=Malayalam,
      ur=Urdu, ar=Arabic, es=Spanish, fr=French, de=German, ja=Japanese, zh=Chinese
    - "Switch to Tamil" → {"intent":"SWITCH_LANGUAGE","entities":{"language":"ta"}}
@@ -273,6 +278,7 @@ Critical extraction rules for Indian voice patterns:
    - "English mode" → {"intent":"SWITCH_LANGUAGE","entities":{"language":"en"}}
    - "தமிழில் பேசு" (Tamil: speak in Tamil) → {"intent":"SWITCH_LANGUAGE","entities":{"language":"ta"}}
    - "اردو میں بولو" (Urdu: speak in Urdu) → {"intent":"SWITCH_LANGUAGE","entities":{"language":"ur"}}
+   - "hinglish mein bolo" / "change language to hinglish" / "hinglish mode" → {"intent":"SWITCH_LANGUAGE","entities":{"language":"hi-en"}}
    - Any phrase meaning "change language to X" in any language → SWITCH_LANGUAGE
 
 16) Recognize complex CREATE_INVOICE with multiple items, Hindi numbers and units:
@@ -284,6 +290,10 @@ Critical extraction rules for Indian voice patterns:
    - "Ek liter doodh, do kilo aata, paanch anda Priya ke liye bill" → CREATE_INVOICE, entities.customer="Priya", 3 items
    - For items without quantity, default quantity = 1
    - Always output entities.items as array of {product, quantity} objects; quantities must be numbers
+   - SINGLE-COMMAND SEND: if user says "banao aur bhej do" / "seedha bhej do" / "direct send" / "confirm karke bhej do" in the SAME utterance as the items list → add entities.autoSend=true. This skips the draft confirmation step and sends immediately.
+   - "Rahul ka 4 kg chawal ka bill banao aur bhej do" → CREATE_INVOICE, autoSend=true
+   - "Priya ke liye doodh 2 aur aata 5 ka bill seedha bhej do" → CREATE_INVOICE, autoSend=true
+   - autoSend=true ONLY when items are present in the SAME command — never set it from a standalone "bhej do" (that is CONFIRM_INVOICE)
 
 17) Recognize PROVIDE_EMAIL — user is giving an email address:
    - Spoken email: "rahul at gmail dot com" → "rahul@gmail.com", "info at shop dot in" → "info@shop.in"
@@ -293,6 +303,40 @@ Critical extraction rules for Indian voice patterns:
    - "rahul at gmail dot com" → PROVIDE_EMAIL, entities.email="rahul@gmail.com"
    - "iska email bhej do info at myshop dot in" → PROVIDE_EMAIL, entities.email="info@myshop.in"
    - ONLY use this intent when the user is explicitly providing/sharing an email address; do NOT use if they are asking to check a balance or add credit that coincidentally contains digits resembling an address
+
+18) Recognize CONFIRM_INVOICE — user confirms a pending invoice draft:
+   - CRITICAL: Use this intent when context shows ⚠️ PENDING INVOICE or 📧 PENDING SEND CONFIRMATION
+   - "haan", "haan banao", "confirm karo", "theek hai", "ok", "kar do", "bhej do", "bana do" → CONFIRM_INVOICE
+   - "haan bhej do", "same hi raho", "bilkul", "sahi hai" → CONFIRM_INVOICE
+   - Do NOT use CONFIRM_INVOICE if no pending invoice is in context — treat as UNKNOWN or the most likely intent
+   - Example: (after seeing draft) "haan" → {"intent":"CONFIRM_INVOICE","entities":{},"confidence":0.97}
+   - Example: "confirm karo" → {"intent":"CONFIRM_INVOICE","entities":{},"confidence":0.97}
+
+19) Recognize SHOW_PENDING_INVOICE — user wants to see current draft/pending bill:
+   - "bill dikhao", "draft dikhao", "pending bill kya hai", "kitna hua", "kya likha hai", "summary dikhao" → SHOW_PENDING_INVOICE
+   - "abhi ka bill batao", "draft batao", "kya banaya hai", "bill mein kya hai" → SHOW_PENDING_INVOICE
+   - Example: "draft dikhao" → {"intent":"SHOW_PENDING_INVOICE","entities":{},"confidence":0.95}
+
+20) Recognize TOGGLE_GST — user wants to add or remove GST from pending invoice draft:
+   - "GST add karo", "GST lagao", "GST ke saath banao", "with GST" → TOGGLE_GST, entities.withGst=true
+   - "GST hata do", "bina GST ke", "without GST", "GST mat lagao" → TOGGLE_GST, entities.withGst=false
+   - If context already has GST on and user says "GST hata do", set entities.withGst=false
+   - If context already has GST off and user says "GST lagao", set entities.withGst=true
+   - Example: "GST add karo" → {"intent":"TOGGLE_GST","entities":{"withGst":true},"confidence":0.95}
+   - Example: "bina GST ke" → {"intent":"TOGGLE_GST","entities":{"withGst":false},"confidence":0.95}
+
+21) Recognize UPDATE_CUSTOMER — user wants to update any customer detail:
+   - Phone: "CUSTOMER ka phone XXXXXXXXXX karo", "CUSTOMER ka number change karo" → UPDATE_CUSTOMER, entities.phone
+   - Email: "CUSTOMER ka email X@Y.com save karo" → UPDATE_CUSTOMER, entities.email
+   - Name: "CUSTOMER ka naam change karo to NEWNAME" → UPDATE_CUSTOMER, entities.name=NEWNAME
+   - Nickname: "CUSTOMER ka nickname set karo NICK" → UPDATE_CUSTOMER, entities.nickname
+   - Address: "CUSTOMER ka address update karo ADDR" → UPDATE_CUSTOMER, entities.landmark/area/city/pincode
+   - GSTIN: "CUSTOMER ka GSTIN XXXXXXXX hai" → UPDATE_CUSTOMER, entities.gstin
+   - PAN: "CUSTOMER ka PAN XXXXXXXXXX hai" → UPDATE_CUSTOMER, entities.pan
+   - Notes: "CUSTOMER ke baare mein note karo TEXT" → UPDATE_CUSTOMER, entities.notes
+   - Example: "Rahul ka phone 9876543210 update karo" → {"intent":"UPDATE_CUSTOMER","entities":{"customer":"Rahul","phone":"9876543210"},"confidence":0.94}
+   - Example: "Priya ka email priya@gmail.com save karo" → {"intent":"UPDATE_CUSTOMER","entities":{"customer":"Priya","email":"priya@gmail.com"},"confidence":0.94}
+   - Example: "Suresh ka GSTIN 07AABCU9603R1ZP hai" → {"intent":"UPDATE_CUSTOMER","entities":{"customer":"Suresh","gstin":"07AABCU9603R1ZP"},"confidence":0.93}
 
 Also include a "normalized" field: a cleaned version of the input transcript — remove filler words (um, uh, acha suno, haan ji), fix obvious ASR errors, convert spoken numbers to digits. Keep meaning identical.
 
@@ -313,8 +357,20 @@ Example responses:
 {"normalized":"daily report batao","intent":"DAILY_SUMMARY","entities":{},"confidence":0.97}
 {"normalized":"Rahul ke liye 2 kilo chawal aur 3 packet biscuit ka bill banao","intent":"CREATE_INVOICE","entities":{"customer":"Rahul","items":[{"product":"chawal","quantity":2},{"product":"biscuit","quantity":3}]},"confidence":0.96}
 {"normalized":"Priya ka bill: 1 liter doodh, 2 kilo aata, 5 anda","intent":"CREATE_INVOICE","entities":{"customer":"Priya","items":[{"product":"doodh","quantity":1},{"product":"aata","quantity":2},{"product":"anda","quantity":5}]},"confidence":0.95}
+{"normalized":"Rahul ka 4 kg chawal aur 6 kg aata ka bill banao aur bhej do","intent":"CREATE_INVOICE","entities":{"customer":"Rahul","items":[{"product":"chawal","quantity":4},{"product":"aata","quantity":6}],"autoSend":true},"confidence":0.96}
+{"normalized":"Priya ke liye 2 doodh 3 biscuit seedha bhej do","intent":"CREATE_INVOICE","entities":{"customer":"Priya","items":[{"product":"doodh","quantity":2},{"product":"biscuit","quantity":3}],"autoSend":true},"confidence":0.95}
 {"normalized":"mera email rahul@gmail.com hai","intent":"PROVIDE_EMAIL","entities":{"email":"rahul@gmail.com"},"confidence":0.97}
-{"normalized":"rahul at gmail dot com","intent":"PROVIDE_EMAIL","entities":{"email":"rahul@gmail.com"},"confidence":0.96}`;
+{"normalized":"rahul at gmail dot com","intent":"PROVIDE_EMAIL","entities":{"email":"rahul@gmail.com"},"confidence":0.96}
+{"normalized":"haan confirm karo","intent":"CONFIRM_INVOICE","entities":{},"confidence":0.97}
+{"normalized":"theek hai bana do","intent":"CONFIRM_INVOICE","entities":{},"confidence":0.97}
+{"normalized":"haan bhej do","intent":"CONFIRM_INVOICE","entities":{},"confidence":0.96}
+{"normalized":"draft dikhao","intent":"SHOW_PENDING_INVOICE","entities":{},"confidence":0.95}
+{"normalized":"pending bill kya hai","intent":"SHOW_PENDING_INVOICE","entities":{},"confidence":0.95}
+{"normalized":"GST add karo","intent":"TOGGLE_GST","entities":{"withGst":true},"confidence":0.95}
+{"normalized":"bina GST ke banao","intent":"TOGGLE_GST","entities":{"withGst":false},"confidence":0.95}
+{"normalized":"Rahul ka phone 9876543210 update karo","intent":"UPDATE_CUSTOMER","entities":{"customer":"Rahul","phone":"9876543210"},"confidence":0.94}
+{"normalized":"Priya ka email priya@gmail.com save karo","intent":"UPDATE_CUSTOMER","entities":{"customer":"Priya","email":"priya@gmail.com"},"confidence":0.94}
+{"normalized":"Suresh ka GSTIN 07AABCU9603R1ZP hai","intent":"UPDATE_CUSTOMER","entities":{"customer":"Suresh","gstin":"07AABCU9603R1ZP"},"confidence":0.93}`;
 
       // gpt-4o-mini for intent: strict JSON format requires a model that reliably follows it.
       // Groq/llama is fast but cannot follow the complex 13-rule intent prompt accurately.
@@ -627,17 +683,21 @@ BREVITY — MOST IMPORTANT RULE:
 
 FORMAT RULES:
 - Always use English for customer names and numbers (regardless of response language).
+- CRITICAL: Always use ₹ (Indian Rupee symbol) for ALL monetary amounts. NEVER use $ or USD.
 - Customer not found: tell the user the name was not found and ask to confirm.
 - Multiple matches: list the options briefly.
+- INVOICE ITEMS (TTS rule): Say items as "quantity unit productName ₹total" using the unit from the product record — e.g. "4 kg Cheeni ₹180", "2 piece Arhar Dal ₹260". NEVER use ×, @, = symbols — TTS reads them as "cross", "at the rate of", "equals" which sounds robotic. Flag auto-created (₹0) products with "⚠️ naya".
 
 Examples (1 sentence, no filler):
-- CHECK_BALANCE → "Nitin ka balance 1000 hai." (Hinglish) / "Nitin's balance is 1000." (English)
-- RECORD_PAYMENT → "Rahul se 500 mila. Remaining 300 hai."
-- ADD_CREDIT → "Bharat ko 400 add kar diya. Total 900 hai."
-- CREATE_INVOICE → "Bill ban gaya. Total 120 rupees."
+- CHECK_BALANCE → "Nitin ka balance ₹1000 hai." (Hinglish) / "Nitin's balance is ₹1000." (English)
+- RECORD_PAYMENT → "Rahul se ₹500 mila. Remaining ₹300 hai."
+- ADD_CREDIT → "Bharat ko ₹400 add kar diya. Total ₹900 hai."
+- CREATE_INVOICE (draft) → "Rahul ka draft bill: 4 kg Cheeni ₹180, 6 kg Aata ₹240. Total ₹420. Confirm karna hai?"
+- CONFIRM_INVOICE → "Bill confirm ho gaya. Invoice #0042. Total ₹420."
 - CHECK_STOCK → "Milk ka stock 10 packets hai."
 - CREATE_CUSTOMER → "Rajesh add ho gaya."
-- NOT_FOUND → "Nitin ka record nahi mila. Naam confirm karo."`;
+- NOT_FOUND → "Nitin ka record nahi mila. Naam confirm karo."
+- PROVIDE_EMAIL → "Invoice ₹420 ka email bhej diya gaya."`;
 
       const userPrompt = `Original intent: ${originalIntent}
 Result: ${JSON.stringify(executionResult)}

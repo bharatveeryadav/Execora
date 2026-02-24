@@ -93,18 +93,30 @@ class BusinessEngine {
           return await this.executeDailySummary(intent.entities);
 
         case IntentType.UPDATE_CUSTOMER_PHONE:
-          return await this.executeUpdateCustomerPhone(intent.entities, conversationId);
+        case IntentType.UPDATE_CUSTOMER:
+          return await this.executeUpdateCustomer(intent.entities, conversationId);
+
+        case IntentType.PROVIDE_EMAIL:
+        case IntentType.SEND_INVOICE:
+          return await this.executeProvideEmail(intent.entities, conversationId);
+
+        case IntentType.CONFIRM_INVOICE:
+          return await this.executeConfirmInvoice(intent.entities, conversationId);
+
+        case IntentType.SHOW_PENDING_INVOICE:
+          return await this.executeShowPendingInvoice(intent.entities, conversationId);
+
+        case IntentType.TOGGLE_GST:
+          return await this.executeToggleGst(intent.entities, conversationId);
 
         case IntentType.GET_CUSTOMER_INFO:
           return await this.executeGetCustomerInfo(intent.entities, conversationId);
 
         case IntentType.DELETE_CUSTOMER_DATA:
           return await this.executeDeleteCustomerData(intent.entities, conversationId);
+
         case IntentType.LIST_CUSTOMER_BALANCES:
           return await this.executeListCustomerBalances(intent.entities, conversationId);
-
-        case IntentType.PROVIDE_EMAIL:
-          return await this.executeProvideEmail(intent.entities, conversationId);
 
         case IntentType.SWITCH_LANGUAGE:
           return {
@@ -185,7 +197,24 @@ class BusinessEngine {
   }
 
   /**
-   * Create invoice
+   * Build comma-separated item summary for TTS.
+   * Format: "4 kg Cheeni ₹180, 6 kg Aata ₹240" — unit from product DB, no ×/@/= symbols.
+   * New (auto-created) products are flagged with "⚠️ naya" so shopkeeper notices ₹0 price.
+   */
+  private formatItemsSummary(items: any[]): string {
+    return items
+      .map((i) => {
+        const unit    = i.unit ? ` ${i.unit}` : '';
+        const newFlag = i.autoCreated ? ' ⚠️ naya' : '';
+        return `${i.quantity}${unit} ${i.productName} ₹${i.total}${newFlag}`;
+      })
+      .join(', ');
+  }
+
+  /**
+   * Create invoice — shows a draft/preview to user and waits for confirmation.
+   * Products are resolved and prices calculated (auto-creates unknowns at ₹0),
+   * but the DB record is NOT created until the user confirms via CONFIRM_INVOICE.
    */
   private async executeCreateInvoice(entities: any, conversationId?: string): Promise<ExecutionResult> {
     // Map LLM item format { product, quantity } → service format { productName, quantity }
@@ -224,61 +253,195 @@ class BusinessEngine {
 
     const customer = resolution.customer;
 
-    // Create invoice — auto-creates unknown products with price=0
-    const { invoice, autoCreatedProducts } = await invoiceService.createInvoice(customer.id, items);
+    // Preview invoice — resolves products + calculates prices WITHOUT committing to DB.
+    // The draft is stored in Redis and confirmed by the user via CONFIRM_INVOICE intent.
+    const withGst = !!(entities.withGst || entities.gst || entities.gstEnabled);
+    const preview = await invoiceService.previewInvoice(customer.id, items, withGst);
 
-    const invoiceData = {
-      invoiceId: invoice.id,
-      customer: customer.name,
-      total: parseFloat(invoice.total.toString()),
-      items: invoice.items.map((item) => ({
-        product:  item.product?.name ?? item.productName,
-        quantity: Number(item.quantity),
-        price:    parseFloat((item.unitPrice ?? 0).toString()),
-        total:    parseFloat((item.total ?? 0).toString()),
-      })),
-      autoCreatedProducts,
-    };
-
-    // Build suffix for auto-created product warning
-    const newProductNote = autoCreatedProducts.length > 0
-      ? ` Note: ${autoCreatedProducts.join(', ')} naye products hain — catalog mein price update karo.`
+    const newProductNote = preview.autoCreatedProducts.length > 0
+      ? ` (${preview.autoCreatedProducts.length} naya product catalog mein add hua — price ₹0 hai, update karo)`
       : '';
 
-    // Send invoice email if customer has an address; otherwise ask for it
-    if (customer.email) {
-      const shopName = process.env.SHOP_NAME || 'Execora Shop';
-      emailService.sendInvoiceEmail(
-        customer.email,
-        customer.name,
-        invoice.id,
-        invoiceData.items,
-        invoiceData.total,
-        shopName
-      ).catch((err) => logger.error({ err, customerId: customer.id }, 'Failed to send invoice email'));
+    const itemsSummary = this.formatItemsSummary(preview.resolvedItems);
+    const gstSuffix = withGst ? ' (GST included)' : '';
 
-      return {
-        success: true,
-        message: `Invoice created for ${customer.name}. Total: ₹${invoice.total}. Invoice email sent to ${customer.email}.${newProductNote}`,
-        data: invoiceData,
-      };
+    // Store draft at BOTH session-level and shop-level so CONFIRM_INVOICE works
+    // even after a WebSocket reconnect with a new sessionId.
+    const draft = {
+      customerId:          customer.id,
+      customerName:        customer.name,
+      customerEmail:       customer.email || null,
+      resolvedItems:       preview.resolvedItems,
+      inputItems:          items,           // kept so TOGGLE_GST can re-run previewInvoice
+      subtotal:            preview.subtotal,
+      grandTotal:          preview.grandTotal,
+      withGst,
+      autoCreatedProducts: preview.autoCreatedProducts,
+      conversationId,
+    };
+
+    // Single-command flow: "bill banao aur bhej do" — skip draft prompt, confirm + send immediately
+    if (entities.autoSend) {
+      const invoice = await invoiceService.confirmInvoice(customer.id, preview.resolvedItems);
+      return this.sendConfirmedInvoiceEmail(
+        invoice, customer.id, customer.email || null, customer.name, preview.resolvedItems, conversationId,
+      );
     }
 
-    // No email — store context so next PROVIDE_EMAIL turn can send the invoice
     if (conversationId) {
-      await conversationMemory.setContext(conversationId, 'pendingInvoiceEmail', {
-        customerId:  customer.id,
-        customerName: customer.name,
-        invoiceId:   invoice.id,
-        items:       invoiceData.items,
-        total:       invoiceData.total,
-      });
+      await conversationMemory.setContext(conversationId, 'pendingInvoice', draft);
     }
+    await conversationMemory.setShopPendingInvoice(draft);
 
     return {
       success: true,
-      message: `Invoice created for ${customer.name}. Total: ₹${invoice.total}. Email address batao to invoice bhej dete hain.${newProductNote}`,
-      data: { ...invoiceData, awaitingEmail: true },
+      message: `${customer.name} ka draft bill ban gaya: ${itemsSummary}. Total ₹${preview.grandTotal}${gstSuffix}. Confirm karna hai?${newProductNote}`,
+      data: { ...preview, customerId: customer.id, customerName: customer.name, draft: true, awaitingConfirm: true },
+    };
+  }
+
+  /**
+   * Shared post-confirm logic: fire-and-forget email if available, else store
+   * pendingInvoiceEmail context so the next PROVIDE_EMAIL turn can send it.
+   * Called from both executeConfirmInvoice and the autoSend path in executeCreateInvoice.
+   */
+  private async sendConfirmedInvoiceEmail(
+    invoice:       any,
+    customerId:    string,
+    customerEmail: string | null,
+    customerName:  string,
+    resolvedItems: any[],
+    conversationId?: string,
+  ): Promise<ExecutionResult> {
+    const total      = parseFloat(invoice.total.toString());
+    const invoiceRef = (invoice as any).invoiceNo || invoice.id.slice(-6);
+    const shopName   = process.env.SHOP_NAME || 'Execora Shop';
+    const emailItems = resolvedItems.map((i: any) => ({
+      product: i.productName, quantity: i.quantity, price: i.unitPrice, total: i.total,
+    }));
+
+    if (customerEmail) {
+      emailService.sendInvoiceEmail(customerEmail, customerName, invoice.id, emailItems, total, shopName)
+        .catch((err) => logger.error({ err, invoiceId: invoice.id }, 'Failed to send invoice email'));
+      return {
+        success: true,
+        message: `✅ ${customerName} ka bill confirm ho gaya! Invoice #${invoiceRef}. Total ₹${total}. Email ${customerEmail} par bhej diya.`,
+        data: { invoiceId: invoice.id, invoiceNo: invoiceRef, total, customerName },
+      };
+    }
+
+    // No email on file — park the payload so PROVIDE_EMAIL turn can send it
+    const pendingEmailPayload = { customerId, customerName, invoiceId: invoice.id, items: emailItems, total };
+    if (conversationId) {
+      await conversationMemory.setContext(conversationId, 'pendingInvoiceEmail', pendingEmailPayload);
+    }
+    await conversationMemory.setShopPendingEmail(pendingEmailPayload);
+    return {
+      success: true,
+      message: `✅ ${customerName} ka bill confirm ho gaya! Invoice #${invoiceRef}. Total ₹${total}. Email bhejne ke liye address batao.`,
+      data: { invoiceId: invoice.id, invoiceNo: invoiceRef, total, customerName, awaitingEmail: true },
+    };
+  }
+
+  /**
+   * Confirm pending invoice draft — creates DB record + sends email if available.
+   * Called when user says "haan / confirm / theek hai" after seeing draft.
+   */
+  private async executeConfirmInvoice(_entities: any, conversationId?: string): Promise<ExecutionResult> {
+    // Load draft — session-level first, then shop-level (cross-session recovery)
+    const sessionDraft = conversationId
+      ? await conversationMemory.getContext(conversationId, 'pendingInvoice')
+      : null;
+    const draft = sessionDraft ?? await conversationMemory.getShopPendingInvoice();
+
+    if (!draft || !draft.resolvedItems || !draft.customerId) {
+      return {
+        success: false,
+        message: 'Koi pending invoice draft nahi hai confirm karne ke liye. Pehle bill banao.',
+        error: 'NO_PENDING_INVOICE',
+      };
+    }
+
+    const invoice = await invoiceService.confirmInvoice(draft.customerId, draft.resolvedItems);
+
+    // Clear draft from both Redis levels so it won't be re-confirmed
+    if (conversationId) {
+      await conversationMemory.setContext(conversationId, 'pendingInvoice', null);
+    }
+    await conversationMemory.setShopPendingInvoice(null);
+
+    return this.sendConfirmedInvoiceEmail(
+      invoice, draft.customerId, draft.customerEmail, draft.customerName, draft.resolvedItems, conversationId,
+    );
+  }
+
+  /**
+   * Show the current pending invoice draft without changing it.
+   */
+  private async executeShowPendingInvoice(entities: any, conversationId?: string): Promise<ExecutionResult> {
+    const sessionDraft = conversationId
+      ? await conversationMemory.getContext(conversationId, 'pendingInvoice')
+      : null;
+    const draft = sessionDraft ?? await conversationMemory.getShopPendingInvoice();
+
+    if (!draft || !draft.resolvedItems) {
+      return {
+        success: false,
+        message: 'Abhi koi pending bill draft nahi hai.',
+        error: 'NO_PENDING_INVOICE',
+      };
+    }
+
+    const itemsSummary = this.formatItemsSummary(draft.resolvedItems as any[]);
+    const gstSuffix = draft.withGst ? ' (GST included)' : '';
+
+    return {
+      success: true,
+      message: `${draft.customerName} ka pending bill: ${itemsSummary}. Total ₹${draft.grandTotal}${gstSuffix}. Confirm karna hai?`,
+      data: { draft },
+    };
+  }
+
+  /**
+   * Toggle GST on/off for the current pending invoice draft.
+   * Re-runs previewInvoice with flipped withGst and updates Redis.
+   */
+  private async executeToggleGst(entities: any, conversationId?: string): Promise<ExecutionResult> {
+    const sessionDraft = conversationId
+      ? await conversationMemory.getContext(conversationId, 'pendingInvoice')
+      : null;
+    const draft = sessionDraft ?? await conversationMemory.getShopPendingInvoice();
+
+    if (!draft || !draft.inputItems || !draft.customerId) {
+      return {
+        success: false,
+        message: 'Koi pending bill nahi hai GST toggle karne ke liye. Pehle bill banao.',
+        error: 'NO_PENDING_INVOICE',
+      };
+    }
+
+    const newWithGst = !draft.withGst;
+    const preview = await invoiceService.previewInvoice(draft.customerId, draft.inputItems, newWithGst);
+
+    const updatedDraft = {
+      ...draft,
+      resolvedItems: preview.resolvedItems,
+      subtotal:      preview.subtotal,
+      grandTotal:    preview.grandTotal,
+      withGst:       newWithGst,
+    };
+
+    if (conversationId) {
+      await conversationMemory.setContext(conversationId, 'pendingInvoice', updatedDraft);
+    }
+    await conversationMemory.setShopPendingInvoice(updatedDraft);
+
+    const itemsSummary = this.formatItemsSummary(preview.resolvedItems);
+
+    return {
+      success: true,
+      message: `GST ${newWithGst ? 'add kar diya' : 'hata diya'}. Updated bill: ${itemsSummary}. Total ₹${preview.grandTotal}${newWithGst ? ' (GST included)' : ''}. Confirm karna hai?`,
+      data: { ...preview, customerId: draft.customerId, customerName: draft.customerName, withGst: newWithGst },
     };
   }
 
@@ -298,19 +461,22 @@ class BusinessEngine {
       };
     }
 
-    if (!conversationId) {
-      return { success: false, message: 'Session context not available.', error: 'NO_SESSION' };
-    }
-
-    const pending = await conversationMemory.getContext(conversationId, 'pendingInvoiceEmail');
+    // Load pending invoice — session-level first, then shop-level (survives reconnects).
+    // This ensures email delivery works even when the WebSocket reconnected with a new sessionId.
+    const sessionPending = conversationId
+      ? await conversationMemory.getContext(conversationId, 'pendingInvoiceEmail')
+      : null;
+    const pending = sessionPending ?? await conversationMemory.getShopPendingEmail();
 
     if (!pending) {
-      // No pending invoice — just update the active customer's email
-      const active = await conversationMemory.getActiveCustomer(conversationId);
+      // No pending invoice — just update the active customer's email (or active from shop-level)
+      const active = conversationId
+        ? await conversationMemory.getActiveCustomer(conversationId)
+        : null;
       if (!active) {
         return {
           success: false,
-          message: 'Koi active customer nahi hai jiske liye email save karein.',
+          message: 'Koi pending invoice ya active customer nahi hai jiske liye email save karein.',
           error: 'NO_ACTIVE_CUSTOMER',
         };
       }
@@ -336,8 +502,11 @@ class BusinessEngine {
       shopName
     );
 
-    // Clear pending context so we don't re-send on the next turn
-    await conversationMemory.setContext(conversationId, 'pendingInvoiceEmail', null);
+    // Clear pending context from BOTH session-level and shop-level so it's not re-sent
+    if (conversationId) {
+      await conversationMemory.setContext(conversationId, 'pendingInvoiceEmail', null);
+    }
+    await conversationMemory.setShopPendingEmail(null);
 
     logger.info({ conversationId, customerId: pending.customerId, email: rawEmail }, 'Invoice email sent after PROVIDE_EMAIL turn');
 
@@ -523,7 +692,7 @@ class BusinessEngine {
 
     return {
       success: true,
-      message: `${customer.name} ko ${amount} add kar diya. Total balance ab ${balance} hai.`,
+      message: `${customer.name} ko ${amount} add kar diya. Total balance ab ₹${balance} hai.`,
       data: {
         customer: customer.name,
         amountAdded: amount,
@@ -877,69 +1046,89 @@ class BusinessEngine {
   }
 
   /**
-   * Update customer phone number
+   * Update any customer field(s) via voice or text.
+   * Handles UPDATE_CUSTOMER and legacy UPDATE_CUSTOMER_PHONE intents.
    */
-  private async executeUpdateCustomerPhone(entities: any, conversationId?: string): Promise<ExecutionResult> {
+  private async executeUpdateCustomer(entities: any, conversationId?: string): Promise<ExecutionResult> {
     try {
-      if (!entities.phone) {
+      const FIELD_MAP: Record<string, string> = {
+        phone:        'phone',
+        alternatePhone: 'alternatePhone',
+        email:        'email',
+        name:         'name',
+        nickname:     'nickname',
+        landmark:     'landmark',
+        area:         'area',
+        city:         'city',
+        state:        'state',
+        pincode:      'pincode',
+        addressLine1: 'addressLine1',
+        addressLine2: 'addressLine2',
+        gstin:        'gstin',
+        pan:          'pan',
+        notes:        'notes',
+      };
+
+      const updates: Record<string, any> = {};
+      for (const [key, dbKey] of Object.entries(FIELD_MAP)) {
+        if (entities[key] !== undefined && entities[key] !== null && entities[key] !== '') {
+          updates[dbKey] = entities[key];
+        }
+      }
+
+      if (Object.keys(updates).length === 0) {
         return {
           success: false,
-          message: 'Phone number not provided',
-          error: 'MISSING_PHONE',
+          message: 'Kya update karna hai? Phone, email, naam, address, GSTIN — kuch batao.',
+          error: 'NO_FIELDS_PROVIDED',
         };
       }
 
       const { customer, multiple } = await this.resolveCustomer(entities, conversationId);
 
       if (!customer) {
-        return {
-          success: false,
-          message: 'Customer not found',
-          error: 'CUSTOMER_NOT_FOUND',
-        };
+        return { success: false, message: 'Customer nahi mila.', error: 'CUSTOMER_NOT_FOUND' };
       }
 
       if (multiple) {
         return {
           success: false,
-          message: 'Multiple customers found with same name',
+          message: `Kai customers hain "${entities.customer}" naam se. Landmark ke saath batao.`,
           error: 'AMBIGUOUS_CUSTOMER',
-          data: { suggestion: `Please clarify which ${entities.customer}` },
         };
       }
 
-      // Update phone number
-      const updated = await customerService.updateCustomer(customer.id, {
-        phone: entities.phone,
-      });
+      const updated = await customerService.updateCustomer(customer.id, updates);
 
       if (!updated) {
-        return {
-          success: false,
-          message: 'Failed to update phone number',
-          error: 'UPDATE_FAILED',
-        };
+        return { success: false, message: 'Update nahi ho saka. Dobara try karo.', error: 'UPDATE_FAILED' };
       }
 
-      // Set as active customer
       if (conversationId) {
         customerService.setActiveCustomer(conversationId, customer.id);
-        // Invalidate conversation cache to force refresh on next search
         customerService.invalidateConversationCache(conversationId);
       }
 
+      const LABELS: Record<string, string> = {
+        phone: 'Phone', alternatePhone: 'Alternate phone', email: 'Email',
+        name: 'Naam', nickname: 'Nickname', landmark: 'Landmark',
+        area: 'Area', city: 'City', state: 'State', pincode: 'Pincode',
+        addressLine1: 'Address', addressLine2: 'Address line 2',
+        gstin: 'GSTIN', pan: 'PAN', notes: 'Notes',
+      };
+
+      const lines = Object.entries(updates)
+        .map(([k, v]) => `${LABELS[k] ?? k}: ${k === 'phone' ? openaiService.phoneToWords(String(v)) : v}`)
+        .join('\n');
+
       return {
         success: true,
-        message: `${customer.name} ka phone number update ho gaya. Ab ${customer.name} ka nimble phone hai: ${openaiService.phoneToWords(entities.phone)}`,
-        data: { customerId: customer.id, phone: entities.phone },
+        message: `${customer.name} ki details update ho gayi:\n${lines}`,
+        data: { customerId: customer.id, updatedFields: updates },
       };
     } catch (error: any) {
-      logger.error({ error, entities, conversationId }, 'Update customer phone execution failed');
-      return {
-        success: false,
-        message: 'Failed to update phone',
-        error: error.message,
-      };
+      logger.error({ error, entities, conversationId }, 'Update customer execution failed');
+      return { success: false, message: 'Customer update nahi ho saka.', error: error.message };
     }
   }
 

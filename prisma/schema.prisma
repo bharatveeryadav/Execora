@@ -729,6 +729,8 @@ model Invoice {
   dueDate             DateTime?      @map("due_date")
   paidAt              DateTime?      @map("paid_at")
   notes               String?
+  pdfObjectKey        String?        @map("pdf_object_key")
+  pdfUrl              String?        @map("pdf_url")
   createdBy           String?        @map("created_by")
   createdAt           DateTime       @default(now()) @map("created_at")
   updatedAt           DateTime       @updatedAt @map("updated_at")
@@ -1362,4 +1364,16 @@ model GstAudit {
 
   @@index([tenantId, createdAt(sort: Desc)])
   @@map("gst_audit")
+}
+
+// =====================================================
+// MODEL: INVOICE COUNTER (sequential per financial year)
+// =====================================================
+// Tracks the last used invoice sequence number per FY (e.g. "2024-25").
+// Atomic upsert inside invoice transaction guarantees no gaps/duplicates.
+model InvoiceCounter {
+  fy      String @id           // e.g. "2024-25"
+  lastSeq Int    @default(0) @map("last_seq")
+
+  @@map("invoice_counters")
 }

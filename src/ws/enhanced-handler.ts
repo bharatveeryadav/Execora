@@ -26,14 +26,14 @@ interface VoiceSession {
   ttsLanguage: string; // Active response language (BCP-47 code, default 'hi')
 }
 
-// Confidence thresholds for automatic execution vs confirmation
-const CONFIDENCE_THRESHOLD_EXECUTE = 0.85; // ≥ this → auto-execute immediately
-const CONFIDENCE_THRESHOLD_CONFIRM = 0.65;  // < this → ask to repeat; in-between → confirm first
+// Confidence threshold: below this the transcript is too uncertain — ask to repeat
+const CONFIDENCE_THRESHOLD_CONFIRM = 0.65;
 const LARGE_AMOUNT_THRESHOLD = 5000;        // amounts above this always need confirmation
 
 // System messages per language (repeat-command, yes/no prompt, cancelled, confirm suffix)
 const SYSTEM_MSGS: Record<string, { repeat: string; askYesNo: string; cancelled: string; confirmSuffix: string }> = {
-  hi: { repeat: 'Dobara boliye, samajh nahi aaya.', askYesNo: 'Haan ya nahi boliye.', cancelled: 'Theek hai, cancel kiya.', confirmSuffix: 'Haan ya nahi?' },
+  hi:    { repeat: 'Dobara boliye, samajh nahi aaya.', askYesNo: 'Haan ya nahi boliye.', cancelled: 'Theek hai, cancel kiya.', confirmSuffix: 'Haan ya nahi?' },
+  'hi-en': { repeat: 'Dobara boliye, samajh nahi aaya.', askYesNo: 'Haan ya nahi boliye.', cancelled: 'Theek hai, cancel kiya.', confirmSuffix: 'Haan ya nahi?' },
   en: { repeat: 'Please repeat, I did not understand.', askYesNo: 'Please say yes or no.', cancelled: 'Okay, cancelled.', confirmSuffix: 'Yes or no?' },
   bn: { repeat: 'আবার বলুন, বুঝতে পারিনি।', askYesNo: 'হ্যাঁ বা না বলুন।', cancelled: 'ঠিক আছে, বাতিল।', confirmSuffix: 'হ্যাঁ বা না?' },
   ta: { repeat: 'மீண்டும் சொல்லுங்கள், புரியவில்லை.', askYesNo: 'ஆம் அல்லது இல்லை சொல்லுங்கள்.', cancelled: 'சரி, ரத்து செய்யப்பட்டது.', confirmSuffix: 'ஆம் அல்லது இல்லை?' },
@@ -53,7 +53,8 @@ const getSysMsgs = (lang: string) => SYSTEM_MSGS[lang] ?? SYSTEM_MSGS['hi'];
 
 // Confirmation message in each language after switching
 const LANG_SWITCH_ACK: Record<string, string> = {
-  hi: 'Hindi language set. Ab Hindi mein bolunga.',
+  hi:    'Hindi language set. Ab Hindi mein bolunga.',
+  'hi-en': 'Hinglish mode on. Ab Hinglish mein bolunga.',
   en: 'Language changed to English.',
   bn: 'বাংলা ভাষা সেট হয়েছে।',
   ta: 'தமிழ் மொழி அமைக்கப்பட்டது.',
@@ -801,8 +802,14 @@ class EnhancedWebSocketHandler {
   }
 
   /**
-   * Returns true when an intent must be confirmed by the user before execution:
-   * low confidence, high-risk action (delete/cancel), or large amount (>₹5000).
+   * Returns true when an intent must be confirmed by the user before execution.
+   *
+   * Rules:
+   * - HIGH_RISK actions (delete, cancel) → always confirm, regardless of confidence.
+   * - Large cash amounts > ₹5000 (ADD_CREDIT / RECORD_PAYMENT) → confirm to prevent mistakes.
+   * - All routine ops (CREATE_INVOICE, CHECK_BALANCE, UPDATE_CUSTOMER …) → auto-execute.
+   *   The "too-low-confidence" gate (< 0.65) above already handles unclear audio by asking
+   *   to repeat, so we don't need a second confirmation gate for normal operations.
    */
   private intentNeedsConfirmation(intent: IntentExtraction): boolean {
     const HIGH_RISK_INTENTS = new Set<string>([
@@ -811,10 +818,14 @@ class EnhancedWebSocketHandler {
       IntentType.CANCEL_REMINDER,
     ]);
 
-    if (intent.confidence < CONFIDENCE_THRESHOLD_EXECUTE) return true;
+    // Destructive / irreversible actions always need verbal confirmation
     if (HIGH_RISK_INTENTS.has(intent.intent)) return true;
+
+    // Large monetary amounts need confirmation to prevent accidental ledger mistakes
     const amount = intent.entities?.amount;
     if (typeof amount === 'number' && amount > LARGE_AMOUNT_THRESHOLD) return true;
+
+    // Everything else (billing, balance check, update, search …) auto-executes
     return false;
   }
 
