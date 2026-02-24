@@ -9,7 +9,6 @@ clients:
   - url: http://loki:3100/loki/api/v1/push
 
 scrape_configs:
-  # Execora Application Logs
   - job_name: execora-app
     static_configs:
       - targets:
@@ -19,23 +18,28 @@ scrape_configs:
           environment: production
           service: voice-assistant
           __path__: /app/logs/app.log
-          
-    pipeline_stages:
-        # Parse JSON logs from Pino
-        - json:
-          expressions:
-          level: level
-          timestamp: time
-          message: msg
-          error: err
-          tenantId: tenantId
 
-        # Extract labels (including tenantId)
-        - labels:
+    pipeline_stages:
+      - json:
+          expressions:
+            level: level
+            timestamp: time
+            message: msg
+            error: err
+            tenantId: tenantId
+            category: category
+            operation: operation
+            action: action
+            model: model
+            durationMs: durationMs
+
+      - labels:
           level:
           tenantId:
+          category:
+          model:
+          action:
 
-        # Set timestamp from Pino (milliseconds)
-        - timestamp:
+      - timestamp:
           source: timestamp
-          format: "ms"
+          format: ms

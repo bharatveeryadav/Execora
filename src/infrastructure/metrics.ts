@@ -95,6 +95,20 @@ export const dbQueryDuration = new promClient.Histogram({
     registers: [register],
 });
 
+export const dbQueriesTotal = new promClient.Counter({
+    name: 'db_queries_total',
+    help: 'Total number of database queries',
+    labelNames: ['operation', 'table', 'status'],
+    registers: [register],
+});
+
+export const dbAuditEventsTotal = new promClient.Counter({
+    name: 'db_audit_events_total',
+    help: 'Total number of database mutation audit events',
+    labelNames: ['operation', 'model', 'status'],
+    registers: [register],
+});
+
 // Redis Operations
 export const redisOperations = new promClient.Counter({
     name: 'redis_operations_total',

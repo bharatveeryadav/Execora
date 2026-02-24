@@ -1,0 +1,143 @@
+{
+  "title": "Execora DB Activity & Audit",
+  "tags": ["execora", "database", "audit", "loki", "prometheus"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "10s",
+  "time": {
+    "from": "now-3h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "DB Mutations (Success, 1h)",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(increase(db_audit_events_total{status=\"success\"}[1h]))",
+          "legendFormat": "success"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 }
+    },
+    {
+      "id": 2,
+      "title": "DB Mutations (Errors, 1h)",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(increase(db_audit_events_total{status=\"error\"}[1h]))",
+          "legendFormat": "errors"
+        }
+      ],
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 }
+    },
+    {
+      "id": 3,
+      "title": "Slow SQL Queries (1h)",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(increase(db_queries_total{table=\"sql\",status=\"slow\"}[1h]))",
+          "legendFormat": "slow"
+        }
+      ],
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 }
+    },
+    {
+      "id": 4,
+      "title": "DB Query Errors (1h)",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(increase(db_queries_total{status=\"error\"}[1h]))",
+          "legendFormat": "errors"
+        }
+      ],
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 }
+    },
+    {
+      "id": 5,
+      "title": "DB Query Duration p95",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(db_query_duration_seconds_bucket[5m])) by (le, operation, table))",
+          "legendFormat": "{{operation}} {{table}}"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 4, "w": 24, "h": 8 }
+    },
+    {
+      "id": 6,
+      "title": "DB Audit Events Rate",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(db_audit_events_total[5m])) by (model, operation, status)",
+          "legendFormat": "{{model}} {{operation}} {{status}}"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 12, "w": 24, "h": 8 }
+    },
+    {
+      "id": 7,
+      "title": "Database Mutation Audit Log Stream",
+      "type": "logs",
+      "datasource": "Loki",
+      "targets": [
+        {
+          "expr": "{job=\"execora-app\", category=\"db_audit\", tenantId=~\"$tenantId\"} | json",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "wrapLogMessage": true
+      },
+      "gridPos": { "x": 0, "y": 20, "w": 24, "h": 10 }
+    },
+    {
+      "id": 8,
+      "title": "Slow Query Log Stream",
+      "type": "logs",
+      "datasource": "Loki",
+      "targets": [
+        {
+          "expr": "{job=\"execora-app\", category=\"db_query\"} | json | slow=true",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "wrapLogMessage": true
+      },
+      "gridPos": { "x": 0, "y": 30, "w": 24, "h": 10 }
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "tenantId",
+        "type": "query",
+        "datasource": "Loki",
+        "refresh": 1,
+        "query": "label_values({job=\"execora-app\"}, tenantId)",
+        "label": "Tenant ID",
+        "includeAll": true,
+        "allValue": ".*",
+        "hide": 0
+      }
+    ]
+  }
+}
