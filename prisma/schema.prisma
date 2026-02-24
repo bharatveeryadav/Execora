@@ -1,196 +1,1365 @@
+// prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  extensions = [pg_trgm(map: "pg_trgm"), uuidOssp(map: "uuid-ossp")]
 }
 
-model Customer {
-  id        String   @id @default(cuid())
-  name      String
-  nickname  String?
-  phone     String?
-  email     String?
-  landmark  String?
-  notes     String?
-  balance   Decimal  @default(0) @db.Decimal(12, 2)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// =====================================================
+// ENUMS
+// =====================================================
 
-  invoices       Invoice[]
-  ledgerEntries  LedgerEntry[]
-  reminders      Reminder[]
-
-  @@index([name])
-  @@index([phone])
-  @@index([email])
-  @@map("customers")
+enum BusinessType {
+  kirana
+  cosmetics
+  both
+  retail
+  wholesale
 }
 
-model Product {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  price       Decimal  @db.Decimal(10, 2)
-  stock       Int      @default(0)
-  unit        String   @default("piece")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  invoiceItems InvoiceItem[]
-
-  @@index([name])
-  @@map("products")
+enum TenantPlan {
+  free
+  pro
+  enterprise
 }
 
-model Invoice {
-  id         String        @id @default(cuid())
-  customerId String
-  total      Decimal       @db.Decimal(12, 2)
-  status     InvoiceStatus @default(CONFIRMED)
-  notes      String?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
-
-  customer Customer      @relation(fields: [customerId], references: [id])
-  items    InvoiceItem[]
-
-  @@index([customerId])
-  @@index([createdAt])
-  @@map("invoices")
+enum TenantStatus {
+  active
+  suspended
+  trial
+  expired
 }
 
-model InvoiceItem {
-  id        String   @id @default(cuid())
-  invoiceId String
-  productId String
-  quantity  Int
-  price     Decimal  @db.Decimal(10, 2)
-  total     Decimal  @db.Decimal(12, 2)
-  createdAt DateTime @default(now())
-
-  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id])
-
-  @@index([invoiceId])
-  @@index([productId])
-  @@map("invoice_items")
-}
-
-model LedgerEntry {
-  id          String      @id @default(cuid())
-  customerId  String
-  type        LedgerType
-  amount      Decimal     @db.Decimal(12, 2)
-  description String
-  paymentMode String?
-  reference   String?
-  createdAt   DateTime    @default(now())
-
-  customer Customer @relation(fields: [customerId], references: [id])
-
-  @@index([customerId])
-  @@index([createdAt])
-  @@map("ledger_entries")
-}
-
-model Reminder {
-  id         String         @id @default(cuid())
-  customerId String
-  amount     Decimal        @db.Decimal(12, 2)
-  message    String
-  sendAt     DateTime
-  status     ReminderStatus @default(SCHEDULED)
-  retryCount Int            @default(0)
-  sentAt     DateTime?
-  failedAt   DateTime?
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
-
-  customer Customer @relation(fields: [customerId], references: [id])
-
-  @@index([customerId])
-  @@index([sendAt])
-  @@index([status])
-  @@map("reminders")
-}
-
-model WhatsAppMessage {
-  id          String              @id @default(cuid())
-  reminderId  String?
-  phone       String
-  message     String
-  messageId   String?
-  status      WhatsAppStatus      @default(PENDING)
-  deliveredAt DateTime?
-  readAt      DateTime?
-  failedAt    DateTime?
-  errorCode   String?
-  errorMessage String?
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
-
-  @@index([phone])
-  @@index([reminderId])
-  @@index([status])
-  @@map("whatsapp_messages")
-}
-
-model ConversationSession {
-  id        String   @id @default(cuid())
-  startedAt DateTime @default(now())
-  endedAt   DateTime?
-  duration  Int?
-  metadata  Json?
-
-  recordings ConversationRecording[]
-
-  @@index([startedAt])
-  @@map("conversation_sessions")
-}
-
-model ConversationRecording {
-  id        String   @id @default(cuid())
-  sessionId String
-  filePath  String
-  fileName  String
-  duration  Int?
-  size      Int?
-  mimeType  String   @default("audio/webm")
-  createdAt DateTime @default(now())
-
-  session ConversationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-
-  @@index([sessionId])
-  @@index([createdAt])
-  @@map("conversation_recordings")
+enum UserRole {
+  owner
+  admin
+  manager
+  staff
+  viewer
 }
 
 enum InvoiceStatus {
-  DRAFT
-  CONFIRMED
-  CANCELLED
+  draft
+  pending
+  paid
+  partial
+  cancelled
 }
 
-enum LedgerType {
-  DEBIT
-  CREDIT
-  OPENING_BALANCE
+enum PaymentMethod {
+  cash
+  upi
+  card
+  bank
+  credit
+  mixed
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  failed
+  refunded
+}
+
+enum StockMovementType {
+  purchase
+  sale
+  return
+  adjustment
+  damage
+  expired
+}
+
+enum ReminderType {
+  payment_due
+  payment_overdue
+  invoice_reminder
+  low_stock
+  expiry_alert
+  birthday
+  anniversary
+  follow_up
+  custom
+  staff_task
+  gst_filing
+}
+
+enum ReminderPriority {
+  high
+  normal
+  low
 }
 
 enum ReminderStatus {
-  SCHEDULED
-  SENT
-  FAILED
-  CANCELLED
+  pending
+  sent
+  failed
+  cancelled
+  expired
 }
 
-enum WhatsAppStatus {
-  PENDING
-  SENT
-  DELIVERED
-  READ
-  FAILED
+enum MessageChannel {
+  whatsapp
+  email
+  sms
+  in_app
+}
+
+enum MessageStatus {
+  queued
+  sent
+  delivered
+  read
+  failed
+  bounced
+  rejected
+}
+
+enum SessionStatus {
+  active
+  paused
+  waiting
+  ended
+  archived
+}
+
+enum TurnType {
+  voice
+  text
+  whatsapp
+  system
+  quick_action
+}
+
+enum ConversationPriority {
+  urgent
+  high
+  normal
+  low
+}
+
+enum AliasType {
+  nickname
+  honorific
+  misspelling
+  local
+  contextual
+  temporal
+  learned
+}
+
+enum RelationshipType {
+  family
+  business_partner
+  reference
+  same_person
+  husband_wife
+  father_son
+  brother
+  sister
+}
+
+enum GstActionType {
+  filing
+  invoice
+  credit_note
+  debit_note
+  amendment
+}
+
+// =====================================================
+// MODEL 1: TENANTS
+// =====================================================
+model Tenant {
+  id                 String         @id @default(uuid())
+  name               String
+  businessType       BusinessType   @default(kirana) @map("business_type")
+  subdomain          String?        @unique(map: "tenant_subdomain_key")
+  customDomain       String?        @unique(map: "tenant_custom_domain_key") @map("custom_domain")
+  currency           String         @default("INR")
+  timezone           String         @default("Asia/Kolkata")
+  language           String         @default("hi")
+  dateFormat         String         @default("DD/MM/YYYY") @map("date_format")
+  plan               TenantPlan     @default(free)
+  status             TenantStatus   @default(trial)
+  trialEndsAt        DateTime?      @map("trial_ends_at")
+  subscriptionEndsAt DateTime?      @map("subscription_ends_at")
+  gstin              String?        @unique(map: "tenant_gstin_key")
+  legalName          String?        @map("legal_name")
+  tradeName          String?        @map("trade_name")
+  state              String?
+  gstRegistered      Boolean        @default(false) @map("gst_registered")
+  features           Json           @default("{\"inventory\":true,\"customer_credit\":true,\"batch_tracking\":false,\"variants\":false,\"loyalty\":false,\"reports\":true,\"whatsapp\":true,\"email\":false,\"sms\":false,\"advanced_reminders\":true,\"voice_recording\":false,\"customer_documents\":false,\"multi_conversation\":true,\"conversation_queue\":true,\"gst_enabled\":false,\"gst_filing\":false}")
+  settings           Json           @default("{}")
+  logoUrl            String?        @map("logo_url")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+
+  users                  User[]
+  customers              Customer[]
+  products               Product[]
+  suppliers              Supplier[]
+  invoices               Invoice[]
+  payments               Payment[]
+  sessions               Session[]
+  conversations          ConversationSession[]
+  reminders              Reminder[]
+  activityLogs           ActivityLog[]
+  gstReminders           GstReminder[]
+  gstAudits              GstAudit[]
+  conversationQueues     UserConversationQueue[]
+  customerContextCaches  CustomerContextCache[]
+  conversationFlows      ConversationFlow[]
+  voiceRecordings        VoiceRecording[]
+
+  @@index([status, plan])
+  @@index([createdAt])
+  @@map("tenants")
+}
+
+// =====================================================
+// MODEL 2: USERS
+// =====================================================
+model User {
+  id             String         @id @default(uuid())
+  tenantId       String         @map("tenant_id")
+  email          String
+  phone          String?
+  passwordHash   String         @map("password_hash")
+  name           String
+  role           UserRole       @default(staff)
+  permissions    String[]
+  avatarUrl      String?        @map("avatar_url")
+  preferences    Json           @default("{\"language\":\"hi\",\"notifications\":true}")
+  maxConcurrent  Int            @default(15) @map("max_concurrent")
+  isActive       Boolean        @default(true) @map("is_active")
+  lastLogin      DateTime?      @map("last_login")
+  lastIp         String?        @map("last_ip")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  tenant                  Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sessions                Session[]
+  conversations           ConversationSession[]
+  activityLogs            ActivityLog[]
+  reminders               Reminder[]
+  conversationQueues      UserConversationQueue[]
+  triggeredVoiceRecordings VoiceRecording[]
+  gstFilings              GstReminder[]
+  gstAuditApprovals       GstAudit[]              @relation("GstAuditApprover")
+  gstAuditCreations       GstAudit[]              @relation("GstAuditCreator")
+
+  @@unique([tenantId, email])
+  @@unique([tenantId, phone])
+  @@index([tenantId, isActive])
+  @@index([email])
+  @@map("users")
+}
+
+// =====================================================
+// MODEL 3: SESSIONS
+// =====================================================
+model Session {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  tenantId     String   @map("tenant_id")
+  token        String   @unique(map: "session_token_key")
+  refreshToken String?  @unique(map: "session_refresh_token_key") @map("refresh_token")
+  expiresAt    DateTime @map("expires_at")
+  lastActivity DateTime @default(now()) @map("last_activity")
+  deviceInfo   Json?    @map("device_info")
+  ipAddress    String?  @map("ip_address")
+  userAgent    String?  @map("user_agent")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([refreshToken])
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+// =====================================================
+// MODEL 4: CUSTOMERS
+// =====================================================
+model Customer {
+  id                    String          @id @default(uuid())
+  tenantId              String          @map("tenant_id")
+  name                  String
+  phone                 String?
+  alternatePhone        String[]        @map("alternate_phone")
+  email                 String?
+  honorific             String?
+  localName             String?         @map("local_name")
+  nickname              String[]
+  addressLine1          String?         @map("address_line1")
+  addressLine2          String?         @map("address_line2")
+  landmark              String?
+  area                  String?
+  city                  String?
+  district              String?
+  state                 String?
+  pincode               String?
+  gstin                 String?
+  pan                   String?
+  businessType          String?         @map("business_type")
+  creditLimit           Decimal         @default(0) @map("credit_limit")
+  balance               Decimal         @default(0)
+  totalPurchases        Decimal         @default(0) @map("total_purchases")
+  totalPayments         Decimal         @default(0) @map("total_payments")
+  lastPaymentAmount     Decimal?        @map("last_payment_amount")
+  lastPaymentDate       DateTime?       @map("last_payment_date")
+  averagePaymentDays    Int?            @map("average_payment_days")
+  loyaltyPoints         Int             @default(0) @map("loyalty_points")
+  loyaltyTier           String          @default("bronze") @map("loyalty_tier")
+  visitCount            Int             @default(0) @map("visit_count")
+  firstVisit            DateTime?       @map("first_visit")
+  lastVisit             DateTime?       @map("last_visit")
+  averageBasketSize     Decimal?        @map("average_basket_size")
+  preferredPaymentMethod PaymentMethod[] @map("preferred_payment_method")
+  preferredTimeOfDay    DateTime?       @map("preferred_time_of_day")
+  preferredDays         String[]        @map("preferred_days")
+  frequencyScore        Decimal         @default(0) @map("frequency_score")
+  recencyScore          Decimal         @default(0) @map("recency_score")
+  monetaryScore         Decimal         @default(0) @map("monetary_score")
+  overallScore          Decimal?        @map("overall_score")
+  tags                  String[]
+  notes                 String?
+  metadata              Json            @default("{}")
+  voiceFingerprint      String?         @map("voice_fingerprint")
+  commonPhrases         String[]        @map("common_phrases")
+  createdBy             String?         @map("created_by")
+  updatedBy             String?         @map("updated_by")
+  createdAt             DateTime        @default(now()) @map("created_at")
+  updatedAt             DateTime        @updatedAt @map("updated_at")
+  deletedAt             DateTime?       @map("deleted_at")
+
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoices    Invoice[]
+  payments    Payment[]
+  aliases     CustomerAlias[]
+  preferences CustomerCommunicationPrefs?
+  relationships CustomerRelationship[] @relation("customer_relationships")
+  relatedTo   CustomerRelationship[] @relation("related_customer")
+  context     CustomerContextCache?
+  conversations ConversationSession[]
+  turns           ConversationTurn[] @relation("customer_turns")
+  resolvedTurns   ConversationTurn[] @relation("resolved_customer_turns")
+  voiceRecordings VoiceRecording[]
+  reminders       Reminder[]
+  serialNumbers   SerialNumber[]
+  messageLogs     MessageLog[]
+
+  @@unique([tenantId, phone])
+  @@unique([tenantId, gstin])
+  @@unique([tenantId, pan])
+  @@index([tenantId, balance])
+  @@index([tenantId, overallScore(sort: Desc)])
+  @@index([tenantId, lastVisit(sort: Desc)])
+  @@index([deletedAt])
+  @@map("customers")
+}
+
+// =====================================================
+// MODEL 5: CUSTOMER ALIASES
+// =====================================================
+model CustomerAlias {
+  id          String      @id @default(uuid())
+  tenantId    String      @map("tenant_id")
+  customerId  String      @map("customer_id")
+  alias       String
+  aliasType   AliasType   @map("alias_type")
+  confidence  Decimal     @default(0.5)
+  usageCount  Int         @default(1) @map("usage_count")
+  lastUsed    DateTime    @default(now()) @map("last_used")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, customerId, alias])
+  @@index([alias])
+  @@index([customerId, confidence(sort: Desc)])
+  @@map("customer_aliases")
+}
+
+// =====================================================
+// MODEL 6: CUSTOMER RELATIONSHIPS
+// =====================================================
+model CustomerRelationship {
+  id                 String           @id @default(uuid())
+  tenantId           String           @map("tenant_id")
+  customerId         String           @map("customer_id")
+  relatedCustomerId  String           @map("related_customer_id")
+  relationshipType   RelationshipType @map("relationship_type")
+  confidence         Decimal          @default(0.5)
+  notes              String?
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  customer     Customer @relation("customer_relationships", fields: [customerId], references: [id], onDelete: Cascade)
+  relatedCustomer Customer @relation("related_customer", fields: [relatedCustomerId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, customerId, relatedCustomerId])
+  @@index([customerId])
+  @@index([relatedCustomerId])
+  @@map("customer_relationships")
+}
+
+// =====================================================
+// MODEL 7: CUSTOMER COMMUNICATION PREFERENCES
+// =====================================================
+model CustomerCommunicationPrefs {
+  id                    String        @id @default(uuid())
+  tenantId              String        @map("tenant_id")
+  customerId            String        @unique(map: "customer_prefs_customer_key") @map("customer_id")
+  whatsappEnabled       Boolean       @default(true) @map("whatsapp_enabled")
+  whatsappNumber        String?       @map("whatsapp_number")
+  whatsappOptInTime     DateTime?     @map("whatsapp_opt_in_time")
+  whatsappOptInIp       String?       @map("whatsapp_opt_in_ip")
+  emailEnabled          Boolean       @default(false) @map("email_enabled")
+  emailAddress          String?       @map("email_address")
+  emailVerified         Boolean       @default(false) @map("email_verified")
+  emailVerifiedAt       DateTime?     @map("email_verified_at")
+  smsEnabled            Boolean       @default(true) @map("sms_enabled")
+  smsNumber             String?       @map("sms_number")
+  preferredLanguage     String        @default("hi") @map("preferred_language")
+  preferredTime         DateTime?     @map("preferred_time")
+  quietHours            Json          @default("{\"start\":\"21:00\",\"end\":\"09:00\"}") @map("quiet_hours")
+  maxPerWeek            Int           @default(3) @map("max_per_week")
+  maxPerMonth           Int           @default(10) @map("max_per_month")
+  messagesSentThisWeek  Int           @default(0) @map("messages_sent_this_week")
+  messagesSentThisMonth Int           @default(0) @map("messages_sent_this_month")
+  lastMessageAt         DateTime?     @map("last_message_at")
+  consentGiven          Boolean       @default(false) @map("consent_given")
+  consentDate           DateTime?     @map("consent_date")
+  consentSource         String?       @map("consent_source")
+  consentIp             String?       @map("consent_ip")
+  optedOut              Boolean       @default(false) @map("opted_out")
+  optedOutAt            DateTime?     @map("opted_out_at")
+  optOutReason          String?       @map("opt_out_reason")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([optedOut])
+  @@map("customer_communication_prefs")
+}
+
+// =====================================================
+// MODEL 8: PRODUCTS
+// =====================================================
+model Product {
+  id                  String            @id @default(uuid())
+  tenantId            String            @map("tenant_id")
+  name                String
+  description         String?
+  category            String
+  subCategory         String?           @map("sub_category")
+  sku                 String?
+  barcode             String?
+  price               Decimal
+  mrp                 Decimal?
+  cost                Decimal?
+  unit                String
+  baseUnit            String?           @map("base_unit")
+  baseUnitQuantity    Decimal?          @map("base_unit_quantity")
+  stock               Int               @default(0)
+  minStock            Int               @default(5) @map("min_stock")
+  maxStock            Int?              @map("max_stock")
+  location            String?
+  hsnCode             String?           @map("hsn_code")
+  gstRate             Decimal           @default(0) @map("gst_rate")
+  cess                Decimal           @default(0)
+  isGstExempt         Boolean           @default(false) @map("is_gst_exempt")
+  trackBatches        Boolean           @default(false) @map("track_batches")
+  trackSerialNumbers  Boolean           @default(false) @map("track_serial_numbers")
+  hasVariants         Boolean           @default(false) @map("has_variants")
+  imageUrl            String?           @map("image_url")
+  imageUrls           String[]          @map("image_urls")
+  preferredSupplier   String?           @map("preferred_supplier")
+  supplierId          String?           @map("supplier_id")
+  isActive            Boolean           @default(true) @map("is_active")
+  isFeatured          Boolean           @default(false) @map("is_featured")
+  attributes          Json              @default("{}")
+  tags                String[]
+  createdBy           String?           @map("created_by")
+  updatedBy           String?           @map("updated_by")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+  deletedAt           DateTime?         @map("deleted_at")
+
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  variants      ProductVariant[]
+  batches       ProductBatch[]
+  serialNumbers SerialNumber[]
+  invoiceItems  InvoiceItem[]
+  stockMovements StockMovement[]
+  purchaseItems PurchaseOrderItem[]
+  reminders     Reminder[]
+
+  @@unique([tenantId, sku])
+  @@unique([tenantId, barcode])
+  @@index([tenantId, isActive])
+  @@index([tenantId, category])
+  @@index([tenantId, stock])
+  @@index([tenantId, hsnCode])
+  @@map("products")
+}
+
+// =====================================================
+// MODEL 9: PRODUCT VARIANTS
+// =====================================================
+model ProductVariant {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  productId   String   @map("product_id")
+  sku         String
+  barcode     String?
+  attributes  Json
+  price       Decimal
+  mrp         Decimal?
+  cost        Decimal?
+  stock       Int      @default(0)
+  imageUrl    String?  @map("image_url")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  batches ProductBatch[]
+  serialNumbers SerialNumber[]
+  invoiceItems InvoiceItem[]
+  stockMovements StockMovement[]
+  purchaseItems PurchaseOrderItem[]
+
+  @@unique([tenantId, sku])
+  @@unique([tenantId, barcode])
+  @@index([productId])
+  @@map("product_variants")
+}
+
+// =====================================================
+// MODEL 10: PRODUCT BATCHES
+// =====================================================
+model ProductBatch {
+  id                 String        @id @default(uuid())
+  tenantId           String        @map("tenant_id")
+  productId          String        @map("product_id")
+  variantId          String?       @map("variant_id")
+  batchNo            String        @map("batch_no")
+  manufacturingDate  DateTime?     @map("manufacturing_date")
+  expiryDate         DateTime      @map("expiry_date")
+  quantity           Int           @default(0)
+  initialQuantity    Int           @map("initial_quantity")
+  purchasePrice      Decimal?      @map("purchase_price")
+  purchaseDate       DateTime?     @map("purchase_date")
+  supplierId         String?       @map("supplier_id")
+  location           String?
+  status             String        @default("active")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant      ProductVariant? @relation(fields: [variantId], references: [id])
+  serialNumbers SerialNumber[]
+  invoiceItems InvoiceItem[]
+  stockMovements StockMovement[]
+
+  @@unique([tenantId, productId, batchNo])
+  @@index([tenantId, expiryDate])
+  @@index([productId])
+  @@index([status])
+  @@map("product_batches")
+}
+
+// =====================================================
+// MODEL 11: SERIAL NUMBERS
+// =====================================================
+model SerialNumber {
+  id           String        @id @default(uuid())
+  tenantId     String        @map("tenant_id")
+  productId    String        @map("product_id")
+  variantId    String?       @map("variant_id")
+  batchId      String?       @map("batch_id")
+  serialNo     String        @map("serial_no")
+  status       String        @default("in_stock")
+  soldTo       String?       @map("sold_to")
+  soldAt       DateTime?     @map("sold_at")
+  invoiceId    String?       @map("invoice_id")
+  warrantyUntil DateTime?    @map("warranty_until")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
+  batch   ProductBatch? @relation(fields: [batchId], references: [id])
+  customer Customer? @relation(fields: [soldTo], references: [id])
+
+  @@unique([tenantId, productId, serialNo])
+  @@index([status])
+  @@index([soldTo])
+  @@map("serial_numbers")
+}
+
+// =====================================================
+// MODEL 12: SUPPLIERS
+// =====================================================
+model Supplier {
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  name           String
+  companyName    String?  @map("company_name")
+  phone          String?
+  alternatePhone String[] @map("alternate_phone")
+  email          String?
+  address        String?
+  gstin          String?
+  pan            String?
+  paymentTerms   String?  @map("payment_terms")
+  creditLimit    Decimal? @map("credit_limit")
+  balance        Decimal  @default(0)
+  metadata       Json     @default("{}")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  purchaseOrders PurchaseOrder[]
+
+  @@unique([tenantId, phone])
+  @@index([tenantId])
+  @@map("suppliers")
+}
+
+// =====================================================
+// MODEL 13: PURCHASE ORDERS
+// =====================================================
+model PurchaseOrder {
+  id           String          @id @default(uuid())
+  tenantId     String          @map("tenant_id")
+  poNo         String          @unique(map: "purchase_order_po_no_key") @map("po_no")
+  supplierId   String?         @map("supplier_id")
+  orderDate    DateTime        @default(now()) @map("order_date")
+  expectedDate DateTime?       @map("expected_date")
+  receivedDate DateTime?       @map("received_date")
+  subtotal     Decimal
+  tax          Decimal         @default(0)
+  total        Decimal
+  status       String          @default("pending")
+  notes        String?
+  createdBy    String?         @map("created_by")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  supplier Supplier? @relation(fields: [supplierId], references: [id])
+  items    PurchaseOrderItem[]
+
+  @@index([tenantId, status])
+  @@index([supplierId])
+  @@index([orderDate(sort: Desc)])
+  @@map("purchase_orders")
+}
+
+// =====================================================
+// MODEL 14: PURCHASE ORDER ITEMS
+// =====================================================
+model PurchaseOrderItem {
+  id               String        @id @default(uuid())
+  poId             String        @map("po_id")
+  productId        String        @map("product_id")
+  variantId        String?       @map("variant_id")
+  quantity         Int
+  receivedQuantity Int           @default(0) @map("received_quantity")
+  unitPrice        Decimal       @map("unit_price")
+  total            Decimal
+  batchNo          String?       @map("batch_no")
+  expiryDate       DateTime?     @map("expiry_date")
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  po      PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+  product Product      @relation(fields: [productId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
+
+  @@index([poId])
+  @@index([productId])
+  @@map("purchase_order_items")
+}
+
+// =====================================================
+// MODEL 15: INVOICES
+// =====================================================
+model Invoice {
+  id                  String         @id @default(uuid())
+  tenantId            String         @map("tenant_id")
+  invoiceNo           String         @unique(map: "invoice_number_key") @map("invoice_no")
+  customerId          String?        @map("customer_id")
+  subtotal            Decimal
+  discount            Decimal        @default(0)
+  discountType        String?        @map("discount_type")
+  total               Decimal
+  paidAmount          Decimal        @default(0) @map("paid_amount")
+  tax                 Decimal        @default(0)
+  cgst                Decimal        @default(0)
+  sgst                Decimal        @default(0)
+  igst                Decimal        @default(0)
+  cess                Decimal        @default(0)
+  placeOfSupply       String?        @map("place_of_supply")
+  reverseCharge       Boolean        @default(false) @map("reverse_charge")
+  ewayBillNo          String?        @map("eway_bill_no")
+  ewayBillGeneratedAt DateTime?      @map("eway_bill_generated_at")
+  irn                 String?        @unique(map: "invoice_irn_key")
+  irnGeneratedAt      DateTime?      @map("irn_generated_at")
+  ackNo               String?        @map("ack_no")
+  ackDate             DateTime?      @map("ack_date")
+  qrCode              String?        @map("qr_code")
+  status              InvoiceStatus  @default(pending)
+  paymentMethod       PaymentMethod? @map("payment_method")
+  invoiceDate         DateTime       @default(now()) @map("invoice_date")
+  dueDate             DateTime?      @map("due_date")
+  paidAt              DateTime?      @map("paid_at")
+  notes               String?
+  createdBy           String?        @map("created_by")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+  deletedAt           DateTime?      @map("deleted_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id])
+  items    InvoiceItem[]
+  payments Payment[]
+  reminders Reminder[]
+
+  @@index([tenantId, invoiceDate(sort: Desc)])
+  @@index([tenantId, customerId])
+  @@index([tenantId, status])
+  @@index([dueDate])
+  @@map("invoices")
+}
+
+// =====================================================
+// MODEL 16: INVOICE ITEMS
+// =====================================================
+model InvoiceItem {
+  id                String         @id @default(uuid())
+  invoiceId         String         @map("invoice_id")
+  productId         String?        @map("product_id")
+  variantId         String?        @map("variant_id")
+  batchId           String?        @map("batch_id")
+  productName       String         @map("product_name")
+  variantAttributes Json?          @map("variant_attributes")
+  quantity          Decimal
+  unit              String
+  unitPrice         Decimal        @map("unit_price")
+  mrp               Decimal?
+  discount          Decimal        @default(0)
+  subtotal          Decimal
+  tax               Decimal        @default(0)
+  total             Decimal
+  hsnCode           String?        @map("hsn_code")
+  gstRate           Decimal        @default(0) @map("gst_rate")
+  cess              Decimal        @default(0)
+  cgst              Decimal        @default(0)
+  sgst              Decimal        @default(0)
+  igst              Decimal        @default(0)
+  serialNumbers     String[]       @map("serial_numbers")
+  createdAt         DateTime       @default(now()) @map("created_at")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
+  batch   ProductBatch? @relation(fields: [batchId], references: [id])
+
+  @@index([invoiceId])
+  @@index([productId])
+  @@index([hsnCode])
+  @@map("invoice_items")
+}
+
+// =====================================================
+// MODEL 17: PAYMENTS
+// =====================================================
+model Payment {
+  id          String        @id @default(uuid())
+  tenantId    String        @map("tenant_id")
+  paymentNo   String        @unique(map: "payment_number_key") @map("payment_no")
+  customerId  String        @map("customer_id")
+  invoiceId   String?       @map("invoice_id")
+  amount      Decimal
+  method      PaymentMethod
+  reference   String?
+  status      PaymentStatus @default(completed)
+  receivedAt  DateTime      @default(now()) @map("received_at")
+  notes       String?
+  createdBy   String?       @map("created_by")
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id])
+  invoice  Invoice? @relation(fields: [invoiceId], references: [id])
+
+  @@index([tenantId, customerId, receivedAt(sort: Desc)])
+  @@index([invoiceId])
+  @@index([receivedAt])
+  @@map("payments")
+}
+
+// =====================================================
+// MODEL 18: STOCK MOVEMENTS
+// =====================================================
+model StockMovement {
+  id             String             @id @default(uuid())
+  tenantId       String             @map("tenant_id")
+  productId      String             @map("product_id")
+  variantId      String?            @map("variant_id")
+  batchId        String?            @map("batch_id")
+  quantity       Int
+  type           StockMovementType
+  referenceId    String?            @map("reference_id")
+  referenceType  String?            @map("reference_type")
+  previousStock  Int                @map("previous_stock")
+  newStock       Int                @map("new_stock")
+  notes          String?
+  createdBy      String?            @map("created_by")
+  createdAt      DateTime           @default(now()) @map("created_at")
+
+  product Product @relation(fields: [productId], references: [id])
+  variant ProductVariant? @relation(fields: [variantId], references: [id])
+  batch   ProductBatch? @relation(fields: [batchId], references: [id])
+
+  @@index([productId, createdAt(sort: Desc)])
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([batchId])
+  @@map("stock_movements")
+}
+
+// =====================================================
+// MODEL 19: MESSAGE TEMPLATES
+// =====================================================
+model MessageTemplate {
+  id               String         @id @default(uuid())
+  tenantId         String         @map("tenant_id")
+  templateCode     String         @map("template_code")
+  templateName     String         @map("template_name")
+  channel          MessageChannel
+  language         String         @default("hi")
+  subject          String?
+  content          String
+  requiredVariables String[]      @map("required_variables")
+  sampleData       Json?          @map("sample_data")
+  version          Int            @default(1)
+  isActive         Boolean        @default(true) @map("is_active")
+  createdBy        String?        @map("created_by")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  reminders          Reminder[]
+  scheduledMessages  ScheduledMessage[]
+
+  @@unique([tenantId, templateCode, channel, language])
+  @@index([tenantId, isActive])
+  @@map("message_templates")
+}
+
+// =====================================================
+// MODEL 20: WHATSAPP TEMPLATES
+// =====================================================
+model WhatsappTemplate {
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  templateName   String   @map("template_name")
+  templateId     String?  @map("template_id")
+  language       String
+  category       String?  @default("transactional")
+  header         Json?
+  body           Json
+  footer         Json?
+  buttons        Json?
+  status         String   @default("pending_approval")
+  rejectionReason String? @map("rejection_reason")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, templateName, language])
+  @@index([status])
+  @@map("whatsapp_templates")
+}
+
+// =====================================================
+// MODEL 21: EMAIL TEMPLATES
+// =====================================================
+model EmailTemplate {
+  id           String   @id @default(uuid())
+  tenantId     String   @map("tenant_id")
+  templateName String   @map("template_name")
+  subject      String
+  htmlContent  String   @map("html_content")
+  textContent  String?  @map("text_content")
+  headerImage  String?  @map("header_image")
+  footerText   String?  @map("footer_text")
+  primaryColor String   @default("#6366F1") @map("primary_color")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, templateName])
+  @@map("email_templates")
+}
+
+// =====================================================
+// MODEL 22: SMS TEMPLATES
+// =====================================================
+model SmsTemplate {
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  templateName   String   @map("template_name")
+  content        String
+  dltTemplateId  String?  @map("dlt_template_id")
+  dltEntityId    String?  @map("dlt_entity_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, templateName])
+  @@map("sms_templates")
+}
+
+// =====================================================
+// MODEL 23: REMINDERS
+// =====================================================
+model Reminder {
+  id                String           @id @default(uuid())
+  tenantId          String           @map("tenant_id")
+  customerId        String?          @map("customer_id")
+  invoiceId         String?          @map("invoice_id")
+  productId         String?          @map("product_id")
+  userId            String?          @map("user_id")
+  reminderType      ReminderType     @map("reminder_type")
+  priority          ReminderPriority @default(normal)
+  scheduledTime     DateTime         @map("scheduled_time")
+  recurringPattern  Json?            @map("recurring_pattern")
+  expiresAt         DateTime?        @map("expires_at")
+  messageTemplateId String?          @map("message_template_id")
+  customMessage     String?          @map("custom_message")
+  parameters        Json?
+  channels          MessageChannel[]
+  status            ReminderStatus   @default(pending)
+  sentAt            DateTime?        @map("sent_at")
+  deliveredAt       DateTime?        @map("delivered_at")
+  readAt            DateTime?        @map("read_at")
+  retryCount        Int              @default(0) @map("retry_count")
+  maxRetries        Int              @default(3) @map("max_retries")
+  lastAttempt       DateTime?        @map("last_attempt")
+  lastError         String?          @map("last_error")
+  createdBy         String?          @map("created_by")
+  notes             String?
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id])
+  invoice  Invoice?  @relation(fields: [invoiceId], references: [id])
+  product  Product?  @relation(fields: [productId], references: [id])
+  user     User?     @relation(fields: [userId], references: [id])
+  template MessageTemplate? @relation(fields: [messageTemplateId], references: [id])
+
+  @@index([tenantId, scheduledTime, status])
+  @@index([tenantId, customerId, status])
+  @@index([status, scheduledTime])
+  @@map("reminders")
+}
+
+// =====================================================
+// MODEL 24: SCHEDULED MESSAGES
+// =====================================================
+model ScheduledMessage {
+  id              String         @id @default(uuid())
+  tenantId        String         @map("tenant_id")
+  name            String
+  description     String?
+  recipientType   String         @map("recipient_type")
+  recipientIds    String[]       @map("recipient_ids")
+  recipientQuery  String?        @map("recipient_query")
+  templateId      String?        @map("template_id")
+  subject         String?
+  content         String?
+  parameters      Json?
+  scheduleType    String?        @map("schedule_type")
+  scheduledTime   DateTime       @map("scheduled_time")
+  timezone        String         @default("Asia/Kolkata")
+  channels        MessageChannel[]
+  status          String         @default("pending")
+  lastSent        DateTime?      @map("last_sent")
+  nextSend        DateTime?      @map("next_send")
+  totalRecipients Int            @map("total_recipients")
+  successCount    Int            @default(0) @map("success_count")
+  failCount       Int            @default(0) @map("fail_count")
+  createdBy       String?        @map("created_by")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  template MessageTemplate? @relation(fields: [templateId], references: [id])
+
+  @@index([status, scheduledTime])
+  @@map("scheduled_messages")
+}
+
+// =====================================================
+// MODEL 25: MESSAGE LOGS
+// =====================================================
+model MessageLog {
+  id                String        @id @default(uuid())
+  tenantId          String        @map("tenant_id")
+  reminderId        String?       @map("reminder_id")
+  scheduledId       String?       @map("scheduled_id")
+  customerId        String?       @map("customer_id")
+  channel           MessageChannel
+  recipient         String
+  templateCode      String?       @map("template_code")
+  messageContent    String?       @map("message_content")
+  status            MessageStatus
+  provider          String?
+  providerMessageId String?       @map("provider_message_id")
+  providerResponse  Json?         @map("provider_response")
+  queuedAt          DateTime?     @default(now()) @map("queued_at")
+  sentAt            DateTime?     @map("sent_at")
+  deliveredAt       DateTime?     @map("delivered_at")
+  readAt            DateTime?     @map("read_at")
+  failedAt          DateTime?     @map("failed_at")
+  errorCode         String?       @map("error_code")
+  errorMessage      String?       @map("error_message")
+  retryCount        Int           @default(0) @map("retry_count")
+  webhookReceived   Boolean       @default(false) @map("webhook_received")
+  webhookPayload    Json?         @map("webhook_payload")
+  createdAt         DateTime      @default(now()) @map("created_at")
+
+  customer Customer? @relation(fields: [customerId], references: [id])
+
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, customerId, createdAt(sort: Desc)])
+  @@index([providerMessageId])
+  @@map("message_logs")
+}
+
+// =====================================================
+// MODEL 26: ACTIVITY LOGS
+// =====================================================
+model ActivityLog {
+  id             String        @id @default(uuid())
+  tenantId       String        @map("tenant_id")
+  userId         String?       @map("user_id")
+  action         String
+  entityType     String        @map("entity_type")
+  entityId       String        @map("entity_id")
+  oldData        Json?         @map("old_data")
+  newData        Json?         @map("new_data")
+  details        Json?
+  isGstRelevant  Boolean       @default(false) @map("is_gst_relevant")
+  gstActionType  GstActionType? @map("gst_action_type")
+  ipAddress      String?       @map("ip_address")
+  userAgent      String?       @map("user_agent")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?   @relation(fields: [userId], references: [id])
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([entityType, entityId])
+  @@index([isGstRelevant, createdAt(sort: Desc)])
+  @@map("activity_logs")
+}
+
+// =====================================================
+// MODEL 27: WEBHOOK EVENTS
+// =====================================================
+model WebhookEvent {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  provider    String
+  eventType   String   @map("event_type")
+  payload     Json
+  processed   Boolean  @default(false)
+  processedAt DateTime? @map("processed_at")
+  error       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([processed])
+  @@map("webhook_events")
+}
+
+// =====================================================
+// MODEL 28: CONVERSATION SESSIONS
+// =====================================================
+model ConversationSession {
+  id                String            @id @default(uuid())
+  tenantId          String            @map("tenant_id")
+  userId            String            @map("user_id")
+  customerId        String?           @map("customer_id")
+  sessionKey        String?           @map("session_key")
+  queuePosition     Int?              @map("queue_position")
+  priority          ConversationPriority @default(normal)
+  status            SessionStatus     @default(active)
+  contextStack      Json              @default("{\"current\":{\"stage\":\"idle\",\"intent\":null,\"entities\":{},\"pending_input\":false},\"metadata\":{\"turn_count\":0,\"started_at\":null}}") @map("context_stack")
+  version           Int               @default(1)
+  sessionStart      DateTime          @default(now()) @map("session_start")
+  lastActivity      DateTime          @default(now()) @map("last_activity")
+  expectedResumeTime DateTime?         @map("expected_resume_time")
+  turnCount         Int               @default(0) @map("turn_count")
+  customerSnapshot  Json?             @map("customer_snapshot")
+  deviceInfo        Json?             @map("device_info")
+  channel           String            @default("counter")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  tenant                Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user                  User                    @relation(fields: [userId], references: [id])
+  customer              Customer?               @relation(fields: [customerId], references: [id])
+  activeContext         SessionActiveContext?
+  turns                 ConversationTurn[]
+  flows                 ConversationFlow?
+  voiceRecordings       VoiceRecording[]
+  userConversationQueue UserConversationQueue?
+  customerContextCache  CustomerContextCache?
+
+  @@index([userId, lastActivity(sort: Desc)])
+  @@index([userId, queuePosition])
+  @@index([customerId])
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@map("conversation_sessions")
+}
+
+// =====================================================
+// MODEL 29: SESSION ACTIVE CONTEXT
+// =====================================================
+model SessionActiveContext {
+  sessionId    String   @id @map("session_id")
+  currentStage String?  @map("current_stage")
+  lastIntent   String?  @map("last_intent")
+  pendingItems Json     @default("[]") @map("pending_items")
+  currentCart  Json     @default("{\"items\":[],\"total\":0}") @map("current_cart")
+  lastSpoken   String?  @map("last_spoken")
+  lastResponse String?  @map("last_response")
+  expiresAt    DateTime @default(now()) @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  session ConversationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("session_active_context")
+}
+
+// =====================================================
+// MODEL 30: CONVERSATION TURNS
+// =====================================================
+model ConversationTurn {
+  id                          String         @id @default(uuid())
+  sessionId                   String         @map("session_id")
+  tenantId                    String         @map("tenant_id")
+  userId                      String         @map("user_id")
+  customerId                  String?        @map("customer_id")
+  turnNumber                  Int            @map("turn_number")
+  turnType                    TurnType       @default(voice) @map("turn_type")
+  rawInput                    String         @map("raw_input")
+  normalizedInput             String?        @map("normalized_input")
+  inputConfidence             Decimal?       @map("input_confidence")
+  intent                      String?
+  intentConfidence            Decimal?       @map("intent_confidence")
+  entities                    Json?
+  resolvedCustomerId          String?        @map("resolved_customer_id")
+  resolutionConfidence        Decimal?       @map("resolution_confidence")
+  resolutionMethod            String?        @map("resolution_method")
+  contextBefore               Json?          @map("context_before")
+  contextAfter                Json?          @map("context_after")
+  response                    String?
+  responseType                String?        @map("response_type")
+  responseTimeMs              Int?           @map("response_time_ms")
+  wasInterrupted              Boolean        @default(false) @map("was_interrupted")
+  interruptedByTurn           String?        @map("interrupted_by_turn")
+  processingTimeMs            Int?           @map("processing_time_ms")
+  createdAt                   DateTime       @default(now()) @map("created_at")
+
+  session          ConversationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  customer         Customer?           @relation("customer_turns", fields: [customerId], references: [id])
+  resolvedCustomer Customer?           @relation("resolved_customer_turns", fields: [resolvedCustomerId], references: [id])
+  voiceRecordings  VoiceRecording[]
+
+  @@unique([sessionId, turnNumber])
+  @@index([sessionId])
+  @@index([resolvedCustomerId, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@map("conversation_turns")
+}
+
+// =====================================================
+// MODEL 31: USER CONVERSATION QUEUES
+// =====================================================
+model UserConversationQueue {
+  userId           String   @id @map("user_id")
+  tenantId         String   @map("tenant_id")
+  currentSessionId String?  @unique @map("current_session_id")
+  queueOrder       Json     @default("[]") @map("queue_order")
+  waitingCount     Int      @map("waiting_count")
+  activeCount      Int      @default(0) @map("active_count")
+  avgWaitTimeMs    Int?     @map("avg_wait_time_ms")
+  avgHandlingTimeMs Int?    @map("avg_handling_time_ms")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  currentSession ConversationSession? @relation(fields: [currentSessionId], references: [id])
+
+  @@index([tenantId])
+  @@map("user_conversation_queues")
+}
+
+// =====================================================
+// MODEL 32: CUSTOMER CONTEXT CACHE
+// =====================================================
+model CustomerContextCache {
+  customerId       String   @id @map("customer_id")
+  tenantId         String   @map("tenant_id")
+  contextSummary   Json     @default("{\"preferences\":{},\"recent_items\":[],\"credit_status\":{\"balance\":0,\"limit\":0,\"overdue_days\":0},\"last_intent\":null,\"frequent_queries\":[],\"tags\":[]}") @map("context_summary")
+  lastSessionId    String?  @unique @map("last_session_id")
+  lastInteraction  DateTime? @map("last_interaction")
+  totalSessions    Int      @default(0) @map("total_sessions")
+  totalTurns       Int      @default(0) @map("total_turns")
+  avgTurnsPerSession Decimal? @map("avg_turns_per_session")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tenant   Tenant   @relation(fields: [tenantId], references: [id])
+  lastSession ConversationSession? @relation(fields: [lastSessionId], references: [id])
+
+  @@index([lastInteraction(sort: Desc)])
+  @@index([tenantId])
+  @@map("customer_context_cache")
+}
+
+// =====================================================
+// MODEL 33: CONVERSATION FLOWS
+// =====================================================
+model ConversationFlow {
+  id               String   @id @default(uuid())
+  sessionId        String   @unique(map: "conversation_flow_session_key") @map("session_id")
+  tenantId         String   @map("tenant_id")
+  flowPath         String[] @map("flow_path")
+  currentStage     String?  @map("current_stage")
+  nextExpectedInput String? @map("next_expected_input")
+  branchesTaken    Json?    @map("branches_taken")
+  decisionPoints   Json?    @map("decision_points")
+  isComplete       Boolean  @default(false) @map("is_complete")
+  completedAt      DateTime? @map("completed_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  session ConversationSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  tenant   Tenant             @relation(fields: [tenantId], references: [id])
+
+  @@index([isComplete, completedAt])
+  @@map("conversation_flows")
+}
+
+// =====================================================
+// MODEL 34: VOICE RECORDINGS
+// =====================================================
+model VoiceRecording {
+  id                 String   @id @default(uuid())
+  tenantId           String   @map("tenant_id")
+  sessionId          String?  @map("session_id")
+  conversationTurnId String?  @map("conversation_turn_id")
+  recordingUrl       String   @map("recording_url")
+  recordingFormat    String   @default("audio/webm") @map("recording_format")
+  durationSeconds    Int?     @map("duration_seconds")
+  fileSizeBytes      BigInt?  @map("file_size_bytes")
+  transcript         String?
+  transcriptConfidence Decimal? @map("transcript_confidence")
+  detectedLanguage   String?  @map("detected_language")
+  triggeredBy        String?  @map("triggered_by")
+  customerId         String?  @map("customer_id")
+  intentAtTime       String?  @map("intent_at_time")
+  entitiesAtTime     Json?    @map("entities_at_time")
+  bucketName         String   @map("bucket_name")
+  objectKey          String   @unique(map: "voice_recording_object_key") @map("object_key")
+  etag               String?
+  retentionDays      Int      @default(365) @map("retention_days")
+  expiresAt          DateTime? @map("expires_at")
+  metadata           Json     @default("{}")
+  isDeleted          Boolean  @default(false) @map("is_deleted")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  tenant   Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  session  ConversationSession? @relation(fields: [sessionId], references: [id])
+  turn     ConversationTurn?    @relation(fields: [conversationTurnId], references: [id])
+  trigger  User?                @relation(fields: [triggeredBy], references: [id])
+  customer Customer?            @relation(fields: [customerId], references: [id])
+
+  @@index([sessionId])
+  @@index([customerId, createdAt(sort: Desc)])
+  @@index([expiresAt])
+  @@map("voice_recordings")
+}
+
+// =====================================================
+// MODEL 35: GST REMINDERS
+// =====================================================
+model GstReminder {
+  id               String       @id @default(uuid())
+  tenantId         String       @map("tenant_id")
+  returnType       String       @map("return_type")
+  returnPeriod     DateTime     @map("return_period")
+  dueDate          DateTime     @map("due_date")
+  status           String       @default("pending")
+  filedAt          DateTime?    @map("filed_at")
+  filedBy          String?      @map("filed_by")
+  totalSales       Decimal?     @map("total_sales")
+  totalTax         Decimal?     @map("total_tax")
+  totalItc         Decimal?     @map("total_itc")
+  netPayable       Decimal?     @map("net_payable")
+  acknowledgmentNo String?      @map("acknowledgment_no")
+  filedVia         String?      @map("filed_via")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  filer  User?  @relation(fields: [filedBy], references: [id])
+
+  @@unique([tenantId, returnType, returnPeriod])
+  @@index([dueDate, status])
+  @@map("gst_reminders")
+}
+
+// =====================================================
+// MODEL 36: GST AUDIT
+// =====================================================
+model GstAudit {
+  id           String        @id @default(uuid())
+  tenantId     String        @map("tenant_id")
+  actionType   GstActionType @map("action_type")
+  referenceId  String?       @map("reference_id")
+  referenceType String?       @map("reference_type")
+  oldValues    Json?         @map("old_values")
+  newValues    Json?         @map("new_values")
+  reason       String?
+  approvedBy   String?       @map("approved_by")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  createdBy    String?       @map("created_by")
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  approver User?  @relation("GstAuditApprover", fields: [approvedBy], references: [id])
+  creator  User?  @relation("GstAuditCreator", fields: [createdBy], references: [id])
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@map("gst_audit")
 }
