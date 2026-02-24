@@ -1,0 +1,93 @@
+{
+  "title": "Tenant-Level Monitoring",
+  "tags": ["tenant", "monitoring", "execora"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Invoice Operations by Tenant",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(increase(invoice_operations_total{tenantId=\"$tenantId\"}[1h])) by (operation, status)",
+          "legendFormat": "{{operation}} - {{status}}"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 0, "w": 8, "h": 6 }
+    },
+    {
+      "id": 2,
+      "title": "Recent Error Logs (Tenant)",
+      "type": "logs",
+      "datasource": "Loki",
+      "targets": [
+        {
+          "expr": "{job=\"execora-app\", tenantId=\"$tenantId\"} |= \"error\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "showLabels": true,
+        "fontSize": "12px"
+      },
+      "gridPos": { "x": 8, "y": 0, "w": 16, "h": 8 }
+    },
+    {
+      "id": 3,
+      "title": "HTTP Requests by Tenant",
+      "type": "graph",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{tenantId=\"$tenantId\"}[5m])) by (route, status_code)",
+          "legendFormat": "{{route}} - {{status_code}}"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 8 }
+    },
+    {
+      "id": 4,
+      "title": "Payments Processed by Tenant",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(increase(payments_processed_total{tenantId=\"$tenantId\"}[1h])) by (status)",
+          "legendFormat": "{{status}}"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 16, "w": 8, "h": 6 }
+    },
+    {
+      "id": 5,
+      "title": "Conversation Memory Size (Tenant)",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(conversation_memory_messages{tenantId=\"$tenantId\"})",
+          "legendFormat": "Messages"
+        }
+      ],
+      "gridPos": { "x": 8, "y": 16, "w": 8, "h": 6 }
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "tenantId",
+        "type": "query",
+        "datasource": "Prometheus",
+        "refresh": 1,
+        "query": "label_values(invoice_operations_total, tenantId)",
+        "label": "Tenant ID",
+        "hide": 0
+      }
+    ]
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "title": "Tenant Conversation Flow Logs",
+  "tags": ["tenant", "conversation", "logs", "execora"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Full Conversation Flow (Tenant)",
+      "type": "logs",
+      "datasource": "Loki",
+      "targets": [
+        {
+          "expr": "{job=\"execora-app\", tenantId=\"$tenantId\"} | json | msg=~\"User message persisted|Assistant message persisted|Active customer set|Switched to customer|Executing intent|voice:final|Processing final\"",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "showLabels": true,
+        "fontSize": "12px"
+      },
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 12 }
+    },
+    {
+      "id": 2,
+      "title": "Conversation Turn Count (Tenant)",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "sum(conversation_memory_messages{tenantId=\"$tenantId\"})",
+          "legendFormat": "Messages"
+        }
+      ],
+      "gridPos": { "x": 0, "y": 12, "w": 8, "h": 6 }
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "tenantId",
+        "type": "query",
+        "datasource": "Prometheus",
+        "refresh": 1,
+        "query": "label_values(invoice_operations_total, tenantId)",
+        "label": "Tenant ID",
+        "hide": 0
+      }
+    ]
+  }
+}
