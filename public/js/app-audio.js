@@ -440,26 +440,24 @@ class ExecoraAudioClient {
             this.source.connect(this.analyser);
 
             if (this.usePcmStreaming) {
-                console.log('🔊 Using PCM streaming for ElevenLabs');
-                this.processor = this.audioContext.createScriptProcessor(4096, 1, 1);
-                const gainNode = this.audioContext.createGain();
-                gainNode.gain.value = 0;
+                console.log('🔊 Loading PCM AudioWorklet for ElevenLabs...');
 
-                this.processor.onaudioprocess = (event) => {
-                    if (!this.isConnected || this.ws.readyState !== WebSocket.OPEN) {
-                        return;
-                    }
+                // AudioWorklet runs in a dedicated audio thread — no UI blocking,
+                // no dropped frames, works correctly on mobile.
+                // Replaces deprecated ScriptProcessor.
+                await this.audioContext.audioWorklet.addModule('/js/pcm-processor.js');
+                this.processor = new AudioWorkletNode(this.audioContext, 'pcm-processor');
 
-                    const input = event.inputBuffer.getChannelData(0);
-                    const downsampled = this.downsampleBuffer(input, this.audioContext.sampleRate, 16000);
-                    const pcm16 = this.floatTo16BitPCM(downsampled);
-                    this.ws.send(pcm16.buffer);
+                // Worklet sends Int16 PCM chunks (transferable ArrayBuffer) to main thread
+                this.processor.port.onmessage = (event) => {
+                    if (!this.isConnected || this.ws.readyState !== WebSocket.OPEN) return;
+                    this.ws.send(event.data); // raw Int16 PCM binary → server → ElevenLabs
                 };
 
                 this.source.connect(this.processor);
-                this.processor.connect(gainNode);
-                gainNode.connect(this.audioContext.destination);
-                console.log('✅ PCM streaming connected');
+                // Connect to destination so the node stays active in all browsers
+                this.processor.connect(this.audioContext.destination);
+                console.log('✅ PCM AudioWorklet streaming connected');
             } else {
                 console.log('🎙️ Using MediaRecorder');
                 // Create media recorder for sending audio
@@ -549,6 +547,11 @@ class ExecoraAudioClient {
         if (this.processor) {
             console.log('🔌 Disconnecting audio graph...');
             try {
+                // Close the AudioWorklet message port (was ScriptProcessor — port didn't exist)
+                if (this.processor.port) {
+                    this.processor.port.onmessage = null;
+                    this.processor.port.close();
+                }
                 this.processor.disconnect();
                 this.source.disconnect();
             } catch (e) {

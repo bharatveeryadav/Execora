@@ -7,6 +7,7 @@ import { llmRequestsTotal, llmTokensTotal, llmCostUsdTotal } from '../infrastruc
 import { getRuntimeConfig } from '../infrastructure/runtime-config';
 import { IntentType, IntentExtraction, ExecutionResult } from '../types';
 import { conversationMemory } from '../modules/voice/conversation';
+import { transliterateDevanagari } from '../utils/devanagari';
 
 type CachePolicy = {
   ttlSeconds: number;
@@ -105,10 +106,6 @@ class OpenAIService {
     return `llm:response:${intent}:${contextHash}:${hashString(base)}`;
   }
 
-  /**
-   * Convert phone number to individual digit words for Hinglish speaking
-   * Example: "9674380399" → "nau chhah saat char teen das sau nau nau"
-   */
   phoneToWords(phone: string): string {
     if (!phone) return '';
 
@@ -440,17 +437,29 @@ Example responses:
     }
   }
 
-  /**
-   * Transliterate Hindi/Devanagari text to English using LLM
-   */
   private async transliterateHindiToEnglish(text: string): Promise<string> {
     if (!text || typeof text !== 'string') return text;
 
-    // Check if text contains Devanagari characters (Unicode range: U+0900 to U+097F)
-    const devanagariRegex = /[\u0900-\u097F]/;
-    if (!devanagariRegex.test(text)) {
-      return text; // No Devanagari, return as-is
+    // Fast-path: no Devanagari at all → return immediately (most common case)
+    if (!/[\u0900-\u097F]/.test(text)) return text;
+
+    // Primary: Unicode character-level transliteration — covers all 82 Devanagari codepoints,
+    // zero API call, ~0ms.
+    const localResult = transliterateDevanagari(text.trim());
+
+    // If no Devanagari remains in output, local succeeded — return immediately
+    if (!/[\u0900-\u097F]/.test(localResult)) {
+      logger.debug({ original: text, result: localResult }, 'Devanagari transliterated (local)');
+      return localResult;
     }
+
+    // Fallback: LLM for rare characters the local map doesn't cover.
+    // Cache the result so the same name is never sent to the API twice.
+    logger.warn({ text, partialResult: localResult }, 'Local transliteration incomplete — LLM fallback');
+
+    const cacheKey = `translit:${require('crypto').createHash('sha256').update(text).digest('hex')}`;
+    const cached = await llmCache.get(cacheKey);
+    if (cached) return cached;
 
     try {
       const response = await this.client.chat.completions.create({
@@ -458,24 +467,24 @@ Example responses:
         messages: [
           {
             role: 'system',
-            content:
-              'You are a name transliteration expert. Convert Hindi/Devanagari names and words to English phonetic equivalents. Respond with ONLY the transliterated name, nothing else.',
+            content: 'Transliterate the following Devanagari text to Roman/English letters. ' +
+              'Output ONLY the romanized text — no explanation, no JSON, no quotes.',
           },
-          {
-            role: 'user',
-            content: `Transliterate this Hindi name to English: ${text}`,
-          },
+          { role: 'user', content: text },
         ],
-        temperature: 0.1,
+        temperature: 0,
         max_tokens: 50,
       });
 
-      this.recordUsage('transliterate_name', 'UNKNOWN', response, 'miss');
+      this.recordUsage('transliterate_fallback', 'UNKNOWN', response, 'miss');
 
-      return response.choices[0].message.content?.trim() || text;
-    } catch (error) {
-      logger.error({ error }, 'Hindi to English transliteration failed, using original text');
-      return text;
+      const llmResult = response.choices[0].message.content?.trim() || localResult;
+      await llmCache.set(cacheKey, llmResult, 86400); // cache 24h — transliterations never change
+      logger.debug({ original: text, result: llmResult }, 'Devanagari transliterated (LLM fallback)');
+      return llmResult;
+    } catch (error: any) {
+      logger.error({ error: error.message }, 'LLM transliteration fallback failed');
+      return localResult; // return partial result — better than raw Devanagari
     }
   }
 
