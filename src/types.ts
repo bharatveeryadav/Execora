@@ -88,6 +88,8 @@ export enum WSMessageType {
   TASK_CANCELLED = 'task:cancelled',
   TASK_STATUS = 'task:status',
   QUEUE_STATUS = 'queue:status',
+  // Pending invoice drafts — real-time list broadcast to all frontend sessions
+  PENDING_INVOICES_UPDATE = 'pending:invoices_update',
 }
 
 export interface WSMessage {

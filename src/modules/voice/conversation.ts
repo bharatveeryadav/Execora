@@ -5,7 +5,7 @@ import { matchIndianName, findBestMatch, isSamePerson } from '../../infrastructu
 const SHOP_TENANT = process.env.SYSTEM_TENANT_ID || 'system-tenant-001';
 
 // Shop-level (session-independent) keys — survive WebSocket reconnects within 4-hour TTL.
-const SHOP_PENDING_INVOICE_KEY    = `shop:${SHOP_TENANT}:pending_invoice`;
+const SHOP_PENDING_INVOICES_KEY   = `shop:${SHOP_TENANT}:pending_invoices`;    // JSON array of PendingInvoiceDraft[]
 const SHOP_PENDING_EMAIL_KEY      = `shop:${SHOP_TENANT}:pending_email`;       // awaiting send contact
 const SHOP_PENDING_SEND_CONF_KEY  = `shop:${SHOP_TENANT}:pending_send_conf`;   // awaiting confirm on new contact
 
@@ -410,21 +410,42 @@ class ConversationMemoryService {
       }
     }
 
-    // Inject pending invoice draft so LLM knows to classify "haan/confirm" as CONFIRM_INVOICE.
-    // Check session-level first; fall back to shop-level (cross-session recovery).
-    const sessionDraft  = data.context.pendingInvoice ?? null;
-    const pendingInvoice = sessionDraft ?? await this.getShopPendingInvoice();
+    // Inject all pending invoice drafts so LLM knows to classify "haan/confirm" as CONFIRM_INVOICE.
+    // Session-level draft (current turn) takes priority; shop-level list covers cross-session recovery.
+    const sessionDraft   = data.context.pendingInvoice ?? null;
+    const allShopDrafts  = await this.getShopPendingInvoices();
 
-    if (pendingInvoice) {
+    // Merge: put session-level draft first (most relevant), then any shop-level drafts
+    // that belong to a different customer (avoid double-entry for the same draft).
+    const mergedDrafts: any[] = sessionDraft ? [sessionDraft] : [];
+    for (const d of allShopDrafts) {
+      if (!mergedDrafts.some((m) => m.customerId === d.customerId)) {
+        mergedDrafts.push(d);
+      }
+    }
+
+    if (mergedDrafts.length === 1) {
+      const pendingInvoice = mergedDrafts[0];
       const itemSummary = (pendingInvoice.resolvedItems as any[] || [])
         .map((i: any) => `${i.productName} ×${i.quantity}`)
         .join(', ');
       summary +=
         `\n⚠️  PENDING INVOICE (awaiting confirmation) for ${pendingInvoice.customerName}:\n` +
         `   Items: ${itemSummary}\n` +
-        `   Total: ₹${pendingInvoice.subtotal}\n` +
+        `   Total: ₹${pendingInvoice.grandTotal ?? pendingInvoice.subtotal}\n` +
         `   → If the user says "haan / confirm / ok / theek hai / bhej do", use intent CONFIRM_INVOICE.\n` +
         `   → If the user says "nahi / cancel / mat banao", use intent CANCEL_INVOICE.\n`;
+    } else if (mergedDrafts.length > 1) {
+      summary += `\n⚠️  ${mergedDrafts.length} PENDING INVOICES (awaiting confirmation):\n`;
+      for (const d of mergedDrafts) {
+        const items = (d.resolvedItems as any[] || []).map((i: any) => `${i.productName} ×${i.quantity}`).join(', ');
+        summary += `   - ${d.customerName}: ₹${d.grandTotal ?? d.subtotal}  [${items}]${d.draftId ? `  (draftId: ${d.draftId})` : ''}\n`;
+      }
+      summary +=
+        `   → "haan / confirm" WITHOUT customer name → respond "Kaunsa bill confirm karein? [list names]"\n` +
+        `   → "Rahul ka confirm karo" → use intent CONFIRM_INVOICE with entities.customer = "Rahul"\n` +
+        `   → "sab cancel" → use intent CANCEL_INVOICE with entities.cancelAll = true\n` +
+        `   → "nahi / cancel" WITHOUT customer → respond "Kaunsa bill cancel karein? [list names]"\n`;
     }
 
     // Inject pending send-confirmation so LLM routes "haan" to CONFIRM_INVOICE (which then
@@ -499,34 +520,93 @@ class ConversationMemoryService {
   }
 
   // ── Shop-level (session-independent) draft persistence ────────────────────
+  // All pending invoice drafts are stored as a JSON array so multiple
+  // customers' drafts survive WebSocket reconnects simultaneously.
 
-  /**
-   * Persist a pending invoice draft at shop level.
-   * Pass null to clear the key (e.g. after confirmation or cancellation).
-   * This key survives WebSocket reconnects and process restarts within TTL.
-   */
-  async setShopPendingInvoice(draft: any | null): Promise<void> {
+  /** Load the full draft list from Redis (internal helper). */
+  private async _loadDrafts(): Promise<any[]> {
     try {
-      if (draft === null) {
-        await redisClient.del(SHOP_PENDING_INVOICE_KEY);
-      } else {
-        await redisClient.setex(SHOP_PENDING_INVOICE_KEY, CONV_TTL_SECONDS, JSON.stringify(draft));
-      }
+      const raw = await redisClient.get(SHOP_PENDING_INVOICES_KEY);
+      return raw ? (JSON.parse(raw) as any[]) : [];
     } catch (err) {
-      logger.warn({ err }, 'Redis write failed — shop pending invoice not persisted');
+      logger.warn({ err }, 'Redis read failed — pending invoices not loaded');
+      return [];
+    }
+  }
+
+  /** Save the full draft list to Redis (internal helper). */
+  private async _saveDrafts(drafts: any[]): Promise<void> {
+    try {
+      await redisClient.setex(SHOP_PENDING_INVOICES_KEY, CONV_TTL_SECONDS, JSON.stringify(drafts));
+    } catch (err) {
+      logger.warn({ err }, 'Redis write failed — pending invoices not persisted');
     }
   }
 
   /**
-   * Retrieve the shop-level pending invoice draft, or null if none exists.
+   * Add a new pending invoice draft to the shop-level list.
+   * Returns the generated draftId so the engine can attach it to session context.
+   */
+  async addShopPendingInvoice(draft: any): Promise<string> {
+    const draftId = `draft-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const entry   = { ...draft, draftId, createdAt: new Date().toISOString() };
+    const drafts  = await this._loadDrafts();
+    // Replace existing draft for same customer (prevent duplicates when re-drafting)
+    const filtered = drafts.filter((d) => d.customerId !== draft.customerId);
+    await this._saveDrafts([...filtered, entry]);
+    logger.info({ draftId, customerName: draft.customerName }, 'Pending invoice draft added');
+    return draftId;
+  }
+
+  /**
+   * Update an existing draft in the list (e.g. after GST toggle).
+   * If draftId is not found, the draft is appended.
+   */
+  async updateShopPendingInvoice(draftId: string, updated: any): Promise<void> {
+    const drafts  = await this._loadDrafts();
+    const idx     = drafts.findIndex((d) => d.draftId === draftId);
+    if (idx >= 0) {
+      drafts[idx] = { ...updated, draftId, updatedAt: new Date().toISOString() };
+    } else {
+      drafts.push({ ...updated, draftId, createdAt: new Date().toISOString() });
+    }
+    await this._saveDrafts(drafts);
+  }
+
+  /**
+   * Remove a specific draft from the list by draftId.
+   */
+  async removeShopPendingInvoice(draftId: string): Promise<void> {
+    const drafts  = await this._loadDrafts();
+    const updated = drafts.filter((d) => d.draftId !== draftId);
+    await this._saveDrafts(updated);
+    logger.info({ draftId }, 'Pending invoice draft removed');
+  }
+
+  /**
+   * Return all pending invoice drafts (most recently created last).
+   */
+  async getShopPendingInvoices(): Promise<any[]> {
+    return this._loadDrafts();
+  }
+
+  /**
+   * Return the first (oldest) pending invoice draft, or null.
+   * Kept for backward-compat with engine code that expects a single draft.
    */
   async getShopPendingInvoice(): Promise<any | null> {
+    const drafts = await this._loadDrafts();
+    return drafts.length > 0 ? drafts[0] : null;
+  }
+
+  /**
+   * Clear ALL pending invoice drafts (pass null to match old API).
+   */
+  async setShopPendingInvoice(_draft: null): Promise<void> {
     try {
-      const raw = await redisClient.get(SHOP_PENDING_INVOICE_KEY);
-      return raw ? JSON.parse(raw) : null;
+      await redisClient.del(SHOP_PENDING_INVOICES_KEY);
     } catch (err) {
-      logger.warn({ err }, 'Redis read failed — shop pending invoice not loaded');
-      return null;
+      logger.warn({ err }, 'Redis delete failed — pending invoices not cleared');
     }
   }
 

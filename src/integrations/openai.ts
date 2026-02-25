@@ -189,7 +189,9 @@ Available intents:
 - ADD_CREDIT: Add credit/debt to customer account
 - CHECK_BALANCE: Check customer balance
 - CHECK_STOCK: Check product stock
-- CANCEL_INVOICE: Cancel last invoice (confirmed invoice, not just draft)
+- CANCEL_INVOICE: Cancel a confirmed invoice OR a pending draft.
+  "sab bills cancel karo" / "sabhi drafts cancel" / "sab cancel kar do" → CANCEL_INVOICE with entities.cancelAll=true
+  "Rahul ka bill cancel karo" → CANCEL_INVOICE with entities.customer="Rahul"
 - CANCEL_REMINDER: Cancel a reminder
 - LIST_REMINDERS: List pending reminders
 - CREATE_CUSTOMER: Add new customer
@@ -308,9 +310,15 @@ Critical extraction rules for Indian voice patterns:
    - CRITICAL: Use this intent when context shows ⚠️ PENDING INVOICE or 📧 PENDING SEND CONFIRMATION
    - "haan", "haan banao", "confirm karo", "theek hai", "ok", "kar do", "bhej do", "bana do" → CONFIRM_INVOICE
    - "haan bhej do", "same hi raho", "bilkul", "sahi hai" → CONFIRM_INVOICE
+   - MULTI-DRAFT: Context may show multiple ⚠️ PENDING INVOICES — in that case:
+     * "haan" / "confirm" without a customer name → CONFIRM_INVOICE with NO entities (engine will ask which one)
+     * "Rahul ka confirm karo" / "Rahul wala confirm" → CONFIRM_INVOICE with entities.customer="Rahul"
+     * "pehla confirm karo" / "pehle wala" → CONFIRM_INVOICE with entities.customer = name of FIRST listed draft
    - Do NOT use CONFIRM_INVOICE if no pending invoice is in context — treat as UNKNOWN or the most likely intent
-   - Example: (after seeing draft) "haan" → {"intent":"CONFIRM_INVOICE","entities":{},"confidence":0.97}
+   - Example: (single draft) "haan" → {"intent":"CONFIRM_INVOICE","entities":{},"confidence":0.97}
    - Example: "confirm karo" → {"intent":"CONFIRM_INVOICE","entities":{},"confidence":0.97}
+   - Example: (multiple drafts) "Rahul ka confirm karo" → {"intent":"CONFIRM_INVOICE","entities":{"customer":"Rahul"},"confidence":0.97}
+   - Example: (multiple drafts) "pehla wala" → {"intent":"CONFIRM_INVOICE","entities":{"customer":"<first listed customer name>"},"confidence":0.93}
 
 19) Recognize SHOW_PENDING_INVOICE — user wants to see current draft/pending bill:
    - "bill dikhao", "draft dikhao", "pending bill kya hai", "kitna hua", "kya likha hai", "summary dikhao" → SHOW_PENDING_INVOICE
@@ -370,7 +378,12 @@ Example responses:
 {"normalized":"bina GST ke banao","intent":"TOGGLE_GST","entities":{"withGst":false},"confidence":0.95}
 {"normalized":"Rahul ka phone 9876543210 update karo","intent":"UPDATE_CUSTOMER","entities":{"customer":"Rahul","phone":"9876543210"},"confidence":0.94}
 {"normalized":"Priya ka email priya@gmail.com save karo","intent":"UPDATE_CUSTOMER","entities":{"customer":"Priya","email":"priya@gmail.com"},"confidence":0.94}
-{"normalized":"Suresh ka GSTIN 07AABCU9603R1ZP hai","intent":"UPDATE_CUSTOMER","entities":{"customer":"Suresh","gstin":"07AABCU9603R1ZP"},"confidence":0.93}`;
+{"normalized":"Suresh ka GSTIN 07AABCU9603R1ZP hai","intent":"UPDATE_CUSTOMER","entities":{"customer":"Suresh","gstin":"07AABCU9603R1ZP"},"confidence":0.93}
+{"normalized":"Rahul ka bill confirm karo","intent":"CONFIRM_INVOICE","entities":{"customer":"Rahul"},"confidence":0.97}
+{"normalized":"Mohan wala confirm","intent":"CONFIRM_INVOICE","entities":{"customer":"Mohan"},"confidence":0.96}
+{"normalized":"Mohan ka bill dikhao","intent":"SHOW_PENDING_INVOICE","entities":{"customer":"Mohan"},"confidence":0.95}
+{"normalized":"sab bills cancel kar do","intent":"CANCEL_INVOICE","entities":{"cancelAll":true},"confidence":0.95}
+{"normalized":"Rahul ka bill cancel karo","intent":"CANCEL_INVOICE","entities":{"customer":"Rahul"},"confidence":0.96}`;
 
       // gpt-4o-mini for intent: strict JSON format requires a model that reliably follows it.
       // Groq/llama is fast but cannot follow the complex 13-rule intent prompt accurately.
@@ -688,16 +701,26 @@ FORMAT RULES:
 - Multiple matches: list the options briefly.
 - INVOICE ITEMS (TTS rule): Say items as "quantity unit productName ₹total" using the unit from the product record — e.g. "4 kg Cheeni ₹180", "2 piece Arhar Dal ₹260". NEVER use ×, @, = symbols — TTS reads them as "cross", "at the rate of", "equals" which sounds robotic. Flag auto-created (₹0) products with "⚠️ naya".
 
-Examples (1 sentence, no filler):
+Examples (1–2 sentences, no filler):
 - CHECK_BALANCE → "Nitin ka balance ₹1000 hai." (Hinglish) / "Nitin's balance is ₹1000." (English)
 - RECORD_PAYMENT → "Rahul se ₹500 mila. Remaining ₹300 hai."
 - ADD_CREDIT → "Bharat ko ₹400 add kar diya. Total ₹900 hai."
-- CREATE_INVOICE (draft) → "Rahul ka draft bill: 4 kg Cheeni ₹180, 6 kg Aata ₹240. Total ₹420. Confirm karna hai?"
-- CONFIRM_INVOICE → "Bill confirm ho gaya. Invoice #0042. Total ₹420."
+- CREATE_INVOICE (single draft) → "Rahul ka draft bill: 4 kg Cheeni ₹180, 6 kg Aata ₹240. Total ₹420. Confirm karna hai?"
+- CREATE_INVOICE (added to queue, other drafts exist) → "Suresh ka draft bill: 2 piece Arhar Dal ₹260. Total ₹260. Confirm karna hai? (2 aur bills bhi pending hain: Rahul, Mohan)"
+- CONFIRM_INVOICE (single / targeted) → "Rahul ka bill confirm ho gaya. Invoice #0042. Total ₹420."
+- CONFIRM_INVOICE (after confirming one from multiple, others still pending) → "Rahul ka bill confirm ho gaya. Invoice #0042. Total ₹420. Mohan aur Suresh ke bills abhi bhi pending hain."
+- MULTIPLE_PENDING_INVOICES error (engine couldn't pick one) → "Aapke 3 pending bills hain: Rahul ₹500, Mohan ₹300, Suresh ₹200. Kaunsa confirm karein? Customer ka naam batao."
+- SHOW_PENDING_INVOICE (single) → "Rahul ka pending bill: 4 kg Cheeni ₹180, 6 kg Aata ₹240. Total ₹420. Confirm karna hai?"
+- SHOW_PENDING_INVOICE (multiple) → "2 pending bills hain:\n1. Rahul: 4 kg Cheeni ₹180, 6 kg Aata ₹240 — Total ₹420\n2. Mohan: 6 kg Aata ₹240 — Total ₹240\nKaunsa confirm karna hai?"
 - CHECK_STOCK → "Milk ka stock 10 packets hai."
 - CREATE_CUSTOMER → "Rajesh add ho gaya."
 - NOT_FOUND → "Nitin ka record nahi mila. Naam confirm karo."
-- PROVIDE_EMAIL → "Invoice ₹420 ka email bhej diya gaya."`;
+- PROVIDE_EMAIL → "Invoice ₹420 ka email bhej diya gaya."
+
+MULTI-DRAFT RULES:
+- When result.data.pendingInvoices has >1 items AND result.data.awaitingSelection=true → list all drafts and ask which to confirm.
+- When result.data.pendingInvoices has >0 items remaining after a confirmation → mention how many still pending.
+- When result.data.pendingInvoices is empty after confirmation → no mention needed (all done).`;
 
       const userPrompt = `Original intent: ${originalIntent}
 Result: ${JSON.stringify(executionResult)}

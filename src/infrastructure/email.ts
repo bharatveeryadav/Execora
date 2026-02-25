@@ -356,9 +356,11 @@ class EmailService {
         grandTotal: number,
         shopName: string = 'Execora Shop',
         pdfBuffer?: Buffer,
-        pdfUrl?: string
+        pdfUrl?: string,
+        invoiceNo?: string
     ): Promise<boolean> {
-        const shortId = invoiceId.slice(-8).toUpperCase();
+        const displayInvoiceNo = (invoiceNo && invoiceNo.trim()) || invoiceId.slice(-8).toUpperCase();
+        const safeFileNo = displayInvoiceNo.replace(/[^A-Za-z0-9._-]/g, '-');
         const itemRows = items
             .map(
                 (item) => `
@@ -387,8 +389,8 @@ class EmailService {
 
         const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background-color: #28a745; padding: 20px; border-radius: 8px; margin-bottom: 20px; color: white;">
-          <h2 style="margin: 0 0 6px 0;">🧾 Invoice #${shortId}</h2>
+        <div style="background-color: #0f172a; padding: 20px; border-radius: 8px; margin-bottom: 20px; color: white;">
+          <h2 style="margin: 0 0 6px 0;">Invoice ${displayInvoiceNo}</h2>
           <p style="margin: 0; font-size: 14px; opacity: 0.9;">${shopName}</p>
         </div>
 
@@ -424,11 +426,11 @@ class EmailService {
 
         return this.sendEmail({
             to,
-            subject: `🧾 Invoice #${shortId} — ₹${grandTotal.toFixed(2)} — ${shopName}`,
+            subject: `Invoice ${displayInvoiceNo} — ₹${grandTotal.toFixed(2)} — ${shopName}`,
             html,
-            text: `Invoice #${shortId} for ${customerName}. Grand Total: ₹${grandTotal.toFixed(2)}. Thank you! — ${shopName}`,
+            text: `Invoice ${displayInvoiceNo} for ${customerName}. Grand Total: ₹${grandTotal.toFixed(2)}. Thank you! — ${shopName}`,
             attachments: pdfBuffer
-                ? [{ filename: `invoice-${shortId}.pdf`, content: pdfBuffer, contentType: 'application/pdf' }]
+                ? [{ filename: `invoice-${safeFileNo}.pdf`, content: pdfBuffer, contentType: 'application/pdf' }]
                 : undefined,
         });
     }

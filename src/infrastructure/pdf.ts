@@ -35,7 +35,7 @@ export interface InvoicePdfData {
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
-const INR = (n: number) => `Rs.${n.toFixed(2)}`;
+const INR = (n: number) => `INR ${n.toFixed(2)}`;
 
 // ── Amount in words (Indian numbering: Lakh / Crore) ─────────────────────────
 const ONES = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
@@ -93,87 +93,108 @@ export function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> {
       doc.on('end',   ()              => resolve(Buffer.concat(chunks)));
       doc.on('error', reject);
 
-      const dateStr    = data.invoiceDate.toLocaleDateString('en-IN', {
+      const dateStr = data.invoiceDate.toLocaleDateString('en-IN', {
         day: '2-digit', month: 'short', year: 'numeric',
       });
       const isInterstate = data.supplyType === 'INTERSTATE';
       const hasTax       = (data.totalTax ?? 0) > 0;
       const grandTotal   = data.grandTotal ?? data.subtotal;
+      const pageLeft     = 50;
+      const pageWidth    = 495;
+      const pageRight    = pageLeft + pageWidth;
 
-      // ── Header bar ─────────────────────────────────────────────────────────
-      doc.fillColor('#28a745').rect(50, 50, 495, 65).fill();
+      // ── Header ─────────────────────────────────────────────────────────────
+      doc.fillColor('#0f172a').rect(pageLeft, 48, pageWidth, 78).fill();
 
       doc
+        .fillColor('#f8fafc')
+        .fontSize(20).font('Helvetica-Bold')
+        .text(data.shopName, 65, 64, { width: 280 });
+
+      doc
+        .fontSize(9).font('Helvetica')
+        .fillColor('#cbd5e1')
+        .text('Thank you for your purchase', 65, 90);
+
+      doc
+        .fontSize(16)
+        .font('Helvetica-Bold')
         .fillColor('#ffffff')
-        .fontSize(22).font('Helvetica-Bold')
-        .text(data.shopName, 65, 60);
+        .text(hasTax ? 'TAX INVOICE' : 'INVOICE', 350, 60, { width: 185, align: 'right' });
 
       doc
-        .fontSize(9).font('Helvetica')
-        .text(hasTax ? 'GST Tax Invoice' : 'Invoice', 65, 87);
+        .fontSize(8.5)
+        .font('Helvetica')
+        .fillColor('#d1d5db')
+        .text(`No: ${data.invoiceNo}`, 350, 84, { width: 185, align: 'right' })
+        .text(`Date: ${dateStr}`, 350, 98, { width: 185, align: 'right' });
+
+      // ── Invoice meta cards ─────────────────────────────────────────────────
+      const infoTop = 142;
+      doc.fillColor('#f8fafc').roundedRect(pageLeft, infoTop, 242, 56, 6).fill();
+      doc.fillColor('#f8fafc').roundedRect(303, infoTop, 242, 56, 6).fill();
 
       doc
-        .fontSize(11).font('Helvetica-Bold')
-        .text(data.invoiceNo, 370, 60, { align: 'right', width: 165 });
+        .fillColor('#334155')
+        .fontSize(8)
+        .font('Helvetica-Bold')
+        .text('Bill To', 62, infoTop + 8)
+        .text('Invoice Details', 315, infoTop + 8);
 
       doc
-        .fontSize(9).font('Helvetica')
-        .text(dateStr, 370, 78, { align: 'right', width: 165 });
+        .fillColor('#0f172a')
+        .fontSize(11)
+        .font('Helvetica-Bold')
+        .text(data.customerName, 62, infoTop + 23, { width: 220 });
 
-      // Supply type line — only meaningful when GST is applied
+      doc
+        .fillColor('#0f172a')
+        .fontSize(8.5)
+        .font('Helvetica')
+        .text(hasTax ? 'Type: GST Invoice' : 'Type: Retail Invoice', 315, infoTop + 23, { width: 220 });
+
       if (hasTax) {
-        doc
-          .fontSize(8)
-          .text(`Supply: ${isInterstate ? 'Inter-State (IGST)' : 'Intra-State (CGST+SGST)'}`,
-            370, 93, { align: 'right', width: 165 });
+        doc.text(
+          `Supply: ${isInterstate ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)'}`,
+          315,
+          infoTop + 37,
+          { width: 220 }
+        );
       }
-
-      // ── Customer block ──────────────────────────────────────────────────────
-      doc.fillColor('#f8f9fa').rect(50, 128, 495, 36).fill();
-
-      doc
-        .fillColor('#333333')
-        .fontSize(9).font('Helvetica-Bold')
-        .text('Bill To:', 65, 138);
-
-      doc
-        .font('Helvetica').fontSize(11)
-        .text(data.customerName, 118, 138);
 
       // ── Items table ─────────────────────────────────────────────────────────
       // Columns: Product | HSN | Qty | Rate | Taxable | GST% | Tax | Total
-      //    left edges:
       const col = {
-        product:  65,
-        hsn:     185,
-        qty:     238,
+        product:  62,
+        hsn:     188,
+        qty:     240,
         rate:    272,
-        taxable: 330,
-        gstPct:  390,
-        tax:     428,
-        total:   476,
+        taxable: 334,
+        gstPct:  398,
+        tax:     434,
+        total:   479,
       };
-      const tableTop = 178;
+      const tableTop = 214;
 
-      doc.fillColor('#343a40').rect(50, tableTop, 495, 20).fill();
+      doc.fillColor('#1e293b').roundedRect(pageLeft, tableTop, pageWidth, 22, 4).fill();
       doc.fillColor('#ffffff').fontSize(8).font('Helvetica-Bold');
 
-      doc.text('Product / Description', col.product, tableTop + 5, { width: 115 });
-      doc.text('HSN',      col.hsn,     tableTop + 5, { width: 48, align: 'center' });
-      doc.text('Qty',      col.qty,     tableTop + 5, { width: 30, align: 'center' });
-      doc.text('Rate',     col.rate,    tableTop + 5, { width: 54, align: 'right'  });
-      doc.text('Taxable',  col.taxable, tableTop + 5, { width: 56, align: 'right'  });
-      doc.text('GST%',     col.gstPct,  tableTop + 5, { width: 34, align: 'center' });
-      doc.text('Tax',      col.tax,     tableTop + 5, { width: 44, align: 'right'  });
-      doc.text('Total',    col.total,   tableTop + 5, { width: 64, align: 'right'  });
+      doc.text('Product',  col.product, tableTop + 7, { width: 120 });
+      doc.text('HSN',      col.hsn,     tableTop + 7, { width: 46, align: 'center' });
+      doc.text('Qty',      col.qty,     tableTop + 7, { width: 30, align: 'center' });
+      doc.text('Rate',     col.rate,    tableTop + 7, { width: 56, align: 'right' });
+      doc.text('Taxable',  col.taxable, tableTop + 7, { width: 58, align: 'right' });
+      doc.text('GST%',     col.gstPct,  tableTop + 7, { width: 34, align: 'center' });
+      doc.text('Tax',      col.tax,     tableTop + 7, { width: 46, align: 'right' });
+      doc.text('Total',    col.total,   tableTop + 7, { width: 56, align: 'right' });
 
       // ── Item rows ───────────────────────────────────────────────────────────
-      let y = tableTop + 26;
+      let y = tableTop + 28;
 
       data.items.forEach((item, idx) => {
-        const rowH = 18;
+        const rowH = 19;
         if (idx % 2 === 0) {
-          doc.fillColor('#f8f9fa').rect(50, y - 3, 495, rowH).fill();
+          doc.fillColor('#f8fafc').rect(pageLeft, y - 4, pageWidth, rowH).fill();
         }
 
         const gstPctLabel = item.gstRate !== undefined
@@ -182,33 +203,40 @@ export function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> {
 
         const taxAmt = item.totalTax ?? 0;
 
-        doc.fillColor('#212529').fontSize(8).font('Helvetica');
-        doc.text(item.productName,          col.product, y, { width: 115 });
-        doc.text(item.hsnCode ?? '-',       col.hsn,     y, { width: 48,  align: 'center' });
-        doc.text(String(item.quantity),     col.qty,     y, { width: 30,  align: 'center' });
-        doc.text(INR(item.unitPrice),       col.rate,    y, { width: 54,  align: 'right'  });
-        doc.text(INR(item.subtotal),        col.taxable, y, { width: 56,  align: 'right'  });
-        doc.text(gstPctLabel,               col.gstPct,  y, { width: 34,  align: 'center' });
+        doc.fillColor('#111827').fontSize(8).font('Helvetica');
+        doc.text(item.productName,          col.product, y, { width: 120 });
+        doc.text(item.hsnCode ?? '-',       col.hsn,     y, { width: 46, align: 'center' });
+        doc.text(String(item.quantity),     col.qty,     y, { width: 30, align: 'center' });
+        doc.text(INR(item.unitPrice),       col.rate,    y, { width: 56, align: 'right' });
+        doc.text(INR(item.subtotal),        col.taxable, y, { width: 58, align: 'right' });
+        doc.text(gstPctLabel,               col.gstPct,  y, { width: 34, align: 'center' });
         doc.text(taxAmt > 0 ? INR(taxAmt) : '-',
-                                            col.tax,     y, { width: 44,  align: 'right'  });
-        doc.text(INR(item.total),           col.total,   y, { width: 64,  align: 'right'  });
+                                            col.tax,     y, { width: 46, align: 'right' });
+        doc.text(INR(item.total),           col.total,   y, { width: 56, align: 'right' });
+
+        doc
+          .strokeColor('#e2e8f0')
+          .lineWidth(0.4)
+          .moveTo(pageLeft, y + 13)
+          .lineTo(pageRight, y + 13)
+          .stroke();
 
         y += rowH;
       });
 
       // ── Divider ─────────────────────────────────────────────────────────────
-      doc.strokeColor('#28a745').lineWidth(1)
-        .moveTo(50, y + 4).lineTo(545, y + 4).stroke();
+      doc.strokeColor('#0f172a').lineWidth(0.8)
+        .moveTo(pageLeft, y + 5).lineTo(pageRight, y + 5).stroke();
 
       y += 14;
 
       // ── Tax summary box ─────────────────────────────────────────────────────
       if (hasTax) {
-        const summaryX  = 320;
-        const summaryW  = 225;
+        const summaryX  = 316;
+        const summaryW  = 229;
         const rowHt     = 16;
         const labelX    = summaryX + 8;
-        const innerW    = summaryW - 16;   // usable width inside box (8px padding each side)
+        const innerW    = summaryW - 16;
 
         const rows: Array<[string, number, boolean]> = [
           ['Taxable Amount', data.subtotal, false],
@@ -229,15 +257,15 @@ export function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> {
         rows.push(['Grand Total', grandTotal, true]);
 
         const boxH = rows.length * rowHt + 6;
-        doc.fillColor('#f0fff0').rect(summaryX, y, summaryW, boxH).fill();
-        doc.strokeColor('#28a745').lineWidth(0.5).rect(summaryX, y, summaryW, boxH).stroke();
+        doc.fillColor('#f8fafc').roundedRect(summaryX, y, summaryW, boxH, 6).fill();
+        doc.strokeColor('#cbd5e1').lineWidth(0.6).roundedRect(summaryX, y, summaryW, boxH, 6).stroke();
 
         let sy = y + 4;
         rows.forEach(([label, value, isBold]) => {
           const isGrandTotal = label === 'Grand Total';
 
           if (isGrandTotal) {
-            doc.fillColor('#28a745').rect(summaryX, sy - 1, summaryW, rowHt + 2).fill();
+            doc.fillColor('#0f766e').rect(summaryX, sy - 1, summaryW, rowHt + 2).fill();
           }
 
           doc
@@ -250,7 +278,7 @@ export function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> {
 
           // hairline between rows
           if (!isGrandTotal) {
-            doc.strokeColor('#ccddcc').lineWidth(0.3)
+            doc.strokeColor('#e2e8f0').lineWidth(0.3)
               .moveTo(summaryX, sy + rowHt - 2)
               .lineTo(summaryX + summaryW, sy + rowHt - 2)
               .stroke();
@@ -262,14 +290,14 @@ export function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> {
         y = sy + 10;
       } else {
         // No tax — simple grand total
-        doc.fillColor('#e9f5e9').rect(350, y, 195, 26).fill();
+        doc.fillColor('#f1f5f9').roundedRect(350, y, 195, 28, 6).fill();
         doc
-          .fillColor('#155724')
+          .fillColor('#0f172a')
           .fontSize(10).font('Helvetica-Bold')
-          .text('Grand Total', 360, y + 7, { width: 90 });
+          .text('Grand Total', 360, y + 8, { width: 90 });
         doc
-          .fontSize(12)
-          .text(INR(grandTotal), 360, y + 6, { width: 175, align: 'right' });
+          .fontSize(11)
+          .text(INR(grandTotal), 360, y + 8, { width: 175, align: 'right' });
 
         y += 40;
       }
@@ -283,30 +311,59 @@ export function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> {
           .text(
             `CGST @ ${((data.totalCgst ?? 0) / data.subtotal * 100).toFixed(1)}%  =  ${INR(data.totalCgst ?? 0)}   |   ` +
             `SGST @ ${((data.totalSgst ?? 0) / data.subtotal * 100).toFixed(1)}%  =  ${INR(data.totalSgst ?? 0)}`,
-            65, y
+            62, y
           );
         y += 14;
       }
 
       // ── Amount in words ──────────────────────────────────────────────────────
-      doc.fillColor('#495057').fontSize(8).font('Helvetica-Bold')
-        .text('Amount in words:', 65, y + 4, { width: 480 });
-      doc.font('Helvetica')
-        .text(amountToWords(grandTotal), 65, y + 15, { width: 480 });
-      y += 32;
+      doc.fillColor('#f8fafc').roundedRect(pageLeft, y + 2, pageWidth, 34, 6).fill();
+      doc.fillColor('#334155').fontSize(8).font('Helvetica-Bold')
+        .text('Amount in words', 62, y + 10, { width: 120 });
+      doc.fillColor('#0f172a').font('Helvetica')
+        .text(amountToWords(grandTotal), 150, y + 10, { width: 385 });
+      y += 42;
 
       // ── Notes ────────────────────────────────────────────────────────────────
       if (data.notes) {
+        doc.fillColor('#fff7ed').roundedRect(pageLeft, y + 1, pageWidth, 28, 5).fill();
         doc
-          .fillColor('#6c757d')
-          .fontSize(8.5).font('Helvetica')
-          .text(`Notes: ${data.notes}`, 65, y + 6);
-        y += 22;
+          .fillColor('#7c2d12')
+          .fontSize(8.5)
+          .font('Helvetica')
+          .text(`Notes: ${data.notes}`, 62, y + 10, { width: 470 });
+        y += 34;
       }
+
+      // ── Signature / declaration ────────────────────────────────────────────
+      const signTop = Math.max(y + 6, 648);
+      doc.strokeColor('#cbd5e1').lineWidth(0.7).roundedRect(pageLeft, signTop, pageWidth, 74, 6).stroke();
+      doc
+        .fillColor('#475569')
+        .fontSize(8)
+        .font('Helvetica')
+        .text('Declaration: Goods once sold will not be taken back or exchanged.', 62, signTop + 10, { width: 300 })
+        .text('Certified that the particulars given above are true and correct.', 62, signTop + 24, { width: 300 });
+      doc
+        .fillColor('#0f172a')
+        .fontSize(8)
+        .font('Helvetica-Bold')
+        .text(`for ${data.shopName}`, 390, signTop + 30, { width: 140, align: 'center' });
+      doc
+        .strokeColor('#94a3b8')
+        .lineWidth(0.6)
+        .moveTo(390, signTop + 50)
+        .lineTo(530, signTop + 50)
+        .stroke();
+      doc
+        .fillColor('#64748b')
+        .fontSize(7.5)
+        .font('Helvetica')
+        .text('Authorised Signatory', 390, signTop + 54, { width: 140, align: 'center' });
 
       // ── Footer ───────────────────────────────────────────────────────────────
       doc
-        .fillColor('#adb5bd')
+        .fillColor('#94a3b8')
         .fontSize(7.5).font('Helvetica')
         .text(
           `Generated by Execora  •  ${data.invoiceNo}  •  ${dateStr}  •  This is a computer-generated invoice.`,

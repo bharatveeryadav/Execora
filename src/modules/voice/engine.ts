@@ -9,8 +9,92 @@ import { productService } from '../product/product.service';
 import { voiceSessionService } from './session.service';
 import { openaiService } from '../../integrations/openai';
 import { emailService } from '../../infrastructure/email';
+import { generateInvoicePdf } from '../../infrastructure/pdf';
+import { minioClient } from '../../infrastructure/storage';
 
 class BusinessEngine {
+  private toNum(value: any, fallback = 0): number {
+    if (value === null || value === undefined) return fallback;
+    const n = typeof value === 'number' ? value : parseFloat(value.toString?.() ?? String(value));
+    return Number.isFinite(n) ? n : fallback;
+  }
+
+  /**
+   * Generate invoice PDF, upload to MinIO, and persist URL on invoice.
+   * Non-fatal: on failure, returns empty payload so billing flow still works.
+   */
+  private async buildAndStoreInvoicePdf(
+    invoice: any,
+    customerName: string,
+    resolvedItems: any[],
+    shopName: string
+  ): Promise<{ pdfBuffer?: Buffer; pdfUrl?: string; pdfObjectKey?: string }> {
+    // ── Stage 1: Generate PDF ─────────────────────────────────────────────────
+    // Kept in its own try so a MinIO failure later doesn't discard the buffer.
+    let pdfBuffer: Buffer;
+    try {
+      // Invoice row only has `total`; GST breakdown lives in resolvedItems
+      const subtotal   = resolvedItems.reduce((s, i: any) => s + this.toNum(i.subtotal, this.toNum(i.total)), 0);
+      const totalCgst  = resolvedItems.reduce((s, i: any) => s + this.toNum(i.cgst), 0);
+      const totalSgst  = resolvedItems.reduce((s, i: any) => s + this.toNum(i.sgst), 0);
+      const totalIgst  = resolvedItems.reduce((s, i: any) => s + this.toNum(i.igst), 0);
+      const totalCess  = resolvedItems.reduce((s, i: any) => s + this.toNum(i.cess), 0);
+      const totalTax   = totalCgst + totalSgst + totalIgst + totalCess;
+      const grandTotal = parseFloat(invoice.total.toString());
+
+      pdfBuffer = await generateInvoicePdf({
+        invoiceNo:    invoice.invoiceNo || invoice.id,
+        invoiceId:    invoice.id,
+        invoiceDate:  invoice.createdAt ? new Date(invoice.createdAt) : new Date(),
+        customerName: customerName || invoice?.customer?.name || 'Customer',
+        shopName,
+        supplyType: totalIgst > 0 ? 'INTERSTATE' : 'INTRASTATE',
+        items: resolvedItems.map((i: any) => ({
+          productName: i.productName,
+          hsnCode:     i.hsnCode ?? null,
+          quantity:    this.toNum(i.quantity),
+          unit:        i.unit || 'unit',
+          unitPrice:   this.toNum(i.unitPrice),
+          subtotal:    this.toNum(i.subtotal, this.toNum(i.total)),
+          gstRate:     this.toNum(i.gstRate),
+          cgst:        this.toNum(i.cgst),
+          sgst:        this.toNum(i.sgst),
+          igst:        this.toNum(i.igst),
+          cess:        this.toNum(i.cess),
+          totalTax:    this.toNum(i.totalTax),
+          total:       this.toNum(i.total),
+        })),
+        subtotal,
+        totalCgst,
+        totalSgst,
+        totalIgst,
+        totalCess,
+        totalTax,
+        grandTotal,
+        notes: invoice.notes || undefined,
+      });
+    } catch (err) {
+      logger.error({ err, invoiceId: invoice?.id }, 'Invoice PDF generation failed');
+      return {};  // PDF not generated — nothing to upload or attach
+    }
+
+    // ── Stage 2: Upload to MinIO ──────────────────────────────────────────────
+    // Failure here is non-fatal: email still gets the PDF as an attachment.
+    try {
+      const objectKey = `invoices/${invoice.tenantId || 'system'}/${invoice.id}.pdf`;
+      await minioClient.uploadFile(objectKey, pdfBuffer, { contentType: 'application/pdf' });
+
+      // 7 days presigned URL (SigV4 max for MinIO/S3)
+      const pdfUrl = await minioClient.getPresignedUrl(objectKey, 7 * 24 * 60 * 60);
+      await invoiceService.savePdfUrl(invoice.id, objectKey, pdfUrl);
+
+      return { pdfBuffer, pdfUrl, pdfObjectKey: objectKey };
+    } catch (err) {
+      logger.error({ err, invoiceId: invoice?.id }, 'MinIO upload failed — email will still carry PDF attachment');
+      return { pdfBuffer };  // Buffer is still good; email attachment will work
+    }
+  }
+
   /**
    * Get total pending amount for voice/intent queries
    */
@@ -288,15 +372,26 @@ class BusinessEngine {
       );
     }
 
+    // Add to multi-draft list; attach the generated draftId so toggleGst / confirm can target it
+    const draftId = await conversationMemory.addShopPendingInvoice(draft);
+    const draftWithId = { ...draft, draftId };
     if (conversationId) {
-      await conversationMemory.setContext(conversationId, 'pendingInvoice', draft);
+      await conversationMemory.setContext(conversationId, 'pendingInvoice', draftWithId);
     }
-    await conversationMemory.setShopPendingInvoice(draft);
 
+    const allDrafts = await conversationMemory.getShopPendingInvoices();
     return {
       success: true,
       message: `${customer.name} ka draft bill ban gaya: ${itemsSummary}. Total ₹${preview.grandTotal}${gstSuffix}. Confirm karna hai?${newProductNote}`,
-      data: { ...preview, customerId: customer.id, customerName: customer.name, draft: true, awaitingConfirm: true },
+      data: {
+        ...preview,
+        draftId,
+        customerId: customer.id,
+        customerName: customer.name,
+        draft: true,
+        awaitingConfirm: true,
+        pendingInvoices: allDrafts,   // for frontend real-time panel
+      },
     };
   }
 
@@ -316,12 +411,23 @@ class BusinessEngine {
     const total      = parseFloat(invoice.total.toString());
     const invoiceRef = (invoice as any).invoiceNo || invoice.id.slice(-6);
     const shopName   = process.env.SHOP_NAME || 'Execora Shop';
+    const { pdfBuffer, pdfUrl, pdfObjectKey } = await this.buildAndStoreInvoicePdf(invoice, customerName, resolvedItems, shopName);
     const emailItems = resolvedItems.map((i: any) => ({
       product: i.productName, quantity: i.quantity, price: i.unitPrice, total: i.total,
     }));
 
     if (customerEmail) {
-      emailService.sendInvoiceEmail(customerEmail, customerName, invoice.id, emailItems, total, shopName)
+      emailService.sendInvoiceEmail(
+        customerEmail,
+        customerName,
+        invoice.id,
+        emailItems,
+        total,
+        shopName,
+        pdfBuffer,
+        pdfUrl,
+        invoiceRef
+      )
         .catch((err) => logger.error({ err, invoiceId: invoice.id }, 'Failed to send invoice email'));
       return {
         success: true,
@@ -331,7 +437,16 @@ class BusinessEngine {
     }
 
     // No email on file — park the payload so PROVIDE_EMAIL turn can send it
-    const pendingEmailPayload = { customerId, customerName, invoiceId: invoice.id, items: emailItems, total };
+    const pendingEmailPayload = {
+      customerId,
+      customerName,
+      invoiceId: invoice.id,
+      invoiceNo: invoiceRef,
+      items: emailItems,
+      total,
+      pdfUrl: pdfUrl || null,
+      pdfObjectKey: pdfObjectKey || null,
+    };
     if (conversationId) {
       await conversationMemory.setContext(conversationId, 'pendingInvoiceEmail', pendingEmailPayload);
     }
@@ -347,12 +462,36 @@ class BusinessEngine {
    * Confirm pending invoice draft — creates DB record + sends email if available.
    * Called when user says "haan / confirm / theek hai" after seeing draft.
    */
-  private async executeConfirmInvoice(_entities: any, conversationId?: string): Promise<ExecutionResult> {
-    // Load draft — session-level first, then shop-level (cross-session recovery)
+  private async executeConfirmInvoice(entities: any, conversationId?: string): Promise<ExecutionResult> {
+    // 1. Session-level draft (current conversation turn) — highest priority
     const sessionDraft = conversationId
       ? await conversationMemory.getContext(conversationId, 'pendingInvoice')
       : null;
-    const draft = sessionDraft ?? await conversationMemory.getShopPendingInvoice();
+
+    // 2. All shop-level drafts (survive reconnects, cover multi-customer queuing)
+    const allDrafts = await conversationMemory.getShopPendingInvoices();
+
+    let draft: any = null;
+
+    if (entities?.customer) {
+      // User specified a customer name — find matching draft
+      const cust = (entities.customer as string).toLowerCase();
+      draft = allDrafts.find((d) => d.customerName.toLowerCase().includes(cust))
+           ?? (sessionDraft?.customerName?.toLowerCase().includes(cust) ? sessionDraft : null);
+    } else if (sessionDraft?.resolvedItems) {
+      draft = sessionDraft;
+    } else if (allDrafts.length === 1) {
+      draft = allDrafts[0];
+    } else if (allDrafts.length > 1) {
+      // Multiple unconfirmed drafts — ask which one
+      const list = allDrafts.map((d) => `${d.customerName} ₹${d.grandTotal}`).join(', ');
+      return {
+        success: false,
+        message: `Aapke ${allDrafts.length} pending bills hain: ${list}. Kaunsa confirm karein? Customer ka naam batao.`,
+        data: { pendingInvoices: allDrafts, awaitingSelection: true },
+        error: 'MULTIPLE_PENDING_INVOICES',
+      };
+    }
 
     if (!draft || !draft.resolvedItems || !draft.customerId) {
       return {
@@ -364,27 +503,37 @@ class BusinessEngine {
 
     const invoice = await invoiceService.confirmInvoice(draft.customerId, draft.resolvedItems);
 
-    // Clear draft from both Redis levels so it won't be re-confirmed
+    // Remove only this specific draft from the list; clear session-level copy
+    if (draft.draftId) {
+      await conversationMemory.removeShopPendingInvoice(draft.draftId);
+    } else {
+      await conversationMemory.setShopPendingInvoice(null); // legacy fallback — clear all
+    }
     if (conversationId) {
       await conversationMemory.setContext(conversationId, 'pendingInvoice', null);
     }
-    await conversationMemory.setShopPendingInvoice(null);
 
-    return this.sendConfirmedInvoiceEmail(
+    const remaining = await conversationMemory.getShopPendingInvoices();
+    const result = await this.sendConfirmedInvoiceEmail(
       invoice, draft.customerId, draft.customerEmail, draft.customerName, draft.resolvedItems, conversationId,
     );
+    // Attach remaining drafts so the WS handler can broadcast the updated panel
+    result.data = { ...result.data, pendingInvoices: remaining };
+    return result;
   }
 
   /**
    * Show the current pending invoice draft without changing it.
    */
-  private async executeShowPendingInvoice(entities: any, conversationId?: string): Promise<ExecutionResult> {
+  private async executeShowPendingInvoice(_entities: any, conversationId?: string): Promise<ExecutionResult> {
+    const allDrafts = await conversationMemory.getShopPendingInvoices();
+
+    // Session-level draft first (most relevant to current turn)
     const sessionDraft = conversationId
       ? await conversationMemory.getContext(conversationId, 'pendingInvoice')
       : null;
-    const draft = sessionDraft ?? await conversationMemory.getShopPendingInvoice();
 
-    if (!draft || !draft.resolvedItems) {
+    if (allDrafts.length === 0 && !sessionDraft) {
       return {
         success: false,
         message: 'Abhi koi pending bill draft nahi hai.',
@@ -392,13 +541,25 @@ class BusinessEngine {
       };
     }
 
-    const itemsSummary = this.formatItemsSummary(draft.resolvedItems as any[]);
-    const gstSuffix = draft.withGst ? ' (GST included)' : '';
+    if (allDrafts.length === 1 || sessionDraft) {
+      const draft = sessionDraft ?? allDrafts[0];
+      const itemsSummary = this.formatItemsSummary(draft.resolvedItems as any[]);
+      const gstSuffix = draft.withGst ? ' (GST included)' : '';
+      return {
+        success: true,
+        message: `${draft.customerName} ka pending bill: ${itemsSummary}. Total ₹${draft.grandTotal}${gstSuffix}. Confirm karna hai?`,
+        data: { draft, pendingInvoices: allDrafts },
+      };
+    }
 
+    // Multiple drafts — list all
+    const lines = allDrafts.map((d, i) =>
+      `${i + 1}. ${d.customerName}: ${this.formatItemsSummary(d.resolvedItems)} = ₹${d.grandTotal}`
+    ).join('\n');
     return {
       success: true,
-      message: `${draft.customerName} ka pending bill: ${itemsSummary}. Total ₹${draft.grandTotal}${gstSuffix}. Confirm karna hai?`,
-      data: { draft },
+      message: `${allDrafts.length} pending bills hain:\n${lines}\nKaunsa confirm karna hai?`,
+      data: { pendingInvoices: allDrafts },
     };
   }
 
@@ -434,7 +595,13 @@ class BusinessEngine {
     if (conversationId) {
       await conversationMemory.setContext(conversationId, 'pendingInvoice', updatedDraft);
     }
-    await conversationMemory.setShopPendingInvoice(updatedDraft);
+    // Update the specific draft in the list (by draftId) rather than overwriting all
+    if (draft.draftId) {
+      await conversationMemory.updateShopPendingInvoice(draft.draftId, updatedDraft);
+    } else {
+      await conversationMemory.setShopPendingInvoice(null); // legacy — clear and re-add
+      await conversationMemory.addShopPendingInvoice(updatedDraft);
+    }
 
     const itemsSummary = this.formatItemsSummary(preview.resolvedItems);
 
@@ -491,6 +658,17 @@ class BusinessEngine {
     // Save the email on the customer record
     await customerService.updateCustomer(pending.customerId, { email: rawEmail });
 
+    // Regenerate a fresh presigned URL at send time so delayed sends still get a valid link.
+    let freshPdfUrl: string | undefined = pending.pdfUrl || undefined;
+    if (pending.pdfObjectKey) {
+      try {
+        freshPdfUrl = await minioClient.getPresignedUrl(pending.pdfObjectKey, 7 * 24 * 60 * 60);
+        await invoiceService.savePdfUrl(pending.invoiceId, pending.pdfObjectKey, freshPdfUrl);
+      } catch (err) {
+        logger.error({ err, invoiceId: pending.invoiceId }, 'Failed to refresh invoice PDF presigned URL');
+      }
+    }
+
     // Send the queued invoice email
     const shopName = process.env.SHOP_NAME || 'Execora Shop';
     await emailService.sendInvoiceEmail(
@@ -499,7 +677,10 @@ class BusinessEngine {
       pending.invoiceId,
       pending.items,
       pending.total,
-      shopName
+      shopName,
+      undefined,
+      freshPdfUrl,
+      pending.invoiceNo || pending.invoiceId
     );
 
     // Clear pending context from BOTH session-level and shop-level so it's not re-sent
@@ -769,6 +950,62 @@ class BusinessEngine {
    * Cancel invoice
    */
   private async executeCancelInvoice(entities: any, conversationId?: string): Promise<ExecutionResult> {
+    // ── Case 1: Cancel ALL pending drafts ─────────────────────────────────────
+    if (entities?.cancelAll) {
+      const allDrafts = await conversationMemory.getShopPendingInvoices();
+      if (allDrafts.length === 0) {
+        return { success: false, message: 'Koi pending bill draft nahi hai.', error: 'NO_PENDING_INVOICE' };
+      }
+      await conversationMemory.setShopPendingInvoice(null);
+      if (conversationId) {
+        await conversationMemory.setContext(conversationId, 'pendingInvoice', null);
+      }
+      const names = allDrafts.map((d) => d.customerName).join(', ');
+      return {
+        success: true,
+        message: `${allDrafts.length} pending bills cancel ho gaye: ${names}.`,
+        data: { pendingInvoices: [] },
+      };
+    }
+
+    // ── Case 2: Cancel a specific pending DRAFT (not yet confirmed) ────────────
+    const allDrafts = await conversationMemory.getShopPendingInvoices();
+    if (entities?.customer && allDrafts.length > 0) {
+      const custQuery = (entities.customer as string).toLowerCase();
+      const draft = allDrafts.find((d) => d.customerName.toLowerCase().includes(custQuery));
+      if (draft) {
+        await conversationMemory.removeShopPendingInvoice(draft.draftId);
+        if (conversationId) {
+          const sessionDraft = await conversationMemory.getContext(conversationId, 'pendingInvoice');
+          if (sessionDraft?.draftId === draft.draftId) {
+            await conversationMemory.setContext(conversationId, 'pendingInvoice', null);
+          }
+        }
+        const remaining = await conversationMemory.getShopPendingInvoices();
+        return {
+          success: true,
+          message: `${draft.customerName} ka draft bill cancel ho gaya.`,
+          data: { pendingInvoices: remaining },
+        };
+      }
+    }
+
+    // ── Case 3: Cancel active session draft (no customer name, but draft exists) ─
+    const sessionDraft = conversationId
+      ? await conversationMemory.getContext(conversationId, 'pendingInvoice')
+      : null;
+    if (sessionDraft?.draftId) {
+      await conversationMemory.removeShopPendingInvoice(sessionDraft.draftId);
+      await conversationMemory.setContext(conversationId!, 'pendingInvoice', null);
+      const remaining = await conversationMemory.getShopPendingInvoices();
+      return {
+        success: true,
+        message: `${sessionDraft.customerName} ka draft bill cancel ho gaya.`,
+        data: { pendingInvoices: remaining },
+      };
+    }
+
+    // ── Case 4: Cancel last CONFIRMED invoice for a customer (original behaviour) ─
     const resolution = await this.resolveCustomer(entities, conversationId);
 
     if (resolution.multiple) {
@@ -789,27 +1026,20 @@ class BusinessEngine {
     }
 
     const customer = resolution.customer;
-
-    // Get last invoice
     const lastInvoice = await invoiceService.getLastInvoice(customer.id);
     if (!lastInvoice) {
       return {
         success: false,
-        message: `No invoice found for ${customer.name}`,
+        message: `${customer.name} ka koi bill nahi mila.`,
         error: 'NO_INVOICE',
       };
     }
 
-    // Cancel invoice
     await invoiceService.cancelInvoice(lastInvoice.id);
-
     return {
       success: true,
-      message: `Invoice cancelled for ${customer.name}`,
-      data: {
-        invoiceId: lastInvoice.id,
-        customer: customer.name,
-      },
+      message: `${customer.name} ka bill cancel ho gaya.`,
+      data: { invoiceId: lastInvoice.id, customer: customer.name },
     };
   }
 
