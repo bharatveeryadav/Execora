@@ -38,6 +38,17 @@ export const tenantContext = {
     return storage.getStore() ?? fallback ?? { tenantId: 'system-tenant-001', userId: 'system-user-001' };
   },
 
+  /**
+   * Update the current async context in-place (Node 20 `enterWith`).
+   * Used by the JWT auth preHandler to replace the default system context
+   * with the authenticated user's tenantId/userId after token verification.
+   * All subsequent async work (handlers, services, DB audit) inherits the update.
+   */
+  update(partial: Partial<TenantCtx>): void {
+    const current = storage.getStore() ?? { tenantId: 'system-tenant-001', userId: 'system-user-001' };
+    storage.enterWith({ ...current, ...partial });
+  },
+
   /** True when called within an active request context. */
   isActive(): boolean {
     return storage.getStore() !== undefined;

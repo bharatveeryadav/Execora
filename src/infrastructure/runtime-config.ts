@@ -199,3 +199,26 @@ export const stopRuntimeConfigPolling = async () => {
 };
 
 export const getRuntimeConfig = (): RuntimeConfig => currentConfig;
+
+/**
+ * Write a partial config override to Redis.
+ * The change is applied immediately in-process and picked up by other
+ * instances within RUNTIME_CONFIG_POLL_SECONDS.
+ * Used by the admin panel to change settings at runtime without a restart.
+ */
+export const setRuntimeConfig = async (override: Partial<RuntimeConfig>): Promise<void> => {
+    const client = getRedisClient();
+    if (!client) {
+        throw new Error('Redis not available — cannot persist runtime config');
+    }
+    const merged = mergeConfig(defaultConfig, {
+        ...override,
+        meta: {
+            source: 'redis',
+            loadedAt: new Date().toISOString(),
+        },
+    });
+    await client.set(configKey, JSON.stringify(merged));
+    currentConfig = merged; // Apply immediately in this process
+    logger.info({ keys: Object.keys(override) }, 'Runtime config updated');
+};

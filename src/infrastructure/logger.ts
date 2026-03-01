@@ -5,10 +5,13 @@ import { config } from '../config';
 // Detect test environment
 const isTest = process.env.NODE_TEST === '1' || process.env.NODE_TEST === 'true';
 
-// Configure logger with file output for all logs
+// Configure logger targets
+// - development : pino-pretty to console + file
+// - production  : JSON to stdout (Docker/K8s captures fd 1) + file for Loki/Promtail
+// - test        : no transport (avoids pino flush timeout in Jest)
 const transport = pino.transport({
   targets: [
-    // Console output with pretty printing (development)
+    // Development: human-readable pretty console
     ...(config.nodeEnv === 'development'
       ? [
         {
@@ -22,8 +25,11 @@ const transport = pino.transport({
         },
       ]
       : []),
-    // File output for all logs (Loki/Promtail ingestion + local backup)
-    // Disabled during tests to avoid pino flush timeout
+    // Production: JSON to stdout — required for Docker/K8s log aggregation
+    ...(config.nodeEnv === 'production'
+      ? [{ target: 'pino/file', options: { destination: 1 } }]
+      : []),
+    // File output for Loki/Promtail ingestion (all non-test environments)
     ...(isTest ? [] : [
       {
         target: 'pino/file',

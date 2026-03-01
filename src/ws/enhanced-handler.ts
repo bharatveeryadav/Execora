@@ -10,6 +10,7 @@ import { conversationMemory } from '../modules/voice/conversation';
 import { WSMessage, WSMessageType, IntentExtraction, IntentType } from '../types';
 import { websocketConnections, voiceCommandsProcessed } from '../infrastructure/metrics';
 import { responseTemplateService } from '../modules/voice/response-template';
+import { LiveTranscriptionSession } from '../providers/types';
 
 interface VoiceSession {
   ws: WebSocket;
@@ -20,7 +21,7 @@ interface VoiceSession {
   isRecording: boolean;
   audioChunks: Buffer[];
   audioFormat?: 'webm' | 'pcm';
-  sttConnection: any; // Deepgram connection
+  sttConnection: LiveTranscriptionSession | null;
   ttsProvider?: string; // TTS provider selected by client ('browser' | 'openai' | 'elevenlabs')
   pendingIntent?: IntentExtraction; // Set when awaiting user confirmation before execution
   ttsLanguage: string; // Active response language (BCP-47 code, default 'hi')
@@ -475,7 +476,7 @@ class EnhancedWebSocketHandler {
       if (isAdminBefore) {
         intent.entities = intent.entities || {};
         intent.entities.operatorRole = 'admin';
-        intent.entities.adminEmail = process.env.ADMIN_EMAIL || 'bharatveeryadavg@gmail.com';
+        intent.entities.adminEmail = process.env.ADMIN_EMAIL || '';
         logger.info(
           {
             sessionId: session.sessionId,
@@ -641,7 +642,6 @@ class EnhancedWebSocketHandler {
 
       // 4. Send text response
       const totalTime = Date.now() - startTime;
-      const totalAudioSize = session.audioChunks.reduce((sum, chunk) => sum + chunk.length, 0);
       const formattedTime = this.formatTimeDetailed(totalTime);
       logger.info({
         flowId,

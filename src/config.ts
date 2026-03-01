@@ -37,10 +37,19 @@ export const config = {
     model: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
   },
 
-  // Groq — fast LPU inference for intent extraction (~150ms vs ~1400ms from India)
-  // Get free API key at https://console.groq.com
+  // Groq — fast LPU inference (~150ms vs ~1400ms from India). Free at https://console.groq.com
   groq: {
     apiKey: process.env.GROQ_API_KEY || '',
+  },
+
+  // Ollama — local/self-hosted LLM (no internet, no API key required)
+  // Start: `ollama serve` + `ollama pull llama3.2`
+  // Docs: https://ollama.com
+  ollama: {
+    baseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
+    model:   process.env.OLLAMA_MODEL    || 'llama3.2',
+    // Set to true only when OLLAMA_BASE_URL is explicitly configured
+    enabled: !!process.env.OLLAMA_BASE_URL,
   },
 
   // WhatsApp
@@ -58,10 +67,19 @@ export const config = {
       apiKey: process.env.DEEPGRAM_API_KEY || '',
     },
     elevenlabs: {
-      apiKey: process.env.ELEVENLABS_API_KEY || '',
-      modelId: process.env.ELEVENLABS_STT_MODEL || 'scribe_v2',
-      languageCode: process.env.ELEVENLABS_STT_LANGUAGE || '',
-      realtimeModelId: process.env.ELEVENLABS_STT_REALTIME_MODEL || 'scribe_v2_realtime',
+      apiKey:           process.env.ELEVENLABS_API_KEY             || '',
+      modelId:          process.env.ELEVENLABS_STT_MODEL           || 'scribe_v2',
+      languageCode:     process.env.ELEVENLABS_STT_LANGUAGE        || '',
+      realtimeModelId:  process.env.ELEVENLABS_STT_REALTIME_MODEL  || 'scribe_v2_realtime',
+    },
+    // Local Whisper — runs fully offline via whisper-asr-webservice or faster-whisper
+    // Start: docker run -p 9000:9000 onerahmet/openai-whisper-asr-webservice:latest
+    // Docs: https://github.com/ahmetoner/whisper-asr-webservice
+    whisper: {
+      baseUrl: process.env.WHISPER_BASE_URL || 'http://localhost:9000',
+      model:   process.env.WHISPER_MODEL    || 'base',
+      language: process.env.WHISPER_LANGUAGE || 'hi',
+      enabled: !!process.env.WHISPER_BASE_URL,
     },
   },
 
@@ -69,8 +87,16 @@ export const config = {
   tts: {
     provider: process.env.TTS_PROVIDER || 'elevenlabs',
     elevenlabs: {
-      apiKey: process.env.ELEVENLABS_API_KEY || '',
-      voiceId: process.env.ELEVENLABS_VOICE_ID || '21m00Tcm4TlvDq8ikWAM',
+      apiKey:  process.env.ELEVENLABS_API_KEY   || '',
+      voiceId: process.env.ELEVENLABS_VOICE_ID  || '21m00Tcm4TlvDq8ikWAM',
+    },
+    // Local Piper TTS — runs fully offline, supports Hindi
+    // Start: docker run -p 5000:5000 rhasspy/wyoming-piper --voice hi_IN-deepika-medium
+    // Docs: https://github.com/rhasspy/piper
+    piper: {
+      baseUrl: process.env.PIPER_BASE_URL || 'http://localhost:5000',
+      voice:   process.env.PIPER_VOICE    || 'hi_IN-deepika-medium',
+      enabled: !!process.env.PIPER_BASE_URL,
     },
   },
 
@@ -79,6 +105,18 @@ export const config = {
 
   // CORS
   allowedOrigins: process.env.ALLOWED_ORIGINS || '',
+
+  // Admin API — key required for all /admin/* endpoints
+  // Generate a strong random value: openssl rand -hex 32
+  adminApiKey: process.env.ADMIN_API_KEY || '',
+
+  // JWT — used for business-user authentication on /api/v1/* routes
+  // Generate secret: openssl rand -hex 64
+  jwt: {
+    secret:              process.env.JWT_SECRET || '',
+    accessExpiresInSec:  parseInt(process.env.JWT_ACCESS_EXPIRES_SECONDS  || '900',   10), // 15 min default
+    refreshExpiresInSec: parseInt(process.env.JWT_REFRESH_EXPIRES_SECONDS || '604800', 10), // 7 days default
+  },
 } as const;
 
 // Fail fast on startup if critical env vars are missing

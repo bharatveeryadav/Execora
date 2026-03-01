@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { config } from '../config';
 import { logger } from './logger';
 import { dbAuditEventsTotal, dbQueriesTotal, dbQueryDuration } from './metrics';
+import { tenantContext } from './tenant-context';
 
 const DB_SLOW_QUERY_MS = Number(process.env.DB_SLOW_QUERY_MS || 500);
 
@@ -122,11 +123,13 @@ const prismaClientSingleton = () => {
       return next(params);
     }
 
+    const ctx = tenantContext.get();
     const auditBase = {
       category: 'db_audit',
       action,
       model,
-      tenantId,
+      tenantId: tenantId ?? ctx.tenantId,
+      userId:   ctx.userId,
       where: safeValue(params.args?.where),
       dataKeys: params.args?.data && typeof params.args.data === 'object'
         ? Object.keys(params.args.data)

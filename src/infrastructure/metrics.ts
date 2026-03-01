@@ -134,6 +134,29 @@ export const ttsProcessingTime = new promClient.Histogram({
     registers: [register],
 });
 
+// STT / TTS request counters
+export const sttRequestsTotal = new promClient.Counter({
+    name: 'stt_requests_total',
+    help: 'Total STT requests by provider, operation, and result',
+    labelNames: ['provider', 'operation', 'status'],
+    registers: [register],
+});
+
+export const ttsRequestsTotal = new promClient.Counter({
+    name: 'tts_requests_total',
+    help: 'Total TTS requests by provider, operation, and result',
+    labelNames: ['provider', 'operation', 'status'],
+    registers: [register],
+});
+
+// Provider availability gauge — 1=available, 0=unavailable
+export const providerAvailability = new promClient.Gauge({
+    name: 'provider_available',
+    help: 'Whether a provider is currently available (1=yes, 0=no)',
+    labelNames: ['provider', 'type'],
+    registers: [register],
+});
+
 // Conversation Memory Stats
 export const conversationMemorySize = new promClient.Gauge({
     name: 'conversation_memory_messages',
