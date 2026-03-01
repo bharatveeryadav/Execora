@@ -40,11 +40,24 @@ const fastify = Fastify({
   bodyLimit: 1048576, // 1 MB for JSON — multipart has its own 100 MB limit
 });
 
+// Propagate x-request-id for log correlation across the entire async chain.
+// If the client sends a request ID (e.g. from a frontend or API gateway), use it;
+// otherwise generate a short random one. The ID is echoed back in the response.
+fastify.addHook('onRequest', function requestIdHook(request, reply, done) {
+  const incoming = request.headers['x-request-id'];
+  const reqId    = (typeof incoming === 'string' && incoming.length > 0)
+    ? incoming
+    : Math.random().toString(36).slice(2, 10);
+  (request as any).reqId = reqId;
+  reply.header('x-request-id', reqId);
+  done();
+});
+
 // Establish request-scoped tenant context for every HTTP request.
 // Using callback form so done() is called inside tenantContext.run(),
 // which causes Node.js AsyncLocalStorage to propagate the context through
 // the entire async call chain for this request (handlers, services, etc.).
-// Later: extract tenantId from JWT instead of using SYSTEM_TENANT_ID.
+// TODO: extract tenantId from JWT once multi-tenant auth is implemented.
 fastify.addHook('onRequest', function tenantContextHook(_request, _reply, done) {
   tenantContext.run({ tenantId: SYSTEM_TENANT_ID, userId: SYSTEM_USER_ID }, done);
 });
@@ -129,7 +142,7 @@ async function initializeServices() {
     // Initialize Email Service
     await emailService.initialize();
 
-    // Start queue workers (reminder delivery via email; WhatsApp TODO)
+    // Start queue workers: reminders (email → WhatsApp fallback) + whatsapp direct
     startWorkers();
 
     logger.info('All services initialized');

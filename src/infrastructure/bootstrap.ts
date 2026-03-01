@@ -20,31 +20,41 @@ export async function bootstrapSystem(): Promise<void> {
         data: {
           id:           SYSTEM_TENANT_ID,
           name:         process.env.BUSINESS_NAME || 'My Store',
-          businessType: 'kirana',
+          businessType: (process.env.BUSINESS_TYPE || 'retail') as any,
           plan:         'free',
           status:       'active',
         },
       });
-      logger.info({ tenantId: tenant.id }, '🏪 Default tenant created');
+      logger.info({ tenantId: tenant.id }, 'Default tenant created');
     }
 
     // ── 2. User ──────────────────────────────────────────────────────────────
     let user = await prisma.user.findUnique({ where: { id: SYSTEM_USER_ID } });
 
     if (!user) {
+      if (!process.env.ADMIN_PASSWORD_HASH) {
+        logger.warn(
+          'ADMIN_PASSWORD_HASH is not set. ' +
+          'The default system user will be created with a locked placeholder hash. ' +
+          'Set ADMIN_PASSWORD_HASH to a bcrypt hash before going to production.'
+        );
+      }
+
       user = await prisma.user.create({
         data: {
           id:           SYSTEM_USER_ID,
           tenantId:     tenant.id,
           email:        process.env.ADMIN_EMAIL || 'admin@store.local',
-          passwordHash: process.env.ADMIN_PASSWORD_HASH || 'changeme',
+          // Locked placeholder — not a valid bcrypt hash, so login will always fail
+          // until ADMIN_PASSWORD_HASH is set to a real bcrypt hash.
+          passwordHash: process.env.ADMIN_PASSWORD_HASH || '$2b$10$LOCKED_PLACEHOLDER_SET_ADMIN_PASSWORD_HASH',
           name:         process.env.ADMIN_NAME  || 'Admin',
           role:         'owner',
           permissions:  [],
           isActive:     true,
         },
       });
-      logger.info({ userId: user.id }, '👤 Default user created');
+      logger.info({ userId: user.id }, 'Default user created');
     }
 
     SYSTEM_TENANT_ID = tenant.id;
