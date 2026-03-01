@@ -208,6 +208,12 @@ Available intents:
 - UNKNOWN: Cannot determine intent
 
 Critical extraction rules for Indian voice patterns:
+0) Recognize CREATE_REMINDER recurring schedules and map recurrence phrase to entities.datetime exactly:
+   - "Rahul ko 500 ka reminder har 5 minute me bhejo" → CREATE_REMINDER with entities.customer="Rahul", entities.amount=500, entities.datetime="har 5 minute"
+   - "Rahul ko 500 ka reminder daily 3 baje" → CREATE_REMINDER with entities.datetime="daily 3 baje"
+   - "Rahul ko 500 ka reminder har mahine 1 date ko" → CREATE_REMINDER with entities.datetime="har mahine 1 date ko"
+   - "Rahul ko 500 ka reminder every 6 month" → CREATE_REMINDER with entities.datetime="every 6 month"
+
 1) Recognize Indian Hinglish patterns for ADD_CREDIT:
    - "CUSTOMER_NAME ka AMOUNT add karo" → ADD_CREDIT
    - "CUSTOMER_NAME ko AMOUNT add kar do" → ADD_CREDIT

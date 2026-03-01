@@ -3,11 +3,234 @@ import { logger } from '../../infrastructure/logger';
 import { reminderQueue } from '../../infrastructure/queue';
 import { SYSTEM_TENANT_ID } from '../../infrastructure/bootstrap';
 import { ReminderJobData } from '../../types';
-import { addDays, addHours, setHours, setMinutes } from 'date-fns';
+import { addDays, addHours, addMinutes, addMonths, setHours, setMinutes, setSeconds, setMilliseconds } from 'date-fns';
 import { fromZonedTime } from 'date-fns-tz';
 import { config } from '../../config';
 
+type RecurringPattern =
+  | { type: 'interval_minutes'; value: number }
+  | { type: 'daily_time'; hour: number; minute: number }
+  | { type: 'monthly_date'; day: number; hour: number; minute: number }
+  | { type: 'every_n_months'; months: number; day: number; hour: number; minute: number };
+
+type ParsedSchedule = {
+  scheduledTime: Date;
+  recurringPattern?: RecurringPattern;
+};
+
 class ReminderService {
+  private normalizeSpokenNumbers(input: string): string {
+    const devanagariDigits: Record<string, string> = {
+      '०': '0', '१': '1', '२': '2', '३': '3', '४': '4',
+      '५': '5', '६': '6', '७': '7', '८': '8', '९': '9',
+    };
+
+    let text = input.replace(/[०-९]/g, (ch) => devanagariDigits[ch] ?? ch);
+
+    const numberWords: Array<[RegExp, string]> = [
+      [/\b(ek|एक)\b/g, '1'],
+      [/\b(do|दो)\b/g, '2'],
+      [/\b(teen|तीन)\b/g, '3'],
+      [/\b(char|chaar|चार)\b/g, '4'],
+      [/\b(paanch|पांच|पाँच)\b/g, '5'],
+      [/\b(chhe|cheh|छह)\b/g, '6'],
+      [/\b(saat|सात)\b/g, '7'],
+      [/\b(aath|आठ)\b/g, '8'],
+      [/\b(nau|नौ)\b/g, '9'],
+      [/\b(das|दस)\b/g, '10'],
+    ];
+
+    for (const [pattern, value] of numberWords) {
+      text = text.replace(pattern, value);
+    }
+
+    return text;
+  }
+
+  private parseHourMinute(raw: string): { hour: number; minute: number } | null {
+    const withColon = raw.match(/(\d{1,2}):(\d{1,2})\s*(am|pm)?/);
+    const withMarker = raw.match(/(\d{1,2})\s*(am|pm|baje)/);
+    const m = withColon || withMarker;
+    if (!m) return null;
+
+    let hour = Number(m[1]);
+    const minute = withColon && m[2] ? Number(m[2]) : 0;
+    const meridiem = (m[3] || '').toLowerCase();
+
+    if (Number.isNaN(hour) || Number.isNaN(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+      return null;
+    }
+
+    if (meridiem === 'am') {
+      if (hour === 12) hour = 0;
+    } else if (meridiem === 'pm') {
+      if (hour < 12) hour += 12;
+    } else if (meridiem === 'baje') {
+      // Keep existing product behavior: plain "3 baje" is treated as afternoon slot.
+      if (hour < 12) hour += 12;
+    }
+
+    return { hour, minute };
+  }
+
+  private nextDailyAt(now: Date, hour: number, minute: number): Date {
+    let next = setHours(now, hour);
+    next = setMinutes(next, minute);
+    next = setSeconds(next, 0);
+    next = setMilliseconds(next, 0);
+    if (next <= now) next = addDays(next, 1);
+    return next;
+  }
+
+  private nextMonthlyDate(now: Date, day: number, hour: number, minute: number): Date {
+    const clampedDay = Math.max(1, Math.min(31, day));
+    let year = now.getFullYear();
+    let month = now.getMonth();
+
+    for (let i = 0; i < 24; i++) {
+      const lastDay = new Date(year, month + 1, 0).getDate();
+      const targetDay = Math.min(clampedDay, lastDay);
+      const candidate = new Date(year, month, targetDay, hour, minute, 0, 0);
+      if (candidate > now) return candidate;
+      month += 1;
+      if (month > 11) {
+        month = 0;
+        year += 1;
+      }
+    }
+
+    return addMonths(now, 1);
+  }
+
+  private parseSchedule(dateTimeStr: string): ParsedSchedule {
+    const now = new Date();
+    const lowerStr = this.normalizeSpokenNumbers(dateTimeStr.toLowerCase().trim());
+
+    // हर/each/every N minutes
+    const everyMinutes = lowerStr.match(/(?:har|each|every)\s*(?:ek\s*)?(\d+)\s*(?:minute|min|minutes|mins|minutee|minit)/);
+    if (everyMinutes) {
+      const minutes = Math.max(1, Number(everyMinutes[1]));
+      return {
+        scheduledTime: addMinutes(now, minutes),
+        recurringPattern: { type: 'interval_minutes', value: minutes },
+      };
+    }
+
+    // "N minute me/baad" -> one-time relative schedule
+    const inMinutes = lowerStr.match(/(\d+)\s*(?:minute|min|minutes|mins|minit)\s*(?:me|mein|baad|bad|later|after)/);
+    if (inMinutes) {
+      const minutes = Math.max(1, Number(inMinutes[1]));
+      return { scheduledTime: addMinutes(now, minutes) };
+    }
+
+    // रोज/daily at time
+    if (/(?:daily|roz|roj|har din|every day)/.test(lowerStr)) {
+      const hm = this.parseHourMinute(lowerStr) || { hour: 19, minute: 0 };
+      return {
+        scheduledTime: this.nextDailyAt(now, hm.hour, hm.minute),
+        recurringPattern: { type: 'daily_time', hour: hm.hour, minute: hm.minute },
+      };
+    }
+
+    // हर महीने X date
+    const monthly = lowerStr.match(/(?:har|each|every)\s*(?:mahine|mahina|mhine|month)\s*(\d{1,2})\s*(?:date|tareekh|tarikh|ko)?/);
+    if (monthly) {
+      const day = Math.max(1, Math.min(31, Number(monthly[1])));
+      const hm = this.parseHourMinute(lowerStr) || { hour: 9, minute: 0 };
+      return {
+        scheduledTime: this.nextMonthlyDate(now, day, hm.hour, hm.minute),
+        recurringPattern: { type: 'monthly_date', day, hour: hm.hour, minute: hm.minute },
+      };
+    }
+
+    // every N months
+    const everyNMonths = lowerStr.match(/(?:har|each|every)\s*(\d+)\s*(?:mahine|mahina|month|months)/);
+    if (everyNMonths) {
+      const months = Math.max(1, Number(everyNMonths[1]));
+      const hm = this.parseHourMinute(lowerStr);
+      const base = hm ? this.nextDailyAt(now, hm.hour, hm.minute) : now;
+      const first = addMonths(base, months);
+      return {
+        scheduledTime: first,
+        recurringPattern: {
+          type: 'every_n_months',
+          months,
+          day: first.getDate(),
+          hour: first.getHours(),
+          minute: first.getMinutes(),
+        },
+      };
+    }
+
+    return { scheduledTime: this.parseDateTime(dateTimeStr) };
+  }
+
+  private computeNextOccurrence(fromTime: Date, recurringPattern: RecurringPattern): Date {
+    const now = new Date();
+    let next = new Date(fromTime);
+
+    if (recurringPattern.type === 'interval_minutes') {
+      do {
+        next = addMinutes(next, recurringPattern.value);
+      } while (next <= now);
+      return next;
+    }
+
+    if (recurringPattern.type === 'daily_time') {
+      return this.nextDailyAt(now, recurringPattern.hour, recurringPattern.minute);
+    }
+
+    if (recurringPattern.type === 'monthly_date') {
+      return this.nextMonthlyDate(now, recurringPattern.day, recurringPattern.hour, recurringPattern.minute);
+    }
+
+    if (recurringPattern.type === 'every_n_months') {
+      do {
+        next = addMonths(next, recurringPattern.months);
+        const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+        const day = Math.min(recurringPattern.day, lastDay);
+        next = new Date(next.getFullYear(), next.getMonth(), day, recurringPattern.hour, recurringPattern.minute, 0, 0);
+      } while (next <= now);
+      return next;
+    }
+
+    return addHours(now, 1);
+  }
+
+  private async enqueueReminderJob(
+    payload: ReminderJobData,
+    scheduledTime: Date
+  ): Promise<void> {
+    const delay = scheduledTime.getTime() - Date.now();
+    const jobId = `reminder-${payload.reminderId}-${scheduledTime.getTime()}`;
+    await reminderQueue.add(
+      'send-reminder',
+      payload,
+      {
+        delay: delay > 0 ? delay : 0,
+        jobId,
+      }
+    );
+  }
+
+  private async removeQueuedJobsForReminder(reminderId: string): Promise<void> {
+    try {
+      const legacyJob = await reminderQueue.getJob(`reminder-${reminderId}`);
+      if (legacyJob) await legacyJob.remove();
+    } catch (err) {
+      logger.warn({ err, reminderId }, 'Legacy reminder job not found');
+    }
+
+    try {
+      const queueAny = reminderQueue as any;
+      if (typeof queueAny.removeJobs === 'function') {
+        await queueAny.removeJobs(`reminder-${reminderId}-*`);
+      }
+    } catch (err) {
+      logger.warn({ err, reminderId }, 'Failed to remove reminder jobs by pattern');
+    }
+  }
+
   /**
    * Parse natural language date/time to actual datetime
    */
@@ -22,8 +245,9 @@ class ReminderService {
       // Extract time if mentioned
       const timeMatch = lowerStr.match(/(\d+)\s*(baje|pm|am)/);
       if (timeMatch) {
-        const hour = parseInt(timeMatch[1], 10);
-        date = setHours(date, hour >= 12 ? hour : hour + 12);
+        const parsed = this.parseHourMinute(timeMatch[0]);
+        const hour = parsed?.hour ?? 19;
+        date = setHours(date, hour);
         date = setMinutes(date, 0);
       } else {
         // Default to 7 PM
@@ -40,8 +264,9 @@ class ReminderService {
 
       const timeMatch = lowerStr.match(/(\d+)\s*(baje|pm|am)/);
       if (timeMatch) {
-        const hour = parseInt(timeMatch[1], 10);
-        date = setHours(date, hour >= 12 ? hour : hour + 12);
+        const parsed = this.parseHourMinute(timeMatch[0]);
+        const hour = parsed?.hour ?? now.getHours();
+        date = setHours(date, hour);
         date = setMinutes(date, 0);
       }
 
@@ -51,8 +276,9 @@ class ReminderService {
     // Specific hour today
     const hourMatch = lowerStr.match(/(\d+)\s*(baje|pm|am)/);
     if (hourMatch) {
-      const hour = parseInt(hourMatch[1], 10);
-      let date = setHours(now, hour >= 12 ? hour : hour + 12);
+      const parsed = this.parseHourMinute(hourMatch[0]);
+      const hour = parsed?.hour ?? now.getHours();
+      let date = setHours(now, hour);
       date = setMinutes(date, 0);
 
       if (date < now) {
@@ -93,7 +319,7 @@ class ReminderService {
       if (!customer) throw new Error('Customer not found');
       if (!customer.phone) throw new Error('Customer phone number not found');
 
-      const scheduledTime = this.parseDateTime(dateTimeStr);
+      const { scheduledTime, recurringPattern } = this.parseSchedule(dateTimeStr);
 
       const message =
         customMessage ||
@@ -106,6 +332,7 @@ class ReminderService {
           customerId,
           reminderType:  'payment_due',
           scheduledTime,
+          recurringPattern: recurringPattern as any,
           customMessage: message,
           channels:      ['whatsapp', 'email'],
           status:        'pending',
@@ -116,11 +343,8 @@ class ReminderService {
         },
       });
 
-      const delay = scheduledTime.getTime() - Date.now();
-
       try {
-        await reminderQueue.add(
-          'send-reminder',
+        await this.enqueueReminderJob(
           {
             reminderId:   reminder.id,
             customerId:   customer.id,
@@ -129,10 +353,7 @@ class ReminderService {
             amount,
             message,
           } as ReminderJobData,
-          {
-            delay:  delay > 0 ? delay : 0,
-            jobId: `reminder-${reminder.id}`,
-          }
+          scheduledTime
         );
       } catch (queueError) {
         await prisma.reminder.update({
@@ -144,7 +365,7 @@ class ReminderService {
         throw queueError;
       }
 
-      logger.info({ reminderId: reminder.id, customerId, scheduledTime, delay }, 'Reminder scheduled');
+      logger.info({ reminderId: reminder.id, customerId, scheduledTime, recurringPattern }, 'Reminder scheduled');
       return reminder;
     } catch (error) {
       logger.error({ error, customerId, amount, dateTimeStr }, 'Schedule reminder failed');
@@ -162,12 +383,7 @@ class ReminderService {
         data:  { status: 'cancelled' },
       });
 
-      try {
-        const job = await reminderQueue.getJob(`reminder-${reminderId}`);
-        if (job) await job.remove();
-      } catch (err) {
-        logger.warn({ err, reminderId }, 'Job not found in queue or already processed');
-      }
+      await this.removeQueuedJobsForReminder(reminderId);
 
       logger.info({ reminderId }, 'Reminder cancelled');
       return reminder;
@@ -192,19 +408,12 @@ class ReminderService {
         },
       });
 
-      try {
-        const oldJob = await reminderQueue.getJob(`reminder-${reminderId}`);
-        if (oldJob) await oldJob.remove();
-      } catch (err) {
-        logger.warn({ err, reminderId }, 'Old job not found');
-      }
+      await this.removeQueuedJobsForReminder(reminderId);
 
-      const delay   = newScheduledTime.getTime() - Date.now();
       const amount  = parseFloat((reminder as any).notes || '0');
       const message = (reminder as any).customMessage || 'Payment reminder';
 
-      await reminderQueue.add(
-        'send-reminder',
+      await this.enqueueReminderJob(
         {
           reminderId:   reminder.id,
           customerId:   reminder.customerId!,
@@ -213,10 +422,7 @@ class ReminderService {
           amount,
           message,
         } as ReminderJobData,
-        {
-          delay:  delay > 0 ? delay : 0,
-          jobId: `reminder-${reminder.id}`,
-        }
+        newScheduledTime
       );
 
       logger.info({ reminderId, newScheduledTime }, 'Reminder time modified');
@@ -264,10 +470,13 @@ class ReminderService {
   /**
    * Mark reminder as sent
    */
-  async markAsSent(reminderId: string) {
+  async markAsSent(reminderId: string, options?: { keepPending?: boolean }) {
     return await prisma.reminder.update({
       where: { id: reminderId },
-      data:  { status: 'sent', sentAt: new Date() },
+      data:  {
+        status: options?.keepPending ? 'pending' : 'sent',
+        sentAt: new Date(),
+      },
     });
   }
 
@@ -296,6 +505,45 @@ class ReminderService {
       },
       include: { customer: true },
     });
+  }
+
+  async scheduleNextOccurrence(reminderId: string) {
+    const reminder = await prisma.reminder.findUnique({
+      where: { id: reminderId },
+      include: {
+        customer: {
+          select: { name: true, phone: true },
+        },
+      },
+    });
+
+    if (!reminder || reminder.status === 'cancelled' || !reminder.recurringPattern) return null;
+    if (!reminder.customerId || !reminder.customer?.phone) return null;
+
+    const recurringPattern = reminder.recurringPattern as unknown as RecurringPattern;
+    const nextTime = this.computeNextOccurrence(reminder.scheduledTime, recurringPattern);
+
+    const updated = await prisma.reminder.update({
+      where: { id: reminderId },
+      data: {
+        scheduledTime: nextTime,
+        status: 'pending',
+      },
+    });
+
+    await this.enqueueReminderJob(
+      {
+        reminderId: reminder.id,
+        customerId: reminder.customerId,
+        customerName: reminder.customer.name || '',
+        phone: reminder.customer.phone || '',
+        amount: parseFloat((reminder as any).notes || '0'),
+        message: reminder.customMessage || 'Payment reminder',
+      } as ReminderJobData,
+      nextTime
+    );
+
+    return updated;
   }
 }
 

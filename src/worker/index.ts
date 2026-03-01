@@ -23,7 +23,8 @@ const reminderWorker = new Worker<ReminderJobData>(
 
       if (result.success) {
         // Mark reminder as sent
-        await reminderService.markAsSent(reminderId);
+        const next = await reminderService.scheduleNextOccurrence(reminderId);
+        await reminderService.markAsSent(reminderId, { keepPending: !!next });
 
         // Create message log — log failure but don't re-throw (message was already sent)
         try {

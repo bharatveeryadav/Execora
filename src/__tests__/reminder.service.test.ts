@@ -32,6 +32,121 @@ test('scheduleReminder: creates reminder and enqueues job', async () => {
   }
 });
 
+test('scheduleReminder: supports recurring "har 5 minute" pattern', async () => {
+  const restores: RestoreFn[] = [];
+  try {
+    const customer = makeCustomer({ phone: '9876543210' });
+    const reminder = makeReminder({ customer, status: 'pending' });
+    const capturedCreateArgs: any[] = [];
+
+    restores.push(patchMethod(prisma.customer as any, 'findUnique', async () => customer));
+    restores.push(patchMethod(prisma.reminder as any, 'create', async (args: any) => {
+      capturedCreateArgs.push(args);
+      return reminder;
+    }));
+    restores.push(patchMethod(reminderQueue as any, 'add', async () => ({ id: 'job-rec-1' })));
+
+    await reminderService.scheduleReminder('cust-001', 500, 'har 5 minute bad');
+    const data = capturedCreateArgs[0]?.data;
+    assert.equal(data.recurringPattern.type, 'interval_minutes');
+    assert.equal(data.recurringPattern.value, 5);
+  } finally {
+    restoreAll(restores);
+  }
+});
+
+test('scheduleReminder: supports recurring "daily 3 baje" pattern', async () => {
+  const restores: RestoreFn[] = [];
+  try {
+    const customer = makeCustomer({ phone: '9876543210' });
+    const reminder = makeReminder({ customer, status: 'pending' });
+    const capturedCreateArgs: any[] = [];
+
+    restores.push(patchMethod(prisma.customer as any, 'findUnique', async () => customer));
+    restores.push(patchMethod(prisma.reminder as any, 'create', async (args: any) => {
+      capturedCreateArgs.push(args);
+      return reminder;
+    }));
+    restores.push(patchMethod(reminderQueue as any, 'add', async () => ({ id: 'job-rec-2' })));
+
+    await reminderService.scheduleReminder('cust-001', 500, 'daily 3 baje');
+    const recurring = capturedCreateArgs[0]?.data?.recurringPattern;
+    assert.equal(recurring.type, 'daily_time');
+    assert.equal(recurring.hour, 15);
+    assert.equal(recurring.minute, 0);
+  } finally {
+    restoreAll(restores);
+  }
+});
+
+test('scheduleReminder: supports recurring "har mhine 1 date ko" pattern', async () => {
+  const restores: RestoreFn[] = [];
+  try {
+    const customer = makeCustomer({ phone: '9876543210' });
+    const reminder = makeReminder({ customer, status: 'pending' });
+    const capturedCreateArgs: any[] = [];
+
+    restores.push(patchMethod(prisma.customer as any, 'findUnique', async () => customer));
+    restores.push(patchMethod(prisma.reminder as any, 'create', async (args: any) => {
+      capturedCreateArgs.push(args);
+      return reminder;
+    }));
+    restores.push(patchMethod(reminderQueue as any, 'add', async () => ({ id: 'job-rec-3' })));
+
+    await reminderService.scheduleReminder('cust-001', 500, 'har mhine 1 date ko');
+    const recurring = capturedCreateArgs[0]?.data?.recurringPattern;
+    assert.equal(recurring.type, 'monthly_date');
+    assert.equal(recurring.day, 1);
+  } finally {
+    restoreAll(restores);
+  }
+});
+
+test('scheduleReminder: supports recurring "every 6 month" pattern', async () => {
+  const restores: RestoreFn[] = [];
+  try {
+    const customer = makeCustomer({ phone: '9876543210' });
+    const reminder = makeReminder({ customer, status: 'pending' });
+    const capturedCreateArgs: any[] = [];
+
+    restores.push(patchMethod(prisma.customer as any, 'findUnique', async () => customer));
+    restores.push(patchMethod(prisma.reminder as any, 'create', async (args: any) => {
+      capturedCreateArgs.push(args);
+      return reminder;
+    }));
+    restores.push(patchMethod(reminderQueue as any, 'add', async () => ({ id: 'job-rec-4' })));
+
+    await reminderService.scheduleReminder('cust-001', 500, 'every 6 month');
+    const recurring = capturedCreateArgs[0]?.data?.recurringPattern;
+    assert.equal(recurring.type, 'every_n_months');
+    assert.equal(recurring.months, 6);
+  } finally {
+    restoreAll(restores);
+  }
+});
+
+test('scheduleReminder: supports one-time "5 minute me" schedule', async () => {
+  const restores: RestoreFn[] = [];
+  try {
+    const customer = makeCustomer({ phone: '9876543210' });
+    const reminder = makeReminder({ customer, status: 'pending' });
+    const capturedCreateArgs: any[] = [];
+
+    restores.push(patchMethod(prisma.customer as any, 'findUnique', async () => customer));
+    restores.push(patchMethod(prisma.reminder as any, 'create', async (args: any) => {
+      capturedCreateArgs.push(args);
+      return reminder;
+    }));
+    restores.push(patchMethod(reminderQueue as any, 'add', async () => ({ id: 'job-5min' })));
+
+    await reminderService.scheduleReminder('cust-001', 500, '5 minute me');
+    const recurring = capturedCreateArgs[0]?.data?.recurringPattern;
+    assert.equal(recurring, undefined);
+  } finally {
+    restoreAll(restores);
+  }
+});
+
 test('scheduleReminder: throws when customerId is empty', async () => {
   await assert.rejects(
     () => reminderService.scheduleReminder('', 500, 'kal'),
@@ -183,7 +298,7 @@ test('markAsSent: updates reminder status to SENT', async () => {
     const sent = makeReminder({ status: 'SENT', sentAt: new Date() });
     restores.push(patchMethod(prisma.reminder as any, 'update', async () => sent));
 
-    const result = await reminderService.markAsSent('reminder-test-001', 'msg-1');
+    const result = await reminderService.markAsSent('reminder-test-001');
     assert.equal(result.status, 'SENT');
     assert.ok(result.sentAt !== null);
   } finally {
