@@ -9,8 +9,26 @@
 
 | Environment | URL |
 |---|---|
-| Local | `http://localhost:3000` |
+| Local | `http://localhost:3006` |
 | Production | `https://your-domain.com` |
+
+---
+
+## Authentication
+
+All `/api/v1/*` routes (except `/api/v1/auth/login`, `/api/v1/auth/refresh`, `/api/v1/auth/logout`)
+require a valid JWT access token:
+
+```
+Authorization: Bearer <accessToken>
+```
+
+Admin routes (`/admin/*`) require the platform API key:
+```
+x-admin-key: <ADMIN_API_KEY>
+```
+
+See [AUTH.md](../AUTH.md) for the full auth guide, token lifecycle, role hierarchy, and voice app auth flow.
 
 ---
 
@@ -34,6 +52,143 @@ Dates are **ISO 8601 UTC** strings.
 ---
 
 ## Endpoints
+
+### Authentication
+
+#### `POST /api/v1/auth/login`
+
+```json
+// Request
+{ "email": "owner@myshop.com", "password": "mypassword" }
+
+// Response 200
+{
+  "accessToken":  "eyJ...",
+  "refreshToken": "eyJ...",
+  "expiresIn":    900,
+  "user": { "id": "uuid", "tenantId": "uuid", "role": "owner", "permissions": [...] }
+}
+// Error 401: { "error": "Invalid email or password" }
+```
+
+---
+
+#### `POST /api/v1/auth/refresh`
+
+```json
+// Request
+{ "refreshToken": "eyJ..." }
+
+// Response 200 — new token pair (old refreshToken is immediately invalidated)
+{ "accessToken": "eyJ...", "refreshToken": "eyJ...", "expiresIn": 900 }
+// Error 401: expired or revoked refresh token
+```
+
+---
+
+#### `POST /api/v1/auth/logout`
+
+```json
+// Request
+{ "refreshToken": "eyJ..." }
+
+// Response
+{ "success": true }
+```
+
+---
+
+#### `GET /api/v1/auth/me` _(JWT required)_
+
+Returns full profile including tenant info (plan, features, status).
+
+```json
+{
+  "user": {
+    "id": "uuid", "email": "...", "name": "...", "role": "manager",
+    "permissions": ["customers:read", "invoices:create", ...],
+    "tenant": { "id": "uuid", "name": "My Store", "plan": "pro", "features": {...} }
+  }
+}
+```
+
+---
+
+#### `PUT /api/v1/auth/me/password` _(JWT required)_
+
+```json
+// Request
+{ "currentPassword": "old", "newPassword": "new-min-8-chars" }
+
+// Response
+{ "success": true }
+```
+
+---
+
+### Users (Tenant User Management)
+
+All routes require JWT. Role-specific restrictions apply (see [AUTH.md](../AUTH.md)).
+
+#### `GET /api/v1/users` — `users:read` permission
+
+Returns all active users in the caller's tenant.
+
+```json
+{ "users": [{ "id": "uuid", "email": "...", "name": "...", "role": "staff", "permissions": [...] }] }
+```
+
+---
+
+#### `POST /api/v1/users` — owner or admin role
+
+```json
+// Request
+{
+  "email":    "staff@shop.com",
+  "name":     "Ramesh Kumar",
+  "role":     "staff",           // admin | manager | staff | viewer
+  "password": "initial123",
+  "permissions": [...]           // optional — defaults to role defaults
+}
+// Response 201
+{ "user": { "id": "uuid", "email": "...", "role": "staff", "permissions": [...] } }
+// Error 409: email already exists in this tenant
+```
+
+---
+
+#### `GET /api/v1/users/:id` — `users:read` permission
+
+---
+
+#### `PUT /api/v1/users/:id` — `users:manage` permission
+
+```json
+// Request (all fields optional)
+{ "name": "...", "phone": "...", "role": "manager", "permissions": [...], "isActive": false }
+```
+
+Cannot modify the `owner` role or assign `owner` via this endpoint.
+
+---
+
+#### `DELETE /api/v1/users/:id` — owner only
+
+Deactivates the account (soft delete) and invalidates all sessions. Cannot deactivate yourself or the owner.
+
+---
+
+#### `POST /api/v1/users/:id/reset-password` — owner only
+
+```json
+// Request
+{ "newPassword": "new-min-8-chars" }
+// Response
+{ "success": true }
+```
+
+---
 
 ### Health
 
@@ -516,6 +671,79 @@ Binary frames (arraybuffer) are audio chunks sent directly to Deepgram for STT.
 // Error
 { "type": "error", "data": { "message": "STT service unavailable" } }
 ```
+
+---
+
+## Admin API (`/admin/*`)
+
+All admin routes require `x-admin-key: <ADMIN_API_KEY>` header. No JWT involved.
+These are cross-tenant — they see data from all tenants.
+
+### Tenant Management
+
+| Method | Route | Description |
+|---|---|---|
+| GET | `/admin/tenants` | List tenants (`?plan=pro&status=active&q=search&page=1&limit=50`) |
+| POST | `/admin/tenants` | Create tenant + owner user in one transaction |
+| GET | `/admin/tenants/:id` | Tenant detail + all users + resource counts |
+| PUT | `/admin/tenants/:id` | Update plan, status, GST info, timezone |
+| PUT | `/admin/tenants/:id/features` | Override feature flags (merged, not replaced) |
+
+**Create tenant:**
+```json
+POST /admin/tenants
+{
+  "name":          "Sharma General Store",
+  "subdomain":     "sharma-store",
+  "businessType":  "kirana",
+  "plan":          "pro",
+  "ownerEmail":    "owner@sharma.com",
+  "ownerName":     "Rajesh Sharma",
+  "ownerPassword": "secure-pass-123"
+}
+```
+
+**Override features for a tenant:**
+```json
+PUT /admin/tenants/uuid/features
+{ "gst_enabled": true, "email": true, "sms": false }
+```
+
+### Cross-Tenant User Management
+
+| Method | Route | Description |
+|---|---|---|
+| GET | `/admin/users` | All users across tenants (`?tenantId=&role=&q=`) |
+| PUT | `/admin/users/:id/password` | Force-reset any user's password (revokes all sessions) |
+
+### Business Data (All read-only)
+
+| Route | Description |
+|---|---|
+| `GET /admin/dashboard` | KPI: customers, pending balance, invoice status, today's payments, queue depths |
+| `GET /admin/customers?q=&page=` | Paginated customer list |
+| `GET /admin/customers/:id` | Customer + recent invoices + payment stats + pending reminders |
+| `GET /admin/invoices?status=&from=&to=` | Paginated invoices |
+| `GET /admin/invoices/:id` | Invoice + line items + payments |
+| `GET /admin/products?q=` | All products |
+| `GET /admin/products/low-stock?threshold=5` | Products below stock threshold |
+| `GET /admin/payments?method=&from=&to=` | Paginated payments |
+| `GET /admin/payments/summary?from=&to=` | Totals grouped by payment method |
+| `GET /admin/reminders?status=&customerId=` | Paginated reminders |
+| `GET /admin/sessions?limit=50` | Recent conversation sessions |
+| `GET /admin/message-logs?channel=&status=` | WhatsApp/email delivery logs |
+| `GET /admin/queue-stats` | BullMQ job counts per queue |
+
+### Health & Config
+
+| Route | Description |
+|---|---|
+| `GET /admin/health/system` | DB + Redis + worker status |
+| `GET /admin/health/providers` | STT/TTS provider availability |
+| `GET /admin/config` | Current runtime config |
+| `PUT /admin/config` | Patch runtime config (hot-reload, no restart) |
+| `POST /admin/config/reset` | Reset runtime config to defaults |
+| `GET /admin/queues` | BullMQ queue dashboard UI |
 
 ---
 
