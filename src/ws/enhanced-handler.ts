@@ -715,6 +715,23 @@ class EnhancedWebSocketHandler {
     const isNo = [...words].some((w) => NO_WORDS.has(w)) || NO_PHRASES.some((p) => lowerText.includes(p));
 
     if (!isYes && !isNo) {
+      // User may have started a fresh command instead of answering yes/no.
+      // In that case, drop pending confirmation and process this turn normally.
+      try {
+        const maybeIntent = await openaiService.extractIntent(text, text, session.conversationSessionId);
+        if (maybeIntent.intent !== IntentType.UNKNOWN && maybeIntent.confidence >= CONFIDENCE_THRESHOLD_CONFIRM) {
+          logger.info(
+            { sessionId: session.sessionId, pendingIntent: pendingIntent.intent, freshIntent: maybeIntent.intent },
+            'Pending confirmation replaced by fresh command'
+          );
+          session.pendingIntent = undefined;
+          await this.processFinalTranscript(session, text, ttsProvider);
+          return;
+        }
+      } catch (err: any) {
+        logger.warn({ sessionId: session.sessionId, error: err?.message }, 'Fresh command detection failed during pending confirmation');
+      }
+
       // Response was unclear — ask again, keep pendingIntent set
       const askAgain = getSysMsgs(session.ttsLanguage).askYesNo;
       this.sendMessage(session.ws, {
