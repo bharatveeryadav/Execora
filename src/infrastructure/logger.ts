@@ -38,7 +38,21 @@ const transport = pino.transport({
 
 export const logger = pino(
   {
-    level: config.nodeEnv === 'development' ? 'debug' : 'info',
+    level: process.env.LOG_LEVEL || (config.nodeEnv === 'development' ? 'debug' : 'info'),
+    timestamp: pino.stdTimeFunctions.isoTime,
+    redact: {
+      paths: [
+        'req.headers.authorization',
+        'req.headers.cookie',
+        'password',
+        'passwordHash',
+        'accessToken',
+        'refreshToken',
+        'apiKey',
+        '*.apiKey',
+      ],
+      remove: true,
+    },
     base: {
       environment: config.nodeEnv,
       service: 'execora-api',

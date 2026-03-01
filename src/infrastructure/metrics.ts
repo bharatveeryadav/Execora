@@ -165,3 +165,26 @@ export const errorCounter = new promClient.Counter({
     labelNames: ['service', 'type'],
     registers: [register],
 });
+
+// Queue / Worker Metrics (production monitoring)
+export const queueDepth = new promClient.Gauge({
+    name: 'queue_jobs_depth',
+    help: 'Current queue depth by queue and state',
+    labelNames: ['queue', 'state'],
+    registers: [register],
+});
+
+export const queueJobsProcessed = new promClient.Counter({
+    name: 'queue_jobs_processed_total',
+    help: 'Total queue jobs processed by queue and result status',
+    labelNames: ['queue', 'status'],
+    registers: [register],
+});
+
+export const queueJobDuration = new promClient.Histogram({
+    name: 'queue_job_duration_seconds',
+    help: 'Queue job processing duration in seconds',
+    labelNames: ['queue', 'status'],
+    buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30],
+    registers: [register],
+});

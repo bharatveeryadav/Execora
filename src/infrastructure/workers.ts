@@ -1,10 +1,11 @@
 import { Worker } from 'bullmq';
-import { redisConnection } from './queue';
+import { redisConnection, reminderQueue, checkRedisHealth } from './queue';
 import { reminderService } from '../modules/reminder/reminder.service';
 import { emailService } from './email';
 import { prisma } from './database';
 import { logger } from './logger';
 import { ReminderJobData } from '../types';
+import { queueDepth, queueJobsProcessed, queueJobDuration, errorCounter } from './metrics';
 
 // ---------------------------------------------------------------------------
 // Reminder Worker
@@ -15,8 +16,20 @@ import { ReminderJobData } from '../types';
 const reminderWorker = new Worker<ReminderJobData>(
   'reminders',
   async (job) => {
+    const jobStart = Date.now();
     const { reminderId, customerId, customerName, amount, message } = job.data;
-    logger.info({ jobId: job.id, reminderId, customerName, amount }, 'Processing reminder job');
+    logger.info(
+      {
+        queue: 'reminders',
+        jobId: job.id,
+        reminderId,
+        customerId,
+        customerName,
+        amount,
+        attemptsMade: job.attemptsMade,
+      },
+      'Processing reminder job'
+    );
 
     let delivered = false;
 
@@ -60,7 +73,10 @@ const reminderWorker = new Worker<ReminderJobData>(
 
     // Mark reminder status in DB
     if (delivered) {
-      await reminderService.markAsSent(reminderId);
+      const next = await reminderService.scheduleNextOccurrence(reminderId);
+      await reminderService.markAsSent(reminderId, { keepPending: !!next });
+      queueJobsProcessed.inc({ queue: 'reminders', status: 'success' });
+      queueJobDuration.observe({ queue: 'reminders', status: 'success' }, (Date.now() - jobStart) / 1000);
     } else {
       // No delivery channel available — log a warning.
       // BullMQ will retry automatically up to the queue's `attempts` limit.
@@ -73,7 +89,10 @@ const reminderWorker = new Worker<ReminderJobData>(
           { reminderId, customerId, attemptsMade },
           'No delivery channel for reminder — marking sent after final attempt'
         );
-        await reminderService.markAsSent(reminderId);
+        const next = await reminderService.scheduleNextOccurrence(reminderId);
+        await reminderService.markAsSent(reminderId, { keepPending: !!next });
+        queueJobsProcessed.inc({ queue: 'reminders', status: 'success_final_attempt' });
+        queueJobDuration.observe({ queue: 'reminders', status: 'success_final_attempt' }, (Date.now() - jobStart) / 1000);
       } else {
         logger.warn(
           { reminderId, customerId, attemptsMade },
@@ -90,12 +109,14 @@ const reminderWorker = new Worker<ReminderJobData>(
 );
 
 reminderWorker.on('completed', (job) => {
-  logger.info({ jobId: job.id, reminderId: job.data.reminderId }, 'Reminder job completed');
+  logger.info({ queue: 'reminders', jobId: job.id, reminderId: job.data.reminderId }, 'Reminder job completed');
 });
 
 reminderWorker.on('failed', async (job, err) => {
+  queueJobsProcessed.inc({ queue: 'reminders', status: 'failed' });
+  errorCounter.inc({ service: 'worker', type: err.name || 'worker_job_error' });
   logger.error(
-    { jobId: job?.id, reminderId: job?.data?.reminderId, error: err.message },
+    { queue: 'reminders', jobId: job?.id, reminderId: job?.data?.reminderId, error: err.message },
     'Reminder job failed'
   );
   if (job) {
@@ -103,15 +124,55 @@ reminderWorker.on('failed', async (job, err) => {
   }
 });
 
+let monitorTimer: NodeJS.Timeout | null = null;
+
+const startWorkerMonitoring = () => {
+  if (monitorTimer) return;
+
+  const runSnapshot = async () => {
+    try {
+      const counts = await reminderQueue.getJobCounts('waiting', 'active', 'delayed', 'completed', 'failed');
+      const redisOk = await checkRedisHealth();
+
+      queueDepth.set({ queue: 'reminders', state: 'waiting' }, counts.waiting ?? 0);
+      queueDepth.set({ queue: 'reminders', state: 'active' }, counts.active ?? 0);
+      queueDepth.set({ queue: 'reminders', state: 'delayed' }, counts.delayed ?? 0);
+      queueDepth.set({ queue: 'reminders', state: 'completed' }, counts.completed ?? 0);
+      queueDepth.set({ queue: 'reminders', state: 'failed' }, counts.failed ?? 0);
+
+      logger.info(
+        {
+          queue: 'reminders',
+          redisHealthy: redisOk,
+          counts,
+        },
+        'Worker monitoring snapshot'
+      );
+    } catch (error: any) {
+      errorCounter.inc({ service: 'worker_monitor', type: error?.name || 'snapshot_error' });
+      logger.error({ error: error?.message }, 'Worker monitoring snapshot failed');
+    }
+  };
+
+  monitorTimer = setInterval(runSnapshot, 30000);
+  monitorTimer.unref();
+  void runSnapshot();
+};
+
 // ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
 
 export const startWorkers = (): void => {
-  logger.info('Queue workers started (reminder: email delivery, WhatsApp: TODO)');
+  startWorkerMonitoring();
+  logger.info({ queue: 'reminders', concurrency: 5 }, 'Queue workers started (reminder: email delivery, WhatsApp: TODO)');
 };
 
 export const closeWorkers = async (): Promise<void> => {
+  if (monitorTimer) {
+    clearInterval(monitorTimer);
+    monitorTimer = null;
+  }
   await reminderWorker.close();
   logger.info('Queue workers closed');
 };
