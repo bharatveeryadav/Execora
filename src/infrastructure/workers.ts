@@ -1,23 +1,26 @@
 import { Worker } from 'bullmq';
-import { redisConnection, reminderQueue, checkRedisHealth } from './queue';
-import { reminderService } from '../modules/reminder/reminder.service';
+import { redisConnection, reminderQueue, whatsappQueue, checkRedisHealth } from './queue';
+import { scheduleNextReminderOccurrence, markReminderSent, markReminderFailed } from './reminder-ops';
 import { emailService } from './email';
 import { prisma } from './database';
 import { logger } from './logger';
-import { ReminderJobData } from '../types';
+import { ReminderJobData, WhatsAppJobData } from '../types';
 import { queueDepth, queueJobsProcessed, queueJobDuration, errorCounter } from './metrics';
+import { whatsappService } from './whatsapp';
+import { SYSTEM_TENANT_ID } from './bootstrap';
 
 // ---------------------------------------------------------------------------
 // Reminder Worker
 // Processes jobs from the 'reminders' BullMQ queue.
-// Delivery order: email first, then WhatsApp (when wired up).
+// Delivery order: email first (if configured), then WhatsApp.
+// Both channels are tried — at least one must succeed.
 // ---------------------------------------------------------------------------
 
 const reminderWorker = new Worker<ReminderJobData>(
   'reminders',
   async (job) => {
     const jobStart = Date.now();
-    const { reminderId, customerId, customerName, amount, message } = job.data;
+    const { reminderId, customerId, customerName, phone, amount, message } = job.data;
     logger.info(
       {
         queue: 'reminders',
@@ -32,6 +35,8 @@ const reminderWorker = new Worker<ReminderJobData>(
     );
 
     let delivered = false;
+    let deliveryChannel: string | null = null;
+    let providerMessageId: string | undefined;
 
     // -----------------------------------------------------------------------
     // 1. EMAIL — look up customer email from prefs or customer record
@@ -56,31 +61,58 @@ const reminderWorker = new Worker<ReminderJobData>(
       const sent = await emailService.sendPaymentReminderEmail(emailTo, customerName, amount);
       if (sent) {
         delivered = true;
+        deliveryChannel = 'email';
         logger.info({ reminderId, emailTo }, 'Reminder sent via email');
       }
     }
 
     // -----------------------------------------------------------------------
-    // 2. WHATSAPP — TODO: wire up when WhatsApp provider is configured
-    //    Replace this block with the actual send call:
-    //
-    //    const { phone } = job.data;
-    //    if (phone) {
-    //      const sent = await whatsappService.sendTextMessage(phone, message);
-    //      if (sent) delivered = true;
-    //    }
+    // 2. WHATSAPP — use phone from job data if WhatsApp is configured
     // -----------------------------------------------------------------------
+    if (!delivered && phone) {
+      const waResult = await whatsappService.sendTextMessage(phone, message);
+      if (waResult.success) {
+        delivered = true;
+        deliveryChannel = 'whatsapp';
+        providerMessageId = waResult.messageId;
+        logger.info({ reminderId, phone }, 'Reminder sent via WhatsApp');
+      } else {
+        logger.warn({ reminderId, phone, error: waResult.error }, 'WhatsApp reminder delivery failed');
+      }
+    }
 
-    // Mark reminder status in DB
+    // -----------------------------------------------------------------------
+    // 3. Audit log in DB (best-effort — do not fail the job on log error)
+    // -----------------------------------------------------------------------
+    if (delivered && deliveryChannel) {
+      try {
+        await prisma.messageLog.create({
+          data: {
+            tenantId:         SYSTEM_TENANT_ID,
+            reminderId,
+            recipient:        deliveryChannel === 'email' ? (emailTo ?? phone) : phone,
+            messageContent:   message,
+            channel:          deliveryChannel,
+            providerMessageId: providerMessageId ?? null,
+            status:           'sent',
+          } as any,
+        });
+      } catch (dbError) {
+        logger.error({ dbError, reminderId }, 'Failed to create message log (message was sent)');
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // 4. Mark reminder status in DB
+    // -----------------------------------------------------------------------
     if (delivered) {
-      const next = await reminderService.scheduleNextOccurrence(reminderId);
-      await reminderService.markAsSent(reminderId, { keepPending: !!next });
+      const next = await scheduleNextReminderOccurrence(reminderId);
+      await markReminderSent(reminderId, { keepPending: !!next });
       queueJobsProcessed.inc({ queue: 'reminders', status: 'success' });
       queueJobDuration.observe({ queue: 'reminders', status: 'success' }, (Date.now() - jobStart) / 1000);
     } else {
-      // No delivery channel available — log a warning.
-      // BullMQ will retry automatically up to the queue's `attempts` limit.
-      // On final retry we still mark sent to prevent infinite loops.
+      // No delivery channel succeeded — retry up to BullMQ's attempt limit.
+      // On the final attempt, mark as sent anyway to prevent infinite retries.
       const attemptsMade = job.attemptsMade ?? 0;
       const maxAttempts  = job.opts?.attempts ?? 3;
 
@@ -89,8 +121,23 @@ const reminderWorker = new Worker<ReminderJobData>(
           { reminderId, customerId, attemptsMade },
           'No delivery channel for reminder — marking sent after final attempt'
         );
-        const next = await reminderService.scheduleNextOccurrence(reminderId);
-        await reminderService.markAsSent(reminderId, { keepPending: !!next });
+
+        try {
+          await prisma.messageLog.create({
+            data: {
+              tenantId:       SYSTEM_TENANT_ID,
+              reminderId,
+              recipient:      phone,
+              messageContent: message,
+              channel:        'whatsapp',
+              status:         'failed',
+              errorMessage:   'No delivery channel available after all attempts',
+            } as any,
+          });
+        } catch { /* ignore audit log failures */ }
+
+        const next = await scheduleNextReminderOccurrence(reminderId);
+        await markReminderSent(reminderId, { keepPending: !!next });
         queueJobsProcessed.inc({ queue: 'reminders', status: 'success_final_attempt' });
         queueJobDuration.observe({ queue: 'reminders', status: 'success_final_attempt' }, (Date.now() - jobStart) / 1000);
       } else {
@@ -120,9 +167,70 @@ reminderWorker.on('failed', async (job, err) => {
     'Reminder job failed'
   );
   if (job) {
-    await reminderService.markAsFailed(job.data.reminderId).catch(() => {});
+    await markReminderFailed(job.data.reminderId).catch(() => {});
   }
 });
+
+// ---------------------------------------------------------------------------
+// WhatsApp Direct Worker
+// Processes jobs from the 'whatsapp' queue — direct message sends (not tied
+// to the reminders flow; used for ad-hoc notifications and invoice delivery).
+// ---------------------------------------------------------------------------
+
+const whatsappWorker = new Worker<WhatsAppJobData>(
+  'whatsapp',
+  async (job) => {
+    const jobStart = Date.now();
+    const { phone, message, reminderId } = job.data;
+    logger.info({ queue: 'whatsapp', jobId: job.id, phone }, 'Processing WhatsApp job');
+
+    const result = await whatsappService.sendTextMessage(phone, message);
+
+    if (result.success) {
+      try {
+        await prisma.messageLog.create({
+          data: {
+            tenantId:          SYSTEM_TENANT_ID,
+            reminderId,
+            recipient:         phone,
+            messageContent:    message,
+            channel:           'whatsapp',
+            providerMessageId: result.messageId,
+            status:            'sent',
+          } as any,
+        });
+      } catch (dbError) {
+        logger.error({ dbError, phone }, 'Failed to create WhatsApp message log (message was sent)');
+      }
+
+      queueJobsProcessed.inc({ queue: 'whatsapp', status: 'success' });
+      queueJobDuration.observe({ queue: 'whatsapp', status: 'success' }, (Date.now() - jobStart) / 1000);
+      logger.info({ queue: 'whatsapp', messageId: result.messageId }, 'WhatsApp message sent');
+      return { success: true, messageId: result.messageId };
+    } else {
+      queueJobsProcessed.inc({ queue: 'whatsapp', status: 'failed' });
+      queueJobDuration.observe({ queue: 'whatsapp', status: 'failed' }, (Date.now() - jobStart) / 1000);
+      throw new Error(result.error ?? 'WhatsApp send failed');
+    }
+  },
+  {
+    connection:  redisConnection,
+    concurrency: 10,
+  }
+);
+
+whatsappWorker.on('completed', (job) => {
+  logger.info({ queue: 'whatsapp', jobId: job.id }, 'WhatsApp job completed');
+});
+
+whatsappWorker.on('failed', (job, err) => {
+  errorCounter.inc({ service: 'worker', type: err.name || 'whatsapp_job_error' });
+  logger.error({ queue: 'whatsapp', jobId: job?.id, phone: job?.data?.phone, error: err.message }, 'WhatsApp job failed');
+});
+
+// ---------------------------------------------------------------------------
+// Queue Monitoring — snapshot metrics every 30 s
+// ---------------------------------------------------------------------------
 
 let monitorTimer: NodeJS.Timeout | null = null;
 
@@ -131,21 +239,21 @@ const startWorkerMonitoring = () => {
 
   const runSnapshot = async () => {
     try {
-      const counts = await reminderQueue.getJobCounts('waiting', 'active', 'delayed', 'completed', 'failed');
-      const redisOk = await checkRedisHealth();
+      const [reminderCounts, whatsappCounts, redisOk] = await Promise.all([
+        reminderQueue.getJobCounts('waiting', 'active', 'delayed', 'completed', 'failed'),
+        whatsappQueue.getJobCounts('waiting', 'active', 'delayed', 'completed', 'failed'),
+        checkRedisHealth(),
+      ]);
 
-      queueDepth.set({ queue: 'reminders', state: 'waiting' }, counts.waiting ?? 0);
-      queueDepth.set({ queue: 'reminders', state: 'active' }, counts.active ?? 0);
-      queueDepth.set({ queue: 'reminders', state: 'delayed' }, counts.delayed ?? 0);
-      queueDepth.set({ queue: 'reminders', state: 'completed' }, counts.completed ?? 0);
-      queueDepth.set({ queue: 'reminders', state: 'failed' }, counts.failed ?? 0);
+      for (const [state, count] of Object.entries(reminderCounts)) {
+        queueDepth.set({ queue: 'reminders', state }, count ?? 0);
+      }
+      for (const [state, count] of Object.entries(whatsappCounts)) {
+        queueDepth.set({ queue: 'whatsapp', state }, count ?? 0);
+      }
 
       logger.info(
-        {
-          queue: 'reminders',
-          redisHealthy: redisOk,
-          counts,
-        },
+        { redisHealthy: redisOk, reminders: reminderCounts, whatsapp: whatsappCounts },
         'Worker monitoring snapshot'
       );
     } catch (error: any) {
@@ -154,7 +262,7 @@ const startWorkerMonitoring = () => {
     }
   };
 
-  monitorTimer = setInterval(runSnapshot, 30000);
+  monitorTimer = setInterval(runSnapshot, 30_000);
   monitorTimer.unref();
   void runSnapshot();
 };
@@ -165,7 +273,10 @@ const startWorkerMonitoring = () => {
 
 export const startWorkers = (): void => {
   startWorkerMonitoring();
-  logger.info({ queue: 'reminders', concurrency: 5 }, 'Queue workers started (reminder: email delivery, WhatsApp: TODO)');
+  logger.info(
+    { concurrency: { reminders: 5, whatsapp: 10 } },
+    'Queue workers started (reminders: email → WhatsApp, whatsapp: direct sends)'
+  );
 };
 
 export const closeWorkers = async (): Promise<void> => {
@@ -173,6 +284,6 @@ export const closeWorkers = async (): Promise<void> => {
     clearInterval(monitorTimer);
     monitorTimer = null;
   }
-  await reminderWorker.close();
+  await Promise.all([reminderWorker.close(), whatsappWorker.close()]);
   logger.info('Queue workers closed');
 };

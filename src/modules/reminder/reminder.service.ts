@@ -2,6 +2,11 @@ import { prisma } from '../../infrastructure/database';
 import { logger } from '../../infrastructure/logger';
 import { reminderQueue } from '../../infrastructure/queue';
 import { tenantContext } from '../../infrastructure/tenant-context';
+import {
+  scheduleNextReminderOccurrence,
+  markReminderSent,
+  markReminderFailed,
+} from '../../infrastructure/reminder-ops';
 import { ReminderJobData } from '../../types';
 import { addDays, addHours, addMinutes, addMonths, setHours, setMinutes, setSeconds, setMilliseconds } from 'date-fns';
 import { fromZonedTime } from 'date-fns-tz';
@@ -163,38 +168,6 @@ class ReminderService {
     }
 
     return { scheduledTime: this.parseDateTime(dateTimeStr) };
-  }
-
-  private computeNextOccurrence(fromTime: Date, recurringPattern: RecurringPattern): Date {
-    const now = new Date();
-    let next = new Date(fromTime);
-
-    if (recurringPattern.type === 'interval_minutes') {
-      do {
-        next = addMinutes(next, recurringPattern.value);
-      } while (next <= now);
-      return next;
-    }
-
-    if (recurringPattern.type === 'daily_time') {
-      return this.nextDailyAt(now, recurringPattern.hour, recurringPattern.minute);
-    }
-
-    if (recurringPattern.type === 'monthly_date') {
-      return this.nextMonthlyDate(now, recurringPattern.day, recurringPattern.hour, recurringPattern.minute);
-    }
-
-    if (recurringPattern.type === 'every_n_months') {
-      do {
-        next = addMonths(next, recurringPattern.months);
-        const lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
-        const day = Math.min(recurringPattern.day, lastDay);
-        next = new Date(next.getFullYear(), next.getMonth(), day, recurringPattern.hour, recurringPattern.minute, 0, 0);
-      } while (next <= now);
-      return next;
-    }
-
-    return addHours(now, 1);
   }
 
   private async enqueueReminderJob(
@@ -471,27 +444,14 @@ class ReminderService {
    * Mark reminder as sent
    */
   async markAsSent(reminderId: string, options?: { keepPending?: boolean }) {
-    return await prisma.reminder.update({
-      where: { id: reminderId },
-      data:  {
-        status: options?.keepPending ? 'pending' : 'sent',
-        sentAt: new Date(),
-      },
-    });
+    return markReminderSent(reminderId, options);
   }
 
   /**
    * Mark reminder as failed
    */
   async markAsFailed(reminderId: string) {
-    return await prisma.reminder.update({
-      where: { id: reminderId },
-      data: {
-        status:     'failed',
-        lastAttempt: new Date(),
-        retryCount: { increment: 1 },
-      },
-    });
+    return markReminderFailed(reminderId);
   }
 
   /**
@@ -508,42 +468,7 @@ class ReminderService {
   }
 
   async scheduleNextOccurrence(reminderId: string) {
-    const reminder = await prisma.reminder.findUnique({
-      where: { id: reminderId },
-      include: {
-        customer: {
-          select: { name: true, phone: true },
-        },
-      },
-    });
-
-    if (!reminder || reminder.status === 'cancelled' || !reminder.recurringPattern) return null;
-    if (!reminder.customerId || !reminder.customer?.phone) return null;
-
-    const recurringPattern = reminder.recurringPattern as unknown as RecurringPattern;
-    const nextTime = this.computeNextOccurrence(reminder.scheduledTime, recurringPattern);
-
-    const updated = await prisma.reminder.update({
-      where: { id: reminderId },
-      data: {
-        scheduledTime: nextTime,
-        status: 'pending',
-      },
-    });
-
-    await this.enqueueReminderJob(
-      {
-        reminderId: reminder.id,
-        customerId: reminder.customerId,
-        customerName: reminder.customer.name || '',
-        phone: reminder.customer.phone || '',
-        amount: parseFloat((reminder as any).notes || '0'),
-        message: reminder.customMessage || 'Payment reminder',
-      } as ReminderJobData,
-      nextTime
-    );
-
-    return updated;
+    return scheduleNextReminderOccurrence(reminderId);
   }
 }
 
