@@ -4,10 +4,15 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Environment
+# Environment — NEVER commit real credentials
 .env
 .env.local
 .env.*.local
+.env.production
+.env.staging
+.env.development
+# .env.example is safe to commit (no real secrets)
+# .env.production is NOT safe to commit (has real prod secrets)
 
 # Build output
 dist/
