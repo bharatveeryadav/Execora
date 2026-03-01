@@ -16,23 +16,29 @@ scrape_configs:
         labels:
           job: execora-app
           environment: production
-          service: voice-assistant
+          service: execora-api
           __path__: /app/logs/app.log
 
     pipeline_stages:
+      # 1. Parse JSON log line into extracted map
       - json:
           expressions:
             level: level
             timestamp: time
             message: msg
-            error: err
             tenantId: tenantId
             category: category
-            operation: operation
             action: action
             model: model
             durationMs: durationMs
 
+      # 2. Map pino numeric level → human-readable string
+      #    Pino levels: 10=trace 20=debug 30=info 40=warn 50=error 60=fatal
+      - template:
+          source: level
+          template: '{{ if eq .Value "10" }}trace{{ else if eq .Value "20" }}debug{{ else if eq .Value "30" }}info{{ else if eq .Value "40" }}warn{{ else if eq .Value "50" }}error{{ else if eq .Value "60" }}fatal{{ else }}{{ .Value }}{{ end }}'
+
+      # 3. Promote fields to Loki stream labels (keep cardinality low)
       - labels:
           level:
           tenantId:
@@ -40,6 +46,7 @@ scrape_configs:
           model:
           action:
 
+      # 4. Parse timestamp from the JSON "time" field (milliseconds epoch)
       - timestamp:
           source: timestamp
-          format: ms
+          format: UnixMs

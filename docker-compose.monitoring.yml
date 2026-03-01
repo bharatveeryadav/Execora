@@ -1,12 +1,15 @@
+name: execora-monitoring
+
 services:
   # Prometheus - Metrics Storage
   prometheus:
     image: prom/prometheus:latest
     container_name: execora-prometheus
+    restart: unless-stopped
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./monitoring/alerts:/etc/prometheus/alerts:ro
       - prometheus_data:/prometheus
     command:
@@ -14,14 +17,23 @@ services:
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/usr/share/prometheus/console_libraries'
       - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'          # allows POST /-/reload for hot-config reload
+      - '--storage.tsdb.retention.time=15d'
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - monitoring
-      - execora-network
+      - execora-network   # needed so it can reach app:3006 for scraping
 
   # Grafana - Visualization Dashboard
   grafana:
     image: grafana/grafana:latest
     container_name: execora-grafana
+    restart: unless-stopped
     ports:
       - "3001:3000"
     environment:
@@ -30,46 +42,62 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/execora-overview.json
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
-      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_started   # Loki image has no shell for healthcheck
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     networks:
       - monitoring
-    depends_on:
-      - prometheus
-      - loki
 
   # Loki - Log Aggregation
   loki:
     image: grafana/loki:latest
     container_name: execora-loki
+    restart: unless-stopped
+    user: root            # ensures write access to the named volume on fresh install
     ports:
       - "3100:3100"
     volumes:
-      - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml
+      - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml:ro
       - loki_data:/loki
     command: -config.file=/etc/loki/local-config.yaml
+    # Loki image is a minimal binary-only image with no shell/wget/curl.
+    # No healthcheck possible; dependents use condition: service_started.
     networks:
       - monitoring
 
-  # Promtail - Log Shipper (sends logs to Loki)
+  # Promtail - Log Shipper (tails app.log and pushes to Loki)
   promtail:
     image: grafana/promtail:latest
     container_name: execora-promtail
+    restart: unless-stopped
     volumes:
-      - ./logs:/app/logs
-      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml
+      - ./logs:/app/logs:ro                            # same path app writes to
+      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
     command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      loki:
+        condition: service_started   # Loki image has no shell for healthcheck
     networks:
       - monitoring
-    depends_on:
-      - loki
 
-  # Node Exporter - System Metrics
+  # Node Exporter - System / Host Metrics
   node-exporter:
     image: prom/node-exporter:latest
     container_name: execora-node-exporter
+    restart: unless-stopped
     ports:
       - "9100:9100"
     command:
@@ -83,15 +111,15 @@ services:
       - /:/rootfs:ro
     networks:
       - monitoring
-    restart: unless-stopped
 
 volumes:
   prometheus_data:
   grafana_data:
   loki_data:
 
-
 networks:
   monitoring:
+    name: execora-monitoring
   execora-network:
     external: true
+    name: execora-network
