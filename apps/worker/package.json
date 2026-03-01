@@ -1,0 +1,23 @@
+{
+  "name": "@execora/worker",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "dev":       "tsx watch src/index.ts",
+    "build":     "tsc",
+    "start":     "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@execora/infrastructure": "workspace:*",
+    "@execora/modules":        "workspace:*",
+    "@execora/types":          "workspace:*",
+    "dotenv":                  "^16.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.17",
+    "tsx":         "^4.21.0",
+    "typescript":  "^5.3.3"
+  }
+}

@@ -14,7 +14,17 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "types": ["node"]
+    "types": ["node"],
+
+    /* Path aliases — use @/ as the src/ root shorthand.
+     * Example: import { logger } from '@/infrastructure/logger'
+     * Dev (tsx):  resolved natively by esbuild
+     * Prod (tsc): npm run build runs "tsc && tsc-alias" to rewrite dist/ paths
+     * Future monorepo: extend with @execora/infrastructure, @execora/modules etc. */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "src/**/*.test.ts", "src/**/*.spec.ts", "src/__tests__"]

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Execora - Voice Business Assistant (Stable UI)</title>
+    <link rel="stylesheet" href="/css/styles-stable.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="ui-version-switcher">
+                <button id="uiSwitcherBtn" class="ui-switch-btn" title="Switch to New UI">
+                    🚀 Try New UI (Beta)
+                </button>
+            </div>
+            <h1>🎙️ Execora</h1>
+            <p>Voice-Based Business Assistant</p>
+            <p class="version-info">🔊 Audio Enabled Version • <span class="ui-badge">Stable UI</span></p>
+        </header>
+
+        <main>
+            <!-- Status Section -->
+            <div class="status-card">
+                <div class="status-indicator" id="statusIndicator">
+                    <span class="status-dot"></span>
+                    <span id="statusText">Disconnected</span>
+                </div>
+                <div class="connection-info">
+                    <small id="connectionInfo">Waiting to connect...</small>
+                </div>
+            </div>
+
+            <!-- Voice Interface -->
+            <div class="voice-card">
+                <h2>🎤 Voice Command (Real Audio)</h2>
+                
+                <!-- TTS Provider Selector -->
+                <div class="provider-selector">
+                    <label for="ttsProvider">🔊 Speech Output:</label>
+                    <select id="ttsProvider" class="provider-dropdown">
+                        <option value="browser">🆓 Browser Speech (Free)</option>
+                        <option value="openai">🚀 OpenAI TTS (Premium)</option>
+                        <option value="elevenlabs">⭐ ElevenLabs TTS (Premium)</option>
+                    </select>
+                </div>
+                
+                <div class="voice-controls">
+                    <button id="startVoiceBtn" class="btn btn-primary" disabled title="Start voice capture">
+                        <span class="btn-icon">🎤</span>
+                        Start Listening
+                    </button>
+                    <button id="stopVoiceBtn" class="btn btn-secondary" disabled>
+                        <span class="btn-icon">⏹️</span>
+                        Stop
+                    </button>
+                </div>
+
+                <div class="audio-info">
+                    <small>
+                        ℹ️ This will request microphone access. 
+                        Speak in Hindi/English mix after clicking "Start Listening".
+                    </small>
+                </div>
+
+                <!-- Transcript Display -->
+                <div class="transcript-box">
+                    <h3>Transcript:</h3>
+                    <div id="transcript" class="transcript-content">
+                        Click "Start Listening" and speak your command...
+                    </div>
+                </div>
+
+                <!-- Response Display -->
+                <div class="response-box">
+                    <h3>Response:</h3>
+                    <div id="response" class="response-content">
+                        Waiting for command...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Text Input Alternative -->
+            <div class="text-card">
+                <h2>💬 Text Command (Test Mode)</h2>
+                <p class="text-description">
+                    <small>
+                        Test without microphone. Type commands like:
+                        <br>• "Rahul ka balance batao"
+                        <br>• "Rahul ko 500 ka reminder kal 7 baje bhejna"
+                    </small>
+                </p>
+                <div class="text-input-group">
+                    <input 
+                        type="text" 
+                        id="textInput" 
+                        class="text-input" 
+                        placeholder="Type a command..."
+                        disabled
+                    >
+                    <button id="sendTextBtn" class="btn btn-primary" disabled>Send</button>
+                </div>
+            </div>
+
+            <!-- Activity Log -->
+            <div class="log-card">
+                <h2>📊 Activity Log</h2>
+                <div id="activityLog" class="log-content">
+                    <div class="log-entry">System started - Audio enabled version</div>
+                </div>
+            </div>
+
+            <!-- Browser Compatibility Info -->
+            <div class="info-card">
+                <h3>Browser Requirements:</h3>
+                <ul class="requirements-list">
+                    <li>✅ Modern browser (Chrome, Edge, Firefox, Safari)</li>
+                    <li>✅ Microphone access permission</li>
+                    <li>✅ Web Audio API support</li>
+                    <li>✅ WebSocket support</li>
+                </ul>
+            </div>
+        </main>
+
+        <footer>
+            <p>Execora © 2026 | Real-time Voice Business Engine with Full Audio Support</p>
+            <p><small>Using Web Audio API + Deepgram STT + ElevenLabs/OpenAI TTS</small></p>
+        </footer>
+    </div>
+
+    <!-- UI Switcher Script -->
+    <script>
+        (function() {
+            const uiSwitcherBtn = document.getElementById('uiSwitcherBtn');
+            if (uiSwitcherBtn) {
+                uiSwitcherBtn.addEventListener('click', function() {
+                    localStorage.setItem('execora-ui-version', 'new');
+                    window.location.href = '/index-audio.html';
+                });
+            }
+        })();
+    </script>
+
+    <!-- Use audio-enabled version -->
+    <script src="/js/app-audio.js"></script>
+</body>
+</html>
