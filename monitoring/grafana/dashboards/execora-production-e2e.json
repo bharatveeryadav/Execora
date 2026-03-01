@@ -1,0 +1,199 @@
+{
+  "dashboard": {
+    "title": "Execora - Production E2E Monitoring",
+    "uid": "execora-prod-e2e",
+    "tags": ["execora", "production", "e2e", "sre"],
+    "timezone": "browser",
+    "refresh": "10s",
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "API Requests / sec",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{job=\"execora-app\"}[5m]))",
+            "legendFormat": "rps"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 0, "w": 8, "h": 6 }
+      },
+      {
+        "id": 2,
+        "title": "API 5xx Error Ratio",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{job=\"execora-app\",status_code=~\"5..\"}[5m])) / clamp_min(sum(rate(http_requests_total{job=\"execora-app\"}[5m])),1)",
+            "legendFormat": "5xx_ratio"
+          }
+        ],
+        "gridPos": { "x": 8, "y": 0, "w": 8, "h": 6 }
+      },
+      {
+        "id": 3,
+        "title": "API Latency p95 (s)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"execora-app\"}[5m])) by (le))",
+            "legendFormat": "p95"
+          }
+        ],
+        "gridPos": { "x": 16, "y": 0, "w": 8, "h": 6 }
+      },
+      {
+        "id": 4,
+        "title": "API Availability",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"execora-app\"}",
+            "legendFormat": "up"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 6, "w": 4, "h": 4 }
+      },
+      {
+        "id": 5,
+        "title": "Active WebSocket Connections",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "websocket_connections_active",
+            "legendFormat": "connections"
+          }
+        ],
+        "gridPos": { "x": 4, "y": 6, "w": 4, "h": 4 }
+      },
+      {
+        "id": 6,
+        "title": "Voice Commands / min",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(rate(voice_commands_total[1m])) * 60",
+            "legendFormat": "commands_per_min"
+          }
+        ],
+        "gridPos": { "x": 8, "y": 6, "w": 4, "h": 4 }
+      },
+      {
+        "id": 7,
+        "title": "LLM Requests / min",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(rate(llm_requests_total[1m])) * 60",
+            "legendFormat": "llm_req_per_min"
+          }
+        ],
+        "gridPos": { "x": 12, "y": 6, "w": 4, "h": 4 }
+      },
+      {
+        "id": 8,
+        "title": "LLM Cost / hr (USD)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(rate(llm_cost_usd_total[5m])) * 3600",
+            "legendFormat": "usd_per_hour"
+          }
+        ],
+        "gridPos": { "x": 16, "y": 6, "w": 4, "h": 4 }
+      },
+      {
+        "id": 9,
+        "title": "Errors / 5m",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "increase(errors_total[5m])",
+            "legendFormat": "errors_5m"
+          }
+        ],
+        "gridPos": { "x": 20, "y": 6, "w": 4, "h": 4 }
+      },
+      {
+        "id": 10,
+        "title": "Reminder Queue Depth",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "queue_jobs_depth{queue=\"reminders\",state=~\"waiting|active|delayed|failed\"}",
+            "legendFormat": "{{state}}"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 10, "w": 8, "h": 7 }
+      },
+      {
+        "id": 11,
+        "title": "Reminder Queue Throughput",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(queue_jobs_processed_total{queue=\"reminders\"}[5m])) by (status)",
+            "legendFormat": "{{status}}"
+          }
+        ],
+        "gridPos": { "x": 8, "y": 10, "w": 8, "h": 7 }
+      },
+      {
+        "id": 12,
+        "title": "Reminder Worker Duration p95 (s)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(queue_job_duration_seconds_bucket{queue=\"reminders\"}[5m])) by (le))",
+            "legendFormat": "p95"
+          }
+        ],
+        "gridPos": { "x": 16, "y": 10, "w": 8, "h": 7 }
+      },
+      {
+        "id": 13,
+        "title": "HTTP Rate by Route",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{job=\"execora-app\"}[5m])) by (route)",
+            "legendFormat": "{{route}}"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 17, "w": 12, "h": 7 }
+      },
+      {
+        "id": 14,
+        "title": "HTTP p95 Latency by Route",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"execora-app\"}[5m])) by (route, le))",
+            "legendFormat": "{{route}}"
+          }
+        ],
+        "gridPos": { "x": 12, "y": 17, "w": 12, "h": 7 }
+      },
+      {
+        "id": 15,
+        "title": "Recent Error Logs (Loki)",
+        "type": "logs",
+        "targets": [
+          {
+            "refId": "A",
+            "expr": "{job=\"execora\"} |= \"ERROR\""
+          }
+        ],
+        "options": {
+          "showTime": true,
+          "wrapLogMessage": true
+        },
+        "gridPos": { "x": 0, "y": 24, "w": 24, "h": 8 }
+      }
+    ]
+  }
+}

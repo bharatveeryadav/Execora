@@ -1,0 +1,92 @@
+groups:
+  - name: execora-api-alerts
+    interval: 30s
+    rules:
+      - alert: ExecoraApiDown
+        expr: up{job="execora-app"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: execora-api
+        annotations:
+          summary: "Execora API is down"
+          description: "Prometheus cannot scrape the execora-app target for more than 2 minutes."
+
+      - alert: ExecoraHigh5xxErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{job="execora-app", status_code=~"5.."}[5m]))
+            /
+            clamp_min(sum(rate(http_requests_total{job="execora-app"}[5m])), 1)
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: execora-api
+        annotations:
+          summary: "High API 5xx error rate"
+          description: "5xx ratio is above 5% for 5 minutes."
+
+      - alert: ExecoraHighP95Latency
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(http_request_duration_seconds_bucket{job="execora-app"}[5m])) by (le)
+          ) > 1.5
+        for: 10m
+        labels:
+          severity: warning
+          service: execora-api
+        annotations:
+          summary: "High API latency (p95)"
+          description: "API p95 latency is above 1.5s for 10 minutes."
+
+  - name: execora-worker-alerts
+    interval: 30s
+    rules:
+      - alert: ExecoraReminderQueueBacklog
+        expr: queue_jobs_depth{queue="reminders", state="waiting"} > 100
+        for: 10m
+        labels:
+          severity: warning
+          service: reminder-worker
+        annotations:
+          summary: "Reminder queue backlog is high"
+          description: "Waiting jobs in reminders queue exceeded 100 for 10 minutes."
+
+      - alert: ExecoraReminderQueueFailuresSpike
+        expr: increase(queue_jobs_processed_total{queue="reminders", status="failed"}[10m]) > 10
+        for: 3m
+        labels:
+          severity: critical
+          service: reminder-worker
+        annotations:
+          summary: "Reminder worker failures spiked"
+          description: "More than 10 failed reminder jobs in the last 10 minutes."
+
+      - alert: ExecoraReminderWorkerSlowP95
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(queue_job_duration_seconds_bucket{queue="reminders"}[5m])) by (le)
+          ) > 10
+        for: 10m
+        labels:
+          severity: warning
+          service: reminder-worker
+        annotations:
+          summary: "Reminder worker is slow (p95)"
+          description: "Reminder queue p95 job duration is above 10s for 10 minutes."
+
+  - name: execora-platform-alerts
+    interval: 30s
+    rules:
+      - alert: ExecoraErrorBurst
+        expr: increase(errors_total[5m]) > 30
+        for: 5m
+        labels:
+          severity: warning
+          service: execora-platform
+        annotations:
+          summary: "Application error burst detected"
+          description: "errors_total increased by more than 30 in the last 5 minutes."

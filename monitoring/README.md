@@ -135,45 +135,48 @@ Shows:
 - STT/TTS processing times
 - Task queue metrics
 
+### Server Dashboard (`Execora Server Monitoring`)
+Shows:
+- CPU usage and trend
+- Memory usage and trend
+- 1-minute host load
+- Root filesystem usage
+- Network RX/TX throughput
+
 ## 🔔 Setting Up Alerts
 
-### Example Alert Rules
+### Production Alert Rules (Included)
 
-Create `monitoring/alerts.yml`:
+This repo now includes:
 
-```yaml
-groups:
-  - name: execora_alerts
-    interval: 30s
-    rules:
-      # High error rate
-      - alert: HighErrorRate
-        expr: rate(http_requests_total{status_code=~"5.."}[5m]) > 0.05
-        for: 5m
-        labels:
-          severity: critical
-        annotations:
-          summary: "High error rate detected"
-          description: "Error rate is {{ $value }} per second"
-          
-      # High response time
-      - alert: HighResponseTime
-        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "High response time"
-          description: "95th percentile latency is {{ $value }}s"
-          
-      # WebSocket disconnections
-      - alert: WebSocketDisconnections
-        expr: rate(websocket_connections_active[5m]) < -1
-        for: 2m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Multiple WebSocket disconnections"
+- `monitoring/alerts/execora-alerts.yml`
+- `monitoring/grafana/dashboards/execora-production-e2e.json`
+
+Prometheus loads the alert file via:
+
+- `monitoring/prometheus.yml` → `rule_files: /etc/prometheus/alerts/execora-alerts.yml`
+- `docker-compose.monitoring.yml` mounts `./monitoring/alerts` into `/etc/prometheus/alerts`
+
+### Included Alert Coverage
+
+- API down (`up{job="execora-app"} == 0`)
+- High 5xx ratio
+- High API p95 latency
+- Reminder queue backlog high
+- Reminder worker failure spike
+- Reminder worker p95 duration high
+- Platform error burst (`errors_total` increase)
+
+### Restart Monitoring Stack After Changes
+
+```bash
+docker-compose -f docker-compose.monitoring.yml up -d --force-recreate prometheus grafana
+```
+
+### Validate Alerts Loaded
+
+```bash
+curl -s http://localhost:9090/api/v1/rules | jq '.data.groups[].name'
 ```
 
 ## 🛠️ Configuration
