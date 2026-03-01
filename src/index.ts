@@ -26,6 +26,8 @@ import { metricsPlugin } from './infrastructure/metrics-plugin';
 import { ErrorHandler, AppError, setupGlobalErrorHandlers } from './infrastructure/error-handler';
 import { emailService } from './infrastructure/email';
 import { startWorkers, closeWorkers } from './infrastructure/workers';
+import { tenantContext } from './infrastructure/tenant-context';
+import { SYSTEM_TENANT_ID, SYSTEM_USER_ID } from './infrastructure/bootstrap';
 
 // Choose WebSocket handler based on configuration
 const useEnhancedAudio = process.env.USE_ENHANCED_AUDIO !== 'false'; // Default to enhanced
@@ -36,6 +38,15 @@ const fastify = Fastify({
   logger: logger as any,
   trustProxy: true,
   bodyLimit: 1048576, // 1 MB for JSON — multipart has its own 100 MB limit
+});
+
+// Establish request-scoped tenant context for every HTTP request.
+// Using callback form so done() is called inside tenantContext.run(),
+// which causes Node.js AsyncLocalStorage to propagate the context through
+// the entire async call chain for this request (handlers, services, etc.).
+// Later: extract tenantId from JWT instead of using SYSTEM_TENANT_ID.
+fastify.addHook('onRequest', function tenantContextHook(_request, _reply, done) {
+  tenantContext.run({ tenantId: SYSTEM_TENANT_ID, userId: SYSTEM_USER_ID }, done);
 });
 
 // Register plugins

@@ -1,6 +1,6 @@
 import { prisma } from '../../infrastructure/database';
 import { logger } from '../../infrastructure/logger';
-import { SYSTEM_TENANT_ID } from '../../infrastructure/bootstrap';
+import { tenantContext } from '../../infrastructure/tenant-context';
 import { Decimal } from '@prisma/client/runtime/library';
 import { paymentProcessing, paymentAmount } from '../../infrastructure/metrics';
 
@@ -44,7 +44,7 @@ class LedgerService {
         const payment = await tx.payment.create({
           data: {
             paymentNo:  generatePaymentNo(),
-            tenantId:   SYSTEM_TENANT_ID,
+            tenantId:   tenantContext.get().tenantId,
             customerId,
             amount:     new Decimal(amount),
             method,
@@ -150,7 +150,7 @@ class LedgerService {
   async getLedgerSummary(startDate: Date, endDate: Date) {
     const payments = await prisma.payment.findMany({
       where: {
-        tenantId:   SYSTEM_TENANT_ID,
+        tenantId:   tenantContext.get().tenantId,
         receivedAt: { gte: startDate, lte: endDate },
         status:     'completed',
       },
@@ -183,7 +183,7 @@ class LedgerService {
    */
   async getRecentTransactions(limit: number = 20) {
     return await prisma.payment.findMany({
-      where:   { tenantId: SYSTEM_TENANT_ID },
+      where:   { tenantId: tenantContext.get().tenantId },
       take:    limit,
       orderBy: { receivedAt: 'desc' },
       include: {

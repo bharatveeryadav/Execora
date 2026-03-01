@@ -1,7 +1,7 @@
 import { prisma } from '../../infrastructure/database';
 import { logger } from '../../infrastructure/logger';
 import { minioClient } from '../../infrastructure/storage';
-import { SYSTEM_TENANT_ID, SYSTEM_USER_ID } from '../../infrastructure/bootstrap';
+import { tenantContext } from '../../infrastructure/tenant-context';
 
 const BUCKET_NAME = process.env.MINIO_BUCKET || 'execora-audio';
 
@@ -13,8 +13,8 @@ class VoiceSessionService {
     try {
       const session = await prisma.conversationSession.create({
         data: {
-          tenantId:   SYSTEM_TENANT_ID,
-          userId:     SYSTEM_USER_ID,
+          tenantId:   tenantContext.get().tenantId,
+          userId:     tenantContext.get().userId,
           contextStack: metadata ? { current: { stage: 'idle', intent: null, entities: {}, pending_input: false }, metadata: { turn_count: 0, started_at: null, ...metadata } } : undefined,
         } as any,
       });
@@ -66,7 +66,7 @@ class VoiceSessionService {
 
       const recording = await prisma.voiceRecording.create({
         data: {
-          tenantId:        SYSTEM_TENANT_ID,
+          tenantId:        tenantContext.get().tenantId,
           sessionId,
           recordingUrl:    `${BUCKET_NAME}/${objectKey}`,
           recordingFormat: metadata.mimeType || 'audio/webm',

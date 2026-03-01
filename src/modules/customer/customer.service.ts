@@ -1,6 +1,6 @@
 import { prisma } from '../../infrastructure/database';
 import { logger } from '../../infrastructure/logger';
-import { SYSTEM_TENANT_ID } from '../../infrastructure/bootstrap';
+import { tenantContext } from '../../infrastructure/tenant-context';
 import { CustomerSearchResult } from '../../types';
 import { Decimal } from '@prisma/client/runtime/library';
 import { ReminderStatus } from '@prisma/client';
@@ -605,7 +605,7 @@ class CustomerService {
       // Create customer with only name
       const customer = await prisma.customer.create({
         data: {
-          tenantId:               SYSTEM_TENANT_ID,
+          tenantId:               tenantContext.get().tenantId,
           name:                   name.trim(),
           balance:                0,
           alternatePhone:         [],
@@ -1159,7 +1159,7 @@ class CustomerService {
 
       const customer = await prisma.customer.create({
         data: {
-          tenantId:               SYSTEM_TENANT_ID,
+          tenantId:               tenantContext.get().tenantId,
           name:                   data.name,
           phone:                  data.phone,
           nickname:               data.nickname ? [data.nickname] : [],

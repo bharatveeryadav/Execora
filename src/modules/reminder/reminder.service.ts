@@ -1,7 +1,7 @@
 import { prisma } from '../../infrastructure/database';
 import { logger } from '../../infrastructure/logger';
 import { reminderQueue } from '../../infrastructure/queue';
-import { SYSTEM_TENANT_ID } from '../../infrastructure/bootstrap';
+import { tenantContext } from '../../infrastructure/tenant-context';
 import { ReminderJobData } from '../../types';
 import { addDays, addHours, addMinutes, addMonths, setHours, setMinutes, setSeconds, setMilliseconds } from 'date-fns';
 import { fromZonedTime } from 'date-fns-tz';
@@ -328,7 +328,7 @@ class ReminderService {
       // Create reminder — amount stored in notes for job re-queuing
       const reminder = await prisma.reminder.create({
         data: {
-          tenantId:      SYSTEM_TENANT_ID,
+          tenantId:      tenantContext.get().tenantId,
           customerId,
           reminderType:  'payment_due',
           scheduledTime,

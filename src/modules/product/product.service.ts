@@ -1,6 +1,6 @@
 import { prisma } from '../../infrastructure/database';
 import { logger } from '../../infrastructure/logger';
-import { SYSTEM_TENANT_ID } from '../../infrastructure/bootstrap';
+import { tenantContext } from '../../infrastructure/tenant-context';
 import { Decimal } from '@prisma/client/runtime/library';
 
 class ProductService {
@@ -27,7 +27,7 @@ class ProductService {
 
       const product = await prisma.product.create({
         data: {
-          tenantId:    SYSTEM_TENANT_ID,
+          tenantId:    tenantContext.get().tenantId,
           name:        data.name,
           description: data.description,
           category:    'general',

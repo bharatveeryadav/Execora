@@ -1,7 +1,7 @@
 
 import { prisma } from '../../infrastructure/database';
 import { logger } from '../../infrastructure/logger';
-import { SYSTEM_TENANT_ID } from '../../infrastructure/bootstrap';
+import { tenantContext } from '../../infrastructure/tenant-context';
 import { InvoiceItemInput } from '../../types';
 import { Decimal } from '@prisma/client/runtime/library';
 import { invoiceOperations } from '../../infrastructure/metrics';
@@ -54,7 +54,7 @@ class InvoiceService {
     // Pass 1: exact case-insensitive contains
     const exact = await tx.product.findFirst({
       where: {
-        tenantId: SYSTEM_TENANT_ID,
+        tenantId: tenantContext.get().tenantId,
         name: { contains: productName, mode: 'insensitive' },
         isActive: true,
       },
@@ -63,7 +63,7 @@ class InvoiceService {
 
     // Pass 2: fuzzy — best character-overlap across all active products
     const allProducts = await tx.product.findMany({
-      where: { tenantId: SYSTEM_TENANT_ID, isActive: true },
+      where: { tenantId: tenantContext.get().tenantId, isActive: true },
       select: { id: true, name: true, price: true, stock: true, unit: true,
                 hsnCode: true, gstRate: true, cess: true, isGstExempt: true },
     });
@@ -90,7 +90,7 @@ class InvoiceService {
     // Shopkeeper should update the price later via the product catalog.
     const created = await tx.product.create({
       data: {
-        tenantId: SYSTEM_TENANT_ID,
+        tenantId: tenantContext.get().tenantId,
         name: productName,
         category: 'General',
         price: new Decimal(0),
@@ -101,7 +101,7 @@ class InvoiceService {
     });
 
     logger.warn(
-      { productName, productId: created.id, tenantId: SYSTEM_TENANT_ID },
+      { productName, productId: created.id, tenantId: tenantContext.get().tenantId },
       'Product auto-created during invoice (price=0) — update price in catalog'
     );
 
@@ -235,7 +235,7 @@ class InvoiceService {
       return await prisma.$transaction(async (tx) => {
         const invoice = await tx.invoice.create({
           data: {
-            tenantId:  SYSTEM_TENANT_ID,
+            tenantId:  tenantContext.get().tenantId,
             invoiceNo: await generateInvoiceNo(tx),
             customerId,
             subtotal:  new Decimal(subtotal),
@@ -288,15 +288,15 @@ class InvoiceService {
 
         logger.info(
           { invoiceId: invoice.id, customerId, subtotal, totalTax, grandTotal,
-            itemCount: resolvedItems.length, tenantId: SYSTEM_TENANT_ID },
+            itemCount: resolvedItems.length, tenantId: tenantContext.get().tenantId },
           'Invoice confirmed and created'
         );
-        invoiceOperations.inc({ operation: 'create', status: 'success', tenantId: SYSTEM_TENANT_ID });
+        invoiceOperations.inc({ operation: 'create', status: 'success', tenantId: tenantContext.get().tenantId });
         return invoice;
       });
     } catch (error) {
-      logger.error({ error, customerId, tenantId: SYSTEM_TENANT_ID }, 'Invoice confirm failed');
-      invoiceOperations.inc({ operation: 'create', status: 'error', tenantId: SYSTEM_TENANT_ID });
+      logger.error({ error, customerId, tenantId: tenantContext.get().tenantId }, 'Invoice confirm failed');
+      invoiceOperations.inc({ operation: 'create', status: 'error', tenantId: tenantContext.get().tenantId });
       throw error;
     }
   }
@@ -369,7 +369,7 @@ class InvoiceService {
         // Create invoice
         const invoice = await tx.invoice.create({
           data: {
-            tenantId: SYSTEM_TENANT_ID,
+            tenantId: tenantContext.get().tenantId,
             invoiceNo: await generateInvoiceNo(tx),
             customerId,
             subtotal: new Decimal(subtotal),
@@ -414,18 +414,18 @@ class InvoiceService {
         });
 
         logger.info(
-          { invoiceId: invoice.id, customerId, total: subtotal, itemCount: items.length, autoCreatedProducts, tenantId: SYSTEM_TENANT_ID },
+          { invoiceId: invoice.id, customerId, total: subtotal, itemCount: items.length, autoCreatedProducts, tenantId: tenantContext.get().tenantId },
           'Invoice created'
         );
-        invoiceOperations.inc({ operation: 'create', status: 'success', tenantId: SYSTEM_TENANT_ID });
+        invoiceOperations.inc({ operation: 'create', status: 'success', tenantId: tenantContext.get().tenantId });
 
         return { invoice, autoCreatedProducts };
       });
 
       // ...existing code...
     } catch (error) {
-      logger.error({ error, customerId, items, tenantId: SYSTEM_TENANT_ID }, 'Invoice creation failed');
-      invoiceOperations.inc({ operation: 'create', status: 'error', tenantId: SYSTEM_TENANT_ID });
+      logger.error({ error, customerId, items, tenantId: tenantContext.get().tenantId }, 'Invoice creation failed');
+      invoiceOperations.inc({ operation: 'create', status: 'error', tenantId: tenantContext.get().tenantId });
       throw error;
     }
   }
@@ -472,11 +472,11 @@ class InvoiceService {
           include: { items: { include: { product: true } } },
         });
 
-        logger.info({ invoiceId, tenantId: SYSTEM_TENANT_ID }, 'Invoice cancelled');
+        logger.info({ invoiceId, tenantId: tenantContext.get().tenantId }, 'Invoice cancelled');
         return cancelled;
       });
     } catch (error) {
-      logger.error({ error, invoiceId, tenantId: SYSTEM_TENANT_ID }, 'Invoice cancellation failed');
+      logger.error({ error, invoiceId, tenantId: tenantContext.get().tenantId }, 'Invoice cancellation failed');
       throw error;
     }
   }
@@ -486,7 +486,7 @@ class InvoiceService {
    */
   async getRecentInvoices(limit: number = 10) {
     return await prisma.invoice.findMany({
-      where: { tenantId: SYSTEM_TENANT_ID },
+      where: { tenantId: tenantContext.get().tenantId },
       take: limit,
       orderBy: { invoiceDate: 'desc' },
       include: {
@@ -501,7 +501,7 @@ class InvoiceService {
    */
   async getCustomerInvoices(customerId: string, limit: number = 10) {
     return await prisma.invoice.findMany({
-      where: { customerId, tenantId: SYSTEM_TENANT_ID },
+      where: { customerId, tenantId: tenantContext.get().tenantId },
       take: limit,
       orderBy: { invoiceDate: 'desc' },
       include: { items: { include: { product: true } } },
@@ -543,7 +543,7 @@ class InvoiceService {
 
     const invoices = await prisma.invoice.findMany({
       where: {
-        tenantId: SYSTEM_TENANT_ID,
+        tenantId: tenantContext.get().tenantId,
         invoiceDate: { gte: startOfDay, lte: endOfDay },
         status: { not: 'cancelled' },
       },
@@ -557,7 +557,7 @@ class InvoiceService {
 
     const payments = await prisma.payment.findMany({
       where: {
-        tenantId: SYSTEM_TENANT_ID,
+        tenantId: tenantContext.get().tenantId,
         receivedAt: { gte: startOfDay, lte: endOfDay },
         status: 'completed',
       },

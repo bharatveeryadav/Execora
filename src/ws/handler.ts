@@ -7,7 +7,7 @@ import { businessEngine } from '../modules/voice/engine';
 import { conversationMemory } from '../modules/voice/conversation';
 import { voiceSessionService } from '../modules/voice/session.service';
 import { prisma } from '../infrastructure/database';
-import { SYSTEM_TENANT_ID, SYSTEM_USER_ID } from '../infrastructure/bootstrap';
+import { tenantContext } from '../infrastructure/tenant-context';
 import { WSMessage, WSMessageType } from '../types';
 
 interface VoiceSession {
@@ -242,8 +242,8 @@ class WebSocketHandler {
           prisma.conversationTurn.create({
             data: {
               sessionId:        session.dbSessionId!,
-              tenantId:         SYSTEM_TENANT_ID,
-              userId:           SYSTEM_USER_ID,
+              tenantId:         tenantContext.get().tenantId,
+              userId:           tenantContext.get().userId,
               turnNumber,
               rawInput:         finalText,
               normalizedInput:  normalizedText,
