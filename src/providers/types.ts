@@ -1,5 +1,22 @@
 import { Readable } from 'stream';
 
+// ─── Shared ───────────────────────────────────────────────────────────────────
+
+/**
+ * Describes what a provider can and cannot do.
+ * Service layers use this to decide which adapter to route to at runtime.
+ */
+export interface ProviderCapabilities {
+  /** Provider runs locally — no internet required, no API key needed */
+  isLocal: boolean;
+  /** Whether the adapter can produce live transcription streams */
+  supportsLiveTranscription: boolean;
+  /** Whether the adapter can produce audio streams (not just buffers) */
+  supportsStreaming: boolean;
+  /** Whether intent extraction is supported (LLM only) */
+  supportsIntentExtraction: boolean;
+}
+
 // ─── LLM ─────────────────────────────────────────────────────────────────────
 
 export interface TokenUsage {
@@ -21,6 +38,7 @@ export interface RawLLMResponse {
  */
 export interface LLMAdapter {
   readonly name: string;
+  readonly capabilities: ProviderCapabilities;
   isAvailable(): boolean;
   /** Extract structured intent JSON from a voice transcript */
   extractIntent(transcript: string, systemPrompt: string): Promise<RawLLMResponse>;
@@ -50,6 +68,7 @@ export interface LiveTranscriptionSession {
  */
 export interface STTAdapter {
   readonly name: string;
+  readonly capabilities: ProviderCapabilities;
   isAvailable(): boolean;
   createLiveTranscription(
     onTranscript: (text: string, isFinal: boolean) => void,
@@ -65,6 +84,7 @@ export interface STTAdapter {
  */
 export interface TTSAdapter {
   readonly name: string;
+  readonly capabilities: ProviderCapabilities;
   isAvailable(): boolean;
   generateSpeech(text: string): Promise<Buffer>;
   /** Returns a Readable stream when the provider supports streaming, otherwise a Buffer */
