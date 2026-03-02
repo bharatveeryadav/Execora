@@ -278,8 +278,18 @@ class EnhancedWebSocketHandler {
         session.ttsProvider = 'browser'; // Default fallback
       }
 
+      // Read audio format signalled by the frontend.
+      // 'pcm' = AudioWorklet Int16 @ 16 kHz (required for ElevenLabs, also works with Deepgram).
+      // 'webm'/'ogg' = MediaRecorder container (works with Deepgram only).
+      const clientAudioFormat: 'pcm' | 'webm' | 'ogg' =
+        messageData?.audioFormat === 'pcm' ? 'pcm' : 'webm';
+      const clientSampleRate: number = Number(messageData?.sampleRate) || 16000;
+      if (clientAudioFormat === 'pcm') {
+        session.audioFormat = 'pcm';
+      }
+
       logger.info(
-        { sessionId: session.sessionId, provider: sttService.getProvider(), ttsProvider: session.ttsProvider },
+        { sessionId: session.sessionId, provider: sttService.getProvider(), ttsProvider: session.ttsProvider, audioFormat: clientAudioFormat, sampleRate: clientSampleRate },
         'Starting voice capture'
       );
       session.isActive = true;
@@ -292,7 +302,11 @@ class EnhancedWebSocketHandler {
       });
       session.conversationSessionId = conversationSession.id;
 
-      // Create live STT connection
+      // Create live STT connection — pass audio format so adapters configure correctly
+      const sttOptions = clientAudioFormat === 'pcm'
+        ? { encoding: 'linear16' as const, sampleRate: clientSampleRate, channels: 1 }
+        : undefined;
+
       session.sttConnection = await sttService.createLiveTranscription(
         (text: string, isFinal: boolean) => {
           // Handle transcript
@@ -324,7 +338,8 @@ class EnhancedWebSocketHandler {
         (error: Error) => {
           logger.error({ error, sessionId: session.sessionId }, 'STT error callback triggered');
           this.sendError(session.ws, 'Speech recognition error');
-        }
+        },
+        sttOptions,
       );
       logger.info({ sessionId: session.sessionId }, 'STT connection created successfully');
 
@@ -668,6 +683,7 @@ class EnhancedWebSocketHandler {
         type: WSMessageType.VOICE_RESPONSE,
         data: {
           text: response,
+          intent: intent.intent,        // IntentType string — used by frontend to invalidate caches
           executionResult,
         },
         timestamp: new Date().toISOString(),
@@ -805,7 +821,7 @@ class EnhancedWebSocketHandler {
 
       this.sendMessage(session.ws, {
         type: WSMessageType.VOICE_RESPONSE,
-        data: { text: response, executionResult },
+        data: { text: response, intent: pendingIntent.intent, executionResult },
         timestamp: new Date().toISOString(),
       });
 

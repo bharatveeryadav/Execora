@@ -74,6 +74,17 @@ class ProductService {
    */
   async updateStock(productId: string, quantity: number, operation: 'add' | 'subtract') {
     try {
+      if (operation === 'subtract') {
+        const current = await prisma.product.findUnique({
+          where: { id: productId },
+          select: { stock: true, name: true },
+        });
+        if (!current) throw new Error('Product not found');
+        if (current.stock < quantity) {
+          throw new Error(`Insufficient stock: only ${current.stock} available for "${current.name}"`);
+        }
+      }
+
       const product = await prisma.product.update({
         where: { id: productId },
         data: {
@@ -93,24 +104,37 @@ class ProductService {
   }
 
   /**
-   * Get low stock products
+   * Get low stock products for the current tenant.
+   * A product is considered low-stock when its stock is at or below its minStock threshold.
    */
-  async getLowStockProducts(threshold: number = 5) {
-    return await prisma.product.findMany({
-      where: {
-        stock: {
-          lte: threshold,
-        },
-      },
-      orderBy: { stock: 'asc' },
-    });
+  async getLowStockProducts() {
+    const { tenantId } = tenantContext.get();
+    // Use a raw query so we can compare stock against the per-product minStock column
+    const products = await prisma.$queryRaw<Array<{
+      id: string; name: string; category: string; description: string | null;
+      price: string; unit: string; stock: number; min_stock: number;
+      is_active: boolean; created_at: Date; updated_at: Date;
+    }>>`
+      SELECT id, name, category, description, price::text, unit, stock, min_stock, is_active, created_at, updated_at
+      FROM products
+      WHERE tenant_id = ${tenantId}
+        AND is_active = true
+        AND stock <= min_stock
+      ORDER BY stock ASC
+    `;
+    return products.map((p) => ({
+      id: p.id, name: p.name, category: p.category, description: p.description,
+      price: p.price, unit: p.unit, stock: p.stock, minStock: p.min_stock,
+      isActive: p.is_active, createdAt: p.created_at, updatedAt: p.updated_at,
+    }));
   }
 
   /**
-   * Get all products
+   * Get all active products for the current tenant.
    */
   async getAllProducts() {
     return await prisma.product.findMany({
+      where: { tenantId: tenantContext.get().tenantId, isActive: true },
       orderBy: { name: 'asc' },
     });
   }

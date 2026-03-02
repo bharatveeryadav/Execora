@@ -22,16 +22,56 @@
  *   voice:final { text }   — text-only fallback (SpeechRecognition)
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { Mic, MicOff } from "lucide-react";
 import { wsClient } from "@/lib/ws";
 import { useWS } from "@/contexts/WSContext";
+
+interface BrowserSpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
+}
+
+interface BrowserSpeechRecognitionResult {
+  isFinal: boolean;
+  length: number;
+  [index: number]: BrowserSpeechRecognitionAlternative;
+}
+
+interface BrowserSpeechRecognitionResultList {
+  length: number;
+  [index: number]: BrowserSpeechRecognitionResult;
+}
+
+interface BrowserSpeechRecognitionEvent extends Event {
+  results: BrowserSpeechRecognitionResultList;
+}
+
+interface BrowserSpeechRecognition extends EventTarget {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: ((event: BrowserSpeechRecognitionEvent) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+
+type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
+
+declare global {
+  interface Window {
+    SpeechRecognition?: BrowserSpeechRecognitionConstructor;
+    webkitSpeechRecognition?: BrowserSpeechRecognitionConstructor;
+  }
+}
 
 type VoiceState = "idle" | "listening" | "processing" | "responding" | "confirm" | "error";
 
 interface VoiceBarProps {
   /** Custom idle hint displayed when not in a conversation */
-  idleHint?: React.ReactNode;
+  idleHint?: ReactNode;
 }
 
 const DEFAULT_HINT = (
@@ -48,15 +88,20 @@ const VoiceBar = ({ idleHint = DEFAULT_HINT }: VoiceBarProps) => {
   const { isConnected } = useWS();
 
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
-  const [liveText, setLiveText] = useState<React.ReactNode>(null);
+  const [liveText, setLiveText] = useState<ReactNode>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const processingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const finalizeFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTranscriptRef = useRef("");
+  const manualFinalizeSentRef = useRef(false);
+  const voiceStateRef = useRef<VoiceState>("idle");
   const canStreamAudioRef = useRef(false);
   const streamBufferRef = useRef(""); // accumulate streamed response chunks
+  const ttsProviderRef = useRef<string>("browser"); // captured from server welcome message
 
   // ── Helper: schedule auto-reset to idle ──────────────────────────────────
   const scheduleReset = useCallback((ms = 7000) => {
@@ -75,6 +120,30 @@ const VoiceBar = ({ idleHint = DEFAULT_HINT }: VoiceBarProps) => {
     }
   }, []);
 
+  const clearFinalizeFallback = useCallback(() => {
+    if (finalizeFallbackTimerRef.current) {
+      clearTimeout(finalizeFallbackTimerRef.current);
+      finalizeFallbackTimerRef.current = null;
+    }
+  }, []);
+
+  const scheduleFinalizeFallback = useCallback(() => {
+    clearFinalizeFallback();
+    finalizeFallbackTimerRef.current = setTimeout(() => {
+      const text = lastTranscriptRef.current.trim();
+      if (
+        text &&
+        !manualFinalizeSentRef.current &&
+        (voiceStateRef.current === "processing" || voiceStateRef.current === "listening")
+      ) {
+        manualFinalizeSentRef.current = true;
+        wsClient.send("voice:final", { text });
+        setVoiceState("processing");
+        setLiveText(`🤔 "${text}" — processing...`);
+      }
+    }, 1200);
+  }, [clearFinalizeFallback]);
+
   const startProcessingTimeout = useCallback(() => {
     clearProcessingTimeout();
     processingTimerRef.current = setTimeout(() => {
@@ -84,6 +153,10 @@ const VoiceBar = ({ idleHint = DEFAULT_HINT }: VoiceBarProps) => {
     }, 15000);
   }, [clearProcessingTimeout, scheduleReset]);
 
+  useEffect(() => {
+    voiceStateRef.current = voiceState;
+  }, [voiceState]);
+
   // ── Backend event listeners ───────────────────────────────────────────────
   useEffect(() => {
     const offs = [
@@ -91,16 +164,39 @@ const VoiceBar = ({ idleHint = DEFAULT_HINT }: VoiceBarProps) => {
       wsClient.on("voice:transcript", (payload) => {
         const p = payload as { text?: string; isFinal?: boolean; data?: { text?: string; isFinal?: boolean } };
         const text = p.data?.text ?? p.text;
-        if (text) setLiveText(`🎤 "${text}"`);
+        if (text) {
+          lastTranscriptRef.current = text;
+          setLiveText(`🎤 "${text}"`);
+        }
       }),
 
       // Backend received transcript, now processing
       wsClient.on("voice:thinking", (payload) => {
         const p = payload as { transcript?: string; data?: { transcript?: string } };
         const transcript = p.data?.transcript ?? p.transcript;
+        clearFinalizeFallback();
         setVoiceState("processing");
         setLiveText(transcript ? `🤔 "${transcript}" — thinking...` : "🤔 Processing...");
         startProcessingTimeout();
+      }),
+
+      // Intent extracted (fallback UX when confidence is too low)
+      wsClient.on("voice:intent", (payload) => {
+        const p = payload as {
+          intent?: string;
+          confidence?: number;
+          data?: { intent?: string; confidence?: number };
+        };
+        const intent = p.data?.intent ?? p.intent;
+        const confidence = p.data?.confidence ?? p.confidence;
+
+        if ((intent === "UNKNOWN" || intent === "unknown") && typeof confidence === "number" && confidence < 0.7) {
+          clearFinalizeFallback();
+          clearProcessingTimeout();
+          setVoiceState("idle");
+          setLiveText("⚠️ I couldn’t understand that. Please repeat.");
+          scheduleReset(3000);
+        }
       }),
 
       // Streaming response tokens — accumulate in ref
@@ -108,6 +204,7 @@ const VoiceBar = ({ idleHint = DEFAULT_HINT }: VoiceBarProps) => {
         const p = payload as { text?: string; data?: { text?: string } };
         const text = p.data?.text ?? p.text;
         if (text) {
+          clearFinalizeFallback();
           clearProcessingTimeout();
           streamBufferRef.current += text;
           setVoiceState("responding");
@@ -119,6 +216,7 @@ const VoiceBar = ({ idleHint = DEFAULT_HINT }: VoiceBarProps) => {
       wsClient.on("voice:response", (payload) => {
         const p = payload as { text?: string; data?: { text?: string } };
         const text = p.data?.text ?? p.text;
+        clearFinalizeFallback();
         clearProcessingTimeout();
         streamBufferRef.current = "";
         if (text) {
@@ -132,10 +230,19 @@ const VoiceBar = ({ idleHint = DEFAULT_HINT }: VoiceBarProps) => {
       wsClient.on("voice:confirm_needed", (payload) => {
         const p = payload as { text?: string; data?: { text?: string } };
         const text = p.data?.text ?? p.text;
+        clearFinalizeFallback();
         clearProcessingTimeout();
         setVoiceState("confirm");
         setLiveText(`⚠️ ${text ?? "Confirm this action?"}`);
         // Don't auto-reset — user must respond
+      }),
+
+      // Capture ttsProvider from server welcome message so we can echo it back in voice:start
+      wsClient.on("voice:start", (payload) => {
+        const p = payload as { data?: { ttsProvider?: string; ttsAvailable?: boolean } };
+        if (p.data?.ttsProvider && p.data.ttsProvider !== "none") {
+          ttsProviderRef.current = p.data.ttsProvider;
+        }
       }),
 
       // TTS audio from backend — play it
@@ -154,6 +261,7 @@ const VoiceBar = ({ idleHint = DEFAULT_HINT }: VoiceBarProps) => {
       wsClient.on("error", (payload) => {
         const p = payload as { error?: string; message?: string; data?: { error?: string; message?: string } };
         const errorMessage = p.data?.error ?? p.data?.message ?? p.error ?? p.message;
+        clearFinalizeFallback();
         clearProcessingTimeout();
         setVoiceState("error");
         setLiveText(`⚠️ ${errorMessage ?? "Something went wrong"}`);
@@ -164,13 +272,15 @@ const VoiceBar = ({ idleHint = DEFAULT_HINT }: VoiceBarProps) => {
     return () => {
       offs.forEach((off) => off());
       if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+      clearFinalizeFallback();
       clearProcessingTimeout();
     };
-  }, [clearProcessingTimeout, scheduleReset, startProcessingTimeout]);
+  }, [clearFinalizeFallback, clearProcessingTimeout, scheduleReset, startProcessingTimeout]);
 
   // ── Stop all audio capture ────────────────────────────────────────────────
   const stopAll = useCallback(() => {
     canStreamAudioRef.current = false;
+    clearFinalizeFallback();
     if (mediaRecorderRef.current?.state === "recording") {
       mediaRecorderRef.current.stop(); // fires onstop → sends voice:stop
     }
@@ -179,7 +289,7 @@ const VoiceBar = ({ idleHint = DEFAULT_HINT }: VoiceBarProps) => {
     mediaRecorderRef.current = null;
     recognitionRef.current?.stop();
     recognitionRef.current = null;
-  }, []);
+  }, [clearFinalizeFallback]);
 
   useEffect(() => () => stopAll(), [stopAll]);
 
@@ -199,73 +309,173 @@ const VoiceBar = ({ idleHint = DEFAULT_HINT }: VoiceBarProps) => {
     setVoiceState("listening");
     setLiveText("🎤 Starting...");
     streamBufferRef.current = "";
+    lastTranscriptRef.current = "";
+    manualFinalizeSentRef.current = false;
+    clearFinalizeFallback();
 
-    // ── Binary MediaRecorder (primary — streams to backend STT) ────────────
-    const supportsWebm = typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("audio/webm");
-    const supportsOgg  = typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("audio/ogg");
+    if (!navigator.mediaDevices?.getUserMedia) {
+      // Skip straight to SpeechRecognition if no mic API
+      return startSpeechRecognition();
+    }
 
-    if (navigator.mediaDevices?.getUserMedia && (supportsWebm || supportsOgg)) {
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression:  true,  // hardware-level denoise before STT
+          autoGainControl:   true,  // normalise volume across environments
+          channelCount:      1,     // mono — STT providers don't need stereo
+          sampleRate:        { ideal: 16000, max: 48000 }, // prefer 16 kHz for ElevenLabs
+        },
+      });
+    } catch {
+      return startSpeechRecognition(); // mic denied → browser SR fallback
+    }
+
+    streamRef.current = stream;
+
+    // ── Helper: shared teardown for both audio paths ───────────────────────
+    const onAudioStop = () => {
+      canStreamAudioRef.current = false;
+      wsClient.send("voice:stop", {});
+      const heardText = lastTranscriptRef.current.trim();
+      if (heardText) {
+        setVoiceState("processing");
+        setLiveText("🤔 Processing...");
+        scheduleFinalizeFallback();
+        startProcessingTimeout();
+      } else {
+        // ElevenLabs / Deepgram may deliver the final transcript asynchronously
+        // after the connection closes — wait up to 4 s before giving up.
+        clearFinalizeFallback();
+        setVoiceState("processing");
+        setLiveText("🎤 Processing audio...");
+        clearProcessingTimeout();
+        processingTimerRef.current = setTimeout(() => {
+          if (voiceStateRef.current === "processing") {
+            setVoiceState("idle");
+            setLiveText("⚠️ I couldn't hear clearly. Please try again.");
+            scheduleReset(2500);
+          }
+        }, 4000);
+      }
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+      mediaRecorderRef.current = null;
+    };
+
+    // ── Helper: wait for backend STT session to open ───────────────────────
+    const waitForSession = (audioFormat: "pcm" | "webm") =>
+      new Promise<boolean>((resolve) => {
+        const finish = (ok: boolean) => { clearTimeout(timer); offOk(); offErr(); resolve(ok); };
+        const timer    = setTimeout(() => finish(false), 5000);
+        const offOk    = wsClient.on("voice:started", () => finish(true));
+        const offErr   = wsClient.on("error",         () => finish(false));
+        // Signal backend — include audioFormat and ttsProvider so it configures STT/TTS correctly.
+        // localStorage preference overrides server default (set in Settings → Voice Assistant).
+        const ttsProvider = localStorage.getItem("execora:ttsProvider") ?? ttsProviderRef.current;
+        wsClient.send("voice:start", { audioFormat, sampleRate: 16000, ttsProvider });
+      });
+
+    // ── Path A: AudioWorklet PCM @ 16 kHz ─────────────────────────────────
+    // Required by ElevenLabs (only accepts raw PCM).  Also works with Deepgram
+    // linear16 mode.  AudioWorklet is available in all modern browsers.
+    const supportsWorklet = typeof AudioContext !== "undefined" && typeof AudioWorklet !== "undefined";
+
+    if (supportsWorklet) {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        streamRef.current = stream;
-        const mimeType = supportsWebm ? "audio/webm" : "audio/ogg";
-        const mr = new MediaRecorder(stream, { mimeType });
-        mediaRecorderRef.current = mr;
+        // sampleRate:16000 — browser resamples automatically; worklet receives 16 kHz frames
+        const audioCtx = new AudioContext({ sampleRate: 16000 });
+        const source   = audioCtx.createMediaStreamSource(stream);
+
+        await audioCtx.audioWorklet.addModule("/pcm-processor.worklet.js");
+        const workletNode = new AudioWorkletNode(audioCtx, "pcm-processor");
         canStreamAudioRef.current = false;
 
-        mr.ondataavailable = (e) => {
-          if (e.data.size > 0 && canStreamAudioRef.current) wsClient.sendBinary(e.data);
+        workletNode.port.onmessage = (e: MessageEvent<{ type: string; buffer: ArrayBuffer }>) => {
+          if (e.data.type === "audio" && canStreamAudioRef.current) {
+            wsClient.sendBinary(e.data.buffer);
+          }
         };
 
-        mr.onstop = () => {
-          // Signal backend: end of audio stream
-          canStreamAudioRef.current = false;
-          wsClient.send("voice:stop", {});
-          setVoiceState("processing");
-          setLiveText("🤔 Processing...");
-          startProcessingTimeout();
-          streamRef.current?.getTracks().forEach((t) => t.stop());
-          streamRef.current = null;
-          mediaRecorderRef.current = null;
-        };
-
-        // Tell backend to open live STT session and wait for confirmation
-        // before streaming — backend must set isActive=true first or
-        // all binary chunks are dropped with "Audio received but session not active"
-        wsClient.send("voice:start", {});
-
-        const sessionReady = await new Promise<boolean>((resolve) => {
-          const timer = setTimeout(() => { offStarted(); resolve(false); }, 5000);
-          const offStarted = wsClient.on("voice:started", () => {
-            clearTimeout(timer);
-            offStarted();
-            resolve(true);
-          });
-        });
+        const sessionReady = await waitForSession("pcm");
 
         if (!sessionReady) {
-          canStreamAudioRef.current = false;
+          await audioCtx.close();
           stream.getTracks().forEach((t) => t.stop());
           streamRef.current = null;
-          mediaRecorderRef.current = null;
           setVoiceState("error");
-          setLiveText("⚠️ Voice session didn't start — try again");
+          setLiveText("⚠️ Voice session failed — check mic permissions & server");
+          scheduleReset(4000);
           return;
         }
 
+        source.connect(workletNode);
         canStreamAudioRef.current = true;
-        mr.start(500); // now safe to stream — backend isActive = true
         setLiveText("🔴 Listening... click to stop");
+
+        // Expose a fake MediaRecorder so stopAll() can call .stop() → pcmStop()
+        // stopAll() checks mediaRecorderRef.current?.state === "recording" then calls .stop()
+        const pcmStop = () => {
+          canStreamAudioRef.current = false;
+          source.disconnect();
+          workletNode.disconnect();
+          audioCtx.close().catch(() => {});
+          onAudioStop();
+        };
+        (mediaRecorderRef as MutableRefObject<MediaRecorder | null>).current = {
+          stop: pcmStop,
+          state: "recording",
+        } as unknown as MediaRecorder;
+
         return;
       } catch {
-        // Microphone permission denied — fall through to SpeechRecognition
+        // AudioWorklet not available or worklet file missing — fall through to MediaRecorder
+        stream.getTracks().forEach((t) => t.stop());
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
+        });
+        streamRef.current = stream;
       }
     }
 
-    // ── SpeechRecognition fallback ─────────────────────────────────────────
-    const SR =
-      (window as { SpeechRecognition?: typeof SpeechRecognition }).SpeechRecognition ??
-      (window as { webkitSpeechRecognition?: typeof SpeechRecognition }).webkitSpeechRecognition;
+    // ── Path B: MediaRecorder WebM (Deepgram accepts this directly) ────────
+    const mimeType =
+      MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" :
+      MediaRecorder.isTypeSupported("audio/webm")             ? "audio/webm"             :
+      "audio/ogg";
+
+    const mr = new MediaRecorder(stream, { mimeType });
+    mediaRecorderRef.current = mr;
+    canStreamAudioRef.current = false;
+
+    mr.ondataavailable = (e) => {
+      if (e.data.size > 0 && canStreamAudioRef.current) wsClient.sendBinary(e.data);
+    };
+    mr.onstop = onAudioStop;
+
+    const sessionReady = await waitForSession("webm");
+
+    if (!sessionReady) {
+      canStreamAudioRef.current = false;
+      stream.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+      mediaRecorderRef.current = null;
+      setVoiceState("error");
+      setLiveText("⚠️ Voice session failed — check mic permissions & server");
+      scheduleReset(4000);
+      return;
+    }
+
+    canStreamAudioRef.current = true;
+    mr.start(250); // 250 ms chunks — halved from 500 ms for lower latency
+    setLiveText("🔴 Listening... click to stop");
+  }, [clearFinalizeFallback, clearProcessingTimeout, scheduleFinalizeFallback, scheduleReset, startProcessingTimeout]);
+
+  // ── SpeechRecognition fallback (no mic access / unsupported browser) ─────
+  const startSpeechRecognition = useCallback(() => {
+    const SR = window.SpeechRecognition ?? window.webkitSpeechRecognition;
 
     if (!SR) {
       setVoiceState("error");
@@ -275,22 +485,16 @@ const VoiceBar = ({ idleHint = DEFAULT_HINT }: VoiceBarProps) => {
 
     const rec = new SR();
     recognitionRef.current = rec;
-    rec.lang = "hi-IN";
+    rec.lang = navigator.language?.startsWith("hi") ? "hi-IN" : (navigator.language || "hi-IN");
     rec.interimResults = true;
     rec.continuous = false;
 
     let finalText = "";
 
-    rec.onresult = (e: SpeechRecognitionEvent) => {
-      const results = Array.from(e.results);
-      finalText = results
-        .filter((r) => r.isFinal)
-        .map((r) => r[0].transcript)
-        .join(" ");
-      const interim = results
-        .filter((r) => !r.isFinal)
-        .map((r) => r[0].transcript)
-        .join(" ");
+    rec.onresult = (e: BrowserSpeechRecognitionEvent) => {
+      const results = Array.from({ length: e.results.length }, (_, i) => e.results[i]);
+      finalText = results.filter((r) => r.isFinal).map((r) => r[0].transcript).join(" ");
+      const interim = results.filter((r) => !r.isFinal).map((r) => r[0].transcript).join(" ");
       setLiveText(`🎤 "${(finalText + interim).trim()}"`);
     };
 
@@ -315,7 +519,7 @@ const VoiceBar = ({ idleHint = DEFAULT_HINT }: VoiceBarProps) => {
     };
 
     rec.start();
-  }, [scheduleReset]);
+  }, [scheduleReset, startProcessingTimeout]);
 
   // ── Dot / mic click ───────────────────────────────────────────────────────
   const handleClick = () => {

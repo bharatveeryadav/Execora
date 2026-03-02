@@ -288,7 +288,7 @@ const Payment = () => {
                           onCheckedChange={() => toggleInvoice(inv.id)}
                           className="mt-0.5"
                         />
-                        <span className={`text-sm ${inv.status === "issued" ? "text-destructive" : "text-foreground"}`}>
+                        <span className={`text-sm ${inv.status === "pending" || inv.status === "partial" ? "text-destructive" : "text-foreground"}`}>
                           {inv.invoiceNo} ·{" "}
                           {new Date(inv.createdAt).toLocaleDateString("en-IN", {
                             day: "2-digit",

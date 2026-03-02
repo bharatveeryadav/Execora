@@ -2,6 +2,7 @@ import { config } from '@execora/infrastructure';
 import { logger } from '@execora/infrastructure';
 import { sttProcessingTime } from '@execora/infrastructure';
 import { STTAdapter, LiveTranscriptionSession } from '../types';
+import type { LiveTranscriptionOptions } from '../types';
 import { ProviderUnavailableError } from '../errors';
 import { withProvider, reportProviderAvailability } from '../middleware';
 import { deepgramAdapter } from './deepgram.adapter';
@@ -78,6 +79,7 @@ class STTService {
   async createLiveTranscription(
     onTranscript: (text: string, isFinal: boolean) => void,
     onError: (error: Error) => void,
+    options?: LiveTranscriptionOptions,
   ): Promise<LiveTranscriptionSession> {
     // Find an adapter that supports live transcription
     const adapter = this.adapterFor('supportsLiveTranscription');
@@ -87,7 +89,7 @@ class STTService {
 
     // Live sessions are long-lived — we don't wrap in withProvider here because
     // the latency is unbounded. Errors during the session are propagated via onError.
-    return adapter.createLiveTranscription(onTranscript, onError);
+    return adapter.createLiveTranscription(onTranscript, onError, options);
   }
 
   /**

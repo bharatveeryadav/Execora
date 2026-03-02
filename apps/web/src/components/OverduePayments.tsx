@@ -1,12 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { useCustomers } from "@/hooks/useQueries";
+import { useCustomers, useBulkReminders } from "@/hooks/useQueries";
 import { formatCurrency } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 
 const OverduePayments = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { data: customers = [], isLoading } = useCustomers();
+  const bulkReminders = useBulkReminders();
 
   const overdueData = customers
     .filter((c) => parseFloat(String(c.balance)) > 0)
@@ -82,9 +85,51 @@ const OverduePayments = () => {
         </div>
         <div className="flex flex-wrap gap-2 p-4">
           <Button size="sm" variant="default" className="h-8 text-xs" onClick={() => navigate("/payment")}>💰 Record Payment</Button>
-          <Button size="sm" variant="outline" className="h-8 text-xs">📱 Send Bulk Reminders</Button>
-          <Button size="sm" variant="outline" className="h-8 text-xs">📞 Call All</Button>
-          <Button size="sm" variant="outline" className="h-8 text-xs">📊 Export List</Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs"
+            disabled={bulkReminders.isPending || overdueData.length === 0}
+            onClick={async () => {
+              try {
+                const ids = overdueData.map((c) => c.id);
+                const result = await bulkReminders.mutateAsync({ customerIds: ids });
+                const count = (result as { reminders?: unknown[] }).reminders?.length ?? 0;
+                toast({ title: `📱 ${count} reminder${count !== 1 ? "s" : ""} scheduled` });
+              } catch (err: unknown) {
+                const msg = err instanceof Error ? err.message : "Try again";
+                toast({ title: "❌ Failed to send reminders", description: msg, variant: "destructive" });
+              }
+            }}
+          >
+            {bulkReminders.isPending ? "Scheduling…" : "📱 Send Bulk Reminders"}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs"
+            disabled={overdueData.length === 0}
+            onClick={() => {
+              const header = ["#", "Customer", "Amount Due (₹)", "Phone"];
+              const rows = overdueData.map((c, i) => [
+                String(i + 1),
+                c.name,
+                String(parseFloat(String(c.balance))),
+                c.phone ?? "",
+              ]);
+              const csv = [header, ...rows].map((r) => r.map((v) => `"${v}"`).join(",")).join("\n");
+              const blob = new Blob([csv], { type: "text/csv" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "overdue-payments.csv";
+              a.click();
+              URL.revokeObjectURL(url);
+              toast({ title: "📊 Exported overdue list as CSV" });
+            }}
+          >
+            📊 Export List
+          </Button>
         </div>
       </CardContent>
     </Card>

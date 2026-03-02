@@ -1,17 +1,36 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { useInvoices } from "@/hooks/useQueries";
 
-const data = [
-  { day: "Mon", sales: 4200 },
-  { day: "Tue", sales: 3800 },
-  { day: "Wed", sales: 5100 },
-  { day: "Thu", sales: 4800 },
-  { day: "Fri", sales: 6200 },
-  { day: "Sat", sales: 5900 },
-  { day: "Sun", sales: 3200 },
-];
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function buildWeeklyData(invoices: { total: string | number; createdAt: string }[]) {
+  // Last 7 calendar days ending today
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const days: { date: number; day: string; sales: number }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(todayStart);
+    d.setDate(todayStart.getDate() - i);
+    days.push({ date: d.getTime(), day: DAY_LABELS[d.getDay()], sales: 0 });
+  }
+
+  for (const inv of invoices) {
+    const invDay = new Date(inv.createdAt);
+    invDay.setHours(0, 0, 0, 0);
+    const entry = days.find((d) => d.date === invDay.getTime());
+    if (entry) entry.sales += Number(inv.total) || 0;
+  }
+
+  return days.map(({ day, sales }) => ({ day, sales }));
+}
 
 const WeeklySalesChart = () => {
+  // Fetch enough invoices to cover last 7 days (200 is generous for any SME)
+  const { data: invoices = [] } = useInvoices(200);
+  const data = buildWeeklyData(invoices);
+
   return (
     <Card className="border-none shadow-sm">
       <CardHeader className="pb-3">

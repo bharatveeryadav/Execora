@@ -36,4 +36,25 @@ export async function reminderRoutes(fastify: FastifyInstance) {
     const reminder = await reminderService.cancelReminder(request.params.id);
     return { reminder };
   });
+
+  // ── POST /api/v1/reminders/bulk — schedule reminders for overdue customers ──
+  fastify.post('/api/v1/reminders/bulk', {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['customerIds'],
+        properties: {
+          customerIds: { type: 'array', items: { type: 'string' }, minItems: 1 },
+          message:     { type: 'string', maxLength: 1000 },
+          daysOffset:  { type: 'integer', minimum: 0, maximum: 30 },
+        },
+        additionalProperties: false,
+      },
+    },
+  }, async (request: FastifyRequest<{
+    Body: { customerIds: string[]; message?: string; daysOffset?: number };
+  }>, reply) => {
+    const reminders = await reminderService.bulkScheduleReminders(request.body);
+    return reply.code(201).send({ reminders });
+  });
 }

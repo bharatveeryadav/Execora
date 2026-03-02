@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Download, Mail, Printer, RefreshCw, Mic, TrendingUp } from "lucide-react";
+import { ArrowLeft, Download, Mail, Printer, RefreshCw, TrendingUp } from "lucide-react";
 import VoiceBar from "@/components/VoiceBar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,21 +8,44 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
 import { Progress } from "@/components/ui/progress";
-import { useDailySummary, useCustomers, useProducts, useInvoices } from "@/hooks/useQueries";
+import { useDailySummary, useSummaryRange, useCustomers, useProducts, useInvoices } from "@/hooks/useQueries";
 import { formatCurrency } from "@/lib/api";
 
 const periods = ["Today", "This Week", "This Month", "Custom"] as const;
+
+/** Compute ISO date strings for report period range */
+function getPeriodRange(period: string): { from: string; to: string } {
+  const now = new Date();
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  if (period === "This Week") {
+    const start = new Date(now);
+    start.setDate(now.getDate() - now.getDay());
+    return { from: fmt(start), to: fmt(now) };
+  }
+  if (period === "This Month") {
+    return { from: fmt(new Date(now.getFullYear(), now.getMonth(), 1)), to: fmt(now) };
+  }
+  return { from: fmt(now), to: fmt(now) };
+}
 
 const Reports = () => {
   const [activePeriod, setActivePeriod] = useState<string>("Today");
   const navigate = useNavigate();
 
-  const { data: summary } = useDailySummary();
+  const periodRange = getPeriodRange(activePeriod);
+  const useRange = activePeriod === "This Week" || activePeriod === "This Month";
+
+  const { data: dailySummary } = useDailySummary();
+  const { data: rangeSummary } = useSummaryRange(periodRange.from, periodRange.to);
+
+  // Unified summary: use range when period != Today
+  const summary = useRange ? rangeSummary : dailySummary;
+
   const { data: customers = [] } = useCustomers("", 100);
   const { data: products = [] } = useProducts();
   const { data: invoices = [] } = useInvoices(200);
 
-  // Revenue overview from daily summary
+  // Revenue overview from active summary
   const totalSales = summary?.totalSales ?? 0;
   const totalPayments = summary?.totalPayments ?? 0;
   const collectionRate = totalSales > 0 ? Math.round((totalPayments / totalSales) * 100) : 0;
@@ -40,15 +63,34 @@ const Reports = () => {
     .map(([day, sales]) => ({ day, sales: Math.round(sales) }));
 
   // Top products by revenue from invoice items
+  // Backend returns item.product.name (relation), not item.productName (column)
   const productRevMap = new Map<string, { amount: number }>();
   for (const inv of invoices) {
     if (inv.status === "cancelled") continue;
     for (const item of inv.items ?? []) {
-      const name = item.productName ?? "Unknown";
+      const name = item.product?.name ?? item.productName ?? "Unknown";
       const existing = productRevMap.get(name) ?? { amount: 0 };
       productRevMap.set(name, { amount: existing.amount + parseFloat(String(item.itemTotal ?? 0)) });
     }
   }
+
+  const handleExport = () => {
+    const rows = [
+      ["Period", activePeriod],
+      ["Total Sales", String(totalSales)],
+      ["Total Collected", String(totalPayments)],
+      ["Collection Rate (%)", String(collectionRate)],
+      ["Pending Dues", String(pendingAmount)],
+    ];
+    const csv = rows.map((r) => r.map((v) => `"${v}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `execora-report-${activePeriod.toLowerCase().replace(/ /g, "-")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
   // If no invoice items data, fall back to products sorted by price * stock
   const topProductsFromInvoices = [...productRevMap.entries()]
     .sort((a, b) => b[1].amount - a[1].amount)
@@ -94,11 +136,8 @@ const Reports = () => {
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="hidden md:flex">
+            <Button variant="outline" size="sm" className="hidden md:flex" onClick={handleExport}>
               <Download className="mr-1.5 h-4 w-4" /> Export
-            </Button>
-            <Button variant="ghost" size="icon">
-              <Mic className="h-5 w-5" />
             </Button>
           </div>
         </div>
@@ -277,7 +316,7 @@ const Reports = () => {
             {pendingAmount > 0 && (
               <div className="rounded-lg bg-warning/10 p-3">
                 <p className="text-sm font-medium text-warning">
-                  ⚠️ {formatCurrency(pendingAmount)} pending from {invoices.filter((i) => i.status === "issued").length} invoices
+                  ⚠️ {formatCurrency(pendingAmount)} pending from {invoices.filter((i) => i.status === "pending" || i.status === "partial").length} invoices
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Consider collecting from overdue customers
@@ -289,10 +328,10 @@ const Reports = () => {
 
         {/* Bottom Actions */}
         <div className="flex flex-wrap gap-2 pb-6">
-          <Button variant="outline" size="sm"><Download className="mr-1.5 h-4 w-4" /> Download Report</Button>
-          <Button variant="outline" size="sm"><Mail className="mr-1.5 h-4 w-4" /> Email Report</Button>
-          <Button variant="outline" size="sm"><RefreshCw className="mr-1.5 h-4 w-4" /> Schedule</Button>
-          <Button variant="outline" size="sm"><Printer className="mr-1.5 h-4 w-4" /> Print</Button>
+          <Button variant="outline" size="sm" onClick={handleExport}><Download className="mr-1.5 h-4 w-4" /> Download CSV</Button>
+          <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="mr-1.5 h-4 w-4" /> Print</Button>
+          <Button variant="outline" size="sm" disabled><Mail className="mr-1.5 h-4 w-4" /> Email Report</Button>
+          <Button variant="outline" size="sm" disabled><RefreshCw className="mr-1.5 h-4 w-4" /> Schedule</Button>
         </div>
       </main>
     </div>

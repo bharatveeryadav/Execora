@@ -4,6 +4,7 @@ import WebSocket from 'ws';
 import { config } from '@execora/infrastructure';
 import { logger } from '@execora/infrastructure';
 import { STTAdapter, LiveTranscriptionSession, ProviderCapabilities } from '../types';
+import type { LiveTranscriptionOptions } from '../types';
 
 /**
  * ElevenLabs STT adapter.
@@ -36,6 +37,7 @@ export class ElevenLabsSTTAdapter implements STTAdapter {
   async createLiveTranscription(
     onTranscript: (text: string, isFinal: boolean) => void,
     onError: (error: Error) => void,
+    _options?: LiveTranscriptionOptions, // ElevenLabs always requires PCM 16 kHz — options unused
   ): Promise<LiveTranscriptionSession> {
     if (!this.apiKey) throw new Error('ElevenLabs API key not configured');
 
@@ -124,7 +126,7 @@ export class ElevenLabsSTTAdapter implements STTAdapter {
         closeTimeout = setTimeout(() => {
           logger.warn('Timeout waiting for final transcript, closing ElevenLabs STT connection');
           if (ws.readyState !== WebSocket.CLOSED) ws.close();
-        }, 3000);
+        }, 5000);
       },
     };
   }

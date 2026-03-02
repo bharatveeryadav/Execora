@@ -143,14 +143,27 @@ export interface Product {
   price: string | number;
   unit: string;
   stock: number;
+  minStock?: number;
   isActive: boolean;
   createdAt: string;
+}
+
+export interface TopSellingProduct {
+  productId: string;
+  productName: string;
+  unit: string;
+  category: string;
+  price: string;
+  stock: number;
+  soldQty: number;
 }
 
 export interface InvoiceItem {
   id: string;
   productId: string;
   productName?: string;
+  /** Populated when backend includes the product relation (getRecentInvoices, getInvoiceById) */
+  product?: { id: string; name: string; unit?: string };
   quantity: number;
   unitPrice: string | number;
   itemTotal: string | number;
@@ -161,7 +174,7 @@ export interface Invoice {
   customerId: string;
   customer?: Customer;
   invoiceNo: string;
-  status: "draft" | "issued" | "paid" | "cancelled";
+  status: "draft" | "pending" | "partial" | "paid" | "cancelled";
   subtotal: string | number;
   gstAmount: string | number;
   total: string | number;
@@ -250,6 +263,8 @@ export const invoiceApi = {
 export const productApi = {
   list: () => request<{ products: Product[] }>("/api/v1/products"),
   lowStock: () => request<{ products: Product[] }>("/api/v1/products/low-stock"),
+  topSelling: (limit = 5, days = 30) =>
+    request<{ products: TopSellingProduct[] }>(`/api/v1/products/top-selling?limit=${limit}&days=${days}`),
   create: (data: { name: string; price: number; stock: number; unit?: string; category?: string; description?: string }) =>
     request<{ product: Product }>("/api/v1/products", { method: "POST", body: JSON.stringify(data) }),
   update: (id: string, data: { name?: string; price?: number; stock?: number; unit?: string; category?: string; description?: string }) =>

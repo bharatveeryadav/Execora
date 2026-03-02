@@ -65,6 +65,41 @@ class LedgerService {
           },
         });
 
+        // Auto-apply payment to oldest unpaid invoices (khata-style settlement).
+        // Marks each invoice as 'paid' or 'partial' as the payment is consumed.
+        const pendingInvoices = await tx.invoice.findMany({
+          where: {
+            customerId,
+            tenantId: tenantContext.get().tenantId,
+            status: { in: ['pending', 'partial'] },
+          },
+          orderBy: { invoiceDate: 'asc' },
+          select: { id: true, total: true, paidAmount: true },
+        });
+
+        let remaining = amount;
+        for (const inv of pendingInvoices) {
+          if (remaining <= 0) break;
+          const invTotal = parseFloat(inv.total.toString());
+          const invPaid  = parseFloat((inv.paidAmount ?? 0).toString());
+          const invDue   = Math.round((invTotal - invPaid) * 100) / 100;
+          if (invDue <= 0) continue;
+
+          if (remaining >= invDue) {
+            await tx.invoice.update({
+              where: { id: inv.id },
+              data:  { status: 'paid', paidAmount: new Decimal(invTotal), paidAt: new Date() },
+            });
+            remaining = Math.round((remaining - invDue) * 100) / 100;
+          } else {
+            await tx.invoice.update({
+              where: { id: inv.id },
+              data:  { status: 'partial', paidAmount: new Decimal(invPaid + remaining) },
+            });
+            remaining = 0;
+          }
+        }
+
         logger.info({ customerId, amount, paymentMode }, 'Payment recorded');
         paymentProcessing.inc({ status: 'success' });
         paymentAmount.observe({ customer_id: customerId }, amount);

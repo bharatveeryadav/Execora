@@ -14,6 +14,13 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
     return { invoices };
   });
 
+  // ── GET /api/v1/invoices/:id — single invoice with items + customer ─────────
+  fastify.get<{ Params: { id: string } }>('/api/v1/invoices/:id', async (request, reply) => {
+    const invoice = await invoiceService.getInvoiceById(request.params.id);
+    if (!invoice) return reply.code(404).send({ error: 'Invoice not found' });
+    return { invoice };
+  });
+
   fastify.post('/api/v1/invoices', {
     schema: {
       body: {

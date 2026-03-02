@@ -93,25 +93,33 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 
     const offs = [
       wsClient.on("voice:response", (msg) => {
-        const payload = msg as { data?: { text?: string; invoice?: { items?: { productName: string; quantity: number; unitPrice?: number }[] }; customer?: { name?: string } }; text?: string };
+        const payload = msg as {
+          data?: {
+            text?: string;
+            executionResult?: {
+              data?: {
+                resolvedItems?: { productName: string; quantity: number; unitPrice?: number; total?: number }[];
+                customerName?: string;
+              };
+            };
+          };
+          text?: string;
+        };
         const text = payload.data?.text ?? payload.text ?? "";
         setTranscript(text);
 
-        // If response includes parsed invoice data
-        const inv = payload.data?.invoice;
-        if (inv?.items?.length) {
-          const parsedItems: InvoiceItem[] = inv.items.map((it) => ({
+        // Extract resolved invoice items from executionResult (CREATE_INVOICE path)
+        const resolvedItems = payload.data?.executionResult?.data?.resolvedItems;
+        if (resolvedItems?.length) {
+          const parsedItems: InvoiceItem[] = resolvedItems.map((it) => ({
             name: it.productName,
             qty: String(it.quantity),
             price: it.unitPrice ?? 0,
-            total: (it.unitPrice ?? 0) * it.quantity,
+            total: it.total ?? (it.unitPrice ?? 0) * it.quantity,
           }));
           setItems(parsedItems);
-          setStep("confirmation");
-        } else {
-          // Use transcript to move forward
-          setStep("confirmation");
         }
+        setStep("confirmation");
       }),
       wsClient.on("voice:thinking", () => {
         setStep("processing");
@@ -123,14 +131,19 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
         if (text) setTranscript(text);
       }),
       wsClient.on("invoice:draft", (msg) => {
-        const payload = msg as { data?: { items?: { productName: string; quantity: number; unitPrice?: number }[] } };
-        const inv = payload.data?.items;
-        if (inv?.length) {
-          const parsedItems: InvoiceItem[] = inv.map((it) => ({
+        const payload = msg as {
+          data?: {
+            resolvedItems?: { productName: string; quantity: number; unitPrice?: number; total?: number }[];
+            items?: { productName: string; quantity: number; unitPrice?: number }[];
+          };
+        };
+        const rawItems = payload.data?.resolvedItems ?? payload.data?.items;
+        if (rawItems?.length) {
+          const parsedItems: InvoiceItem[] = rawItems.map((it) => ({
             name: it.productName,
             qty: String(it.quantity),
             price: it.unitPrice ?? 0,
-            total: (it.unitPrice ?? 0) * it.quantity,
+            total: (it as { total?: number }).total ?? (it.unitPrice ?? 0) * it.quantity,
           }));
           setItems(parsedItems);
           setStep("confirmation");
@@ -174,7 +187,7 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
         return;
       }
       const rec = new SR();
-      rec.lang = "hi-IN";
+      rec.lang = navigator.language?.startsWith("hi") ? "hi-IN" : (navigator.language || "hi-IN");
       rec.onstart = () => { setIsListening(true); setStep("listening"); setProgress(0); };
       rec.onend = () => { setIsListening(false); setStep("processing"); };
       rec.onerror = () => { setIsListening(false); setError("Voice error. Please try again."); setStep("start"); };
@@ -210,15 +223,10 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
       wsClient.send("voice:start", {});
 
       const sessionReady = await new Promise<boolean>((resolve) => {
-        const timer = setTimeout(() => {
-          offStarted();
-          resolve(false);
-        }, 5000);
-        const offStarted = wsClient.on("voice:started", () => {
-          clearTimeout(timer);
-          offStarted();
-          resolve(true);
-        });
+        const finish = (ok: boolean) => { clearTimeout(timer); offStarted(); offErr(); resolve(ok); };
+        const timer = setTimeout(() => finish(false), 5000);
+        const offStarted = wsClient.on("voice:started", () => finish(true));
+        const offErr = wsClient.on("error", () => finish(false));
       });
 
       if (!sessionReady) {

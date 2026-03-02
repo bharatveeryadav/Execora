@@ -54,9 +54,6 @@ const DashboardHeader = () => {
                 {pendingCount > 9 ? "9+" : pendingCount}
               </span>
             )}
-            {pendingCount === 0 && (
-              <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-destructive" />
-            )}
           </Button>
           <Button variant="ghost" size="icon">
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">

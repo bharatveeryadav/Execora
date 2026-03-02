@@ -1,0 +1,34 @@
+services:
+  # Bind all ports to loopback only when exposing through Tailscale Funnel.
+  app:
+    ports:
+      - "127.0.0.1:3006:3006"
+
+  postgres:
+    ports:
+      - "127.0.0.1:15432:5432"
+
+  redis:
+    ports:
+      - "127.0.0.1:16379:6379"
+
+  minio:
+    ports:
+      - "127.0.0.1:19000:9000"
+      - "127.0.0.1:19001:9001"
+
+  # Disable dev/admin UIs by default in tailscale public mode.
+  pgadmin:
+    profiles: ["dev-tools"]
+    ports:
+      - "127.0.0.1:15050:80"
+
+  adminer:
+    profiles: ["dev-tools"]
+    ports:
+      - "127.0.0.1:18081:8080"
+
+  redis-commander:
+    profiles: ["dev-tools"]
+    ports:
+      - "127.0.0.1:18082:8081"

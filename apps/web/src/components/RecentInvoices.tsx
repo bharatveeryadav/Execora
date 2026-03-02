@@ -1,16 +1,23 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useInvoices } from "@/hooks/useQueries";
 
-const invoices = [
-  { time: "10:45AM", id: "INV-234", customer: "Ramesh Sharma", items: "2kg Rice, 1L Oil", amount: "₹340", status: "Pending" },
-  { time: "10:15AM", id: "INV-233", customer: "Priya Gupta", items: "5kg Atta, 1kg Sugar", amount: "₹450", status: "Paid" },
-  { time: "09:30AM", id: "INV-232", customer: "Walk-in", items: "1 Packet Biscuit", amount: "₹50", status: "Paid" },
-  { time: "09:15AM", id: "INV-231", customer: "Suresh Patel", items: "3L Milk, 2 Bread", amount: "₹240", status: "Pending" },
-  { time: "08:45AM", id: "INV-230", customer: "Amit Singh", items: "1L Oil, 2kg Rice", amount: "₹280", status: "Pending" },
-];
+function formatTime(dateStr: string): string {
+  return new Date(dateStr).toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function formatCurrency(val: string | number): string {
+  return `₹${Number(val).toLocaleString("en-IN")}`;
+}
 
 const RecentInvoices = () => {
+  const { data: invoices = [], isLoading } = useInvoices(10);
+
   return (
     <Card className="border-none shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between pb-3">
@@ -35,27 +42,60 @@ const RecentInvoices = () => {
               </tr>
             </thead>
             <tbody>
-              {invoices.map((inv) => (
-                <tr key={inv.id} className="border-b last:border-none hover:bg-muted/30 transition-colors">
-                  <td className="px-4 py-3 text-muted-foreground">{inv.time}</td>
-                  <td className="px-4 py-3 font-medium">{inv.id}</td>
-                  <td className="px-4 py-3">{inv.customer}</td>
-                  <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">{inv.items}</td>
-                  <td className="px-4 py-3 text-right font-semibold">{inv.amount}</td>
-                  <td className="px-4 py-3 text-right">
-                    <Badge
-                      variant={inv.status === "Paid" ? "default" : "secondary"}
-                      className={
-                        inv.status === "Paid"
-                          ? "bg-success text-success-foreground"
-                          : "bg-warning/15 text-warning border-warning/30"
-                      }
-                    >
-                      {inv.status === "Paid" ? "✅ Paid" : "⏳ Pending"}
-                    </Badge>
+              {isLoading && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground text-xs">
+                    Loading…
                   </td>
                 </tr>
-              ))}
+              )}
+              {!isLoading && invoices.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground text-xs">
+                    No invoices yet
+                  </td>
+                </tr>
+              )}
+              {invoices.map((inv) => {
+                const isPaid = inv.status === "paid";
+                const isPartial = inv.status === "partial";
+                const isCancelled = inv.status === "cancelled";
+                const itemCount = inv.items?.length ?? 0;
+                return (
+                  <tr
+                    key={inv.id}
+                    className="border-b last:border-none hover:bg-muted/30 transition-colors"
+                  >
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {formatTime(inv.createdAt)}
+                    </td>
+                    <td className="px-4 py-3 font-medium">{inv.invoiceNo}</td>
+                    <td className="px-4 py-3">{inv.customer?.name ?? "—"}</td>
+                    <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
+                      {itemCount} item{itemCount !== 1 ? "s" : ""}
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold">
+                      {formatCurrency(inv.total)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Badge
+                        variant={isCancelled ? "destructive" : isPaid ? "default" : "secondary"}
+                        className={
+                          isPaid
+                            ? "bg-success text-success-foreground"
+                            : isCancelled
+                            ? ""
+                            : isPartial
+                            ? "bg-blue-500/15 text-blue-600 border-blue-500/30"
+                            : "bg-warning/15 text-warning border-warning/30"
+                        }
+                      >
+                        {isPaid ? "✅ Paid" : isCancelled ? "❌ Cancelled" : isPartial ? "🔵 Partial" : "⏳ Pending"}
+                      </Badge>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

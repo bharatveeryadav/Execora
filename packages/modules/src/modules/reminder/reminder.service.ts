@@ -472,6 +472,48 @@ class ReminderService {
   async scheduleNextOccurrence(reminderId: string) {
     return scheduleNextReminderOccurrence(reminderId);
   }
+
+  /**
+   * Bulk-schedule reminders for multiple customers (e.g. all with overdue balance).
+   * daysOffset: how many days from now to schedule (default 0 = today 6pm IST).
+   */
+  async bulkScheduleReminders(data: {
+    customerIds: string[];
+    message?: string;
+    daysOffset?: number;
+  }) {
+    const { customerIds, message, daysOffset = 0 } = data;
+
+    // Schedule time: today (+ daysOffset) at 18:00 IST
+    const tz = config.timezone ?? 'Asia/Kolkata';
+    const base = new Date();
+    base.setDate(base.getDate() + daysOffset);
+    base.setHours(0, 0, 0, 0);
+    const scheduledTime = fromZonedTime(
+      new Date(base.getFullYear(), base.getMonth(), base.getDate(), 18, 0, 0),
+      tz
+    );
+
+    // Fetch customers to get their current balance
+    const customers = await prisma.customer.findMany({
+      where: { id: { in: customerIds }, balance: { gt: 0 } },
+      select: { id: true, balance: true },
+    });
+
+    const reminders = await Promise.all(
+      customers.map((c) =>
+        this.scheduleReminder(
+          c.id,
+          parseFloat(c.balance.toString()),
+          scheduledTime.toISOString(),
+          message
+        )
+      )
+    );
+
+    logger.info({ count: reminders.length, daysOffset }, 'Bulk reminders scheduled');
+    return reminders;
+  }
 }
 
 export const reminderService = new ReminderService();

@@ -9,8 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { useProducts, useLowStockProducts, useInvoices, useCreateProduct } from "@/hooks/useQueries";
-import { formatCurrency } from "@/lib/api";
+import { useProducts, useLowStockProducts, useInvoices, useCreateProduct, useUpdateProduct, useAdjustStock } from "@/hooks/useQueries";
+import { formatCurrency, type Product } from "@/lib/api";
 
 const voiceCommands = [
   "Show low stock", "Find expiring products", "Search rice", "Show all products",
@@ -26,14 +26,61 @@ const Inventory = () => {
   const { data: products = [], isLoading: productsLoading } = useProducts();
   const { data: lowStock = [], isLoading: lowStockLoading } = useLowStockProducts();
   const { data: allInvoices = [] } = useInvoices(200);
-  const createProduct = useCreateProduct();
+  const createProduct  = useCreateProduct();
+  const updateProduct  = useUpdateProduct();
+  const adjustStock    = useAdjustStock();
+
+  // ── Edit product state ─────────────────────────────────────────────────────
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editName, setEditName]     = useState("");
+  const [editPrice, setEditPrice]   = useState("");
+  const [editCategory, setEditCategory] = useState("");
+
+  // ── Stock adjust state ─────────────────────────────────────────────────────
+  const [adjustingProduct, setAdjustingProduct] = useState<Product | null>(null);
+  const [adjustQty, setAdjustQty]         = useState("1");
+  const [adjustOp, setAdjustOp]           = useState<"add" | "subtract">("add");
+
+  const openEdit = (p: Product) => {
+    setEditingProduct(p);
+    setEditName(p.name);
+    setEditPrice(String(parseFloat(String(p.price))));
+    setEditCategory(p.category ?? "");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingProduct) return;
+    await updateProduct.mutateAsync({
+      id: editingProduct.id,
+      name: editName || undefined,
+      price: editPrice ? parseFloat(editPrice) : undefined,
+      category: editCategory || undefined,
+    });
+    toast({ title: "✅ Product updated" });
+    setEditingProduct(null);
+  };
+
+  const handleAdjustStock = async () => {
+    if (!adjustingProduct) return;
+    const qty = parseInt(adjustQty, 10);
+    if (!qty || qty <= 0) { toast({ title: "⚠️ Enter a valid quantity", variant: "destructive" }); return; }
+    try {
+      await adjustStock.mutateAsync({ id: adjustingProduct.id, quantity: qty, operation: adjustOp });
+      toast({ title: `✅ Stock ${adjustOp === "add" ? "added" : "reduced"} by ${qty}` });
+      setAdjustingProduct(null);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Stock update failed";
+      toast({ title: "❌ Cannot update stock", description: msg, variant: "destructive" });
+    }
+  };
 
   // Compute per-product sales from invoice items
   const salesMap = new Map<string, { units: number; revenue: number }>();
   for (const inv of allInvoices) {
     if (inv.status === "cancelled") continue;
     for (const item of inv.items ?? []) {
-      const name = item.productName ?? "Unknown";
+      // Backend includes items via relation: item.product.name (not item.productName column)
+      const name = item.product?.name ?? item.productName ?? "Unknown";
       const existing = salesMap.get(name) ?? { units: 0, revenue: 0 };
       salesMap.set(name, {
         units: existing.units + item.quantity,
@@ -96,7 +143,16 @@ const Inventory = () => {
     .slice(0, 8);
 
   const handleAddProduct = async () => {
-    toast({ title: "Add Product", description: "Feature coming soon" });
+    // Opens browser prompt as a lightweight flow; full form can be added later
+    const name = window.prompt("Product name:");
+    if (!name?.trim()) return;
+    const priceStr = window.prompt("Selling price (₹):");
+    const price = parseFloat(priceStr ?? "0");
+    const stockStr = window.prompt("Opening stock (units):");
+    const stock = parseInt(stockStr ?? "0", 10);
+    if (isNaN(price) || isNaN(stock)) { toast({ title: "⚠️ Invalid input", variant: "destructive" }); return; }
+    await createProduct.mutateAsync({ name: name.trim(), price, stock });
+    toast({ title: `✅ "${name}" added` });
   };
 
   return (
@@ -430,11 +486,11 @@ const Inventory = () => {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
-                              <Button size="sm" variant="ghost" className="h-7 text-xs">
+                              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => openEdit(p)}>
                                 <Edit className="mr-1 h-3 w-3" /> Edit
                               </Button>
-                              <Button size="sm" variant="outline" className="h-7 text-xs">
-                                <ShoppingCart className="mr-1 h-3 w-3" /> Order
+                              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setAdjustingProduct(p); setAdjustQty("1"); setAdjustOp("add"); }}>
+                                <ShoppingCart className="mr-1 h-3 w-3" /> Stock
                               </Button>
                             </div>
                           </TableCell>
@@ -503,6 +559,66 @@ const Inventory = () => {
 
         <div className="h-4" />
       </main>
+
+      {/* ── Edit Product Modal ──────────────────────────────────────────── */}
+      {editingProduct && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={() => setEditingProduct(null)}>
+          <div className="w-full max-w-md rounded-t-2xl bg-card p-5 shadow-xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="mb-4 text-base font-bold">✏️ Edit Product</h2>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">Name</label>
+                <input className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={editName} onChange={(e) => setEditName(e.target.value)} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">Price (₹)</label>
+                <input type="number" min="0" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">Category</label>
+                <input className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} />
+              </div>
+            </div>
+            <div className="mt-4 flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setEditingProduct(null)}>Cancel</Button>
+              <Button className="flex-1" onClick={handleSaveEdit} disabled={updateProduct.isPending}>
+                {updateProduct.isPending ? "Saving…" : "Save"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Adjust Stock Modal ─────────────────────────────────────────── */}
+      {adjustingProduct && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={() => setAdjustingProduct(null)}>
+          <div className="w-full max-w-md rounded-t-2xl bg-card p-5 shadow-xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="mb-1 text-base font-bold">📦 Adjust Stock</h2>
+            <p className="mb-4 text-sm text-muted-foreground">{adjustingProduct.name} · Current: {adjustingProduct.stock} {adjustingProduct.unit}</p>
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <button onClick={() => setAdjustOp("add")} className={`flex-1 rounded-lg border py-2 text-sm font-medium transition-colors ${adjustOp === "add" ? "border-primary bg-primary/10 text-primary" : "border-border"}`}>
+                  + Add Stock
+                </button>
+                <button onClick={() => setAdjustOp("subtract")} className={`flex-1 rounded-lg border py-2 text-sm font-medium transition-colors ${adjustOp === "subtract" ? "border-destructive bg-destructive/10 text-destructive" : "border-border"}`}>
+                  - Remove Stock
+                </button>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">Quantity</label>
+                <input type="number" min="1" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={adjustQty} onChange={(e) => setAdjustQty(e.target.value)} />
+              </div>
+            </div>
+            <div className="mt-4 flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setAdjustingProduct(null)}>Cancel</Button>
+              <Button className="flex-1" onClick={handleAdjustStock} disabled={adjustStock.isPending}
+                variant={adjustOp === "subtract" ? "destructive" : "default"}>
+                {adjustStock.isPending ? "Saving…" : (adjustOp === "add" ? `+ Add ${adjustQty}` : `- Remove ${adjustQty}`)}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Mic, Save, UserPlus, Users, HardDrive, Download, RefreshCw } from "lucide-react";
+import { ArrowLeft, Mic, Save, UserPlus, Users, HardDrive, Download, RefreshCw, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,8 +11,13 @@ import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 
+const TTS_STORAGE_KEY = "execora:ttsProvider";
+
 const Settings = () => {
   const navigate = useNavigate();
+  const [ttsProvider, setTtsProvider] = useState<string>(
+    () => localStorage.getItem(TTS_STORAGE_KEY) ?? "browser",
+  );
   const [notifications, setNotifications] = useState({
     whatsapp: true,
     email: true,
@@ -130,6 +135,38 @@ const Settings = () => {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Voice Assistant */}
+        <Card className="border-none shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Volume2 className="h-4 w-4 text-muted-foreground" />
+              Voice Assistant
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Text-to-Speech Provider</Label>
+              <Select
+                value={ttsProvider}
+                onValueChange={(v) => {
+                  setTtsProvider(v);
+                  localStorage.setItem(TTS_STORAGE_KEY, v);
+                }}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="browser">Browser Speech (Free · built-in)</SelectItem>
+                  <SelectItem value="elevenlabs">ElevenLabs (High quality · Indian voices)</SelectItem>
+                  <SelectItem value="openai">OpenAI TTS (Fast · multilingual)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Controls which engine speaks the AI responses. ElevenLabs and OpenAI require API keys configured on the server.
+              </p>
             </div>
           </CardContent>
         </Card>

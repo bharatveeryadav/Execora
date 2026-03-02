@@ -1,33 +1,50 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   summaryApi, customerApi, invoiceApi, productApi, ledgerApi, reminderApi,
-  type Customer, type Invoice, type Product, type LedgerEntry, type Reminder, type DailySummary,
+  type Customer, type Invoice, type Product, type TopSellingProduct, type LedgerEntry, type Reminder,
+  type DailySummary, type SummaryRange,
 } from "@/lib/api";
 
 // ── Query keys ────────────────────────────────────────────────────────────────
 
 export const QK = {
   summary: ["summary", "daily"],
+  summaryRange: (from: string, to: string) => ["summary", "range", from, to],
   customers: (q = "") => ["customers", q],
   customer: (id: string) => ["customer", id],
+  customerInvoices: (id: string, limit?: number) => ["customer", id, "invoices", limit],
   invoices: (limit?: number) => ["invoices", limit],
+  invoice: (id: string) => ["invoice", id],
   products: ["products"],
   lowStock: ["products", "low-stock"],
+  topSelling: (limit: number, days: number) => ["products", "top-selling", limit, days],
   reminders: (customerId?: string) => ["reminders", customerId],
   ledger: (customerId: string, limit?: number) => ["ledger", customerId, limit],
 } as const;
 
 // ── Summary ───────────────────────────────────────────────────────────────────
 
-export function useDailySummary() {
+export function useDailySummary(date?: string) {
   return useQuery<DailySummary>({
-    queryKey: QK.summary,
+    queryKey: date ? ["summary", "daily", date] : QK.summary,
     queryFn: async () => {
-      const data = await summaryApi.daily();
+      const data = await summaryApi.daily(date);
       return data.summary;
     },
     refetchInterval: 60_000,
     staleTime: 30_000,
+  });
+}
+
+export function useSummaryRange(from: string, to: string) {
+  return useQuery<SummaryRange>({
+    queryKey: QK.summaryRange(from, to),
+    queryFn: async () => {
+      const data = await summaryApi.range(from, to);
+      return data.summary;
+    },
+    enabled: Boolean(from && to),
+    staleTime: 120_000,
   });
 }
 
@@ -64,7 +81,31 @@ export function useCreateCustomer() {
   });
 }
 
+export function useCustomerInvoices(customerId: string, limit = 50) {
+  return useQuery<Invoice[]>({
+    queryKey: QK.customerInvoices(customerId, limit),
+    queryFn: async () => {
+      const data = await customerApi.invoices(customerId, limit);
+      return data.invoices ?? [];
+    },
+    enabled: Boolean(customerId),
+    staleTime: 30_000,
+  });
+}
+
 // ── Invoices ──────────────────────────────────────────────────────────────────
+
+export function useInvoice(id: string) {
+  return useQuery<Invoice>({
+    queryKey: QK.invoice(id),
+    queryFn: async () => {
+      const data = await invoiceApi.getById(id);
+      return data.invoice;
+    },
+    enabled: Boolean(id),
+    staleTime: 60_000,
+  });
+}
 
 export function useInvoices(limit = 50) {
   return useQuery<Invoice[]>({
@@ -126,11 +167,47 @@ export function useLowStockProducts() {
   });
 }
 
+export function useTopSellingProducts(limit = 5, days = 30) {
+  return useQuery<TopSellingProduct[]>({
+    queryKey: QK.topSelling(limit, days),
+    queryFn: async () => {
+      const data = await productApi.topSelling(limit, days);
+      return data.products ?? [];
+    },
+    refetchInterval: 120_000,
+    staleTime: 60_000,
+  });
+}
+
 export function useCreateProduct() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { name: string; price: number; stock: number; unit?: string; description?: string }) =>
+    mutationFn: (data: { name: string; price: number; stock: number; unit?: string; category?: string; description?: string }) =>
       productApi.create(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: QK.products });
+      qc.invalidateQueries({ queryKey: QK.lowStock });
+    },
+  });
+}
+
+export function useUpdateProduct() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; name?: string; price?: number; stock?: number; unit?: string; category?: string; description?: string }) =>
+      productApi.update(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: QK.products });
+      qc.invalidateQueries({ queryKey: QK.lowStock });
+    },
+  });
+}
+
+export function useAdjustStock() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: string; quantity: number; operation: "add" | "subtract"; reason?: string }) =>
+      productApi.adjustStock(id, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QK.products });
       qc.invalidateQueries({ queryKey: QK.lowStock });
@@ -193,6 +270,15 @@ export function useCancelReminder() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => reminderApi.cancel(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["reminders"] }),
+  });
+}
+
+export function useBulkReminders() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { customerIds: string[]; message?: string; daysOffset?: number }) =>
+      reminderApi.bulkCreate(data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["reminders"] }),
   });
 }

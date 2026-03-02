@@ -545,6 +545,54 @@ class InvoiceService {
   }
 
   /**
+   * Top-selling products by units sold — aggregates InvoiceItem quantities
+   * for the last N days for this tenant.
+   */
+  async getTopSelling(limit: number = 5, days: number = 30): Promise<Array<{
+    productId: string; productName: string; unit: string;
+    category: string; price: string; stock: number; soldQty: number;
+  }>> {
+    const { tenantId } = tenantContext.get();
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    since.setHours(0, 0, 0, 0);
+
+    const rows = await prisma.$queryRaw<Array<{
+      product_id: string; product_name: string; unit: string;
+      category: string; price: string; stock: number; sold_qty: string;
+    }>>`
+      SELECT
+        ii.product_id,
+        ii.product_name,
+        COALESCE(p.unit, 'piece') AS unit,
+        COALESCE(p.category, 'General') AS category,
+        COALESCE(p.price::text, '0') AS price,
+        COALESCE(p.stock, 0) AS stock,
+        SUM(ii.quantity)::text AS sold_qty
+      FROM invoice_items ii
+      JOIN invoices i ON ii.invoice_id = i.id
+      LEFT JOIN products p ON ii.product_id = p.id
+      WHERE i.tenant_id = ${tenantId}
+        AND i.invoice_date >= ${since}
+        AND i.status != 'cancelled'
+        AND ii.product_id IS NOT NULL
+      GROUP BY ii.product_id, ii.product_name, p.unit, p.category, p.price, p.stock
+      ORDER BY sold_qty DESC
+      LIMIT ${limit}
+    `;
+
+    return rows.map((r) => ({
+      productId:   r.product_id,
+      productName: r.product_name,
+      unit:        r.unit,
+      category:    r.category,
+      price:       r.price,
+      stock:       Number(r.stock),
+      soldQty:     Math.round(parseFloat(r.sold_qty ?? '0')),
+    }));
+  }
+
+  /**
    * Date-range sales summary (used for period reports: This Week / This Month / Custom).
    */
   async getSummaryRange(from: Date, to: Date) {
