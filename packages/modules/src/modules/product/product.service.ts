@@ -128,6 +128,37 @@ class ProductService {
   }
 
   /**
+   * Update product fields (name, price, stock, unit, category, description).
+   * Only updates fields that are explicitly provided.
+   */
+  async updateProduct(
+    productId: string,
+    data: {
+      name?: string;
+      price?: number;
+      stock?: number;
+      unit?: string;
+      category?: string;
+      description?: string;
+    }
+  ) {
+    const updateData: Record<string, unknown> = {};
+    if (data.name !== undefined)        updateData.name        = data.name;
+    if (data.price !== undefined)       updateData.price       = new Decimal(data.price);
+    if (data.stock !== undefined)       updateData.stock       = data.stock;
+    if (data.unit !== undefined)        updateData.unit        = data.unit;
+    if (data.category !== undefined)    updateData.category    = data.category;
+    if (data.description !== undefined) updateData.description = data.description;
+
+    const product = await prisma.product.update({
+      where: { id: productId },
+      data: updateData as any,
+    });
+    logger.info({ productId, fields: Object.keys(updateData) }, 'Product updated');
+    return product;
+  }
+
+  /**
    * Get product stock
    */
   async getStock(productName: string): Promise<number> {

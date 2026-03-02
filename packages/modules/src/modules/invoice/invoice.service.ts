@@ -532,6 +532,66 @@ class InvoiceService {
   }
 
   /**
+   * Get a single invoice with items and customer.
+   */
+  async getInvoiceById(invoiceId: string) {
+    return await prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      include: {
+        customer: true,
+        items: { include: { product: true } },
+      },
+    });
+  }
+
+  /**
+   * Date-range sales summary (used for period reports: This Week / This Month / Custom).
+   */
+  async getSummaryRange(from: Date, to: Date) {
+    const toEnd = new Date(to);
+    toEnd.setHours(23, 59, 59, 999);
+
+    const invoices = await prisma.invoice.findMany({
+      where: {
+        tenantId: tenantContext.get().tenantId,
+        invoiceDate: { gte: from, lte: toEnd },
+        status: { not: 'cancelled' },
+      },
+      select: { total: true },
+    });
+
+    const totalSales = invoices.reduce(
+      (sum, inv) => sum + parseFloat(inv.total.toString()),
+      0
+    );
+
+    const payments = await prisma.payment.findMany({
+      where: {
+        tenantId: tenantContext.get().tenantId,
+        receivedAt: { gte: from, lte: toEnd },
+        status: 'completed',
+      },
+      select: { amount: true, method: true },
+    });
+
+    const totalPayments  = payments.reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
+    const cashPayments   = payments.filter((p) => p.method === 'cash').reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
+    const upiPayments    = payments.filter((p) => p.method === 'upi').reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
+
+    return {
+      from: from.toISOString(),
+      to:   toEnd.toISOString(),
+      invoiceCount:  invoices.length,
+      totalSales,
+      totalPayments,
+      cashPayments,
+      upiPayments,
+      pendingAmount: Math.max(0, totalSales - totalPayments),
+      extraPayments: Math.max(0, totalPayments - totalSales),
+    };
+  }
+
+  /**
    * Daily sales summary.
    */
   async getDailySummary(date: Date = new Date()) {
