@@ -138,6 +138,37 @@ export interface Customer {
 	updatedAt: string;
 }
 
+export interface TenantProfile {
+	id: string;
+	name: string;
+	plan: string;
+	status: string;
+	features?: Record<string, boolean>;
+	gstin?: string | null;
+	legalName?: string | null;
+	tradeName?: string | null;
+	currency?: string;
+	timezone?: string;
+	language?: string;
+	dateFormat?: string;
+	settings?: Record<string, unknown>;
+}
+
+export interface AppUser {
+	id: string;
+	email: string;
+	name: string;
+	phone?: string | null;
+	role: string;
+	permissions: string[];
+	isActive?: boolean;
+	lastLogin?: string | null;
+	createdAt?: string;
+	tenantId?: string;
+	tenant?: TenantProfile;
+	preferences?: Record<string, unknown>;
+}
+
 export interface Product {
 	id: string;
 	name: string;
@@ -347,6 +378,53 @@ export const reminderApi = {
 		request<{ reminders: Reminder[] }>('/api/v1/reminders/bulk', { method: 'POST', body: JSON.stringify(data) }),
 };
 
+export const authApi = {
+	me: () => request<{ user: AppUser }>('/api/v1/auth/me'),
+	updateProfile: (data: {
+		name?: string;
+		phone?: string;
+		preferences?: Record<string, unknown>;
+		tenant?: {
+			name?: string;
+			legalName?: string;
+			tradeName?: string;
+			gstin?: string;
+			currency?: string;
+			timezone?: string;
+			language?: string;
+			dateFormat?: string;
+			settings?: Record<string, unknown>;
+		};
+	}) =>
+		request<{ user: AppUser }>('/api/v1/auth/me/profile', {
+			method: 'PUT',
+			body: JSON.stringify(data),
+		}),
+};
+
+export const usersApi = {
+	list: () => request<{ users: AppUser[] }>('/api/v1/users'),
+	create: (data: {
+		email: string;
+		name: string;
+		phone?: string;
+		role: 'admin' | 'manager' | 'staff' | 'viewer';
+		password: string;
+		permissions?: string[];
+	}) => request<{ user: AppUser }>('/api/v1/users', { method: 'POST', body: JSON.stringify(data) }),
+	update: (
+		id: string,
+		data: {
+			name?: string;
+			phone?: string;
+			role?: 'admin' | 'manager' | 'staff' | 'viewer';
+			permissions?: string[];
+			isActive?: boolean;
+		}
+	) => request<{ user: AppUser }>(`/api/v1/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+	remove: (id: string) => request<{ success: boolean }>(`/api/v1/users/${id}`, { method: 'DELETE' }),
+};
+
 export const mixedPaymentApi = {
 	record: (data: {
 		customerId: string;
@@ -362,95 +440,95 @@ export const mixedPaymentApi = {
 // ── Report types ───────────────────────────────────────────────────────────────
 
 export interface Gstr1Totals {
-	totalTaxableValue:  number;
-	totalIgst:         number;
-	totalCgst:         number;
-	totalSgst:         number;
-	totalCess:         number;
-	totalTaxValue:     number;
+	totalTaxableValue: number;
+	totalIgst: number;
+	totalCgst: number;
+	totalSgst: number;
+	totalCess: number;
+	totalTaxValue: number;
 	totalInvoiceValue: number;
-	invoiceCount:      number;
+	invoiceCount: number;
 }
 
 export interface Gstr1B2BEntry {
-	receiverGstin:  string;
-	receiverName:   string;
-	invoiceNo:      string;
-	invoiceDate:    string;
-	invoiceValue:   number;
-	placeOfSupply:  string;
-	reverseCharge:  string;
-	taxableValue:   number;
-	igst:           number;
-	cgst:           number;
-	sgst:           number;
-	cess:           number;
+	receiverGstin: string;
+	receiverName: string;
+	invoiceNo: string;
+	invoiceDate: string;
+	invoiceValue: number;
+	placeOfSupply: string;
+	reverseCharge: string;
+	taxableValue: number;
+	igst: number;
+	cgst: number;
+	sgst: number;
+	cess: number;
 }
 
 export interface Gstr1B2CSEntry {
-	supplyType:    string;
+	supplyType: string;
 	placeOfSupply: string;
-	gstRate:       number;
-	taxableValue:  number;
-	igst:          number;
-	cgst:          number;
-	sgst:          number;
-	cess:          number;
+	gstRate: number;
+	taxableValue: number;
+	igst: number;
+	cgst: number;
+	sgst: number;
+	cess: number;
 }
 
 export interface Gstr1HsnEntry {
-	hsnCode:      string;
-	description:  string;
-	uqc:          string;
-	totalQty:     number;
+	hsnCode: string;
+	description: string;
+	uqc: string;
+	totalQty: number;
 	taxableValue: number;
-	igst:         number;
-	cgst:         number;
-	sgst:         number;
-	gstRate:      number;
+	igst: number;
+	cgst: number;
+	sgst: number;
+	gstRate: number;
 }
 
 export interface Gstr1Report {
-	period:    { from: string; to: string };
-	fy:        string;
-	gstin:     string;
+	period: { from: string; to: string };
+	fy: string;
+	gstin: string;
 	legalName: string;
-	b2b:       Gstr1B2BEntry[];
-	b2cs:      Gstr1B2CSEntry[];
-	b2cl:      unknown[];
-	hsn:       Gstr1HsnEntry[];
-	totals:    Gstr1Totals;
+	b2b: Gstr1B2BEntry[];
+	b2cs: Gstr1B2CSEntry[];
+	b2cl: unknown[];
+	hsn: Gstr1HsnEntry[];
+	totals: Gstr1Totals;
 }
 
 export interface PnlMonthEntry {
-	month:        string;
+	month: string;
 	invoiceCount: number;
-	revenue:      number;
+	revenue: number;
 	taxCollected: number;
-	discounts:    number;
-	collected:    number;
-	outstanding:  number;
-	netRevenue:   number;
+	discounts: number;
+	collected: number;
+	outstanding: number;
+	netRevenue: number;
 }
 
 export interface PnlTotals {
-	invoiceCount:   number;
-	revenue:        number;
-	taxCollected:   number;
-	discounts:      number;
-	collected:      number;
-	outstanding:    number;
-	netRevenue:     number;
+	invoiceCount: number;
+	revenue: number;
+	taxCollected: number;
+	discounts: number;
+	collected: number;
+	outstanding: number;
+	netRevenue: number;
 	collectionRate: number;
 }
 
 export interface PnlReport {
-	period:  { from: string; to: string };
-	months:  PnlMonthEntry[];
-	totals:  PnlTotals;
+	period: { from: string; to: string };
+	months: PnlMonthEntry[];
+	totals: PnlTotals;
 	comparison?: Array<{
-		label:         string;
-		currentValue:  number;
+		label: string;
+		currentValue: number;
 		previousValue: number;
 		changePercent: number;
 	}>;
@@ -460,64 +538,61 @@ export interface PnlReport {
 
 export interface ReportParams {
 	from?: string;
-	to?:   string;
-	fy?:   string;
+	to?: string;
+	fy?: string;
 }
 
 function buildReportQs(params: ReportParams): string {
 	const q = new URLSearchParams();
-	if (params.fy)   q.set('fy',   params.fy);
+	if (params.fy) q.set('fy', params.fy);
 	if (params.from) q.set('from', params.from);
-	if (params.to)   q.set('to',   params.to);
+	if (params.to) q.set('to', params.to);
 	const s = q.toString();
 	return s ? `?${s}` : '';
 }
 
 export const reportApi = {
-	getGstr1:  (params: ReportParams = {}) =>
+	getGstr1: (params: ReportParams = {}) =>
 		request<{ report: Gstr1Report }>(`/api/v1/reports/gstr1${buildReportQs(params)}`),
 
 	getPnl: (params: ReportParams & { compareFrom?: string; compareTo?: string } = {}) => {
 		const q = new URLSearchParams();
-		if (params.fy)          q.set('fy',          params.fy);
-		if (params.from)        q.set('from',        params.from);
-		if (params.to)          q.set('to',          params.to);
+		if (params.fy) q.set('fy', params.fy);
+		if (params.from) q.set('from', params.from);
+		if (params.to) q.set('to', params.to);
 		if (params.compareFrom) q.set('compareFrom', params.compareFrom);
-		if (params.compareTo)   q.set('compareTo',   params.compareTo);
+		if (params.compareTo) q.set('compareTo', params.compareTo);
 		const s = q.toString();
 		return request<{ report: PnlReport }>(`/api/v1/reports/pnl${s ? `?${s}` : ''}`);
 	},
 
-	downloadGstr1Pdf: (params: ReportParams = {}) =>
-		`/api/v1/reports/gstr1/pdf${buildReportQs(params)}`,
+	downloadGstr1Pdf: (params: ReportParams = {}) => `/api/v1/reports/gstr1/pdf${buildReportQs(params)}`,
 
 	downloadGstr1Csv: (params: ReportParams & { section?: 'b2b' | 'b2cs' | 'hsn' } = {}) => {
 		const q = new URLSearchParams();
-		if (params.fy)      q.set('fy',      params.fy);
-		if (params.from)    q.set('from',    params.from);
-		if (params.to)      q.set('to',      params.to);
+		if (params.fy) q.set('fy', params.fy);
+		if (params.from) q.set('from', params.from);
+		if (params.to) q.set('to', params.to);
 		if (params.section) q.set('section', params.section);
 		const s = q.toString();
 		return `/api/v1/reports/gstr1/csv${s ? `?${s}` : ''}`;
 	},
 
-	downloadPnlPdf: (params: ReportParams = {}) =>
-		`/api/v1/reports/pnl/pdf${buildReportQs(params)}`,
+	downloadPnlPdf: (params: ReportParams = {}) => `/api/v1/reports/pnl/pdf${buildReportQs(params)}`,
 
-	downloadPnlCsv: (params: ReportParams = {}) =>
-		`/api/v1/reports/pnl/csv${buildReportQs(params)}`,
+	downloadPnlCsv: (params: ReportParams = {}) => `/api/v1/reports/pnl/csv${buildReportQs(params)}`,
 
 	emailReport: (data: {
-		type:         'gstr1' | 'pnl';
-		from:         string;
-		to:           string;
-		email:        string;
-		fy?:          string;
+		type: 'gstr1' | 'pnl';
+		from: string;
+		to: string;
+		email: string;
+		fy?: string;
 		compareFrom?: string;
-		compareTo?:   string;
+		compareTo?: string;
 	}) =>
 		request<{ success: boolean; message: string }>('/api/v1/reports/email', {
 			method: 'POST',
-			body:   JSON.stringify(data),
+			body: JSON.stringify(data),
 		}),
 };
