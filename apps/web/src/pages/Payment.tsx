@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { useCustomers, useInvoices, useRecordPayment } from "@/hooks/useQueries";
 import { formatCurrency, type Customer } from "@/lib/api";
+import { fireConfetti } from "@/components/ConfettiOverlay";
 
 const paymentMethods = [
   { id: "cash", label: "Cash", icon: "💵" },
@@ -88,6 +89,7 @@ const Payment = () => {
         title: "✅ Payment Recorded",
         description: `${formatCurrency(paymentAmount)} received from ${selectedCustomer.name} via ${method}.`,
       });
+      fireConfetti();
       navigate("/");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to record payment";
@@ -215,6 +217,36 @@ const Payment = () => {
                   onChange={(e) => setAmount(e.target.value)}
                   className="pl-7 text-lg font-semibold"
                 />
+              </div>
+              {/* Quick amount presets */}
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {["100", "500", "1000", "2000", "5000"].map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setAmount(p)}
+                    className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                      amount === p
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border bg-muted text-muted-foreground hover:border-primary/60 hover:text-foreground"
+                    }`}
+                  >
+                    ₹{Number(p).toLocaleString("en-IN")}
+                  </button>
+                ))}
+                {previousBalance > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setAmount(String(previousBalance))}
+                    className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                      amount === String(previousBalance)
+                        ? "border-destructive bg-destructive text-destructive-foreground"
+                        : "border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20"
+                    }`}
+                  >
+                    ₹{previousBalance.toLocaleString("en-IN")} (Full)
+                  </button>
+                )}
               </div>
             </div>
 

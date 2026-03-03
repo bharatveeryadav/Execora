@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import DashboardHeader from "@/components/DashboardHeader";
 import DashboardGreeting from "@/components/DashboardGreeting";
 import QuickActions from "@/components/QuickActions";
@@ -14,6 +14,8 @@ import BottomNav from "@/components/BottomNav";
 import DashboardFooter from "@/components/DashboardFooter";
 
 const Index = () => {
+  useKeyboardShortcuts();
+
   return (
     <div className="min-h-screen bg-background pb-16 md:pb-0">
       <DashboardHeader />

@@ -91,3 +91,17 @@
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   }
 }
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg) scale(0.6);
+    opacity: 0;
+  }
+}

@@ -13,6 +13,7 @@ import LoginPage from "./pages/LoginPage";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { WSProvider } from "@/contexts/WSContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { ConfettiOverlay } from "@/components/ConfettiOverlay";
 
 const queryClient = new QueryClient();
 
@@ -94,6 +95,7 @@ const App = () => (
             }}
           >
             <AppRoutes />
+            <ConfettiOverlay />
           </BrowserRouter>
         </TooltipProvider>
       </WSProvider>

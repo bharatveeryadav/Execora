@@ -1,20 +1,58 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { useCustomers, useBulkReminders } from "@/hooks/useQueries";
+import { useCustomers, useBulkReminders, useInvoices } from "@/hooks/useQueries";
 import { formatCurrency } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import EmptyState from "@/components/EmptyState";
+
+function getAgingBadge(daysOverdue: number | null) {
+  if (daysOverdue === null) return null;
+  if (daysOverdue <= 0) return null;
+  const color =
+    daysOverdue >= 30
+      ? "bg-destructive/15 text-destructive border-destructive/30"
+      : daysOverdue >= 7
+      ? "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-400/30"
+      : "bg-muted text-muted-foreground border-border";
+  const icon = daysOverdue >= 30 ? "🔴" : daysOverdue >= 7 ? "🟡" : "⚪";
+  return (
+    <span className={`inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[10px] font-medium ${color}`}>
+      {icon} {daysOverdue}d
+    </span>
+  );
+}
 
 const OverduePayments = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: customers = [], isLoading } = useCustomers();
+  const { data: allInvoices = [] } = useInvoices(200);
   const bulkReminders = useBulkReminders();
 
   const overdueData = customers
     .filter((c) => parseFloat(String(c.balance)) > 0)
     .sort((a, b) => parseFloat(String(b.balance)) - parseFloat(String(a.balance)))
     .slice(0, 5);
+
+  // Compute days overdue per customer based on their oldest unpaid invoice dueDate
+  const getDaysOverdue = (customerId: string): number | null => {
+    const unpaid = allInvoices.filter(
+      (inv) =>
+        inv.customerId === customerId &&
+        inv.status !== "paid" &&
+        inv.status !== "cancelled"
+    );
+    if (unpaid.length === 0) return null;
+    const oldest = unpaid.reduce((prev, cur) => {
+      const prevDate = new Date(prev.dueDate ?? prev.createdAt).getTime();
+      const curDate = new Date(cur.dueDate ?? cur.createdAt).getTime();
+      return curDate < prevDate ? cur : prev;
+    });
+    const ref = new Date(oldest.dueDate ?? oldest.createdAt).getTime();
+    const days = Math.ceil((Date.now() - ref) / 86_400_000);
+    return days > 0 ? days : null;
+  };
 
   return (
     <Card className="border-none shadow-sm">
@@ -34,6 +72,7 @@ const OverduePayments = () => {
                 <th className="px-4 py-2.5">#</th>
                 <th className="px-4 py-2.5">Customer</th>
                 <th className="px-4 py-2.5 text-right">Amount</th>
+                <th className="hidden px-4 py-2.5 md:table-cell">Aging</th>
                 <th className="hidden px-4 py-2.5 md:table-cell">Phone</th>
                 <th className="px-4 py-2.5 text-right">Actions</th>
               </tr>
@@ -41,21 +80,36 @@ const OverduePayments = () => {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">Loading…</td>
+                  <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">Loading…</td>
                 </tr>
               ) : overdueData.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
-                    ✅ No overdue payments!
+                  <td colSpan={6} className="p-0">
+                    <EmptyState
+                      icon="✅"
+                      title="All clear!"
+                      description="No overdue payments right now."
+                      compact
+                    />
                   </td>
                 </tr>
               ) : (
                 overdueData.map((item, i) => (
                   <tr key={item.id} className="border-b last:border-none hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 text-muted-foreground">{i + 1}</td>
-                    <td className="px-4 py-3 font-medium">{item.name}</td>
+                    <td className="px-4 py-3 font-medium">
+                      <div className="flex flex-col gap-0.5">
+                        {item.name}
+                        <span className="md:hidden">
+                          {getAgingBadge(getDaysOverdue(item.id))}
+                        </span>
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-right font-semibold text-destructive">
                       {formatCurrency(parseFloat(String(item.balance)))}
+                    </td>
+                    <td className="hidden px-4 py-3 md:table-cell">
+                      {getAgingBadge(getDaysOverdue(item.id)) ?? <span className="text-xs text-muted-foreground">—</span>}
                     </td>
                     <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">{item.phone ?? "—"}</td>
                     <td className="px-4 py-3 text-right">
