@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { Home, Wallet, Package, BarChart3, Settings, Plus } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import InvoiceCreation from "@/components/InvoiceCreation";
 
 const navItems = [
@@ -15,6 +15,13 @@ const BottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [invoiceOpen, setInvoiceOpen] = useState(false);
+
+  // Listen for keyboard shortcut N → new invoice
+  useEffect(() => {
+    const handler = () => setInvoiceOpen(true);
+    window.addEventListener("shortcut:new-invoice", handler);
+    return () => window.removeEventListener("shortcut:new-invoice", handler);
+  }, []);
 
   return (
     <>

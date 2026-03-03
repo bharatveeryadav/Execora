@@ -688,7 +688,7 @@ const VoiceBar = ({ idleHint = DEFAULT_HINT }: VoiceBarProps) => {
 
 	return (
 		<div className="mt-3 flex items-center gap-3 rounded-lg bg-muted px-4 py-2.5">
-			{/* Clickable dot + mic */}
+			{/* Clickable dot / waveform / mic */}
 			<button
 				type="button"
 				onClick={handleClick}
@@ -696,18 +696,34 @@ const VoiceBar = ({ idleHint = DEFAULT_HINT }: VoiceBarProps) => {
 				className="flex shrink-0 cursor-pointer items-center gap-2 disabled:cursor-wait"
 				title={isListening ? 'Tap to stop' : 'Tap to talk to AI agent'}
 			>
-				<span className="relative flex h-3 w-3">
-					{showPing && (
-						<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
-					)}
-					<span
-						className={`relative inline-flex h-3 w-3 rounded-full transition-colors duration-200 ${dotColor}`}
-					/>
-				</span>
+				{isListening ? (
+					/* Animated waveform bars */
+					<span className="flex h-5 items-end gap-px">
+						{[0, 1, 2, 3, 4].map((i) => (
+							<span
+								key={i}
+								className="w-[3px] rounded-sm bg-destructive"
+								style={{
+									height: `${8 + (i % 3) * 4}px`,
+									animation: `voice-bar 0.8s ease-in-out ${i * 0.12}s infinite alternate`,
+								}}
+							/>
+						))}
+					</span>
+				) : (
+					<span className="relative flex h-3 w-3">
+						{showPing && (
+							<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+						)}
+						<span
+							className={`relative inline-flex h-3 w-3 rounded-full transition-colors duration-200 ${dotColor}`}
+						/>
+					</span>
+				)}
 				{isListening ? (
 					<MicOff className="h-4 w-4 text-destructive" />
 				) : (
-					<Mic className="h-4 w-4 text-muted-foreground" />
+					<Mic className={`h-4 w-4 ${isProcessing ? 'animate-spin text-yellow-500' : 'text-muted-foreground'}`} />
 				)}
 			</button>
 

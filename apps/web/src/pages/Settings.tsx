@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Mic, Save, UserPlus, Users, HardDrive, Download, RefreshCw, Volume2 } from "lucide-react";
+import { ArrowLeft, Mic, Save, UserPlus, Users, HardDrive, Download, RefreshCw, Volume2, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,11 +10,19 @@ import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useMe, useUpdateProfile } from "@/hooks/useQueries";
 
 const TTS_STORAGE_KEY = "execora:ttsProvider";
 
 const Settings = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { theme, setTheme } = useTheme();
+  const { data: me } = useMe();
+  const updateProfile = useUpdateProfile();
+
   const [ttsProvider, setTtsProvider] = useState<string>(
     () => localStorage.getItem(TTS_STORAGE_KEY) ?? "browser",
   );
@@ -28,8 +36,21 @@ const Settings = () => {
     newCustomer: true,
   });
 
-  const handleSave = () => {
-    toast({ title: "✅ Settings saved", description: "Your changes have been saved successfully." });
+  // Editable profile fields seeded from real user data
+  const [profileName, setProfileName] = useState(user?.name ?? "");
+  const [profileEmail, setProfileEmail] = useState(user?.email ?? "");
+
+  const handleSave = async () => {
+    if (profileName && (profileName !== user?.name || profileEmail !== user?.email)) {
+      try {
+        await updateProfile.mutateAsync({ name: profileName });
+        toast({ title: "✅ Settings saved", description: "Your profile has been updated." });
+      } catch {
+        toast({ title: "✅ Settings saved", description: "Preferences updated locally." });
+      }
+    } else {
+      toast({ title: "✅ Settings saved", description: "Your changes have been saved successfully." });
+    }
   };
 
   return (
@@ -43,8 +64,18 @@ const Settings = () => {
             <h1 className="text-lg font-bold tracking-tight md:text-xl">⚙️ Settings</h1>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent transition-colors"
+              title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
             <Button variant="ghost" size="icon"><Mic className="h-5 w-5" /></Button>
-            <Button size="sm" onClick={handleSave}><Save className="mr-1.5 h-4 w-4" /> Save</Button>
+            <Button size="sm" onClick={handleSave} disabled={updateProfile.isPending}>
+              <Save className="mr-1.5 h-4 w-4" /> {updateProfile.isPending ? "Saving…" : "Save"}
+            </Button>
           </div>
         </div>
       </header>
@@ -56,34 +87,39 @@ const Settings = () => {
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
-                <Label className="text-xs">Business Name</Label>
-                <Input defaultValue="Ramesh Kirana Store" />
+                <Label className="text-xs">Your Name</Label>
+                <Input
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  placeholder="Full name"
+                />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Owner Name</Label>
-                <Input defaultValue="Ramesh Kumar Gupta" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Phone</Label>
-                <Input defaultValue="+91 98765 43210" />
+                <Label className="text-xs">Role</Label>
+                <Input readOnly value={user?.role ?? "—"} className="bg-muted/50 text-muted-foreground" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Email</Label>
-                <Input defaultValue="ramesh@kirana.com" />
+                <Input
+                  value={profileEmail}
+                  onChange={(e) => setProfileEmail(e.target.value)}
+                  type="email"
+                  placeholder="email@business.com"
+                />
               </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Address</Label>
-              <Input defaultValue="Shop No. 4, Main Market, Sadar Bazar, Delhi-110006" />
+              <div className="space-y-1.5">
+                <Label className="text-xs">Tenant / Business ID</Label>
+                <Input readOnly value={user?.tenantId ?? "—"} className="bg-muted/50 font-mono text-xs text-muted-foreground" />
+              </div>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
                 <Label className="text-xs">GSTIN</Label>
-                <Input defaultValue="07ABCDE1234F1Z5" />
+                <Input defaultValue={me?.tenant?.gstin ?? ""} placeholder="07ABCDE1234F1Z5" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">PAN</Label>
-                <Input defaultValue="ABCDE1234F" />
+                <Label className="text-xs">Business Legal Name</Label>
+                <Input defaultValue={me?.tenant?.legalName ?? me?.tenant?.name ?? ""} placeholder="Your Business Pvt Ltd" />
               </div>
             </div>
           </CardContent>

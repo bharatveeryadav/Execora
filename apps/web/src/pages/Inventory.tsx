@@ -41,6 +41,40 @@ const Inventory = () => {
   const [adjustQty, setAdjustQty]         = useState("1");
   const [adjustOp, setAdjustOp]           = useState<"add" | "subtract">("add");
 
+  // ── Inline stock quick-edit ─────────────────────────────────────────────────
+  const [inlineEditId, setInlineEditId] = useState<string | null>(null);
+  const [inlineEditQty, setInlineEditQty] = useState("");
+  const [inlineSaving, setInlineSaving] = useState(false);
+
+  const startInlineEdit = (p: Product) => {
+    setInlineEditId(p.id);
+    setInlineEditQty(String(p.stock));
+  };
+
+  const saveInlineEdit = async (p: Product) => {
+    const newQty = parseInt(inlineEditQty, 10);
+    if (isNaN(newQty) || newQty < 0) {
+      toast({ title: "⚠️ Invalid quantity", variant: "destructive" });
+      return;
+    }
+    const delta = newQty - p.stock;
+    if (delta === 0) { setInlineEditId(null); return; }
+    setInlineSaving(true);
+    try {
+      await adjustStock.mutateAsync({
+        id: p.id,
+        quantity: Math.abs(delta),
+        operation: delta > 0 ? "add" : "subtract",
+      });
+      toast({ title: `✅ Stock updated to ${newQty} ${p.unit}` });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Update failed";
+      toast({ title: "❌ Stock update failed", description: msg, variant: "destructive" });
+    }
+    setInlineEditId(null);
+    setInlineSaving(false);
+  };
+
   const openEdit = (p: Product) => {
     setEditingProduct(p);
     setEditName(p.name);
@@ -469,13 +503,52 @@ const Inventory = () => {
                   ) : (
                     filteredProducts.map((p) => {
                       const isLow = lowStockIds.has(p.id) || p.stock === 0;
+                      const isEditing = inlineEditId === p.id;
                       return (
                         <TableRow key={p.id}>
                           <TableCell className="text-lg">📦</TableCell>
                           <TableCell className="font-medium">{p.name}</TableCell>
                           <TableCell>
-                            {p.stock} {p.unit}{" "}
-                            {isLow ? <span className="text-destructive">🔴</span> : <span>✅</span>}
+                            {isEditing ? (
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={inlineEditQty}
+                                  onChange={(e) => setInlineEditQty(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") void saveInlineEdit(p);
+                                    if (e.key === "Escape") setInlineEditId(null);
+                                  }}
+                                  autoFocus
+                                  className="w-16 rounded border border-primary bg-background px-1.5 py-0.5 text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
+                                />
+                                <span className="text-xs text-muted-foreground">{p.unit}</span>
+                                <button
+                                  onClick={() => void saveInlineEdit(p)}
+                                  disabled={inlineSaving}
+                                  className="rounded px-1 text-xs text-green-600 hover:bg-green-50 dark:hover:bg-green-950"
+                                  title="Save (Enter)"
+                                >✓</button>
+                                <button
+                                  onClick={() => setInlineEditId(null)}
+                                  className="rounded px-1 text-xs text-muted-foreground hover:bg-muted"
+                                  title="Cancel (Esc)"
+                                >✕</button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => startInlineEdit(p)}
+                                className="group flex items-center gap-1 rounded px-1 hover:bg-muted"
+                                title="Click to edit stock"
+                              >
+                                <span className={isLow ? "text-destructive font-semibold" : ""}>
+                                  {p.stock} {p.unit}
+                                </span>
+                                {isLow ? <span className="text-destructive">🔴</span> : <span>✅</span>}
+                                <span className="invisible text-[10px] text-muted-foreground group-hover:visible">✎</span>
+                              </button>
+                            )}
                           </TableCell>
                           <TableCell>{formatCurrency(parseFloat(String(p.price)))}/{p.unit}</TableCell>
                           <TableCell>{p.category}</TableCell>

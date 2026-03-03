@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
-import { useCustomers, useInvoices, useRecordPayment } from "@/hooks/useQueries";
+import { useCustomers, useInvoices, useRecordPayment, useCustomerInvoices } from "@/hooks/useQueries";
 import { formatCurrency, type Customer } from "@/lib/api";
 import { fireConfetti } from "@/components/ConfettiOverlay";
 
@@ -38,6 +38,7 @@ const Payment = () => {
 
   const { data: customers = [] } = useCustomers(customerSearch, 10);
   const { data: allInvoices = [] } = useInvoices(100);
+  const { data: recentCustomerInvoices = [] } = useCustomerInvoices(selectedCustomer?.id ?? "", 5);
   const recordPayment = useRecordPayment();
 
   // Filter invoices for selected customer (non-paid/non-cancelled)
@@ -169,7 +170,7 @@ const Payment = () => {
               )}
             </div>
             {selectedCustomer && (
-              <div className="rounded-lg border border-border p-3">
+              <div className="rounded-lg border border-border p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium">
@@ -195,6 +196,27 @@ const Payment = () => {
                     <X className="h-3 w-3 mr-1" /> Change
                   </Button>
                 </div>
+                {/* Mini payment history */}
+                {recentCustomerInvoices.length > 0 && (
+                  <div className="border-t pt-2 space-y-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Recent Invoices</p>
+                    {recentCustomerInvoices.slice(0, 3).map((inv) => (
+                      <div key={inv.id} className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">{inv.invoiceNo}</span>
+                        <span className="font-medium">{formatCurrency(parseFloat(String(inv.total ?? inv.subtotal)))}</span>
+                        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                          inv.status === "paid"
+                            ? "bg-green-500/10 text-green-600 dark:text-green-400"
+                            : inv.status === "cancelled"
+                            ? "bg-muted text-muted-foreground"
+                            : "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400"
+                        }`}>
+                          {inv.status === "paid" ? "✅ Paid" : inv.status === "cancelled" ? "❌ Void" : "⏳ Due"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

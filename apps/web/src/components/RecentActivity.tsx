@@ -1,26 +1,54 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useInvoices } from "@/hooks/useQueries";
 import { formatCurrency } from "@/lib/api";
+import EmptyState from "@/components/EmptyState";
+import { useNavigate } from "react-router-dom";
+
+function useSecondsAgo(refetchedAt: number) {
+  const [secs, setSecs] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setSecs(Math.round((Date.now() - refetchedAt) / 1000)), 1000);
+    return () => clearInterval(t);
+  }, [refetchedAt]);
+  return secs;
+}
 
 const RecentActivity = () => {
-  const { data: invoices = [], isLoading } = useInvoices(20);
+  const navigate = useNavigate();
+  const { data: invoices = [], isLoading, dataUpdatedAt, refetch } = useInvoices(20);
+  const secsAgo = useSecondsAgo(dataUpdatedAt);
 
   const activities = invoices.slice(0, 8).map((inv) => ({
     time: new Date(inv.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }),
     type: "🧾 Bill",
     customer: inv.customer?.name ?? "—",
     amount: formatCurrency(parseFloat(String(inv.total ?? inv.subtotal))),
-    status: inv.status === "paid" ? "✅" : inv.status === "cancelled" ? "❌" : "⏳",
+    status: inv.status === "paid" ? "paid" : inv.status === "cancelled" ? "cancelled" : "pending",
     details: `${inv.invoiceNo} · ${inv.status}`,
+    id: inv.id,
   }));
 
   return (
     <Card className="border-none shadow-sm">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          📋 Recent Activity
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base">
+            📋 Recent Activity
+            {/* LIVE indicator */}
+            <span className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-400">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
+              LIVE
+            </span>
+          </CardTitle>
+          <button
+            onClick={() => void refetch()}
+            className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            🔄 {secsAgo < 5 ? "just now" : `${secsAgo}s ago`}
+          </button>
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
@@ -42,18 +70,36 @@ const RecentActivity = () => {
                 </tr>
               ) : activities.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">No recent activity</td>
+                  <td colSpan={6} className="p-0">
+                    <EmptyState
+                      icon="📋"
+                      title="No activity yet"
+                      description="Create your first invoice to see activity here."
+                      action={{ label: "New Invoice", onClick: () => navigate("/") }}
+                      compact
+                    />
+                  </td>
                 </tr>
               ) : (
-                activities.map((a, i) => (
-                  <tr key={i} className="border-b last:border-none hover:bg-muted/30 transition-colors">
+                activities.map((a) => (
+                  <tr key={a.id} className="border-b last:border-none hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 text-muted-foreground">{a.time}</td>
                     <td className="px-4 py-3">
                       <Badge variant="secondary" className="text-xs font-normal">{a.type}</Badge>
                     </td>
                     <td className="px-4 py-3 font-medium">{a.customer}</td>
                     <td className="px-4 py-3 text-right font-semibold">{a.amount}</td>
-                    <td className="px-4 py-3">{a.status}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                        a.status === "paid"
+                          ? "bg-green-500/10 text-green-600 dark:text-green-400"
+                          : a.status === "cancelled"
+                          ? "bg-muted text-muted-foreground"
+                          : "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400"
+                      }`}>
+                        {a.status === "paid" ? "✅ Paid" : a.status === "cancelled" ? "❌ Void" : "⏳ Due"}
+                      </span>
+                    </td>
                     <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">{a.details}</td>
                   </tr>
                 ))
