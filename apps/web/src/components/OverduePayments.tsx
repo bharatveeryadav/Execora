@@ -33,7 +33,7 @@ const OverduePayments = () => {
   const overdueData = customers
     .filter((c) => parseFloat(String(c.balance)) > 0)
     .sort((a, b) => parseFloat(String(b.balance)) - parseFloat(String(a.balance)))
-    .slice(0, 5);
+    .slice(0, 4);
 
   // Compute days overdue per customer based on their oldest unpaid invoice dueDate
   const getDaysOverdue = (customerId: string): number | null => {
@@ -65,77 +65,47 @@ const OverduePayments = () => {
         </Button>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
-                <th className="px-4 py-2.5">#</th>
-                <th className="px-4 py-2.5">Customer</th>
-                <th className="px-4 py-2.5 text-right">Amount</th>
-                <th className="hidden px-4 py-2.5 md:table-cell">Aging</th>
-                <th className="hidden px-4 py-2.5 md:table-cell">Phone</th>
-                <th className="px-4 py-2.5 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">Loading…</td>
-                </tr>
-              ) : overdueData.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-0">
-                    <EmptyState
-                      icon="✅"
-                      title="All clear!"
-                      description="No overdue payments right now."
-                      compact
-                    />
-                  </td>
-                </tr>
-              ) : (
-                overdueData.map((item, i) => (
-                  <tr key={item.id} className="border-b last:border-none hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3 text-muted-foreground">{i + 1}</td>
-                    <td className="px-4 py-3 font-medium">
-                      <div className="flex flex-col gap-0.5">
-                        {item.name}
-                        <span className="md:hidden">
-                          {getAgingBadge(getDaysOverdue(item.id))}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-right font-semibold text-destructive">
-                      {formatCurrency(parseFloat(String(item.balance)))}
-                    </td>
-                    <td className="hidden px-4 py-3 md:table-cell">
-                      {getAgingBadge(getDaysOverdue(item.id)) ?? <span className="text-xs text-muted-foreground">—</span>}
-                    </td>
-                    <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">{item.phone ?? "—"}</td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-1">
-                        {item.phone && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0 text-xs"
-                            asChild
-                          >
-                            <a href={`https://wa.me/91${item.phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer">📱</a>
-                          </Button>
-                        )}
-                        {item.phone && (
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-xs" asChild>
-                            <a href={`tel:${item.phone}`}>📞</a>
-                          </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <div className="divide-y">
+          {isLoading ? (
+            <div className="px-4 py-6 text-center text-sm text-muted-foreground">Loading…</div>
+          ) : overdueData.length === 0 ? (
+            <EmptyState
+              icon="✅"
+              title="All clear!"
+              description="No overdue payments right now."
+              compact
+            />
+          ) : (
+            overdueData.map((item) => {
+              const days = getDaysOverdue(item.id);
+              return (
+                <div key={item.id} className="group flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-muted/30">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{item.name}</p>
+                    <div className="mt-0.5 flex items-center gap-1.5">
+                      {getAgingBadge(days) ?? <span className="text-[10px] text-muted-foreground">—</span>}
+                      {item.phone && <span className="text-[10px] text-muted-foreground">{item.phone}</span>}
+                    </div>
+                  </div>
+                  <span className="shrink-0 text-sm font-semibold text-destructive">
+                    {formatCurrency(parseFloat(String(item.balance)))}
+                  </span>
+                  <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    {item.phone && (
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-xs" asChild>
+                        <a href={`https://wa.me/91${item.phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer">📱</a>
+                      </Button>
+                    )}
+                    {item.phone && (
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-xs" asChild>
+                        <a href={`tel:${item.phone}`}>📞</a>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
         <div className="flex flex-wrap gap-2 p-4">
           <Button size="sm" variant="default" className="h-8 text-xs" onClick={() => navigate("/payment")}>💰 Record Payment</Button>

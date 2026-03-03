@@ -1,88 +1,241 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { useEffect, useRef, useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useDailySummary, useCustomers, useLowStockProducts } from "@/hooks/useQueries";
-import { formatCurrency } from "@/lib/api";
+import { useWS } from "@/contexts/WSContext";
+import { wsClient } from "@/lib/ws";
+
+interface PillarProps {
+  label: string;
+  score: number;
+  icon: string;
+  hint: string;
+  flash: boolean;
+  onClick: () => void;
+}
+
+function Pillar({ label, score, icon, hint, flash, onClick }: PillarProps) {
+  const bar =
+    score >= 80 ? "bg-green-500" : score >= 50 ? "bg-yellow-400" : "bg-destructive";
+  const text =
+    score >= 80
+      ? "text-green-700 dark:text-green-400"
+      : score >= 50
+      ? "text-yellow-700 dark:text-yellow-400"
+      : "text-destructive";
+
+  return (
+    <button
+      onClick={onClick}
+      className={`group flex flex-1 flex-col gap-1.5 rounded-xl border bg-card p-3 text-left transition-all duration-300 hover:bg-muted/40 ${flash ? "ring-2 ring-primary/40" : ""}`}
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-muted-foreground">{icon} {label}</span>
+        <span className={`text-xs font-bold tabular-nums ${text}`}>{score}%</span>
+      </div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+        <div
+          className={`h-full rounded-full transition-all duration-700 ${bar}`}
+          style={{ width: `${score}%` }}
+        />
+      </div>
+      <p className="text-[10px] text-muted-foreground">{hint}</p>
+    </button>
+  );
+}
+
+function useRelativeTime(ts: number) {
+  const [label, setLabel] = useState("just now");
+  useEffect(() => {
+    const update = () => {
+      const sec = Math.floor((Date.now() - ts) / 1000);
+      if (sec < 10) setLabel("just now");
+      else if (sec < 60) setLabel(`${sec}s ago`);
+      else setLabel(`${Math.floor(sec / 60)}m ago`);
+    };
+    update();
+    const id = setInterval(update, 10_000);
+    return () => clearInterval(id);
+  }, [ts]);
+  return label;
+}
 
 const BusinessHealthScore = () => {
   const navigate = useNavigate();
-  const { data: summary } = useDailySummary();
-  const { data: customers = [] } = useCustomers();
-  const { data: lowStock = [] } = useLowStockProducts();
+  const qc = useQueryClient();
+  const { isConnected } = useWS();
 
-  const overdueCustomers = customers.filter((c) => parseFloat(String(c.balance)) > 0);
-  const totalOverdue = overdueCustomers.reduce((s, c) => s + parseFloat(String(c.balance)), 0);
+  // Tighter refresh intervals for the health panel
+  const {
+    data: summary,
+    isFetching: sumFetching,
+    dataUpdatedAt: sumAt,
+  } = useDailySummary();
 
-  const collectionRate = summary && summary.totalSales > 0
-    ? Math.round((summary.totalPayments / summary.totalSales) * 100) : 0;
+  const {
+    data: customers = [],
+    isFetching: custFetching,
+    dataUpdatedAt: custAt,
+  } = useCustomers("", 200);
 
-  // compute score: 0-100 based on collection rate + stock health + overdue ratio
-  const stockHealth = lowStock.length === 0 ? 100 : Math.max(0, 100 - lowStock.length * 15);
-  const collectionScore = Math.min(100, collectionRate);
-  const overdueScore = overdueCustomers.length === 0 ? 100 : Math.max(0, 100 - overdueCustomers.length * 10);
-  const score = Math.round((stockHealth + collectionScore + overdueScore) / 3);
+  const {
+    data: lowStock = [],
+    isFetching: stockFetching,
+    dataUpdatedAt: stockAt,
+  } = useLowStockProducts();
+
+  const isRefreshing = sumFetching || custFetching || stockFetching;
+  const lastUpdated = Math.max(sumAt, custAt, stockAt);
+  const updatedLabel = useRelativeTime(lastUpdated || Date.now());
+
+  // Flash state per pillar — triggered by specific WS events
+  const [flashCollection, setFlashCollection] = useState(false);
+  const [flashStock, setFlashStock] = useState(false);
+  const [flashReceivables, setFlashReceivables] = useState(false);
+  const flashTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  function flash(setter: (v: boolean) => void, key: string) {
+    setter(true);
+    clearTimeout(flashTimers.current[key]);
+    flashTimers.current[key] = setTimeout(() => setter(false), 2000);
+  }
+
+  useEffect(() => {
+    const offs = [
+      wsClient.on("payment:recorded", () => {
+        qc.invalidateQueries({ queryKey: ["summary"] });
+        qc.invalidateQueries({ queryKey: ["customers"] });
+        flash(setFlashCollection, "col");
+        flash(setFlashReceivables, "rec");
+      }),
+      wsClient.on("invoice:confirmed", () => {
+        qc.invalidateQueries({ queryKey: ["summary"] });
+        qc.invalidateQueries({ queryKey: ["customers"] });
+        flash(setFlashCollection, "col");
+      }),
+      wsClient.on("invoice:draft", () => {
+        qc.invalidateQueries({ queryKey: ["summary"] });
+        flash(setFlashCollection, "col");
+      }),
+      wsClient.on("customer:updated", () => {
+        qc.invalidateQueries({ queryKey: ["customers"] });
+        flash(setFlashReceivables, "rec");
+      }),
+      wsClient.on("product:updated", () => {
+        qc.invalidateQueries({ queryKey: ["products"] });
+        qc.invalidateQueries({ queryKey: ["products", "low-stock"] });
+        flash(setFlashStock, "stk");
+      }),
+    ];
+    return () => offs.forEach((o) => o());
+  }, [qc]);
+
+  // ── Scores ──────────────────────────────────────────────────────────────────
+  const overdueCount = customers.filter((c) => parseFloat(String(c.balance)) > 0).length;
+  const totalSales = summary?.totalSales ?? 0;
+  const totalPayments = summary?.totalPayments ?? 0;
+
+  const collectionScore =
+    totalSales > 0 ? Math.min(100, Math.round((totalPayments / totalSales) * 100)) : 0;
+  const stockScore = Math.max(0, 100 - lowStock.length * 15);
+  const overdueScore = Math.max(0, 100 - overdueCount * 10);
+  const overall = Math.round((collectionScore + stockScore + overdueScore) / 3);
+
+  const overallColor =
+    overall >= 70
+      ? "text-green-700 dark:text-green-400"
+      : overall >= 50
+      ? "text-yellow-700 dark:text-yellow-400"
+      : "text-destructive";
+
+  const overallLabel = overall >= 70 ? "Good" : overall >= 50 ? "Needs Work" : "Critical";
+  const overallStroke = overall >= 70 ? "#22c55e" : overall >= 50 ? "#eab308" : "#ef4444";
+  const overallBar =
+    overall >= 70 ? "bg-green-500" : overall >= 50 ? "bg-yellow-400" : "bg-destructive";
 
   return (
     <Card className="border-none shadow-sm">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          📊 Business Health Score
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4 pt-0">
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">
-              Overall: <span className="text-lg font-bold">{score}/100</span>
-            </span>
-            <span className={`text-xs font-medium ${score >= 70 ? "text-success" : score >= 50 ? "text-warning" : "text-destructive"}`}>
-              {score >= 70 ? "✅ Good" : score >= 50 ? "⚠️ Needs Work" : "🔴 Critical"}
-            </span>
+      <CardContent className="p-4">
+        {/* Header */}
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Business Health
+              </p>
+              {/* Live connection dot */}
+              <span
+                title={isConnected ? "Live data" : "Offline"}
+                className={`inline-block h-1.5 w-1.5 rounded-full ${
+                  isConnected ? "bg-green-500 animate-pulse" : "bg-muted-foreground"
+                }`}
+              />
+              {/* Refresh spinner */}
+              {isRefreshing && (
+                <span className="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              )}
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <span className={`text-2xl font-extrabold tabular-nums ${overallColor}`}>
+                {overall}
+              </span>
+              <span className="text-xs text-muted-foreground">/ 100 · {overallLabel}</span>
+            </div>
+            <p className="mt-0.5 text-[10px] text-muted-foreground">Updated {updatedLabel}</p>
           </div>
-          <div className="h-4 w-full rounded-full bg-muted overflow-hidden">
-            <div className="h-full rounded-full bg-primary" style={{ width: `${score}%` }} />
-          </div>
-          <div className="flex justify-between mt-1">
-            <span className="text-xs text-muted-foreground">{score}% Good</span>
-            <span className="text-xs text-muted-foreground">{100 - score}% Needs Attention</span>
+
+          {/* Ring gauge */}
+          <div className="relative flex h-14 w-14 items-center justify-center" title={`${overall}/100`}>
+            <svg viewBox="0 0 36 36" className="h-14 w-14 -rotate-90">
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="hsl(var(--muted))" strokeWidth="3" />
+              <circle
+                cx="18" cy="18" r="15.9" fill="none"
+                stroke={overallStroke}
+                strokeWidth="3"
+                strokeDasharray={`${overall} ${100 - overall}`}
+                strokeLinecap="round"
+                style={{ transition: "stroke-dasharray 0.7s ease, stroke 0.5s ease" }}
+              />
+            </svg>
+            <span className={`absolute text-xs font-bold tabular-nums ${overallColor}`}>{overall}%</span>
           </div>
         </div>
 
-        <div>
-          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-            ⚠️ Critical Alerts
-          </h4>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between rounded-lg border bg-destructive/5 p-3">
-              <div>
-                <span className="text-sm font-medium">🔴 Overdue Payments</span>
-                <p className="text-xs text-muted-foreground">
-                  {overdueCustomers.length} customers · {formatCurrency(totalOverdue)} outstanding
-                </p>
-              </div>
-              <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/payment")}>View</Button>
-            </div>
-            <div className="flex items-center justify-between rounded-lg border bg-warning/5 p-3">
-              <div>
-                <span className="text-sm font-medium">🟡 Low Stock Alert</span>
-                <p className="text-xs text-muted-foreground">
-                  {lowStock.length > 0
-                    ? `${lowStock.length} items below minimum · ${lowStock.slice(0, 3).map((p) => p.name).join(", ")}`
-                    : "All items well stocked"}
-                </p>
-              </div>
-              <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/inventory")}>View</Button>
-            </div>
-            <div className="flex items-center justify-between rounded-lg border bg-success/5 p-3">
-              <div>
-                <span className="text-sm font-medium">🟢 Today's Sales</span>
-                <p className="text-xs text-muted-foreground">
-                  {formatCurrency(summary?.totalSales ?? 0)} · {summary?.invoiceCount ?? 0} invoices
-                </p>
-              </div>
-              <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => navigate("/reports")}>View</Button>
-            </div>
-          </div>
+        {/* Overall progress bar */}
+        <div className="mb-4 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+          <div
+            className={`h-full rounded-full transition-all duration-700 ${overallBar}`}
+            style={{ width: `${overall}%` }}
+          />
+        </div>
+
+        {/* 3 pillar cards */}
+        <div className="grid grid-cols-3 gap-2">
+          <Pillar
+            label="Collection"
+            icon="💰"
+            score={collectionScore}
+            hint={`${collectionScore}% today`}
+            flash={flashCollection}
+            onClick={() => navigate("/payment")}
+          />
+          <Pillar
+            label="Stock"
+            icon="📦"
+            score={stockScore}
+            hint={lowStock.length === 0 ? "All stocked" : `${lowStock.length} low`}
+            flash={flashStock}
+            onClick={() => navigate("/inventory")}
+          />
+          <Pillar
+            label="Receivables"
+            icon="🧾"
+            score={overdueScore}
+            hint={overdueCount === 0 ? "All clear" : `${overdueCount} overdue`}
+            flash={flashReceivables}
+            onClick={() => navigate("/customers")}
+          />
         </div>
       </CardContent>
     </Card>

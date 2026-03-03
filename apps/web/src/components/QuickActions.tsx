@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, Wallet, Package, UserPlus, BarChart3, Settings } from "lucide-react";
+import { FileText, Wallet, Package, UserPlus, BookOpen, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,18 +34,18 @@ const QuickActions = () => {
   }
 
   const actions = [
-    { label: "New Invoice",   icon: FileText, variant: "default" as const, onClick: () => setInvoiceOpen(true) },
-    { label: "Payment",       icon: Wallet,   variant: "outline" as const, onClick: () => navigate("/payment") },
-    { label: "Stock Check",   icon: Package,  variant: "outline" as const, onClick: () => navigate("/inventory") },
-    { label: "Add Customer",  icon: UserPlus, variant: "outline" as const, onClick: () => setCustomerOpen(true) },
-    { label: "Report",        icon: BarChart3,variant: "outline" as const, onClick: () => navigate("/reports") },
-    { label: "More",          icon: Settings, variant: "outline" as const, onClick: () => navigate("/settings") },
+    { label: "New Invoice",  icon: FileText,    variant: "default" as const, onClick: () => setInvoiceOpen(true) },
+    { label: "Payment In",   icon: Wallet,      variant: "outline" as const, onClick: () => navigate("/payment") },
+    { label: "Expense",      icon: ShoppingCart,variant: "outline" as const, onClick: () => navigate("/expenses") },
+    { label: "Cash Book",    icon: BookOpen,    variant: "outline" as const, onClick: () => navigate("/cashbook") },
+    { label: "Add Customer", icon: UserPlus,    variant: "outline" as const, onClick: () => setCustomerOpen(true) },
+    { label: "Stock Check",  icon: Package,     variant: "outline" as const, onClick: () => navigate("/inventory") },
   ];
 
   return (
     <div>
       <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-        ⚡ Quick Actions
+        ⚡ Quick Actions — <span className="normal-case font-normal text-muted-foreground/70">UI fallback if voice unavailable</span>
       </h2>
       <div className="grid grid-cols-3 gap-2 md:grid-cols-6 md:gap-3">
         {actions.map((action) => (

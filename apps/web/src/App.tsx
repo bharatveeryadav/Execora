@@ -8,6 +8,11 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Payment from "./pages/Payment";
 import Inventory from "./pages/Inventory";
+import Customers from "./pages/Customers";
+import CustomerDetail from "./pages/CustomerDetail";
+import Invoices from "./pages/Invoices";
+import Expenses from "./pages/Expenses";
+import CashBook from "./pages/CashBook";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/LoginPage";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
@@ -72,6 +77,46 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Inventory />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/customers"
+        element={
+          <ProtectedRoute>
+            <Customers />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/customers/:id"
+        element={
+          <ProtectedRoute>
+            <CustomerDetail />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/invoices"
+        element={
+          <ProtectedRoute>
+            <Invoices />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/expenses"
+        element={
+          <ProtectedRoute>
+            <Expenses />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/cashbook"
+        element={
+          <ProtectedRoute>
+            <CashBook />
           </ProtectedRoute>
         }
       />
