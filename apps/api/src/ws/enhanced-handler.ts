@@ -612,6 +612,56 @@ class EnhancedWebSocketHandler {
         timestamp: new Date().toISOString()
       }, `[USER FLOW] Business execution: ${executionResult.success ? 'SUCCESS' : 'FAILED'}`);
 
+      // ── Instant UI push (don't wait for LLM response) ────────────────────
+      // For invoice-related intents send the draft / confirmed event NOW so the
+      // frontend switches away from "processing" immediately instead of waiting
+      // 1-2 s for OpenAI response generation.
+      if (executionResult.success) {
+        const d = executionResult.data ?? {};
+
+        // Invoice draft created / updated (CREATE_INVOICE, ADD_DISCOUNT, TOGGLE_GST, SET_SUPPLY_TYPE)
+        if (d.resolvedItems?.length && d.awaitingConfirm) {
+          this.sendMessage(session.ws, {
+            type: 'invoice:draft',
+            data: {
+              resolvedItems:  d.resolvedItems,
+              customerName:   d.customerName,
+              customerId:     d.customerId,
+              subtotal:       d.subtotal,
+              grandTotal:     d.grandTotal,
+              discountAmt:    d.discountAmt ?? 0,
+              discountPercent: d.discountPercent ?? 0,
+              withGst:        d.withGst ?? false,
+              supplyType:     d.supplyType ?? 'INTRASTATE',
+              draftId:        d.draftId,
+              awaitingConfirm: true,
+              // mirror which intent produced this update so frontend knows what changed
+              sourceIntent:   intent.intent,
+            },
+            timestamp: new Date().toISOString(),
+          });
+          logger.info({ sessionId: session.sessionId, intent: intent.intent, itemCount: d.resolvedItems.length }, 'invoice:draft pushed immediately');
+        }
+
+        // Invoice confirmed — create confirmed event so frontend goes to final step
+        if (
+          (intent.intent === IntentType.CONFIRM_INVOICE || intent.intent === IntentType.SEND_INVOICE) &&
+          (d.invoiceNo || d.invoiceId)
+        ) {
+          this.sendMessage(session.ws, {
+            type: 'invoice:confirmed',
+            data: {
+              invoiceNo:    d.invoiceNo ?? d.invoiceId,
+              invoiceId:    d.invoiceId,
+              customerName: d.customerName,
+              grandTotal:   d.grandTotal ?? d.total,
+            },
+            timestamp: new Date().toISOString(),
+          });
+          logger.info({ sessionId: session.sessionId, invoiceNo: d.invoiceNo }, 'invoice:confirmed pushed immediately');
+        }
+      }
+
       // Track voice command processing
       voiceCommandsProcessed.inc({
         status: executionResult.success ? 'success' : 'error',

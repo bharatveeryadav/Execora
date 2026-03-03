@@ -27,6 +27,11 @@ export enum IntentType {
   CONFIRM_INVOICE = 'CONFIRM_INVOICE',
   SHOW_PENDING_INVOICE = 'SHOW_PENDING_INVOICE',
   TOGGLE_GST = 'TOGGLE_GST',
+  ADD_DISCOUNT = 'ADD_DISCOUNT',        // "10% discount karo" / "200 rupay kam karo"
+  SET_SUPPLY_TYPE = 'SET_SUPPLY_TYPE',  // "inter-state bill" / "IGST lagao"
+  RECORD_MIXED_PAYMENT = 'RECORD_MIXED_PAYMENT', // "500 cash + 300 UPI"
+  EXPORT_GSTR1 = 'EXPORT_GSTR1',               // "GSTR-1 nikalo", "GST report bhejo"
+  EXPORT_PNL = 'EXPORT_PNL',                   // "P&L report bhejo", "is mahine ka P&L"
 }
 
 // Intent extraction response

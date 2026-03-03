@@ -5,7 +5,7 @@
 > It covers **what we are building, why, for whom, and exactly how** — grounded in real Indian SME use cases.
 >
 > **Maintained by**: Update this document whenever a feature ships, a use case is validated, or competitive landscape shifts.
-> **Version**: 2.0 — 2026-03-03
+> **Version**: 2.1 — 2026-03-03
 
 ---
 
@@ -1630,10 +1630,10 @@ Remaining = 0 → done. Any leftover → customer credit advance.
 | Invoice status tracking (paid/partial/pending) | ✅ Built |
 | Multi-turn voice drafts with Redis persistence | ✅ Built |
 | TTS voice response (ElevenLabs/OpenAI/Browser) | ✅ Built |
-| Bill-level discount | 🔴 TODO |
+| Bill-level discount (voice "10% discount karo" + form) | ✅ Built |
 | Item-level discount | 🔴 TODO |
-| B2B invoice with buyer GSTIN | 🔴 TODO |
-| IGST (inter-state) calculation | 🔴 TODO |
+| B2B invoice with buyer GSTIN | ✅ Built |
+| IGST (inter-state) calculation | ✅ Built |
 | Invoice PDF via WhatsApp | ✅ Built |
 | Mobile-responsive UI | ⚠️ Partial |
 
@@ -1644,14 +1644,14 @@ Remaining = 0 → done. Any leftover → customer credit advance.
 | Barcode scan to add product | 🔴 TODO |
 | Repeat last bill ("same as before") | 🔴 TODO |
 | Customer credit limit enforcement | 🔴 TODO |
-| Partial payment at billing time | 🔴 TODO |
-| Multi-mode payment (cash + UPI split) | 🔴 TODO |
+| Partial payment at billing time ("500 diye baki kal") | ✅ Built |
+| Mixed-mode payment voice intent (cash + UPI split) | ✅ Built |
 | Expiry date tracking | 🔴 TODO |
-| GST report (GSTR-1 ready) | 🔴 TODO |
-| Date range reports + export (CSV) | 🔴 TODO |
+| GST report (GSTR-1 ready) — B2B/B2CS/HSN + PDF/CSV/email | ✅ Built |
+| Date range reports + export (CSV/PDF/email) — P&L | ✅ Built |
 | Bulk WhatsApp reminders | ✅ Built |
 | Regional language support (Marathi, Tamil, etc.) | ⚠️ Partial |
-| Proforma invoice / quotation | 🔴 TODO |
+| Proforma invoice / quotation (form + voice CONFIRM flow) | ✅ Built |
 | Invoice editing (post-creation) | ⚠️ Partial |
 | Customer tags (VIP, wholesale, blacklist) | 🔴 TODO |
 | Stock batch/expiry tracking | 🔴 TODO |
@@ -1733,9 +1733,9 @@ This removes the app install barrier entirely. Growth = viral WhatsApp sharing.
 
 ### Built and Working ✅
 
-- Voice pipeline: PCM → Deepgram STT → transcript → GPT-4 intent → 23 handlers
+- Voice pipeline: PCM → Deepgram STT → transcript → GPT-4 intent → 25 handlers
 - Multi-turn invoice drafts with Redis persistence
-- GST calculation engine (CGST/SGST, 88 seeded products, HSN codes)
+- GST calculation engine (CGST/SGST + IGST inter-state, 88 seeded products, HSN codes)
 - PDF invoice generation (with/without GST)
 - Customer fuzzy matching (Levenshtein + token overlap + nicknames)
 - Ledger system with auto-settlement (khata style)
@@ -1752,20 +1752,31 @@ This removes the app install barrier entirely. Growth = viral WhatsApp sharing.
 - Email delivery with PDF attachment
 - Docker + Turborepo monorepo build
 - Prometheus metrics
+- **[NEW] Bill-level discount** — voice ("10% discount karo" / "₹50 kam karo") + form UI
+- **[NEW] B2B invoice** — buyer GSTIN capture, IGST (inter-state) auto-switch via voice + form
+- **[NEW] Partial payment at billing time** — "₹500 diye, baki kal" auto-creates payment + marks partial
+- **[NEW] RECORD_MIXED_PAYMENT voice intent** — split cash + UPI + card amounts in one command
+- **[NEW] Proforma invoice / quotation** — create/convert to invoice + optional initial payment
+- **[NEW] GSTR-1 compliance report** — B2B list, B2CL, B2CS (aggregate), HSN summary, Indian FY support; PDF + CSV + email
+- **[NEW] P&L date-range report** — month-wise revenue/tax/discount/collections + period comparison; PDF + CSV + email
+- **[NEW] 7 report API endpoints** — `/api/v1/reports/gstr1`, `/gstr1/pdf`, `/gstr1/csv`, `/pnl`, `/pnl/pdf`, `/pnl/csv`, `/email`
+- **[NEW] Reports page** — 3-tab UI (Overview, GSTR-1, P&L) with live data, charts, download, email
 
 ### Pending / Critical Gaps 🔴
 
 #### Billing & Invoice
 | Feature | Priority | Notes |
 |---------|----------|-------|
-| Discount system — item-level and bill-level | P0 | Voice + form both needed. "10% discount do" |
-| Walk-in billing UX — truly frictionless | P0 | First tap = bill started, no menu navigation |
-| Partial payment AT invoice creation | P0 | "500 diye baki kal" — very common |
-| B2B invoice with buyer GSTIN | P0 | Required for wholesale. Currently missing GSTIN field |
-| IGST for inter-state supply | P0 | Currently only CGST/SGST. Many B2B transactions cross state |
-| Mixed payment (cash + UPI split) | P1 | Customer pays ₹500 cash + ₹300 UPI in one transaction |
-| Proforma invoice / quotation | P1 | B2B customers often need quote before order |
-| Invoice editing after creation | P1 | PENDING invoices editable, PAID invoices admin-only |
+| ~~Discount system — bill-level~~ | ~~P0~~ | ✅ Built — voice + form. "10% discount karo" or "₹50 kam karo" |
+| Item-level discount (per line) | P0 | Still TODO — each product line needs its own discount field |
+| Walk-in billing UX — truly frictionless | P0 | First tap = bill started, no menu navigation. Still requires customer step |
+| ~~Partial payment AT invoice creation~~ | ~~P0~~ | ✅ Built — "500 diye baki kal" auto-creates payment + marks partial |
+| ~~B2B invoice with buyer GSTIN~~ | ~~P0~~ | ✅ Built — GSTIN field in invoice form + voice capture |
+| ~~IGST for inter-state supply~~ | ~~P0~~ | ✅ Built — auto-switch via voice ("interstate bill") + form toggle |
+| ~~Mixed payment (cash + UPI split)~~ | ~~P1~~ | ✅ Built via RECORD_MIXED_PAYMENT voice intent |
+| Mixed payment UI in Payment page | P1 | Form-mode split payment not exposed on Payment.tsx yet |
+| ~~Proforma invoice / quotation~~ | ~~P1~~ | ✅ Built — create proforma + convert to invoice with initial payment |
+| Invoice editing after creation | P1 | PENDING invoices editable, PAID invoices admin-only — still TODO |
 
 #### Delivery Channels (Email + WhatsApp)
 | Feature | Priority | Notes |
@@ -1782,8 +1793,8 @@ This removes the app install barrier entirely. Growth = viral WhatsApp sharing.
 | True Agent Mode (tool-calling LLM) | P1 | LLM selects and chains tools. See Section 6 for full design |
 | Conversation Agent + Task Agent split | P1 | Two-agent pattern. Guide + Executor |
 | Conditional voice logic ("if balance > X then...") | P1 | Requires Agent Mode |
-| ADD_DISCOUNT voice intent (currently missing) | P0 | "10% discount" or "50 rupay kam karo" |
-| UPDATE_STOCK voice intent | P0 | "50 kilo aata aaya" — inbound stock |
+| ~~ADD_DISCOUNT voice intent~~ | ~~P0~~ | ✅ Built — ADD_DISCOUNT + SET_SUPPLY_TYPE intents wired |
+| UPDATE_STOCK voice intent | P0 | "50 kilo aata aaya" — inbound stock receipt |
 
 #### Inventory & Stock
 | Feature | Priority | Notes |
@@ -1795,8 +1806,9 @@ This removes the app install barrier entirely. Growth = viral WhatsApp sharing.
 #### Reports & Compliance
 | Feature | Priority | Notes |
 |---------|----------|-------|
-| GST report export (GSTR-1 ready) | P1 | HSN-wise summary, B2B invoice list |
-| Date range reports with CSV export | P1 | Monthly P&L, period comparison |
+| ~~GST report export (GSTR-1 ready)~~ | ~~P1~~ | ✅ Built — B2B/B2CL/B2CS/HSN, Indian FY, PDF + CSV + email |
+| ~~Date range reports with CSV export~~ | ~~P1~~ | ✅ Built — P&L month-wise, period comparison, PDF + CSV + email |
+| GSTR-2A / GSTR-3B reconciliation | P2 | Input credit reconciliation against purchase invoices |
 
 #### Platform
 | Feature | Priority | Notes |
@@ -1883,5 +1895,5 @@ Mode 3 — True Agent (planned): STT → LLM with tool definitions → tool call
 
 ---
 
-*Document maintained by the Execora engineering team. Last updated: 2026-03-03.*
+*Document maintained by the Execora engineering team. Last updated: 2026-03-03 (v2.1 — Sprint 2 report/compliance features marked built).*
 *Next review: when any P0 gap is closed, or a new competitor feature is identified.*

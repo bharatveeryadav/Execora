@@ -1,11 +1,13 @@
 /**
  * Invoice intent handlers.
  * Covers: CREATE_INVOICE, CONFIRM_INVOICE, CANCEL_INVOICE,
- *         SHOW_PENDING_INVOICE, TOGGLE_GST, PROVIDE_EMAIL / SEND_INVOICE
+ *         SHOW_PENDING_INVOICE, TOGGLE_GST, PROVIDE_EMAIL / SEND_INVOICE,
+ *         ADD_DISCOUNT, SET_SUPPLY_TYPE
  */
 import { logger } from '@execora/infrastructure';
 import { invoiceService } from '../../invoice/invoice.service';
 import { customerService } from '../../customer/customer.service';
+import { ledgerService } from '../../ledger/ledger.service';
 import { emailService } from '@execora/infrastructure';
 import { minioClient } from '@execora/infrastructure';
 import { conversationMemory } from '../conversation';
@@ -335,5 +337,128 @@ export async function executeProvideEmail(
     success: true,
     message: `Invoice email ${rawEmail} par bhej diya gaya. ${pending.customerName} ka email bhi save ho gaya.`,
     data: { invoiceId: pending.invoiceId, customerName: pending.customerName, email: rawEmail, total: pending.total },
+  };
+}
+
+// ── ADD_DISCOUNT ──────────────────────────────────────────────────────────────
+// "10% discount karo" / "200 rupay kam karo bill mein"
+
+export async function executeAddDiscount(
+  entities: Record<string, any>,
+  conversationId?: string,
+): Promise<ExecutionResult> {
+  const sessionDraft = conversationId
+    ? await conversationMemory.getContext(conversationId, 'pendingInvoice')
+    : null;
+  const draft = sessionDraft ?? await conversationMemory.getShopPendingInvoice();
+
+  if (!draft?.resolvedItems || !draft?.customerId) {
+    return { success: false, message: 'Koi pending bill nahi hai discount ke liye. Pehle bill banao.', error: 'NO_PENDING_INVOICE' };
+  }
+
+  const discountPercent: number | undefined = entities?.discountPercent ?? entities?.percent;
+  const discountAmount: number | undefined  = entities?.discountAmount  ?? entities?.amount;
+
+  if (!discountPercent && !discountAmount) {
+    return { success: false, message: 'Discount amount ya percent batao. Jaise "10% discount" ya "₹50 kam karo".', error: 'MISSING_DISCOUNT' };
+  }
+
+  const subtotal = draft.subtotal as number;
+  let discountAmt = 0;
+  let discountLabel = '';
+  if (discountAmount && discountAmount > 0) {
+    discountAmt  = Math.min(discountAmount, subtotal);
+    discountLabel = `₹${discountAmt}`;
+  } else if (discountPercent && discountPercent > 0) {
+    discountAmt  = Math.round(subtotal * (discountPercent / 100) * 100) / 100;
+    discountLabel = `${discountPercent}%`;
+  }
+
+  const newGrandTotal = Math.round((draft.grandTotal - discountAmt) * 100) / 100;
+  const updatedDraft  = { ...draft, discountAmt, discountPercent, grandTotal: newGrandTotal };
+
+  if (conversationId) await conversationMemory.setContext(conversationId, 'pendingInvoice', updatedDraft);
+  if (draft.draftId) await conversationMemory.updateShopPendingInvoice(draft.draftId, updatedDraft);
+
+  return {
+    success: true,
+    message: `${discountLabel} discount apply ho gaya. Naya total ₹${newGrandTotal}. Confirm karna hai?`,
+    data: { ...updatedDraft, discountAmt, discountLabel, awaitingConfirm: true },
+  };
+}
+
+// ── SET_SUPPLY_TYPE ───────────────────────────────────────────────────────────
+// "inter-state bill banao" / "IGST lagao" — switches supply type on pending draft
+
+export async function executeSetSupplyType(
+  entities: Record<string, any>,
+  conversationId?: string,
+): Promise<ExecutionResult> {
+  const sessionDraft = conversationId
+    ? await conversationMemory.getContext(conversationId, 'pendingInvoice')
+    : null;
+  const draft = sessionDraft ?? await conversationMemory.getShopPendingInvoice();
+
+  if (!draft?.inputItems || !draft?.customerId) {
+    return { success: false, message: 'Koi pending bill nahi hai supply type change karne ke liye.', error: 'NO_PENDING_INVOICE' };
+  }
+
+  const supplyType: 'INTRASTATE' | 'INTERSTATE' =
+    (entities?.supplyType === 'INTERSTATE' || entities?.interstate || entities?.igst)
+      ? 'INTERSTATE'
+      : 'INTRASTATE';
+
+  const withGst = true; // Supply type only matters when GST is on
+  const preview = await invoiceService.previewInvoice(draft.customerId, draft.inputItems, withGst, supplyType, draft.discountPercent);
+
+  const updatedDraft = { ...draft, resolvedItems: preview.resolvedItems, subtotal: preview.subtotal, grandTotal: preview.grandTotal, withGst, supplyType };
+  if (conversationId) await conversationMemory.setContext(conversationId, 'pendingInvoice', updatedDraft);
+  if (draft.draftId) await conversationMemory.updateShopPendingInvoice(draft.draftId, updatedDraft);
+
+  const taxLabel = supplyType === 'INTERSTATE' ? 'IGST' : 'CGST+SGST';
+  return {
+    success: true,
+    message: `${supplyType === 'INTERSTATE' ? 'Inter-state' : 'Intra-state'} billing set ho gaya (${taxLabel}). Total ₹${preview.grandTotal}. Confirm karna hai?`,
+    data: { ...preview, supplyType, withGst, customerId: draft.customerId, customerName: draft.customerName },
+  };
+}
+
+// ── RECORD_MIXED_PAYMENT ──────────────────────────────────────────────────────
+// "Ram ne 500 cash aur 300 UPI diye" — split payment across methods
+
+export async function executeRecordMixedPayment(
+  entities: Record<string, any>,
+  conversationId?: string,
+): Promise<ExecutionResult> {
+  const resolution = await resolveCustomer(entities, conversationId);
+  if (resolution.multiple) {
+    return {
+      success: false,
+      message: `Multiple customers found. Please specify: ${(resolution.candidates || []).slice(0, 3).map((c) => c.name).join(', ')}`,
+      error: 'MULTIPLE_CUSTOMERS',
+      data: { customers: (resolution.candidates || []).slice(0, 3) },
+    };
+  }
+  if (!resolution.customer) {
+    return { success: false, message: `Customer '${resolution.query || 'specified'}' not found`, error: 'CUSTOMER_NOT_FOUND' };
+  }
+
+  const rawSplits: any[] = Array.isArray(entities?.splits) ? entities.splits : [];
+  if (rawSplits.length < 2) {
+    return { success: false, message: 'Mixed payment ke liye kam se kam 2 payment methods batao. Jaise "500 cash + 300 UPI".', error: 'MISSING_SPLITS' };
+  }
+
+  const splits = rawSplits.map((s: any) => ({
+    amount: Math.round(Number(s.amount) * 100) / 100,
+    method: (['cash', 'upi', 'card', 'other'].includes(s.method) ? s.method : 'cash') as 'cash' | 'upi' | 'card' | 'other',
+  })).filter((s) => s.amount > 0);
+
+  const result = await ledgerService.recordMixedPayment(resolution.customer.id, splits);
+  const breakdown = splits.map((s) => `₹${s.amount} ${s.method.toUpperCase()}`).join(' + ');
+
+  return {
+    success: true,
+    message: `${resolution.customer.name} ka mixed payment record ho gaya: ${breakdown}. Total ₹${result.totalAmount}.`,
+    data: { customerId: resolution.customer.id, customerName: resolution.customer.name, splits, totalAmount: result.totalAmount },
   };
 }

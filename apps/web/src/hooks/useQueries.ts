@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  summaryApi, customerApi, invoiceApi, productApi, ledgerApi, reminderApi,
+  summaryApi, customerApi, invoiceApi, productApi, ledgerApi, reminderApi, reportApi,
   type Customer, type Invoice, type Product, type TopSellingProduct, type LedgerEntry, type Reminder,
-  type DailySummary, type SummaryRange,
+  type DailySummary, type SummaryRange, type Gstr1Report, type PnlReport, type ReportParams,
 } from "@/lib/api";
 
 // ── Query keys ────────────────────────────────────────────────────────────────
@@ -280,5 +280,46 @@ export function useBulkReminders() {
     mutationFn: (data: { customerIds: string[]; message?: string; daysOffset?: number }) =>
       reminderApi.bulkCreate(data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["reminders"] }),
+  });
+}
+
+// ── Reports ───────────────────────────────────────────────────────────────────
+
+export function useGstr1Report(params: ReportParams = {}) {
+  return useQuery<Gstr1Report>({
+    queryKey: ["reports", "gstr1", params.fy ?? params.from ?? "current"],
+    queryFn:  async () => {
+      const data = await reportApi.getGstr1();
+      return data.report;
+    },
+    staleTime:      300_000, // 5 min — report data is expensive to compute
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function usePnlReport(params: ReportParams & { compareFrom?: string; compareTo?: string } = {}) {
+  const key = `${params.from ?? ""}::${params.to ?? ""}::${params.fy ?? "current"}`;
+  return useQuery<PnlReport>({
+    queryKey: ["reports", "pnl", key],
+    queryFn:  async () => {
+      const data = await reportApi.getPnl(params);
+      return data.report;
+    },
+    staleTime:      300_000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useEmailReport() {
+  return useMutation({
+    mutationFn: (data: {
+      type:         "gstr1" | "pnl";
+      from:         string;
+      to:           string;
+      email:        string;
+      fy?:          string;
+      compareFrom?: string;
+      compareTo?:   string;
+    }) => reportApi.emailReport(data),
   });
 }

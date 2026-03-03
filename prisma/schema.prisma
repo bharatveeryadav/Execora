@@ -46,6 +46,7 @@ enum UserRole {
 
 enum InvoiceStatus {
   draft
+  proforma
   pending
   paid
   partial
@@ -715,6 +716,7 @@ model Invoice {
   igst                Decimal        @default(0)
   cess                Decimal        @default(0)
   placeOfSupply       String?        @map("place_of_supply")
+  buyerGstin          String?        @map("buyer_gstin")
   reverseCharge       Boolean        @default(false) @map("reverse_charge")
   ewayBillNo          String?        @map("eway_bill_no")
   ewayBillGeneratedAt DateTime?      @map("eway_bill_generated_at")

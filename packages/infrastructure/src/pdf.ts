@@ -1,6 +1,47 @@
 import PDFDocument from 'pdfkit';
 import { logger } from './logger';
 
+// ── Types for GSTR-1 and P&L PDF generation ──────────────────────────────────
+
+export interface Gstr1PdfData {
+  period:    { from: string; to: string };
+  fy:        string;
+  gstin:     string;
+  legalName: string;
+  b2b: Array<{
+    receiverGstin: string; receiverName: string; invoiceNo: string; invoiceDate: string;
+    invoiceValue: number; placeOfSupply: string; taxableValue: number;
+    igst: number; cgst: number; sgst: number; cess: number;
+  }>;
+  b2cs: Array<{
+    supplyType: string; placeOfSupply: string; gstRate: number;
+    taxableValue: number; igst: number; cgst: number; sgst: number; cess: number;
+  }>;
+  hsn: Array<{
+    hsnCode: string; description: string; uqc: string;
+    totalQty: number; taxableValue: number; igst: number; cgst: number; sgst: number; gstRate: number;
+  }>;
+  totals: {
+    totalTaxableValue: number; totalIgst: number; totalCgst: number; totalSgst: number;
+    totalTaxValue: number; totalInvoiceValue: number; invoiceCount: number;
+  };
+}
+
+export interface PnlPdfData {
+  period: { from: string; to: string };
+  months: Array<{
+    month: string; invoiceCount: number; revenue: number;
+    taxCollected: number; discounts: number; collected: number;
+    outstanding: number; netRevenue: number;
+  }>;
+  totals: {
+    invoiceCount: number; revenue: number; taxCollected: number;
+    discounts: number; collected: number; outstanding: number;
+    netRevenue: number; collectionRate: number;
+  };
+  shopName?: string;
+}
+
 export interface InvoicePdfData {
   invoiceNo:    string;
   invoiceId:    string;
@@ -376,6 +417,302 @@ export function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> {
       logger.debug({ invoiceNo: data.invoiceNo }, 'GST invoice PDF generated');
     } catch (err) {
       logger.error({ err }, 'PDF generation failed');
+      reject(err);
+    }
+  });
+}
+
+// ── helpers shared by report PDFs ─────────────────────────────────────────────
+const INR_FMT = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+function pdfTableHeader(doc: PDFKit.PDFDocument, cols: Array<{ label: string; x: number; w: number; align?: 'left' | 'right' | 'center' }>, y: number, rowH = 20) {
+  doc.fillColor('#1e293b').rect(46, y, 503, rowH).fill();
+  doc.fillColor('#ffffff').fontSize(7.5).font('Helvetica-Bold');
+  for (const c of cols) {
+    doc.text(c.label, c.x, y + 6, { width: c.w, align: c.align ?? 'left', lineBreak: false });
+  }
+}
+
+function pdfTableRow(doc: PDFKit.PDFDocument, cols: Array<{ value: string; x: number; w: number; align?: 'left' | 'right' | 'center' }>, y: number, odd: boolean, rowH = 16) {
+  if (odd) doc.fillColor('#f8fafc').rect(46, y, 503, rowH).fill();
+  doc.fillColor('#111827').fontSize(7).font('Helvetica');
+  for (const c of cols) {
+    doc.text(c.value, c.x, y + 5, { width: c.w, align: c.align ?? 'left', lineBreak: false });
+  }
+  doc.strokeColor('#e2e8f0').lineWidth(0.3)
+    .moveTo(46, y + rowH - 1).lineTo(549, y + rowH - 1).stroke();
+}
+
+function pdfReportHeader(doc: PDFKit.PDFDocument, title: string, subtitle: string, period: string) {
+  doc.fillColor('#0f172a').rect(46, 40, 503, 60).fill();
+  doc.fillColor('#ffffff').fontSize(16).font('Helvetica-Bold')
+    .text(title, 60, 52, { width: 340 });
+  doc.fontSize(9).font('Helvetica').fillColor('#94a3b8')
+    .text(subtitle, 60, 74, { width: 340 });
+  doc.fontSize(9).font('Helvetica').fillColor('#ffffff')
+    .text(period, 60, 74, { width: 480, align: 'right' });
+}
+
+/**
+ * Generate GSTR-1 report PDF.
+ * Sections: B2B invoices, B2CS summary, HSN summary.
+ */
+export function generateGstr1Pdf(data: Gstr1PdfData): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc    = new PDFDocument({ margin: 46, size: 'A4', layout: 'landscape' });
+      const chunks: Buffer[] = [];
+      doc.on('data', (c: Buffer) => chunks.push(c));
+      doc.on('end',  ()         => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+
+      const fromStr = new Date(data.period.from).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      const toStr   = new Date(data.period.to).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      const period  = `${fromStr} – ${toStr}`;
+
+      pdfReportHeader(doc, 'GSTR-1 Report', `FY ${data.fy}  |  GSTIN: ${data.gstin || 'Not registered'}  |  ${data.legalName || ''}`, period);
+
+      // Totals summary bar
+      let y = 115;
+      const summaryItems = [
+        { label: 'Invoices',       value: String(data.totals.invoiceCount) },
+        { label: 'Taxable Value',  value: INR_FMT(data.totals.totalTaxableValue) },
+        { label: 'Total IGST',     value: INR_FMT(data.totals.totalIgst) },
+        { label: 'Total CGST',     value: INR_FMT(data.totals.totalCgst) },
+        { label: 'Total SGST',     value: INR_FMT(data.totals.totalSgst) },
+        { label: 'Total Tax',      value: INR_FMT(data.totals.totalTaxValue) },
+        { label: 'Invoice Value',  value: INR_FMT(data.totals.totalInvoiceValue) },
+      ];
+      const cardW = Math.floor(503 / summaryItems.length);
+      doc.fillColor('#f8fafc').rect(46, y, 503, 42).fill();
+      summaryItems.forEach((s, i) => {
+        const x = 46 + i * cardW;
+        doc.fillColor('#64748b').fontSize(7).font('Helvetica')
+          .text(s.label, x + 4, y + 6, { width: cardW - 8, align: 'center' });
+        doc.fillColor('#0f172a').fontSize(9).font('Helvetica-Bold')
+          .text(s.value, x + 4, y + 20, { width: cardW - 8, align: 'center' });
+      });
+      y += 50;
+
+      // ── B2B Section ────────────────────────────────────────────────────────
+      if (data.b2b.length > 0) {
+        doc.fillColor('#0f172a').fontSize(10).font('Helvetica-Bold')
+          .text('4A — B2B Invoices (GST-registered buyers)', 46, y + 4);
+        y += 22;
+
+        const b2bCols = [
+          { label: 'Receiver GSTIN', x: 46,  w: 80 },
+          { label: 'Receiver Name',  x: 130, w: 80 },
+          { label: 'Invoice No',     x: 214, w: 70 },
+          { label: 'Date',           x: 288, w: 52 },
+          { label: 'POS',            x: 344, w: 28 },
+          { label: 'Invoice Value',  x: 376, w: 65, align: 'right' as const },
+          { label: 'Taxable',        x: 445, w: 52, align: 'right' as const },
+          { label: 'IGST',           x: 501, w: 45, align: 'right' as const },
+        ];
+        pdfTableHeader(doc, b2bCols, y);
+        y += 20;
+
+        data.b2b.forEach((row, i) => {
+          if (y > 530) { doc.addPage({ layout: 'landscape' }); y = 40; }
+          pdfTableRow(doc, [
+            { value: row.receiverGstin,        x: 46,  w: 80 },
+            { value: row.receiverName,          x: 130, w: 80 },
+            { value: row.invoiceNo,             x: 214, w: 70 },
+            { value: row.invoiceDate,           x: 288, w: 52 },
+            { value: row.placeOfSupply,         x: 344, w: 28 },
+            { value: INR_FMT(row.invoiceValue), x: 376, w: 65, align: 'right' },
+            { value: INR_FMT(row.taxableValue), x: 445, w: 52, align: 'right' },
+            { value: INR_FMT(row.igst),         x: 501, w: 45, align: 'right' },
+          ], y, i % 2 === 0);
+          y += 16;
+        });
+        y += 12;
+      }
+
+      // ── B2CS Section ───────────────────────────────────────────────────────
+      if (data.b2cs.length > 0) {
+        if (y > 480) { doc.addPage({ layout: 'landscape' }); y = 40; }
+        doc.fillColor('#0f172a').fontSize(10).font('Helvetica-Bold')
+          .text('7 — B2CS Summary (Unregistered buyers)', 46, y + 4);
+        y += 22;
+
+        const b2csCols = [
+          { label: 'Type',         x: 46,  w: 80 },
+          { label: 'POS',          x: 130, w: 28 },
+          { label: 'GST Rate',     x: 162, w: 50, align: 'center' as const },
+          { label: 'Taxable',      x: 216, w: 80, align: 'right' as const },
+          { label: 'IGST',         x: 300, w: 70, align: 'right' as const },
+          { label: 'CGST',         x: 374, w: 70, align: 'right' as const },
+          { label: 'SGST',         x: 448, w: 70, align: 'right' as const },
+        ];
+        pdfTableHeader(doc, b2csCols, y);
+        y += 20;
+
+        data.b2cs.forEach((row, i) => {
+          if (y > 530) { doc.addPage({ layout: 'landscape' }); y = 40; }
+          pdfTableRow(doc, [
+            { value: row.supplyType,            x: 46,  w: 80 },
+            { value: row.placeOfSupply || '-',  x: 130, w: 28 },
+            { value: `${row.gstRate}%`,         x: 162, w: 50, align: 'center' },
+            { value: INR_FMT(row.taxableValue), x: 216, w: 80, align: 'right' },
+            { value: INR_FMT(row.igst),         x: 300, w: 70, align: 'right' },
+            { value: INR_FMT(row.cgst),         x: 374, w: 70, align: 'right' },
+            { value: INR_FMT(row.sgst),         x: 448, w: 70, align: 'right' },
+          ], y, i % 2 === 0);
+          y += 16;
+        });
+        y += 12;
+      }
+
+      // ── HSN Section ───────────────────────────────────────────────────────
+      if (data.hsn.length > 0) {
+        if (y > 480) { doc.addPage({ layout: 'landscape' }); y = 40; }
+        doc.fillColor('#0f172a').fontSize(10).font('Helvetica-Bold')
+          .text('12 — HSN-wise Summary', 46, y + 4);
+        y += 22;
+
+        const hsnCols = [
+          { label: 'HSN Code',     x: 46,  w: 55 },
+          { label: 'Description',  x: 105, w: 100 },
+          { label: 'UQC',          x: 209, w: 30 },
+          { label: 'Qty',          x: 243, w: 35, align: 'right' as const },
+          { label: 'GST%',         x: 282, w: 30, align: 'center' as const },
+          { label: 'Taxable',      x: 316, w: 65, align: 'right' as const },
+          { label: 'IGST',         x: 385, w: 50, align: 'right' as const },
+          { label: 'CGST',         x: 439, w: 50, align: 'right' as const },
+          { label: 'SGST',         x: 493, w: 50, align: 'right' as const },
+        ];
+        pdfTableHeader(doc, hsnCols, y);
+        y += 20;
+
+        data.hsn.forEach((row, i) => {
+          if (y > 530) { doc.addPage({ layout: 'landscape' }); y = 40; }
+          pdfTableRow(doc, [
+            { value: row.hsnCode,               x: 46,  w: 55 },
+            { value: row.description.slice(0, 18), x: 105, w: 100 },
+            { value: row.uqc,                   x: 209, w: 30 },
+            { value: row.totalQty.toFixed(2),   x: 243, w: 35, align: 'right' },
+            { value: `${row.gstRate}%`,          x: 282, w: 30, align: 'center' },
+            { value: INR_FMT(row.taxableValue),  x: 316, w: 65, align: 'right' },
+            { value: INR_FMT(row.igst),          x: 385, w: 50, align: 'right' },
+            { value: INR_FMT(row.cgst),          x: 439, w: 50, align: 'right' },
+            { value: INR_FMT(row.sgst),          x: 493, w: 50, align: 'right' },
+          ], y, i % 2 === 0);
+          y += 16;
+        });
+      }
+
+      // Footer
+      doc.fillColor('#94a3b8').fontSize(7).font('Helvetica')
+        .text(`Generated by Execora  •  GSTR-1 ${period}  •  This is a system-generated report.`, 46, 570, { align: 'center', width: 503 });
+
+      doc.end();
+      logger.debug({ invoiceCount: data.totals.invoiceCount }, 'GSTR-1 PDF generated');
+    } catch (err) {
+      logger.error({ err }, 'GSTR-1 PDF generation failed');
+      reject(err);
+    }
+  });
+}
+
+/**
+ * Generate P&L report PDF.
+ * Month-wise table with totals row.
+ */
+export function generatePnlPdf(data: PnlPdfData): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc    = new PDFDocument({ margin: 46, size: 'A4' });
+      const chunks: Buffer[] = [];
+      doc.on('data', (c: Buffer) => chunks.push(c));
+      doc.on('end',  ()         => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+
+      const fromStr = new Date(data.period.from).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      const toStr   = new Date(data.period.to).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      const period  = `${fromStr} – ${toStr}`;
+
+      pdfReportHeader(doc, 'Profit & Loss Report', data.shopName ?? '', period);
+
+      // Totals summary bar
+      let y = 115;
+      const t = data.totals;
+      const summaryItems = [
+        { label: 'Revenue',        value: INR_FMT(t.revenue) },
+        { label: 'Net Revenue',    value: INR_FMT(t.netRevenue) },
+        { label: 'Tax Collected',  value: INR_FMT(t.taxCollected) },
+        { label: 'Discounts',      value: INR_FMT(t.discounts) },
+        { label: 'Collected',      value: INR_FMT(t.collected) },
+        { label: 'Outstanding',    value: INR_FMT(t.outstanding) },
+        { label: 'Collection %',   value: `${t.collectionRate.toFixed(1)}%` },
+      ];
+      const cardW = Math.floor(495 / summaryItems.length);
+      doc.fillColor('#f8fafc').rect(50, y, 495, 42).fill();
+      summaryItems.forEach((s, i) => {
+        const x = 50 + i * cardW;
+        doc.fillColor('#64748b').fontSize(7).font('Helvetica')
+          .text(s.label, x + 4, y + 6, { width: cardW - 8, align: 'center' });
+        doc.fillColor('#0f172a').fontSize(9).font('Helvetica-Bold')
+          .text(s.value, x + 4, y + 20, { width: cardW - 8, align: 'center' });
+      });
+      y += 56;
+
+      // Month-wise table
+      const pnlCols = [
+        { label: 'Month',          x: 50,  w: 60 },
+        { label: 'Bills',          x: 114, w: 28, align: 'center' as const },
+        { label: 'Revenue',        x: 146, w: 68, align: 'right' as const },
+        { label: 'Discounts',      x: 218, w: 62, align: 'right' as const },
+        { label: 'Net Revenue',    x: 284, w: 68, align: 'right' as const },
+        { label: 'Tax',            x: 356, w: 56, align: 'right' as const },
+        { label: 'Collected',      x: 416, w: 62, align: 'right' as const },
+        { label: 'Outstanding',    x: 482, w: 60, align: 'right' as const },
+      ];
+      pdfTableHeader(doc, pnlCols, y);
+      y += 20;
+
+      data.months.forEach((m, i) => {
+        if (y > 720) { doc.addPage(); y = 40; }
+        pdfTableRow(doc, [
+          { value: m.month,                  x: 50,  w: 60 },
+          { value: String(m.invoiceCount),   x: 114, w: 28, align: 'center' },
+          { value: INR_FMT(m.revenue),       x: 146, w: 68, align: 'right' },
+          { value: INR_FMT(m.discounts),     x: 218, w: 62, align: 'right' },
+          { value: INR_FMT(m.netRevenue),    x: 284, w: 68, align: 'right' },
+          { value: INR_FMT(m.taxCollected),  x: 356, w: 56, align: 'right' },
+          { value: INR_FMT(m.collected),     x: 416, w: 62, align: 'right' },
+          { value: INR_FMT(m.outstanding),   x: 482, w: 60, align: 'right' },
+        ], y, i % 2 === 0);
+        y += 16;
+      });
+
+      // Totals row
+      y += 4;
+      doc.fillColor('#0f766e').rect(50, y, 495, 20).fill();
+      doc.fillColor('#ffffff').fontSize(8).font('Helvetica-Bold');
+      const totRows = [
+        { value: 'TOTAL',              x: 50,  w: 60 },
+        { value: String(t.invoiceCount), x: 114, w: 28, align: 'center' as const },
+        { value: INR_FMT(t.revenue),   x: 146, w: 68, align: 'right' as const },
+        { value: INR_FMT(t.discounts), x: 218, w: 62, align: 'right' as const },
+        { value: INR_FMT(t.netRevenue), x: 284, w: 68, align: 'right' as const },
+        { value: INR_FMT(t.taxCollected), x: 356, w: 56, align: 'right' as const },
+        { value: INR_FMT(t.collected), x: 416, w: 62, align: 'right' as const },
+        { value: INR_FMT(t.outstanding), x: 482, w: 60, align: 'right' as const },
+      ];
+      for (const c of totRows) {
+        doc.text(c.value, c.x, y + 6, { width: c.w, align: c.align ?? 'left', lineBreak: false });
+      }
+
+      // Footer
+      doc.fillColor('#94a3b8').fontSize(7).font('Helvetica')
+        .text(`Generated by Execora  •  P&L ${period}  •  This is a system-generated report.`, 50, 770, { align: 'center', width: 495 });
+
+      doc.end();
+      logger.debug({ months: data.months.length }, 'P&L PDF generated');
+    } catch (err) {
+      logger.error({ err }, 'P&L PDF generation failed');
       reject(err);
     }
   });

@@ -50,6 +50,20 @@ function queryKeysForIntent(intent: string): string[][] {
     case "DAILY_SUMMARY":
       return [["summary"]];
 
+    case "ADD_DISCOUNT":
+    case "TOGGLE_GST":
+    case "SET_SUPPLY_TYPE":
+      return [["invoices"], ["summary"]];
+
+    case "RECORD_MIXED_PAYMENT":
+      return [["customers"], ["ledger"], ["summary"], ["invoices"]];
+
+    case "EXPORT_GSTR1":
+      return [["reports", "gstr1"]];
+
+    case "EXPORT_PNL":
+      return [["reports", "pnl"]];
+
     default:
       // UNKNOWN or any unrecognised intent — refresh all data panels
       return [["invoices"], ["customers"], ["products"], ["summary"], ["reminders"]];

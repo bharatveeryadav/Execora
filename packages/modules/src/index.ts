@@ -7,6 +7,7 @@ export * from './modules/ledger/ledger.service';
 export * from './modules/product/product.service';
 export * from './modules/reminder/reminder.service';
 export * from './modules/gst/gst.service';
+export * from './modules/gst/gstr1.service';
 
 // Voice engine
 export * from './modules/voice/conversation';

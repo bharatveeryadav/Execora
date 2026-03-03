@@ -10,6 +10,8 @@ const methodMap: Record<string, 'cash' | 'upi' | 'card' | 'bank' | 'credit' | 'm
   upi:   'upi',
   card:  'card',
   other: 'bank',
+  bank:  'bank',
+  mixed: 'mixed',
 };
 
 function generatePaymentNo(): string {
@@ -108,6 +110,109 @@ class LedgerService {
       });
     } catch (error) {
       logger.error({ error, customerId, amount }, 'Payment recording failed');
+      paymentProcessing.inc({ status: 'error' });
+      throw error;
+    }
+  }
+
+  /**
+   * Record a split (mixed) payment — e.g. ₹500 cash + ₹300 UPI.
+   * Each split is recorded as a separate Payment row but settled together in one atomic transaction.
+   */
+  async recordMixedPayment(
+    customerId: string,
+    splits: Array<{ amount: number; method: 'cash' | 'upi' | 'card' | 'other' }>,
+    notes?: string
+  ) {
+    try {
+      if (!customerId?.trim()) throw new Error('Customer ID is required');
+      if (!Array.isArray(splits) || splits.length === 0) throw new Error('At least one payment split is required');
+
+      const totalAmount = splits.reduce((s, p) => s + p.amount, 0);
+      if (totalAmount <= 0) throw new Error('Total payment amount must be positive');
+
+      for (const split of splits) {
+        if (typeof split.amount !== 'number' || split.amount <= 0 || !isFinite(split.amount)) {
+          throw new Error('Each split amount must be a positive number');
+        }
+        const validModes = ['cash', 'upi', 'card', 'other'];
+        if (!validModes.includes(split.method)) {
+          throw new Error(`Payment mode must be one of: ${validModes.join(', ')}`);
+        }
+      }
+
+      return await prisma.$transaction(async (tx) => {
+        const payments = [];
+        for (const split of splits) {
+          const method = methodMap[split.method] ?? 'bank';
+          const payNo  = generatePaymentNo();
+          const payment = await tx.payment.create({
+            data: {
+              paymentNo:  payNo,
+              tenantId:   tenantContext.get().tenantId,
+              customerId,
+              amount:     new Decimal(split.amount),
+              method,
+              status:     'completed',
+              notes,
+              receivedAt: new Date(),
+            },
+          });
+          payments.push(payment);
+        }
+
+        await tx.customer.update({
+          where: { id: customerId },
+          data: {
+            balance:           { decrement: totalAmount },
+            totalPayments:     { increment: totalAmount },
+            lastPaymentAmount: new Decimal(totalAmount),
+            lastPaymentDate:   new Date(),
+          },
+        });
+
+        // Auto-apply to oldest unpaid invoices (khata-style)
+        const pendingInvoices = await tx.invoice.findMany({
+          where: {
+            customerId,
+            tenantId: tenantContext.get().tenantId,
+            status: { in: ['pending', 'partial'] },
+          },
+          orderBy: { invoiceDate: 'asc' },
+          select: { id: true, total: true, paidAmount: true },
+        });
+
+        let remaining = totalAmount;
+        for (const inv of pendingInvoices) {
+          if (remaining <= 0) break;
+          const invTotal = parseFloat(inv.total.toString());
+          const invPaid  = parseFloat((inv.paidAmount ?? 0).toString());
+          const invDue   = Math.round((invTotal - invPaid) * 100) / 100;
+          if (invDue <= 0) continue;
+
+          if (remaining >= invDue) {
+            await tx.invoice.update({
+              where: { id: inv.id },
+              data:  { status: 'paid', paidAmount: new Decimal(invTotal), paidAt: new Date() },
+            });
+            remaining = Math.round((remaining - invDue) * 100) / 100;
+          } else {
+            await tx.invoice.update({
+              where: { id: inv.id },
+              data:  { status: 'partial', paidAmount: new Decimal(invPaid + remaining) },
+            });
+            remaining = 0;
+          }
+        }
+
+        logger.info({ customerId, totalAmount, splits, notes }, 'Mixed payment recorded');
+        paymentProcessing.inc({ status: 'success' });
+        paymentAmount.observe({ customer_id: customerId }, totalAmount);
+
+        return { payments, totalAmount };
+      });
+    } catch (error) {
+      logger.error({ error, customerId, splits }, 'Mixed payment recording failed');
       paymentProcessing.inc({ status: 'error' });
       throw error;
     }

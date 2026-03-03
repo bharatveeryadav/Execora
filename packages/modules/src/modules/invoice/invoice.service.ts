@@ -33,17 +33,32 @@ async function generateInvoiceNo(tx: any): Promise<string> {
   return `${fy}/INV/${String(seq).padStart(4, '0')}`;
 }
 
+/**
+ * Shared options for invoice creation features.
+ */
+export interface InvoiceOptions {
+  /** Bill-level discount as percentage (e.g. 10 = 10% off subtotal). Applied after per-item totals. */
+  discountPercent?: number;
+  /** Bill-level flat discount (overrides discountPercent if both provided). */
+  discountAmount?: number;
+  /** Enable GST calculation on line items. Default false (non-GST/retail billing). */
+  withGst?: boolean;
+  /** INTRASTATE = CGST+SGST; INTERSTATE = IGST. Defaults to INTRASTATE. */
+  supplyType?: SupplyType;
+  /** Buyer GSTIN for B2B invoices (populates buyer_gstin on Invoice record). */
+  buyerGstin?: string;
+  /** State code for place of supply (e.g. "29" for Karnataka). Determines IGST eligibility. */
+  placeOfSupply?: string;
+  /** If provided, immediately records a payment against this invoice (partial payment at billing). */
+  initialPayment?: { amount: number; method: 'cash' | 'upi' | 'card' | 'other' };
+}
+
 class InvoiceService {
   /**
    * Find a product by name using a two-pass strategy:
    * 1) Exact case-insensitive contains match (fast).
    * 2) Fuzzy fallback — normalise both strings, pick best overlap.
    * This handles spoken/transliterated names ("cheeni" → "Cheeni", "aata" → "Atta").
-   */
-  /**
-   * Find a product by name (two-pass: exact contains, then fuzzy).
-   * If still not found, auto-creates the product with price=0 so invoices never block.
-   * Returns { product, autoCreated } so callers can warn the shopkeeper.
    */
   private async findOrCreateProduct(
     tx: any,
@@ -109,18 +124,35 @@ class InvoiceService {
   }
 
   /**
+   * Compute bill-level discount amount from options.
+   * Returns the actual rupee amount to deduct.
+   */
+  private computeDiscount(subtotal: number, opts: InvoiceOptions): { discountAmt: number; discountType: string } {
+    if (opts.discountAmount && opts.discountAmount > 0) {
+      return { discountAmt: Math.min(opts.discountAmount, subtotal), discountType: 'flat' };
+    }
+    if (opts.discountPercent && opts.discountPercent > 0) {
+      const amt = Math.round(subtotal * (opts.discountPercent / 100) * 100) / 100;
+      return { discountAmt: Math.min(amt, subtotal), discountType: 'percent' };
+    }
+    return { discountAmt: 0, discountType: 'none' };
+  }
+
+  /**
    * Preview invoice — resolves products (auto-creates unknowns at ₹0), optionally
    * calculates GST per line item, and returns fully priced items WITHOUT committing to the DB.
    * The caller should store the result in Redis and wait for user confirmation.
    *
    * @param withGst  — Default FALSE. Pass true only when user explicitly requests GST billing.
    * @param supplyType — Only relevant when withGst=true. Determines CGST+SGST vs IGST split.
+   * @param discountPercent — Optional bill-level discount percentage (applied after subtotal).
    */
   async previewInvoice(
     customerId: string,
     items: InvoiceItemInput[],
     withGst: boolean = false,
-    supplyType: SupplyType = 'INTRASTATE'
+    supplyType: SupplyType = 'INTRASTATE',
+    discountPercent?: number
   ): Promise<{
     resolvedItems: Array<{
       productId: string; productName: string; unit: string; hsnCode: string | null;
@@ -129,6 +161,7 @@ class InvoiceService {
       subtotal: number; totalTax: number; total: number; autoCreated: boolean;
     }>;
     subtotal: number;
+    discountAmt: number; discountType: string;
     totalCgst: number; totalSgst: number; totalIgst: number;
     totalCess: number; totalTax: number; grandTotal: number;
     autoCreatedProducts: string[];
@@ -205,12 +238,18 @@ class InvoiceService {
           supplyType: 'INTRASTATE' as SupplyType,
         };
 
-    return { resolvedItems, ...totals, autoCreatedProducts };
+    // Apply bill-level discount to grandTotal
+    const { discountAmt, discountType } = this.computeDiscount(totals.subtotal, { discountPercent });
+    const grandTotal = Math.round((totals.grandTotal - discountAmt) * 100) / 100;
+
+    return { resolvedItems, ...totals, grandTotal, discountAmt, discountType, autoCreatedProducts };
   }
 
   /**
    * Confirm invoice — creates the DB record from already-resolved items (with GST).
    * Call this after the user confirms the preview returned by previewInvoice().
+   *
+   * @param opts  - Discount, B2B GSTIN, partial payment at billing, etc.
    */
   async confirmInvoice(
     customerId: string,
@@ -220,7 +259,8 @@ class InvoiceService {
       isGstExempt?: boolean; cgst?: number; sgst?: number; igst?: number; cess?: number;
       subtotal?: number; totalTax?: number; total: number;
     }>,
-    notes?: string
+    notes?: string,
+    opts: InvoiceOptions = {}
   ) {
     // Re-calculate totals from resolved items (source of truth)
     const subtotal   = resolvedItems.reduce((s, i) => s + (i.subtotal ?? i.total), 0);
@@ -229,23 +269,29 @@ class InvoiceService {
     const totalIgst  = resolvedItems.reduce((s, i) => s + (i.igst  ?? 0), 0);
     const totalCess  = resolvedItems.reduce((s, i) => s + (i.cess  ?? 0), 0);
     const totalTax   = totalCgst + totalSgst + totalIgst + totalCess;
-    const grandTotal = subtotal + totalTax;
+
+    const { discountAmt, discountType } = this.computeDiscount(subtotal, opts);
+    const grandTotal = Math.round((subtotal + totalTax - discountAmt) * 100) / 100;
 
     try {
       return await prisma.$transaction(async (tx) => {
         const invoice = await tx.invoice.create({
           data: {
-            tenantId:  tenantContext.get().tenantId,
-            invoiceNo: await generateInvoiceNo(tx),
+            tenantId:      tenantContext.get().tenantId,
+            invoiceNo:     await generateInvoiceNo(tx),
             customerId,
-            subtotal:  new Decimal(subtotal),
-            tax:       new Decimal(totalTax),
-            cgst:      new Decimal(totalCgst),
-            sgst:      new Decimal(totalSgst),
-            igst:      new Decimal(totalIgst),
-            cess:      new Decimal(totalCess),
-            total:     new Decimal(grandTotal),
-            status:    'pending',
+            subtotal:      new Decimal(subtotal),
+            tax:           new Decimal(totalTax),
+            cgst:          new Decimal(totalCgst),
+            sgst:          new Decimal(totalSgst),
+            igst:          new Decimal(totalIgst),
+            cess:          new Decimal(totalCess),
+            discount:      new Decimal(discountAmt),
+            discountType:  discountType !== 'none' ? discountType : null,
+            total:         new Decimal(grandTotal),
+            status:        'pending',
+            buyerGstin:    opts.buyerGstin ?? null,
+            placeOfSupply: opts.placeOfSupply ?? null,
             notes,
             items: {
               create: resolvedItems.map((i) => ({
@@ -275,11 +321,45 @@ class InvoiceService {
           });
         }
 
-        // Customer balance tracks grand total (tax-inclusive amount owed)
+        // Apply initial payment if provided (partial payment at billing time)
+        let finalStatus: string = 'pending';
+        let paidAmount = 0;
+        if (opts.initialPayment && opts.initialPayment.amount > 0) {
+          const paid = Math.min(opts.initialPayment.amount, grandTotal);
+          paidAmount = paid;
+          finalStatus = paid >= grandTotal ? 'paid' : 'partial';
+
+          const methodMap: Record<string, string> = { cash: 'cash', upi: 'upi', card: 'card', other: 'bank' };
+          const payNo = `PAY-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+          await tx.payment.create({
+            data: {
+              paymentNo:  payNo,
+              tenantId:   tenantContext.get().tenantId,
+              customerId,
+              invoiceId:  invoice.id,
+              amount:     new Decimal(paid),
+              method:     methodMap[opts.initialPayment.method] as any ?? 'cash',
+              status:     'completed',
+              receivedAt: new Date(),
+            },
+          });
+
+          await tx.invoice.update({
+            where: { id: invoice.id },
+            data: {
+              paidAmount: new Decimal(paidAmount),
+              status:     finalStatus as any,
+              paidAt:     finalStatus === 'paid' ? new Date() : null,
+            },
+          });
+        }
+
+        // Customer balance = amount still owed (grandTotal minus any initial payment)
+        const balanceIncrement = grandTotal - paidAmount;
         await tx.customer.update({
           where: { id: customerId },
           data: {
-            balance:        { increment: grandTotal },
+            balance:        { increment: balanceIncrement },
             totalPurchases: { increment: grandTotal },
             lastVisit:      new Date(),
             visitCount:     { increment: 1 },
@@ -287,7 +367,7 @@ class InvoiceService {
         });
 
         logger.info(
-          { invoiceId: invoice.id, customerId, subtotal, totalTax, grandTotal,
+          { invoiceId: invoice.id, customerId, subtotal, discountAmt, totalTax, grandTotal,
             itemCount: resolvedItems.length, tenantId: tenantContext.get().tenantId },
           'Invoice confirmed and created'
         );
@@ -302,13 +382,14 @@ class InvoiceService {
   }
 
   /**
-   * Create invoice with atomic transaction.
-   * Finds products by name, checks stock, creates invoice + items, updates stock + customer balance.
+   * Create invoice with atomic transaction — used by REST API (Form/Dashboard mode).
+   * Supports discounts, GST, B2B GSTIN, partial payment at creation, and proforma type.
    */
   async createInvoice(
     customerId: string,
     items: InvoiceItemInput[],
-    notes?: string
+    notes?: string,
+    opts: InvoiceOptions & { isProforma?: boolean } = {}
   ) {
     try {
       if (!customerId?.trim()) throw new Error('Customer ID is required');
@@ -316,118 +397,403 @@ class InvoiceService {
         throw new Error('Invoice must contain at least one item');
       }
       for (const item of items) {
-        if (!item.productName?.trim()) {
-          throw new Error('Each item must have a valid product name');
-        }
+        if (!item.productName?.trim()) throw new Error('Each item must have a valid product name');
         if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
           throw new Error(`Item quantity must be a positive integer (got: ${item.quantity})`);
         }
       }
 
+      const supplyType: SupplyType = opts.supplyType ?? 'INTRASTATE';
+      const withGst = opts.withGst ?? false;
+
       return await prisma.$transaction(async (tx) => {
-        let subtotal = 0;
-
         const resolvedItems: Array<{
-          productId: string;
-          productName: string;
-          unit: string;
-          quantity: number;
-          unitPrice: number;
-          subtotal: number;
-          total: number;
+          productId: string; productName: string; unit: string;
+          quantity: number; unitPrice: number; subtotal: number; total: number;
+          cgst: number; sgst: number; igst: number; cess: number; gstRate: number;
+          hsnCode: string | null;
         }> = [];
-
         const autoCreatedProducts: string[] = [];
 
         for (const item of items) {
           const { product, autoCreated } = await this.findOrCreateProduct(tx, item.productName);
-
           if (autoCreated) autoCreatedProducts.push(product.name);
 
-          // Skip stock check for auto-created products (they have stock=9999)
-          if (!autoCreated && product.stock < item.quantity) {
-            throw new Error(
-              `Insufficient stock for ${product.name}. Available: ${product.stock}, Requested: ${item.quantity}`
-            );
-          }
-
           const unitPrice = parseFloat(product.price.toString());
-          const itemTotal = unitPrice * item.quantity;
-          subtotal += itemTotal;
+          const itemSubtotal = Math.round(unitPrice * item.quantity * 100) / 100;
+
+          let cgst = 0, sgst = 0, igst = 0, cess = 0, gstRate = 0;
+          if (withGst) {
+            const gstLine = gstService.calculateLineItem(
+              { productName: product.name, hsnCode: product.hsnCode ?? null,
+                quantity: item.quantity, unitPrice,
+                gstRate: parseFloat((product.gstRate ?? 0).toString()),
+                cessRate: parseFloat((product.cess ?? 0).toString()),
+                isGstExempt: product.isGstExempt ?? false },
+              supplyType
+            );
+            cgst = gstLine.cgst; sgst = gstLine.sgst; igst = gstLine.igst; cess = gstLine.cess;
+            gstRate = parseFloat((product.gstRate ?? 0).toString());
+          }
 
           resolvedItems.push({
             productId: product.id,
             productName: product.name,
             unit: product.unit,
+            hsnCode: product.hsnCode ?? null,
             quantity: item.quantity,
             unitPrice,
-            subtotal: itemTotal,
-            total: itemTotal,
+            subtotal: itemSubtotal,
+            total: Math.round((itemSubtotal + cgst + sgst + igst + cess) * 100) / 100,
+            cgst, sgst, igst, cess, gstRate,
           });
         }
 
-        // Create invoice
+        const subtotal   = resolvedItems.reduce((s, i) => s + i.subtotal, 0);
+        const totalCgst  = resolvedItems.reduce((s, i) => s + i.cgst, 0);
+        const totalSgst  = resolvedItems.reduce((s, i) => s + i.sgst, 0);
+        const totalIgst  = resolvedItems.reduce((s, i) => s + i.igst, 0);
+        const totalCess  = resolvedItems.reduce((s, i) => s + i.cess, 0);
+        const totalTax   = totalCgst + totalSgst + totalIgst + totalCess;
+
+        const { discountAmt, discountType } = this.computeDiscount(subtotal, opts);
+        const grandTotal = Math.round((subtotal + totalTax - discountAmt) * 100) / 100;
+
+        const isProforma = opts.isProforma ?? false;
+
         const invoice = await tx.invoice.create({
           data: {
-            tenantId: tenantContext.get().tenantId,
-            invoiceNo: await generateInvoiceNo(tx),
+            tenantId:      tenantContext.get().tenantId,
+            invoiceNo:     await generateInvoiceNo(tx),
             customerId,
-            subtotal: new Decimal(subtotal),
-            total: new Decimal(subtotal),
-            status: 'pending',
+            subtotal:      new Decimal(subtotal),
+            tax:           new Decimal(totalTax),
+            cgst:          new Decimal(totalCgst),
+            sgst:          new Decimal(totalSgst),
+            igst:          new Decimal(totalIgst),
+            cess:          new Decimal(totalCess),
+            discount:      new Decimal(discountAmt),
+            discountType:  discountType !== 'none' ? discountType : null,
+            total:         new Decimal(grandTotal),
+            status:        isProforma ? 'proforma' : 'pending',
+            buyerGstin:    opts.buyerGstin ?? null,
+            placeOfSupply: opts.placeOfSupply ?? null,
             notes,
             items: {
               create: resolvedItems.map((i) => ({
-                productId: i.productId,
+                productId:   i.productId,
                 productName: i.productName,
-                unit: i.unit,
-                quantity: new Decimal(i.quantity),
-                unitPrice: new Decimal(i.unitPrice),
-                subtotal: new Decimal(i.subtotal),
-                total: new Decimal(i.total),
+                unit:        i.unit,
+                hsnCode:     i.hsnCode,
+                gstRate:     new Decimal(i.gstRate),
+                cgst:        new Decimal(i.cgst),
+                sgst:        new Decimal(i.sgst),
+                igst:        new Decimal(i.igst),
+                cess:        new Decimal(i.cess),
+                quantity:    new Decimal(i.quantity),
+                unitPrice:   new Decimal(i.unitPrice),
+                subtotal:    new Decimal(i.subtotal),
+                total:       new Decimal(i.total),
               })),
             },
           },
-          include: {
-            items: { include: { product: true } },
-            customer: true,
-          },
+          include: { items: { include: { product: true } }, customer: true },
         });
 
-        // Deduct stock
-        for (const i of resolvedItems) {
-          await tx.product.update({
-            where: { id: i.productId },
-            data: { stock: { decrement: i.quantity } },
+        // Proforma = no stock deduction (quote only, not a real sale yet)
+        if (!isProforma) {
+          for (const i of resolvedItems) {
+            await tx.product.update({
+              where: { id: i.productId },
+              data:  { stock: { decrement: i.quantity } },
+            });
+          }
+        }
+
+        // Apply initial payment if provided (partial payment at billing time)
+        let finalStatus: string = isProforma ? 'proforma' : 'pending';
+        let paidAmount = 0;
+        if (!isProforma && opts.initialPayment && opts.initialPayment.amount > 0) {
+          const paid = Math.min(opts.initialPayment.amount, grandTotal);
+          paidAmount = paid;
+          finalStatus = paid >= grandTotal ? 'paid' : 'partial';
+
+          const methodMap: Record<string, string> = { cash: 'cash', upi: 'upi', card: 'card', other: 'bank' };
+          const payNo = `PAY-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+          await tx.payment.create({
+            data: {
+              paymentNo:  payNo,
+              tenantId:   tenantContext.get().tenantId,
+              customerId,
+              invoiceId:  invoice.id,
+              amount:     new Decimal(paid),
+              method:     methodMap[opts.initialPayment.method] as any ?? 'cash',
+              status:     'completed',
+              receivedAt: new Date(),
+            },
+          });
+
+          await tx.invoice.update({
+            where: { id: invoice.id },
+            data: {
+              paidAmount: new Decimal(paidAmount),
+              status:     finalStatus as any,
+              paidAt:     finalStatus === 'paid' ? new Date() : null,
+            },
           });
         }
 
-        // Update customer balance (add to what they owe)
-        await tx.customer.update({
-          where: { id: customerId },
-          data: {
-            balance: { increment: subtotal },
-            totalPurchases: { increment: subtotal },
-            lastVisit: new Date(),
-            visitCount: { increment: 1 },
-          },
-        });
+        // For proforma, don't touch customer balance (no actual sale yet)
+        if (!isProforma) {
+          const balanceIncrement = grandTotal - paidAmount;
+          await tx.customer.update({
+            where: { id: customerId },
+            data: {
+              balance:        { increment: balanceIncrement },
+              totalPurchases: { increment: grandTotal },
+              lastVisit:      new Date(),
+              visitCount:     { increment: 1 },
+            },
+          });
+        }
 
         logger.info(
-          { invoiceId: invoice.id, customerId, total: subtotal, itemCount: items.length, autoCreatedProducts, tenantId: tenantContext.get().tenantId },
-          'Invoice created'
+          { invoiceId: invoice.id, customerId, subtotal, discountAmt, totalTax, grandTotal,
+            isProforma, itemCount: items.length, autoCreatedProducts, tenantId: tenantContext.get().tenantId },
+          isProforma ? 'Proforma invoice created' : 'Invoice created'
         );
         invoiceOperations.inc({ operation: 'create', status: 'success', tenantId: tenantContext.get().tenantId });
 
         return { invoice, autoCreatedProducts };
       });
-
-      // ...existing code...
     } catch (error) {
       logger.error({ error, customerId, items, tenantId: tenantContext.get().tenantId }, 'Invoice creation failed');
       invoiceOperations.inc({ operation: 'create', status: 'error', tenantId: tenantContext.get().tenantId });
       throw error;
     }
+  }
+
+  /**
+   * Convert proforma invoice → actual invoice.
+   * Deducts stock and updates customer balance. Sets status to 'pending'.
+   */
+  async convertProformaToInvoice(invoiceId: string, initialPayment?: { amount: number; method: 'cash' | 'upi' | 'card' | 'other' }) {
+    return await prisma.$transaction(async (tx) => {
+      const invoice = await tx.invoice.findUnique({
+        where: { id: invoiceId },
+        include: { items: true },
+      });
+      if (!invoice) throw new Error('Invoice not found');
+      if (invoice.status !== 'proforma') throw new Error('Only proforma invoices can be converted');
+
+      // Deduct stock
+      for (const item of invoice.items) {
+        if (item.productId) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data:  { stock: { decrement: Number(item.quantity) } },
+          });
+        }
+      }
+
+      const grandTotal  = parseFloat(invoice.total.toString());
+      let finalStatus   = 'pending';
+      let paidAmount    = 0;
+
+      if (initialPayment && initialPayment.amount > 0) {
+        paidAmount  = Math.min(initialPayment.amount, grandTotal);
+        finalStatus = paidAmount >= grandTotal ? 'paid' : 'partial';
+
+        const methodMap: Record<string, string> = { cash: 'cash', upi: 'upi', card: 'card', other: 'bank' };
+        const payNo = `PAY-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+        await tx.payment.create({
+          data: {
+            paymentNo:  payNo,
+            tenantId:   tenantContext.get().tenantId,
+            customerId: invoice.customerId!,
+            invoiceId:  invoice.id,
+            amount:     new Decimal(paidAmount),
+            method:     methodMap[initialPayment.method] as any ?? 'cash',
+            status:     'completed',
+            receivedAt: new Date(),
+          },
+        });
+      }
+
+      if (invoice.customerId) {
+        await tx.customer.update({
+          where: { id: invoice.customerId },
+          data: {
+            balance:        { increment: grandTotal - paidAmount },
+            totalPurchases: { increment: grandTotal },
+            lastVisit:      new Date(),
+            visitCount:     { increment: 1 },
+          },
+        });
+      }
+
+      return await tx.invoice.update({
+        where: { id: invoiceId },
+        data: {
+          status:     finalStatus as any,
+          paidAmount: new Decimal(paidAmount),
+          paidAt:     finalStatus === 'paid' ? new Date() : null,
+          updatedAt:  new Date(),
+        },
+        include: { items: { include: { product: true } }, customer: true },
+      });
+    });
+  }
+
+  /**
+   * Update a pending invoice — allows editing items, discount, notes, or B2B fields.
+   * Only PENDING (or DRAFT) invoices can be edited. PAID/CANCELLED require admin override.
+   */
+  async updateInvoice(
+    invoiceId: string,
+    changes: {
+      items?: InvoiceItemInput[];
+      notes?: string;
+      opts?: InvoiceOptions;
+    }
+  ) {
+    return await prisma.$transaction(async (tx) => {
+      const existing = await tx.invoice.findUnique({
+        where: { id: invoiceId },
+        include: { items: true },
+      });
+      if (!existing) throw new Error('Invoice not found');
+      if (!['pending', 'draft'].includes(existing.status)) {
+        throw new Error(`Cannot edit invoice with status '${existing.status}'. Only pending/draft invoices are editable.`);
+      }
+
+      const opts: InvoiceOptions = changes.opts ?? {};
+      const supplyType: SupplyType = opts.supplyType ?? 'INTRASTATE';
+      const withGst = opts.withGst ?? false;
+
+      // Restore old stock before recalculating
+      for (const item of existing.items) {
+        if (item.productId) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data:  { stock: { increment: Number(item.quantity) } },
+          });
+        }
+      }
+
+      // Reverse old customer balance contribution
+      const oldTotal = parseFloat(existing.total.toString());
+      const oldPaid  = parseFloat(existing.paidAmount?.toString() ?? '0');
+      if (existing.customerId) {
+        await tx.customer.update({
+          where: { id: existing.customerId },
+          data: {
+            balance:        { decrement: oldTotal - oldPaid },
+            totalPurchases: { decrement: oldTotal },
+          },
+        });
+      }
+
+      // Delete old items
+      await tx.invoiceItem.deleteMany({ where: { invoiceId } });
+
+      const resolvedItems: Array<{
+        productId: string; productName: string; unit: string; hsnCode: string | null;
+        quantity: number; unitPrice: number; subtotal: number; total: number;
+        cgst: number; sgst: number; igst: number; cess: number; gstRate: number;
+      }> = [];
+
+      const itemsToProcess = changes.items ?? existing.items.map((i) => ({
+        productName: i.productName,
+        quantity: Number(i.quantity),
+      }));
+
+      for (const item of itemsToProcess) {
+        const { product } = await this.findOrCreateProduct(tx, item.productName);
+        const unitPrice = parseFloat(product.price.toString());
+        const itemSubtotal = Math.round(unitPrice * item.quantity * 100) / 100;
+
+        let cgst = 0, sgst = 0, igst = 0, cess = 0, gstRate = 0;
+        if (withGst) {
+          const gstLine = gstService.calculateLineItem(
+            { productName: product.name, hsnCode: product.hsnCode ?? null,
+              quantity: item.quantity, unitPrice,
+              gstRate: parseFloat((product.gstRate ?? 0).toString()),
+              cessRate: parseFloat((product.cess ?? 0).toString()),
+              isGstExempt: product.isGstExempt ?? false },
+            supplyType
+          );
+          cgst = gstLine.cgst; sgst = gstLine.sgst; igst = gstLine.igst; cess = gstLine.cess;
+          gstRate = parseFloat((product.gstRate ?? 0).toString());
+        }
+
+        resolvedItems.push({
+          productId: product.id, productName: product.name, unit: product.unit,
+          hsnCode: product.hsnCode ?? null, quantity: item.quantity,
+          unitPrice, subtotal: itemSubtotal,
+          total: Math.round((itemSubtotal + cgst + sgst + igst + cess) * 100) / 100,
+          cgst, sgst, igst, cess, gstRate,
+        });
+      }
+
+      const subtotal  = resolvedItems.reduce((s, i) => s + i.subtotal, 0);
+      const totalCgst = resolvedItems.reduce((s, i) => s + i.cgst, 0);
+      const totalSgst = resolvedItems.reduce((s, i) => s + i.sgst, 0);
+      const totalIgst = resolvedItems.reduce((s, i) => s + i.igst, 0);
+      const totalCess = resolvedItems.reduce((s, i) => s + i.cess, 0);
+      const totalTax  = totalCgst + totalSgst + totalIgst + totalCess;
+      const { discountAmt, discountType } = this.computeDiscount(subtotal, opts);
+      const grandTotal = Math.round((subtotal + totalTax - discountAmt) * 100) / 100;
+
+      // Re-deduct stock for new items
+      for (const i of resolvedItems) {
+        await tx.product.update({
+          where: { id: i.productId },
+          data:  { stock: { decrement: i.quantity } },
+        });
+      }
+
+      // Re-apply customer balance
+      if (existing.customerId) {
+        await tx.customer.update({
+          where: { id: existing.customerId },
+          data: {
+            balance:        { increment: grandTotal - oldPaid },
+            totalPurchases: { increment: grandTotal },
+          },
+        });
+      }
+
+      return await tx.invoice.update({
+        where: { id: invoiceId },
+        data: {
+          subtotal:      new Decimal(subtotal),
+          tax:           new Decimal(totalTax),
+          cgst:          new Decimal(totalCgst),
+          sgst:          new Decimal(totalSgst),
+          igst:          new Decimal(totalIgst),
+          cess:          new Decimal(totalCess),
+          discount:      new Decimal(discountAmt),
+          discountType:  discountType !== 'none' ? discountType : null,
+          total:         new Decimal(grandTotal),
+          buyerGstin:    opts.buyerGstin !== undefined ? opts.buyerGstin : existing.buyerGstin,
+          placeOfSupply: opts.placeOfSupply !== undefined ? opts.placeOfSupply : existing.placeOfSupply,
+          notes:         changes.notes !== undefined ? changes.notes : existing.notes,
+          updatedAt:     new Date(),
+          items: {
+            create: resolvedItems.map((i) => ({
+              productId: i.productId, productName: i.productName, unit: i.unit,
+              hsnCode: i.hsnCode, gstRate: new Decimal(i.gstRate),
+              cgst: new Decimal(i.cgst), sgst: new Decimal(i.sgst),
+              igst: new Decimal(i.igst), cess: new Decimal(i.cess),
+              quantity: new Decimal(i.quantity), unitPrice: new Decimal(i.unitPrice),
+              subtotal: new Decimal(i.subtotal), total: new Decimal(i.total),
+            })),
+          },
+        },
+        include: { items: { include: { product: true } }, customer: true },
+      });
+    });
   }
 
   /**
@@ -444,23 +810,26 @@ class InvoiceService {
         if (!invoice) throw new Error('Invoice not found');
         if (invoice.status === 'cancelled') throw new Error('Invoice already cancelled');
 
-        // Restore stock
-        for (const item of invoice.items) {
-          if (item.productId) {
-            await tx.product.update({
-              where: { id: item.productId },
-              data: { stock: { increment: Number(item.quantity) } },
-            });
+        // Restore stock (proforma invoices never deducted stock so skip)
+        if (invoice.status !== 'proforma') {
+          for (const item of invoice.items) {
+            if (item.productId) {
+              await tx.product.update({
+                where: { id: item.productId },
+                data: { stock: { increment: Number(item.quantity) } },
+              });
+            }
           }
         }
 
         // Reduce customer balance
-        if (invoice.customerId) {
+        if (invoice.customerId && invoice.status !== 'proforma') {
           const total = parseFloat(invoice.total.toString());
+          const paid  = parseFloat((invoice.paidAmount ?? 0).toString());
           await tx.customer.update({
             where: { id: invoice.customerId },
             data: {
-              balance: { decrement: total },
+              balance:        { decrement: total - paid },
               totalPurchases: { decrement: total },
             },
           });
@@ -521,7 +890,6 @@ class InvoiceService {
 
   /**
    * Persist the MinIO object key (and presigned URL) on an invoice record.
-   * Called after the PDF is uploaded so the URL can be regenerated any time.
    */
   async savePdfUrl(invoiceId: string, pdfObjectKey: string, pdfUrl: string): Promise<void> {
     await prisma.invoice.update({
@@ -603,7 +971,7 @@ class InvoiceService {
       where: {
         tenantId: tenantContext.get().tenantId,
         invoiceDate: { gte: from, lte: toEnd },
-        status: { not: 'cancelled' },
+        status: { notIn: ['cancelled', 'proforma'] },
       },
       select: { total: true },
     });
@@ -653,7 +1021,7 @@ class InvoiceService {
       where: {
         tenantId: tenantContext.get().tenantId,
         invoiceDate: { gte: startOfDay, lte: endOfDay },
-        status: { not: 'cancelled' },
+        status: { notIn: ['cancelled', 'proforma'] },
       },
       select: { total: true },
     });
@@ -673,8 +1041,8 @@ class InvoiceService {
     });
 
     const totalPayments = payments.reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
-    const cashPayments = payments.filter((p) => p.method === 'cash').reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
-    const upiPayments = payments.filter((p) => p.method === 'upi').reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
+    const cashPayments  = payments.filter((p) => p.method === 'cash').reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
+    const upiPayments   = payments.filter((p) => p.method === 'upi').reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
 
     return {
       date,
@@ -683,10 +1051,8 @@ class InvoiceService {
       totalPayments,
       cashPayments,
       upiPayments,
-      // pendingAmount = how much is still owed from today's sales.
-      // Can't be negative — negative means extra cash collected (old debts cleared).
       pendingAmount: Math.max(0, totalSales - totalPayments),
-      extraPayments: Math.max(0, totalPayments - totalSales), // old debts cleared today
+      extraPayments: Math.max(0, totalPayments - totalSales),
     };
   }
 }

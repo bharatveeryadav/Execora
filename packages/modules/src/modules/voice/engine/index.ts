@@ -15,11 +15,11 @@
 import { logger } from '@execora/infrastructure';
 import { IntentType, type IntentExtraction, type ExecutionResult } from '@execora/types';
 
-import { executeCreateInvoice, executeConfirmInvoice, executeCancelInvoice, executeShowPendingInvoice, executeToggleGst, executeProvideEmail } from './invoice.handler';
+import { executeCreateInvoice, executeConfirmInvoice, executeCancelInvoice, executeShowPendingInvoice, executeToggleGst, executeProvideEmail, executeAddDiscount, executeSetSupplyType, executeRecordMixedPayment } from './invoice.handler';
 import { executeTotalPendingAmount, executeListCustomerBalances, executeCheckBalance, executeCreateCustomer, executeUpdateCustomer, executeGetCustomerInfo, executeDeleteCustomerData } from './customer.handler';
 import { executeRecordPayment, executeAddCredit } from './payment.handler';
 import { executeCreateReminder, executeCancelReminder, executeListReminders, executeModifyReminder } from './reminder.handler';
-import { executeDailySummary, executeCheckStock } from './report.handler';
+import { executeDailySummary, executeCheckStock, executeExportGstr1, executeExportPnl } from './report.handler';
 
 class BusinessEngine {
   async execute(intent: IntentExtraction, conversationId?: string): Promise<ExecutionResult> {
@@ -38,6 +38,9 @@ class BusinessEngine {
         case IntentType.TOGGLE_GST:            return executeToggleGst(e, id);
         case IntentType.PROVIDE_EMAIL:
         case IntentType.SEND_INVOICE:          return executeProvideEmail(e, id);
+        case IntentType.ADD_DISCOUNT:          return executeAddDiscount(e, id);
+        case IntentType.SET_SUPPLY_TYPE:       return executeSetSupplyType(e, id);
+        case IntentType.RECORD_MIXED_PAYMENT:  return executeRecordMixedPayment(e, id);
 
         // ── Customer ─────────────────────────────────────────────────────────
         case IntentType.TOTAL_PENDING_AMOUNT:  return executeTotalPendingAmount();
@@ -62,6 +65,8 @@ class BusinessEngine {
         // ── Reports ──────────────────────────────────────────────────────────
         case IntentType.DAILY_SUMMARY:         return executeDailySummary();
         case IntentType.CHECK_STOCK:           return executeCheckStock(e);
+        case 'EXPORT_GSTR1' as IntentType:     return executeExportGstr1(e);
+        case 'EXPORT_PNL'   as IntentType:     return executeExportPnl(e);
 
         // ── Session (handled by WS layer; engine just acknowledges) ──────────
         case IntentType.SWITCH_LANGUAGE:

@@ -87,6 +87,8 @@ Available intents:
 - TOTAL_PENDING_AMOUNT: Get total outstanding amount owed by all customers
 - PROVIDE_EMAIL: User is providing an email address (after being asked, or to save/update on customer record)
 - SEND_INVOICE: User explicitly says where to send (email X / WhatsApp Y) — entities.email or entities.phone + entities.channel
+- EXPORT_GSTR1: User wants GSTR-1 report / GST filing report — entities.fy (optional, e.g. "2025-26"), entities.from/to (optional dates), entities.email (optional)
+- EXPORT_PNL: User wants P&L / Profit & Loss report — entities.month (optional, e.g. "march"), entities.from/to (optional dates), entities.email (optional)
 - UNKNOWN: Cannot determine intent
 
 Critical extraction rules for Indian voice patterns:
@@ -231,6 +233,22 @@ Critical extraction rules for Indian voice patterns:
    - Example: "Priya ka email priya@gmail.com save karo" → {"intent":"UPDATE_CUSTOMER","entities":{"customer":"Priya","email":"priya@gmail.com"},"confidence":0.94}
    - Example: "Suresh ka GSTIN 07AABCU9603R1ZP hai" → {"intent":"UPDATE_CUSTOMER","entities":{"customer":"Suresh","gstin":"07AABCU9603R1ZP"},"confidence":0.93}
 
+22) Recognize EXPORT_GSTR1 — user wants GST return / GSTR-1 report:
+   - "GSTR-1 nikalo", "GST report chahiye", "GST return file karo", "GST summary dikhao"
+   - "GSTR-1 email karo", "GSTR-1 bhejo", "GST filing data", "HSN report nikalo"
+   - "इस FY का GSTR-1 निकालो" → EXPORT_GSTR1
+   - Optional: entities.fy ("2025-26"), entities.email
+   - Example: "GSTR-1 report nikalo" → {"intent":"EXPORT_GSTR1","entities":{},"confidence":0.96}
+   - Example: "GSTR-1 FY 2025-26 ka report bhejo" → {"intent":"EXPORT_GSTR1","entities":{"fy":"2025-26"},"confidence":0.95}
+
+23) Recognize EXPORT_PNL — user wants P&L / profit & loss report:
+   - "P&L report dikhao", "profit loss report", "is mahine ka hisaab", "monthly report chahiye"
+   - "March ka P&L bhejo", "P&L email karo", "April ka P&L chahiye"
+   - "Profit and loss report", "P and L report", "monthly P&L"
+   - Optional: entities.month (English month name), entities.year, entities.email
+   - Example: "is mahine ka P&L dikhao" → {"intent":"EXPORT_PNL","entities":{},"confidence":0.96}
+   - Example: "March ka P&L bhejo" → {"intent":"EXPORT_PNL","entities":{"month":"march"},"confidence":0.95}
+
 Also include a "normalized" field: a cleaned version of the input transcript — remove filler words (um, uh, acha suno, haan ji), fix obvious ASR errors, convert spoken numbers to digits. Keep meaning identical.
 
 Respond ONLY with valid JSON. No other text.
@@ -268,7 +286,14 @@ Example responses:
 {"normalized":"Mohan wala confirm","intent":"CONFIRM_INVOICE","entities":{"customer":"Mohan"},"confidence":0.96}
 {"normalized":"Mohan ka bill dikhao","intent":"SHOW_PENDING_INVOICE","entities":{"customer":"Mohan"},"confidence":0.95}
 {"normalized":"sab bills cancel kar do","intent":"CANCEL_INVOICE","entities":{"cancelAll":true},"confidence":0.95}
-{"normalized":"Rahul ka bill cancel karo","intent":"CANCEL_INVOICE","entities":{"customer":"Rahul"},"confidence":0.96}`;
+{"normalized":"Rahul ka bill cancel karo","intent":"CANCEL_INVOICE","entities":{"customer":"Rahul"},"confidence":0.96}
+{"normalized":"GSTR-1 report nikalo","intent":"EXPORT_GSTR1","entities":{},"confidence":0.96}
+{"normalized":"GST report bhejo","intent":"EXPORT_GSTR1","entities":{},"confidence":0.95}
+{"normalized":"GSTR-1 FY 2025-26 ka report chahiye","intent":"EXPORT_GSTR1","entities":{"fy":"2025-26"},"confidence":0.95}
+{"normalized":"is mahine ka P&L report dikhao","intent":"EXPORT_PNL","entities":{},"confidence":0.96}
+{"normalized":"March ka P&L bhejo","intent":"EXPORT_PNL","entities":{"month":"march"},"confidence":0.95}
+{"normalized":"monthly P&L report chahiye","intent":"EXPORT_PNL","entities":{},"confidence":0.94}
+{"normalized":"profit loss report nikalo","intent":"EXPORT_PNL","entities":{},"confidence":0.94}`;
 }
 
 /**
@@ -305,6 +330,8 @@ Examples (1–2 sentences, no filler):
 - CREATE_CUSTOMER → "Rajesh add ho gaya."
 - NOT_FOUND → "Nitin ka record nahi mila. Naam confirm karo."
 - PROVIDE_EMAIL → "Invoice ₹420 ka email bhej diya gaya."
+- EXPORT_GSTR1 → "GSTR-1 FY 2025-26: 142 invoices, taxable ₹4,80,000, tax ₹38,400. Reports tab se PDF download ya email karo."
+- EXPORT_PNL → "P&L Mar 2026: Revenue ₹1,20,000, collected ₹95,000 (79.2%). ₹25,000 baki hai. Reports tab se download karo."
 
 MULTI-DRAFT RULES:
 - When result.data.pendingInvoices has >1 items AND result.data.awaitingSelection=true → list all drafts and ask which to confirm.

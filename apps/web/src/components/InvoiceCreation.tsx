@@ -1,15 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Mic, MicOff, Check, Edit2, X, Printer, MessageSquare, Download, Phone } from "lucide-react";
+import { Mic, MicOff, Check, Edit2, X, Printer, MessageSquare, Download, Phone, Plus, Minus, Tag, Building2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent } from "@/components/ui/card";
 import { wsClient } from "@/lib/ws";
 import { useCreateInvoice, useCustomers } from "@/hooks/useQueries";
-import { formatCurrency, type Customer } from "@/lib/api";
+import { formatCurrency, type Customer, invoiceApi } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 
 type Step = "start" | "listening" | "processing" | "confirmation" | "customer" | "final" | "whatsapp";
+type SupplyType = "INTRASTATE" | "INTERSTATE";
 
 interface InvoiceItem {
   name: string;
@@ -18,42 +19,62 @@ interface InvoiceItem {
   total: number;
 }
 
-interface ParsedInvoice {
-  items: InvoiceItem[];
-  customerName?: string;
-  transcript?: string;
-}
-
 interface InvoiceCreationProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
-  const [step, setStep] = useState<Step>("start");
-  const [progress, setProgress] = useState(0);
-  const [items, setItems] = useState<InvoiceItem[]>([]);
-  const [transcript, setTranscript] = useState("");
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [createdInvoiceNo, setCreatedInvoiceNo] = useState("");
-  const [whatsappSent, setWhatsappSent] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [customerSearch, setCustomerSearch] = useState("");
-  const [error, setError] = useState("");
+// ── helpers ───────────────────────────────────────────────────────────────────
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
-  const recognitionRef = useRef<any>(null);
+function calcDiscount(subtotal: number, pct: number, flat: number): number {
+  if (flat > 0) return Math.min(flat, subtotal);
+  if (pct > 0)  return Math.round(subtotal * (pct / 100) * 100) / 100;
+  return 0;
+}
+
+// ── component ─────────────────────────────────────────────────────────────────
+
+const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
+  const [step, setStep]                           = useState<Step>("start");
+  const [progress, setProgress]                   = useState(0);
+  const [items, setItems]                         = useState<InvoiceItem[]>([]);
+  const [transcript, setTranscript]               = useState("");
+  const [selectedCustomer, setSelectedCustomer]   = useState<Customer | null>(null);
+  const [createdInvoiceNo, setCreatedInvoiceNo]   = useState("");
+  const [whatsappSent, setWhatsappSent]           = useState(false);
+  const [isListening, setIsListening]             = useState(false);
+  const [customerSearch, setCustomerSearch]       = useState("");
+  const [error, setError]                         = useState("");
+
+  // ── billing options ──────────────────────────────────────────────────────
+  const [withGst, setWithGst]                     = useState(false);
+  const [supplyType, setSupplyType]               = useState<SupplyType>("INTRASTATE");
+  const [discountPct, setDiscountPct]             = useState(0);
+  const [discountFlat, setDiscountFlat]           = useState(0);
+  const [isProforma, setIsProforma]               = useState(false);
+  const [buyerGstin, setBuyerGstin]               = useState("");
+  const [placeOfSupply, setPlaceOfSupply]         = useState("");
+  // Partial payment at billing
+  const [partialAmount, setPartialAmount]         = useState(0);
+  const [partialMethod, setPartialMethod]         = useState<"cash" | "upi" | "card" | "other">("cash");
+
+  const mediaRecorderRef  = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef    = useRef<MediaStream | null>(null);
+  const recognitionRef    = useRef<any>(null);
   const canStreamAudioRef = useRef(false);
 
   const createInvoice = useCreateInvoice();
   const { data: customers = [] } = useCustomers(customerSearch);
   const qc = useQueryClient();
 
-  const subtotal = items.reduce((sum, i) => sum + i.total, 0);
-  const gst = Math.round(subtotal * 0.05);
-  const total = subtotal + gst;
+  // ── totals ────────────────────────────────────────────────────────────────
+  const subtotal      = items.reduce((s, i) => s + i.total, 0);
+  const gstAmt        = withGst ? Math.round(subtotal * 0.05) : 0;     // simplified 5% preview
+  const discountAmt   = calcDiscount(subtotal, discountPct, discountFlat);
+  const total         = Math.round((subtotal + gstAmt - discountAmt) * 100) / 100;
+  const balanceDue    = Math.max(0, total - partialAmount);
 
+  // ── audio cleanup ─────────────────────────────────────────────────────────
   const cleanupAudio = useCallback(() => {
     canStreamAudioRef.current = false;
     if (recognitionRef.current) {
@@ -61,72 +82,100 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
       recognitionRef.current.stop();
       recognitionRef.current = null;
     }
-    if (mediaRecorderRef.current?.state !== "inactive") {
-      mediaRecorderRef.current?.stop();
-    }
+    if (mediaRecorderRef.current?.state !== "inactive") mediaRecorderRef.current?.stop();
     mediaRecorderRef.current = null;
     mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
     mediaStreamRef.current = null;
     setIsListening(false);
   }, []);
 
-  // Reset on open/close
+  // ── reset on open/close ───────────────────────────────────────────────────
   useEffect(() => {
     if (open) {
-      setStep("start");
-      setProgress(0);
-      setItems([]);
-      setTranscript("");
-      setSelectedCustomer(null);
-      setCreatedInvoiceNo("");
-      setWhatsappSent(false);
-      setError("");
+      setStep("start"); setProgress(0); setItems([]); setTranscript("");
+      setSelectedCustomer(null); setCreatedInvoiceNo(""); setWhatsappSent(false); setError("");
+      setWithGst(false); setSupplyType("INTRASTATE");
+      setDiscountPct(0); setDiscountFlat(0); setPartialAmount(0); setPartialMethod("cash");
+      setIsProforma(false); setBuyerGstin(""); setPlaceOfSupply("");
     } else {
       cleanupAudio();
       wsClient.send("voice:stop");
     }
   }, [open, cleanupAudio]);
 
-  // Listen for AI invoice response via WebSocket
+  // ── WebSocket events ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!open) return;
-
     const offs = [
       wsClient.on("voice:response", (msg) => {
         const payload = msg as {
           data?: {
             text?: string;
+            intent?: string;
             executionResult?: {
               data?: {
                 resolvedItems?: { productName: string; quantity: number; unitPrice?: number; total?: number }[];
                 customerName?: string;
+                discountAmt?: number;
+                discountPercent?: number;
+                withGst?: boolean;
+                supplyType?: string;
+                invoiceNo?: string;
+                invoiceId?: string;
               };
             };
           };
           text?: string;
+          intent?: string;
         };
         const text = payload.data?.text ?? payload.text ?? "";
         setTranscript(text);
+        const intent = payload.data?.intent ?? payload.intent ?? "";
+        const execData = payload.data?.executionResult?.data ?? {};
 
-        // Extract resolved invoice items from executionResult (CREATE_INVOICE path)
-        const resolvedItems = payload.data?.executionResult?.data?.resolvedItems;
+        // ── Intent-specific state updates (don't advance step) ────────────
+        if (intent === "ADD_DISCOUNT") {
+          if (execData.discountPercent && execData.discountPercent > 0) {
+            setDiscountPct(execData.discountPercent); setDiscountFlat(0);
+          } else if (execData.discountAmt && execData.discountAmt > 0) {
+            setDiscountFlat(execData.discountAmt); setDiscountPct(0);
+          }
+          return;
+        }
+        if (intent === "TOGGLE_GST") {
+          if (execData.withGst !== undefined) setWithGst(execData.withGst);
+          return;
+        }
+        if (intent === "SET_SUPPLY_TYPE") {
+          if (execData.supplyType) setSupplyType(execData.supplyType as SupplyType);
+          return;
+        }
+        // Belt-and-suspenders: advance to final if invoice:confirmed was missed
+        if (intent === "CONFIRM_INVOICE" || intent === "SEND_INVOICE") {
+          if (execData.invoiceNo || execData.invoiceId) {
+            setCreatedInvoiceNo(execData.invoiceNo ?? execData.invoiceId ?? "");
+            if (execData.customerName) {
+              setSelectedCustomer({ id: execData.invoiceId ?? "", name: execData.customerName, balance: 0 } as Customer);
+            }
+            setStep("final");
+          }
+          return;
+        }
+
+        // Default: populate items and show confirmation
+        const resolvedItems = execData.resolvedItems;
         if (resolvedItems?.length) {
-          const parsedItems: InvoiceItem[] = resolvedItems.map((it) => ({
-            name: it.productName,
-            qty: String(it.quantity),
+          setItems(resolvedItems.map((it) => ({
+            name: it.productName, qty: String(it.quantity),
             price: it.unitPrice ?? 0,
             total: it.total ?? (it.unitPrice ?? 0) * it.quantity,
-          }));
-          setItems(parsedItems);
+          })));
         }
         setStep("confirmation");
       }),
-      wsClient.on("voice:thinking", () => {
-        setStep("processing");
-        setProgress(30);
-      }),
+      wsClient.on("voice:thinking", () => { setStep("processing"); setProgress(30); }),
       wsClient.on("voice:transcript", (msg) => {
-        const payload = msg as { text?: string; isFinal?: boolean; data?: { text?: string; isFinal?: boolean } };
+        const payload = msg as { text?: string; isFinal?: boolean; data?: { text?: string } };
         const text = payload.data?.text ?? payload.text ?? "";
         if (text) setTranscript(text);
       }),
@@ -135,189 +184,371 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
           data?: {
             resolvedItems?: { productName: string; quantity: number; unitPrice?: number; total?: number }[];
             items?: { productName: string; quantity: number; unitPrice?: number }[];
+            withGst?: boolean;
+            supplyType?: string;
+            discountAmt?: number;
+            discountPercent?: number;
           };
         };
-        const rawItems = payload.data?.resolvedItems ?? payload.data?.items;
+        const d = payload.data ?? {};
+        const rawItems = d.resolvedItems ?? d.items;
         if (rawItems?.length) {
-          const parsedItems: InvoiceItem[] = rawItems.map((it) => ({
-            name: it.productName,
-            qty: String(it.quantity),
+          setItems(rawItems.map((it) => ({
+            name: it.productName, qty: String(it.quantity),
             price: it.unitPrice ?? 0,
             total: (it as { total?: number }).total ?? (it.unitPrice ?? 0) * it.quantity,
-          }));
-          setItems(parsedItems);
-          setStep("confirmation");
+          })));
         }
+        // Sync billing options from the backend draft
+        if (d.withGst !== undefined) setWithGst(d.withGst);
+        if (d.supplyType) setSupplyType(d.supplyType as SupplyType);
+        if (d.discountPercent && d.discountPercent > 0) {
+          setDiscountPct(d.discountPercent); setDiscountFlat(0);
+        } else if (d.discountAmt && d.discountAmt > 0) {
+          setDiscountFlat(d.discountAmt); setDiscountPct(0);
+        }
+        setStep("confirmation");
+      }),
+      // invoice:confirmed arrives immediately after CONFIRM_INVOICE executes (before LLM)
+      wsClient.on("invoice:confirmed", (msg) => {
+        const payload = msg as { data?: { invoiceNo?: string; invoiceId?: string; customerName?: string } };
+        const d = payload.data ?? {};
+        if (d.invoiceNo) setCreatedInvoiceNo(d.invoiceNo);
+        if (d.customerName) {
+          setSelectedCustomer({ id: d.invoiceId ?? "", name: d.customerName, balance: 0 } as Customer);
+        }
+        setStep("final");
+        void qc.invalidateQueries({ queryKey: ["invoices"] });
+        void qc.invalidateQueries({ queryKey: ["customers"] });
+        void qc.invalidateQueries({ queryKey: ["summary"] });
+      }),
+      // Backend error (STT unavailable, OpenAI timeout, business engine crash, etc.)
+      // Without this the dialog stays stuck at "processing" forever.
+      wsClient.on("error", (msg) => {
+        const payload = msg as { data?: { error?: string; message?: string } };
+        const errMsg = payload.data?.error ?? payload.data?.message ?? "Something went wrong. Please try again.";
+        setError(errMsg);
+        setStep("start");
+        setProgress(0);
+        cleanupAudio();
       }),
     ];
-
     return () => offs.forEach((off) => off());
-  }, [open]);
+  }, [open, qc, cleanupAudio]);
 
-  // Progress animation for listening/processing
+  // ── progress animation + stuck-at-processing timeout ─────────────────────
   useEffect(() => {
-    if (step === "processing") {
-      const interval = setInterval(() => {
-        setProgress((p) => Math.min(95, p + 2));
-      }, 100);
-      return () => clearInterval(interval);
-    }
-  }, [step]);
+    if (step !== "processing") return;
+    const animId = setInterval(() => setProgress((p) => Math.min(95, p + 2)), 100);
+    // If neither invoice:draft nor voice:response arrives within 20 s, reset
+    const timeoutId = setTimeout(() => {
+      setError("Processing took too long. Please try again.");
+      setStep("start");
+      setProgress(0);
+      cleanupAudio();
+    }, 20_000);
+    return () => {
+      clearInterval(animId);
+      clearTimeout(timeoutId);
+    };
+  }, [step, cleanupAudio]);
 
+  // ── voice input ───────────────────────────────────────────────────────────
   const startVoiceInput = useCallback(async () => {
     setError("");
-
-    // Connect WS if not connected
     if (!wsClient.isConnected) {
       wsClient.connect();
       const ok = await wsClient.waitForOpen(6000);
-      if (!ok) {
-        setError("Could not connect to voice server. Please try typing your command.");
-        return;
-      }
+      if (!ok) { setError("Could not connect to voice server."); return; }
     }
 
-    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-      // Fallback to browser speech recognition
-      const SR =
-        (window as { SpeechRecognition?: new () => any }).SpeechRecognition ??
-        (window as { webkitSpeechRecognition?: new () => any }).webkitSpeechRecognition;
-      if (!SR) {
-        setError("Voice not supported. Please type your invoice.");
-        return;
-      }
+    // Helper: send voice:start and wait for the backend to confirm session ready
+    const waitForSession = (audioFormat: "pcm" | "webm"): Promise<boolean> =>
+      new Promise((resolve) => {
+        const finish = (ok: boolean) => { clearTimeout(timer); offOk(); offErr(); resolve(ok); };
+        const timer  = setTimeout(() => finish(false), 5000);
+        const offOk  = wsClient.on("voice:started", () => finish(true));
+        const offErr = wsClient.on("error", () => finish(false));
+        wsClient.send("voice:start", { audioFormat, sampleRate: 16000 });
+      });
+
+    // ── SpeechRecognition fallback (no getUserMedia API) ─────────────────────
+    if (!navigator.mediaDevices?.getUserMedia) {
+      const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
+      if (!SR) { setError("Voice not supported. Please type your invoice."); return; }
       const rec = new SR();
-      rec.lang = navigator.language?.startsWith("hi") ? "hi-IN" : (navigator.language || "hi-IN");
+      rec.lang    = navigator.language?.startsWith("hi") ? "hi-IN" : (navigator.language || "hi-IN");
       rec.onstart = () => { setIsListening(true); setStep("listening"); setProgress(0); };
-      rec.onend = () => { setIsListening(false); setStep("processing"); };
+      rec.onend   = () => { setIsListening(false); setStep("processing"); };
       rec.onerror = () => { setIsListening(false); setError("Voice error. Please try again."); setStep("start"); };
       rec.onresult = (e: any) => {
         const text = e.results[0][0].transcript;
         setTranscript(text);
         wsClient.send("voice:final", { text });
-        setStep("processing");
-        setProgress(30);
+        setStep("processing"); setProgress(30);
       };
       recognitionRef.current = rec;
-      wsClient.send("voice:start", {});
+      wsClient.send("voice:start", { audioFormat: "webm", sampleRate: 16000 });
       rec.start();
       return;
     }
 
+    let stream: MediaStream;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true },
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true, noiseSuppression: true,
+          autoGainControl: true, channelCount: 1,
+          sampleRate: { ideal: 16000, max: 48000 },
+        },
       });
-      mediaStreamRef.current = stream;
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : undefined;
-      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-      recorder.ondataavailable = (e: BlobEvent) => {
-        if (e.data.size > 0 && wsClient.isConnected && canStreamAudioRef.current) wsClient.sendBinary(e.data);
-      };
-      recorder.onstop = () => {
-        canStreamAudioRef.current = false;
-        setIsListening(false);
-      };
-
-      wsClient.send("voice:start", {});
-
-      const sessionReady = await new Promise<boolean>((resolve) => {
-        const finish = (ok: boolean) => { clearTimeout(timer); offStarted(); offErr(); resolve(ok); };
-        const timer = setTimeout(() => finish(false), 5000);
-        const offStarted = wsClient.on("voice:started", () => finish(true));
-        const offErr = wsClient.on("error", () => finish(false));
-      });
-
-      if (!sessionReady) {
-        stream.getTracks().forEach((t) => t.stop());
-        mediaStreamRef.current = null;
-        mediaRecorderRef.current = null;
-        setError("Voice session didn't start. Please try again.");
-        setStep("start");
-        return;
-      }
-
-      canStreamAudioRef.current = true;
-      wsClient.send("recording:start");
-      recorder.start(250);
-      setIsListening(true);
-      setStep("listening");
-      setProgress(0);
     } catch {
       setError("Microphone permission denied.");
+      return;
     }
+    mediaStreamRef.current = stream;
+
+    // ── Path A: AudioWorklet PCM 16kHz — required by ElevenLabs, also works with Deepgram ──
+    const supportsWorklet = typeof AudioContext !== "undefined" && typeof AudioWorklet !== "undefined";
+    if (supportsWorklet) {
+      try {
+        const audioCtx    = new AudioContext({ sampleRate: 16000 });
+        const source      = audioCtx.createMediaStreamSource(stream);
+        await audioCtx.audioWorklet.addModule("/pcm-processor.worklet.js");
+        const workletNode = new AudioWorkletNode(audioCtx, "pcm-processor");
+        canStreamAudioRef.current = false;
+
+        workletNode.port.onmessage = (e: MessageEvent<{ type: string; buffer: ArrayBuffer }>) => {
+          if (e.data.type === "audio" && canStreamAudioRef.current) wsClient.sendBinary(e.data.buffer);
+        };
+
+        const sessionReady = await waitForSession("pcm");
+        if (!sessionReady) {
+          await audioCtx.close();
+          stream.getTracks().forEach((t) => t.stop());
+          mediaStreamRef.current = null;
+          setError("Voice session didn't start. Check server connection.");
+          setStep("start");
+          return;
+        }
+
+        source.connect(workletNode);
+        canStreamAudioRef.current = true;
+        setIsListening(true); setStep("listening"); setProgress(0);
+
+        // Expose stop() so cleanupAudio() can tear down the worklet pipeline
+        const pcmStop = () => {
+          canStreamAudioRef.current = false;
+          source.disconnect();
+          workletNode.disconnect();
+          audioCtx.close().catch(() => {});
+          setIsListening(false);
+        };
+        mediaRecorderRef.current = { stop: pcmStop, state: "recording" } as unknown as MediaRecorder;
+        return;
+      } catch {
+        // AudioWorklet failed (file missing, browser restriction) — fall through to MediaRecorder
+        stream.getTracks().forEach((t) => t.stop());
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
+          });
+          mediaStreamRef.current = stream;
+        } catch {
+          setError("Microphone permission denied.");
+          return;
+        }
+      }
+    }
+
+    // ── Path B: MediaRecorder WebM — fallback, only works with Deepgram ─────
+    const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : undefined;
+    const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    mediaRecorderRef.current = recorder;
+    canStreamAudioRef.current = false;
+    recorder.ondataavailable = (e: BlobEvent) => {
+      if (e.data.size > 0 && wsClient.isConnected && canStreamAudioRef.current) wsClient.sendBinary(e.data);
+    };
+    recorder.onstop = () => { canStreamAudioRef.current = false; setIsListening(false); };
+
+    const sessionReady = await waitForSession("webm");
+    if (!sessionReady) {
+      stream.getTracks().forEach((t) => t.stop());
+      mediaStreamRef.current = null; mediaRecorderRef.current = null;
+      setError("Voice session didn't start.");
+      setStep("start");
+      return;
+    }
+
+    canStreamAudioRef.current = true;
+    recorder.start(250);
+    setIsListening(true); setStep("listening"); setProgress(0);
   }, []);
 
   const stopVoiceInput = useCallback(() => {
     cleanupAudio();
     wsClient.send("recording:stop");
     wsClient.send("voice:stop");
-    setStep("processing");
-    setProgress(30);
+    setStep("processing"); setProgress(30);
   }, [cleanupAudio]);
 
+  // ── handlers ──────────────────────────────────────────────────────────────
   const handleConfirm = () => setStep("customer");
 
-  const handleSelectCustomer = (c: Customer) => {
+  const handleSelectCustomer = async (c: Customer) => {
     setSelectedCustomer(c);
     setStep("final");
-    // Actually create the invoice
+
     const invItems = items.length > 0
       ? items.map((it) => ({ productName: it.name, quantity: parseInt(it.qty) || 1 }))
       : [{ productName: "General Items", quantity: 1 }];
 
-    createInvoice.mutateAsync({ customerId: c.id, items: invItems })
-      .then((res) => {
-        setCreatedInvoiceNo(res.invoice?.invoiceNo ?? "INV-NEW");
-        void qc.invalidateQueries({ queryKey: ["invoices"] });
-      })
-      .catch(() => setError("Invoice saved locally. Sync may be pending."));
+    const opts = {
+      withGst:        withGst || undefined,
+      supplyType:     supplyType !== "INTRASTATE" ? supplyType : undefined,
+      discountPercent: discountPct > 0 ? discountPct : undefined,
+      discountAmount:  discountPct === 0 && discountFlat > 0 ? discountFlat : undefined,
+      buyerGstin:      buyerGstin.trim() || undefined,
+      placeOfSupply:   placeOfSupply.trim() || undefined,
+      initialPayment:  partialAmount > 0 ? { amount: partialAmount, method: partialMethod } : undefined,
+    };
+
+    try {
+      let res: { invoice?: { invoiceNo?: string } };
+      if (isProforma) {
+        res = await invoiceApi.proforma({ customerId: c.id, items: invItems, ...opts });
+        setCreatedInvoiceNo(res.invoice?.invoiceNo ?? "PRO-NEW");
+      } else {
+        res = await createInvoice.mutateAsync({ customerId: c.id, items: invItems, ...opts });
+        setCreatedInvoiceNo((res as any).invoice?.invoiceNo ?? "INV-NEW");
+      }
+      void qc.invalidateQueries({ queryKey: ["invoices"] });
+    } catch {
+      setError("Invoice saved locally. Sync may be pending.");
+    }
   };
 
-  const handleWhatsApp = () => {
-    setStep("whatsapp");
-    setTimeout(() => setWhatsappSent(true), 1500);
-  };
+  const handleWhatsApp = () => { setStep("whatsapp"); setTimeout(() => setWhatsappSent(true), 1500); };
 
+  // ── render ────────────────────────────────────────────────────────────────
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             🧾{" "}
-            {step === "start" && "New Invoice"}
-            {step === "listening" && "Listening..."}
-            {step === "processing" && "Processing..."}
+            {step === "start"        && (isProforma ? "New Quotation / Proforma" : "New Invoice")}
+            {step === "listening"    && "Listening..."}
+            {step === "processing"   && "Processing..."}
             {step === "confirmation" && "Confirm Items"}
-            {step === "customer" && "Add Customer"}
-            {step === "final" && `Invoice ${createdInvoiceNo || "#INV-NEW"}`}
-            {step === "whatsapp" && "Share via WhatsApp"}
+            {step === "customer"     && "Add Customer"}
+            {step === "final"        && `${isProforma ? "Proforma" : "Invoice"} ${createdInvoiceNo || "#NEW"}`}
+            {step === "whatsapp"     && "Share via WhatsApp"}
           </DialogTitle>
         </DialogHeader>
 
-        {error && (
-          <div className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</div>
-        )}
+        {error && <div className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</div>}
 
-        {/* STEP 1: START */}
+        {/* ── STEP 1: START ─────────────────────────────────────────────── */}
         {step === "start" && (
-          <div className="flex flex-col items-center gap-6 py-8">
-            <p className="text-sm text-muted-foreground">
-              Tap microphone or say{" "}
-              <span className="font-medium text-foreground">"Hey Execora, naya bill banao"</span>
-            </p>
-            <button
-              onClick={() => void startVoiceInput()}
-              className="flex h-24 w-24 items-center justify-center rounded-full bg-destructive/10 text-destructive transition-transform hover:scale-105 active:scale-95"
-            >
-              <Mic className="h-10 w-10" />
-            </button>
-            <span className="text-xs text-muted-foreground">Tap to start voice input</span>
+          <div className="flex flex-col gap-5 py-4">
+            {/* Billing option toggles */}
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <ToggleChip active={withGst} onClick={() => setWithGst((v) => !v)} icon="🧾" label="GST Invoice" />
+              <ToggleChip active={isProforma} onClick={() => setIsProforma((v) => !v)} icon="📋" label="Proforma / Quote" />
+              {withGst && (
+                <ToggleChip
+                  active={supplyType === "INTERSTATE"}
+                  onClick={() => setSupplyType((s) => s === "INTRASTATE" ? "INTERSTATE" : "INTRASTATE")}
+                  icon="🚛"
+                  label={supplyType === "INTERSTATE" ? "IGST (Inter-state)" : "CGST+SGST (Intra-state)"}
+                />
+              )}
+            </div>
+
+            {/* Discount row */}
+            <div className="flex items-center gap-2">
+              <Tag className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground w-20">Discount</span>
+              <div className="flex gap-1 flex-1">
+                <input
+                  type="number" min={0} max={100} placeholder="% off"
+                  value={discountPct || ""}
+                  onChange={(e) => { setDiscountPct(Number(e.target.value)); setDiscountFlat(0); }}
+                  className="w-20 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <span className="text-xs text-muted-foreground self-center">or</span>
+                <input
+                  type="number" min={0} placeholder="₹ flat"
+                  value={discountFlat || ""}
+                  onChange={(e) => { setDiscountFlat(Number(e.target.value)); setDiscountPct(0); }}
+                  className="w-24 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            </div>
+
+            {/* B2B GSTIN */}
+            <div className="flex items-center gap-2">
+              <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <input
+                placeholder="Buyer GSTIN (B2B, optional)"
+                value={buyerGstin}
+                onChange={(e) => setBuyerGstin(e.target.value.toUpperCase())}
+                maxLength={15}
+                className="flex-1 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              {withGst && (
+                <input
+                  placeholder="State code"
+                  value={placeOfSupply}
+                  onChange={(e) => setPlaceOfSupply(e.target.value)}
+                  maxLength={2}
+                  className="w-20 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              )}
+            </div>
+
+            {/* Partial payment at billing */}
+            {!isProforma && (
+              <div className="flex items-center gap-2">
+                <Wallet className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground w-20">Paid now</span>
+                <input
+                  type="number" min={0} placeholder="₹ amount"
+                  value={partialAmount || ""}
+                  onChange={(e) => setPartialAmount(Number(e.target.value))}
+                  className="w-24 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <select
+                  value={partialMethod}
+                  onChange={(e) => setPartialMethod(e.target.value as typeof partialMethod)}
+                  className="rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="cash">Cash</option>
+                  <option value="upi">UPI</option>
+                  <option value="card">Card</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            )}
+
+            {/* Mic button */}
+            <div className="flex flex-col items-center gap-3 pt-2">
+              <p className="text-sm text-muted-foreground">
+                Tap mic or say <span className="font-medium text-foreground">"Hey Execora, naya bill banao"</span>
+              </p>
+              <button
+                onClick={() => void startVoiceInput()}
+                className="flex h-20 w-20 items-center justify-center rounded-full bg-destructive/10 text-destructive transition-transform hover:scale-105 active:scale-95"
+              >
+                <Mic className="h-9 w-9" />
+              </button>
+              <span className="text-xs text-muted-foreground">Tap to start voice input</span>
+            </div>
           </div>
         )}
 
-        {/* STEP 2: LISTENING */}
+        {/* ── STEP 2: LISTENING ─────────────────────────────────────────── */}
         {step === "listening" && (
           <div className="space-y-4 py-4">
             <div className="flex items-center justify-between">
@@ -334,94 +565,92 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
                 </Button>
               )}
             </div>
-            {transcript && (
-              <div className="rounded-lg bg-muted p-4">
-                <p className="text-sm italic text-foreground">"{transcript}"</p>
-              </div>
-            )}
+            {transcript && <div className="rounded-lg bg-muted p-4"><p className="text-sm italic">"{transcript}"</p></div>}
             <Progress value={progress} className="h-2" />
           </div>
         )}
 
-        {/* STEP 3: PROCESSING */}
+        {/* ── STEP 3: PROCESSING ────────────────────────────────────────── */}
         {step === "processing" && (
           <div className="space-y-4 py-4">
             <div className="flex items-center gap-2">
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
               <span className="text-sm font-medium">Execora is processing...</span>
             </div>
-            {transcript && (
-              <div className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
-                Heard: "{transcript}"
-              </div>
-            )}
+            {transcript && <div className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">Heard: "{transcript}"</div>}
             <Progress value={progress} className="h-2" />
           </div>
         )}
 
-        {/* STEP 4: CONFIRMATION */}
+        {/* ── STEP 4: CONFIRMATION ──────────────────────────────────────── */}
         {step === "confirmation" && (
           <div className="space-y-4">
             <p className="flex items-center gap-2 text-sm font-medium text-green-600">
               <Check className="h-4 w-4" />
               {transcript ? `I heard: "${transcript}"` : "Items detected:"}
             </p>
+
             {items.length > 0 ? (
-              <ItemTable items={items} subtotal={subtotal} gst={gst} total={total} />
+              <EditableItemTable
+                items={items}
+                setItems={setItems}
+                withGst={withGst}
+                discountAmt={discountAmt}
+                discountPct={discountPct}
+                discountFlat={discountFlat}
+                partialAmount={partialAmount}
+              />
             ) : (
               <div className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
-                No items detected. You can proceed to assign customer and add items manually.
+                No items detected. Proceed to assign customer.
               </div>
             )}
-            <div className="rounded-lg bg-muted px-3 py-2">
-              <span className="text-sm text-muted-foreground">Customer: </span>
-              <span className="text-sm font-medium">Not specified</span>
+
+            {/* Quick-edit discount */}
+            <div className="flex items-center gap-2">
+              <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+              <input type="number" min={0} max={100} placeholder="Discount %" value={discountPct || ""}
+                onChange={(e) => { setDiscountPct(Number(e.target.value)); setDiscountFlat(0); }}
+                className="w-20 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary" />
+              <span className="text-xs text-muted-foreground">or</span>
+              <input type="number" min={0} placeholder="₹ flat" value={discountFlat || ""}
+                onChange={(e) => { setDiscountFlat(Number(e.target.value)); setDiscountPct(0); }}
+                className="w-24 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary" />
             </div>
+
+            <div className="rounded-lg bg-muted px-3 py-2 text-sm">
+              <span className="text-muted-foreground">Customer: </span>
+              <span className="font-medium">Not specified</span>
+              {isProforma && <span className="ml-2 rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">Proforma</span>}
+            </div>
+
             <div className="flex gap-2">
-              <Button onClick={handleConfirm} className="flex-1 gap-1.5">
-                <Check className="h-4 w-4" /> Confirm
-              </Button>
-              <Button variant="outline" className="gap-1.5" onClick={() => setStep("start")}>
-                <Edit2 className="h-4 w-4" /> Retry
-              </Button>
-              <Button variant="outline" className="gap-1.5" onClick={() => onOpenChange(false)}>
-                <X className="h-4 w-4" /> Cancel
-              </Button>
+              <Button onClick={handleConfirm} className="flex-1 gap-1.5"><Check className="h-4 w-4" /> Confirm</Button>
+              <Button variant="outline" className="gap-1.5" onClick={() => setStep("start")}><Edit2 className="h-4 w-4" /> Retry</Button>
+              <Button variant="outline" className="gap-1.5" onClick={() => onOpenChange(false)}><X className="h-4 w-4" /> Cancel</Button>
             </div>
           </div>
         )}
 
-        {/* STEP 5: CUSTOMER SEARCH */}
+        {/* ── STEP 5: CUSTOMER SEARCH ───────────────────────────────────── */}
         {step === "customer" && (
           <div className="space-y-4">
             <input
-              type="text"
-              placeholder="Search customer name or phone…"
-              value={customerSearch}
-              onChange={(e) => setCustomerSearch(e.target.value)}
+              type="text" placeholder="Search customer name or phone…"
+              value={customerSearch} onChange={(e) => setCustomerSearch(e.target.value)}
               className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
             <div className="max-h-48 space-y-2 overflow-y-auto">
               {customers.slice(0, 8).map((c) => (
-                <Card
-                  key={c.id}
-                  className="cursor-pointer border-primary/20 hover:border-primary/50 transition-colors"
-                  onClick={() => handleSelectCustomer(c)}
-                >
+                <Card key={c.id} className="cursor-pointer border-primary/20 hover:border-primary/50 transition-colors" onClick={() => void handleSelectCustomer(c)}>
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-semibold">{c.name}</p>
-                        {c.phone && (
-                          <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Phone className="h-3 w-3" /> {c.phone}
-                          </p>
-                        )}
+                        {c.phone && <p className="flex items-center gap-1 text-xs text-muted-foreground"><Phone className="h-3 w-3" /> {c.phone}</p>}
                       </div>
                       {parseFloat(String(c.balance)) > 0 && (
-                        <p className="text-xs text-destructive font-medium">
-                          Owes {formatCurrency(parseFloat(String(c.balance)))}
-                        </p>
+                        <p className="text-xs text-destructive font-medium">Owes {formatCurrency(parseFloat(String(c.balance)))}</p>
                       )}
                     </div>
                   </CardContent>
@@ -434,77 +663,72 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
           </div>
         )}
 
-        {/* STEP 6: FINAL INVOICE */}
+        {/* ── STEP 6: FINAL ────────────────────────────────────────────── */}
         {step === "final" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>{new Date().toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
-              <span className="rounded bg-warning/10 px-2 py-0.5 text-warning">
-                {createInvoice.isPending ? "⏳ Saving..." : "✅ Saved"}
+              <span className={`rounded px-2 py-0.5 ${isProforma ? "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300" : "bg-warning/10 text-warning"}`}>
+                {createInvoice.isPending ? "⏳ Saving..." : isProforma ? "📋 Proforma" : "✅ Saved"}
               </span>
             </div>
+
             {selectedCustomer && (
               <div className="rounded-lg bg-muted px-3 py-2 text-sm">
                 <p className="font-medium">{selectedCustomer.name}</p>
-                {selectedCustomer.phone && (
-                  <p className="text-muted-foreground">📞 {selectedCustomer.phone}</p>
-                )}
+                {selectedCustomer.phone && <p className="text-muted-foreground">📞 {selectedCustomer.phone}</p>}
+                {buyerGstin && <p className="text-xs text-muted-foreground">GSTIN: {buyerGstin}</p>}
               </div>
             )}
+
             {items.length > 0 && (
-              <ItemTable items={items} subtotal={subtotal} gst={gst} total={total} />
+              <InvoiceSummaryTable
+                items={items} subtotal={subtotal} gstAmt={gstAmt}
+                discountAmt={discountAmt} total={total}
+                partialAmount={partialAmount} balanceDue={balanceDue}
+                withGst={withGst} isProforma={isProforma}
+              />
             )}
+
+            {partialAmount > 0 && (
+              <div className="rounded-lg bg-green-50 px-3 py-2 text-xs dark:bg-green-950/30">
+                <span className="text-green-700 dark:text-green-400 font-medium">✓ Paid: {formatCurrency(partialAmount)} ({partialMethod.toUpperCase()})</span>
+                {balanceDue > 0 && <span className="ml-2 text-destructive">· Balance due: {formatCurrency(balanceDue)}</span>}
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" className="gap-1.5 text-xs">
-                <Printer className="h-4 w-4" /> Print
-              </Button>
+              <Button variant="outline" className="gap-1.5 text-xs"><Printer className="h-4 w-4" /> Print</Button>
               {selectedCustomer?.phone ? (
-                <Button onClick={handleWhatsApp} className="gap-1.5 text-xs">
-                  <MessageSquare className="h-4 w-4" /> WhatsApp
-                </Button>
+                <Button onClick={handleWhatsApp} className="gap-1.5 text-xs"><MessageSquare className="h-4 w-4" /> WhatsApp</Button>
               ) : (
-                <Button className="gap-1.5 text-xs" onClick={() => onOpenChange(false)}>
-                  <Check className="h-4 w-4" /> Done
-                </Button>
+                <Button className="gap-1.5 text-xs" onClick={() => onOpenChange(false)}><Check className="h-4 w-4" /> Done</Button>
               )}
-              <Button variant="outline" className="gap-1.5 text-xs" onClick={() => onOpenChange(false)}>
-                <Download className="h-4 w-4" /> Close
-              </Button>
-              <Button variant="outline" className="gap-1.5 text-xs" onClick={() => setStep("start")}>
-                <Edit2 className="h-4 w-4" /> New Invoice
-              </Button>
+              <Button variant="outline" className="gap-1.5 text-xs" onClick={() => onOpenChange(false)}><Download className="h-4 w-4" /> Close</Button>
+              <Button variant="outline" className="gap-1.5 text-xs" onClick={() => setStep("start")}><Edit2 className="h-4 w-4" /> New Invoice</Button>
             </div>
           </div>
         )}
 
-        {/* STEP 7: WHATSAPP */}
+        {/* ── STEP 7: WHATSAPP ─────────────────────────────────────────── */}
         {step === "whatsapp" && selectedCustomer && (
           <div className="space-y-4">
             <div className="rounded-lg bg-muted px-3 py-2 text-sm">
               <p className="text-muted-foreground">
-                To:{" "}
-                <span className="font-medium text-foreground">
-                  {selectedCustomer.name} ({selectedCustomer.phone})
-                </span>{" "}
-                ✓ WhatsApp available
+                To: <span className="font-medium text-foreground">{selectedCustomer.name} ({selectedCustomer.phone})</span> ✓
               </p>
             </div>
             <div className="rounded-lg border p-3">
-              <p className="text-sm italic text-foreground">
-                "{selectedCustomer.name.split(" ")[0]} ji, aapka bill {formatCurrency(total)} ka. Dhanyavaad!"
+              <p className="text-sm italic">
+                "{selectedCustomer.name.split(" ")[0]} ji, aapka {isProforma ? "quotation" : "bill"} {formatCurrency(total)} ka. Dhanyavaad!"
               </p>
               <button className="mt-1 text-xs text-primary hover:underline">Edit Message</button>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="text-xs">📎 Attach PDF</Button>
-              <Button variant="outline" size="sm" className="text-xs">📎 Attach Image</Button>
             </div>
             {!whatsappSent ? (
               <Button className="w-full gap-1.5" asChild>
                 <a
-                  href={`https://wa.me/91${selectedCustomer.phone?.replace(/\D/g, "")}?text=${encodeURIComponent(`${selectedCustomer.name.split(" ")[0]} ji, aapka bill ${formatCurrency(total)} ka. Dhanyavaad! — Execora`)}`}
-                  target="_blank"
-                  rel="noreferrer"
+                  href={`https://wa.me/91${selectedCustomer.phone?.replace(/\D/g, "")}?text=${encodeURIComponent(`${selectedCustomer.name.split(" ")[0]} ji, aapka ${isProforma ? "quotation" : "bill"} ${formatCurrency(total)} ka. Dhanyavaad! — Execora`)}`}
+                  target="_blank" rel="noreferrer"
                   onClick={() => setTimeout(() => setWhatsappSent(true), 500)}
                 >
                   <MessageSquare className="h-4 w-4" /> Send via WhatsApp
@@ -513,7 +737,7 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
             ) : (
               <div className="rounded-lg bg-green-50 p-3 text-sm dark:bg-green-950/30">
                 <p className="flex items-center gap-1.5 font-medium text-green-700 dark:text-green-400">
-                  <Check className="h-4 w-4" /> Invoice shared successfully!
+                  <Check className="h-4 w-4" /> Shared successfully!
                 </p>
               </div>
             )}
@@ -524,51 +748,142 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
   );
 };
 
-const ItemTable = ({
-  items,
-  subtotal,
-  gst,
-  total,
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function ToggleChip({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: string; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+        active ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/50"
+      }`}
+    >
+      <span>{icon}</span> {label}
+    </button>
+  );
+}
+
+function EditableItemTable({
+  items, setItems, withGst, discountAmt, discountPct, discountFlat, partialAmount,
 }: {
-  items: InvoiceItem[];
-  subtotal: number;
-  gst: number;
-  total: number;
-}) => (
-  <div className="overflow-hidden rounded-lg border">
-    <table className="w-full text-sm">
-      <thead className="bg-muted/50">
-        <tr>
-          <th className="px-3 py-2 text-left font-medium">Item</th>
-          <th className="px-3 py-2 text-left font-medium">Qty</th>
-          <th className="px-3 py-2 text-right font-medium">Price</th>
-          <th className="px-3 py-2 text-right font-medium">Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        {items.map((item, idx) => (
-          <tr key={`${item.name}-${idx}`} className="border-t">
-            <td className="px-3 py-2">{item.name}</td>
-            <td className="px-3 py-2">{item.qty}</td>
-            <td className="px-3 py-2 text-right">₹{item.price}</td>
-            <td className="px-3 py-2 text-right">₹{item.total}</td>
+  items: { name: string; qty: string; price: number; total: number }[];
+  setItems: React.Dispatch<React.SetStateAction<{ name: string; qty: string; price: number; total: number }[]>>;
+  withGst: boolean;
+  discountAmt: number;
+  discountPct: number;
+  discountFlat: number;
+  partialAmount: number;
+}) {
+  const subtotal  = items.reduce((s, i) => s + i.total, 0);
+  const gstAmt    = withGst ? Math.round(subtotal * 0.05) : 0;
+  const total     = Math.max(0, subtotal + gstAmt - discountAmt);
+  const balanceDue = Math.max(0, total - partialAmount);
+
+  const updateQty = (idx: number, val: string) => {
+    setItems((prev) => prev.map((it, i) => {
+      if (i !== idx) return it;
+      const qty = Math.max(1, parseInt(val) || 1);
+      return { ...it, qty: String(qty), total: Math.round(it.price * qty * 100) / 100 };
+    }));
+  };
+
+  const removeItem = (idx: number) => setItems((prev) => prev.filter((_, i) => i !== idx));
+
+  const addItem = () => setItems((prev) => [...prev, { name: "", qty: "1", price: 0, total: 0 }]);
+
+  return (
+    <div className="overflow-hidden rounded-lg border text-sm">
+      <table className="w-full">
+        <thead className="bg-muted/50">
+          <tr>
+            <th className="px-3 py-2 text-left font-medium">Item</th>
+            <th className="px-2 py-2 text-center font-medium w-20">Qty</th>
+            <th className="px-3 py-2 text-right font-medium">Total</th>
+            <th className="w-7" />
           </tr>
-        ))}
-        <tr className="border-t bg-muted/30">
-          <td colSpan={3} className="px-3 py-1.5 text-right text-muted-foreground">Subtotal</td>
-          <td className="px-3 py-1.5 text-right">₹{subtotal}</td>
-        </tr>
-        <tr className="bg-muted/30">
-          <td colSpan={3} className="px-3 py-1.5 text-right text-muted-foreground">GST (5%)</td>
-          <td className="px-3 py-1.5 text-right">₹{gst}</td>
-        </tr>
-        <tr className="border-t bg-muted/50 font-semibold">
-          <td colSpan={3} className="px-3 py-2 text-right">Total</td>
-          <td className="px-3 py-2 text-right">₹{total}</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-);
+        </thead>
+        <tbody>
+          {items.map((item, idx) => (
+            <tr key={idx} className="border-t">
+              <td className="px-3 py-1.5">{item.name || <em className="text-muted-foreground">unnamed</em>}</td>
+              <td className="px-2 py-1.5 text-center">
+                <div className="flex items-center justify-center gap-1">
+                  <button onClick={() => updateQty(idx, String(Math.max(1, parseInt(item.qty) - 1)))} className="rounded p-0.5 hover:bg-muted"><Minus className="h-3 w-3" /></button>
+                  <span className="w-6 text-center">{item.qty}</span>
+                  <button onClick={() => updateQty(idx, String(parseInt(item.qty) + 1))} className="rounded p-0.5 hover:bg-muted"><Plus className="h-3 w-3" /></button>
+                </div>
+              </td>
+              <td className="px-3 py-1.5 text-right">₹{item.total}</td>
+              <td className="pr-2 text-center">
+                <button onClick={() => removeItem(idx)} className="text-muted-foreground hover:text-destructive"><X className="h-3.5 w-3.5" /></button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="border-t bg-muted/20">
+            <td colSpan={4} className="px-3 py-1">
+              <button onClick={addItem} className="flex items-center gap-1 text-xs text-primary hover:underline"><Plus className="h-3 w-3" /> Add item</button>
+            </td>
+          </tr>
+          <tr className="bg-muted/30">
+            <td colSpan={2} className="px-3 py-1.5 text-right text-xs text-muted-foreground">Subtotal</td>
+            <td colSpan={2} className="px-3 py-1.5 text-right text-xs">₹{subtotal}</td>
+          </tr>
+          {withGst && <tr className="bg-muted/30"><td colSpan={2} className="px-3 py-1 text-right text-xs text-muted-foreground">GST (5%)</td><td colSpan={2} className="px-3 py-1 text-right text-xs">₹{gstAmt}</td></tr>}
+          {discountAmt > 0 && <tr className="bg-muted/30"><td colSpan={2} className="px-3 py-1 text-right text-xs text-green-600">Discount {discountPct > 0 ? `(${discountPct}%)` : discountFlat > 0 ? "(flat)" : ""}</td><td colSpan={2} className="px-3 py-1 text-right text-xs text-green-600">-₹{discountAmt}</td></tr>}
+          <tr className="border-t bg-muted/50 font-semibold">
+            <td colSpan={2} className="px-3 py-2 text-right">Total</td>
+            <td colSpan={2} className="px-3 py-2 text-right">₹{total}</td>
+          </tr>
+          {partialAmount > 0 && <tr className="bg-green-50/50 dark:bg-green-950/20"><td colSpan={2} className="px-3 py-1 text-right text-xs text-muted-foreground">Paid now</td><td colSpan={2} className="px-3 py-1 text-right text-xs text-green-600">₹{partialAmount}</td></tr>}
+          {partialAmount > 0 && <tr className="bg-muted/30"><td colSpan={2} className="px-3 py-1.5 text-right text-xs font-medium">Balance Due</td><td colSpan={2} className="px-3 py-1.5 text-right text-xs font-medium text-destructive">₹{balanceDue}</td></tr>}
+        </tfoot>
+      </table>
+    </div>
+  );
+}
+
+function InvoiceSummaryTable({
+  items, subtotal, gstAmt, discountAmt, total, partialAmount, balanceDue, withGst, isProforma,
+}: {
+  items: { name: string; qty: string; price: number; total: number }[];
+  subtotal: number; gstAmt: number; discountAmt: number; total: number;
+  partialAmount: number; balanceDue: number;
+  withGst: boolean; isProforma: boolean;
+}) {
+  return (
+    <div className="overflow-hidden rounded-lg border text-sm">
+      <table className="w-full">
+        <thead className="bg-muted/50">
+          <tr>
+            <th className="px-3 py-2 text-left font-medium">Item</th>
+            <th className="px-3 py-2 text-left font-medium">Qty</th>
+            <th className="px-3 py-2 text-right font-medium">Price</th>
+            <th className="px-3 py-2 text-right font-medium">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, idx) => (
+            <tr key={`${item.name}-${idx}`} className="border-t">
+              <td className="px-3 py-2">{item.name}</td>
+              <td className="px-3 py-2">{item.qty}</td>
+              <td className="px-3 py-2 text-right">₹{item.price}</td>
+              <td className="px-3 py-2 text-right">₹{item.total}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="border-t bg-muted/30"><td colSpan={3} className="px-3 py-1.5 text-right text-muted-foreground">Subtotal</td><td className="px-3 py-1.5 text-right">₹{subtotal}</td></tr>
+          {withGst && <tr className="bg-muted/30"><td colSpan={3} className="px-3 py-1 text-right text-muted-foreground">GST (5%)</td><td className="px-3 py-1 text-right">₹{gstAmt}</td></tr>}
+          {discountAmt > 0 && <tr className="bg-muted/30"><td colSpan={3} className="px-3 py-1 text-right text-green-600">Discount</td><td className="px-3 py-1 text-right text-green-600">-₹{discountAmt}</td></tr>}
+          <tr className="border-t bg-muted/50 font-semibold"><td colSpan={3} className="px-3 py-2 text-right">{isProforma ? "Quotation Total" : "Total"}</td><td className="px-3 py-2 text-right">₹{total}</td></tr>
+          {partialAmount > 0 && <tr className="bg-green-50/50 dark:bg-green-950/20"><td colSpan={3} className="px-3 py-1 text-right text-xs text-muted-foreground">Paid</td><td className="px-3 py-1 text-right text-xs text-green-600">₹{partialAmount}</td></tr>}
+          {partialAmount > 0 && balanceDue > 0 && <tr className="bg-muted/30"><td colSpan={3} className="px-3 py-1.5 text-right font-medium text-xs">Balance Due</td><td className="px-3 py-1.5 text-right font-medium text-xs text-destructive">₹{balanceDue}</td></tr>}
+        </tfoot>
+      </table>
+    </div>
+  );
+}
 
 export default InvoiceCreation;
