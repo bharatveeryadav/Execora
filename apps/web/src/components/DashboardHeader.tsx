@@ -1,9 +1,13 @@
-import { Bell, User, WifiOff } from "lucide-react";
+import { useState } from "react";
+import { Bell, User, WifiOff, Sun, Moon, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWS } from "@/contexts/WSContext";
 import { wsClient } from "@/lib/ws";
+import { useTheme } from "@/contexts/ThemeContext";
 import VoiceBar from "@/components/VoiceBar";
+import GlobalSearch from "@/components/GlobalSearch";
+import NotificationCenter from "@/components/NotificationCenter";
 
 const voiceCommands = [
   { hindi: '"नया बिल"', english: "New Invoice" },
@@ -15,7 +19,9 @@ const voiceCommands = [
 
 const DashboardHeader = () => {
   const { user } = useAuth();
-  const { isConnected, pendingCount, reconnect } = useWS();
+  const { isConnected, reconnect } = useWS();
+  const { theme, toggle } = useTheme();
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const storeName = user?.name ? `${user.name}'s Store` : "Execora Store";
 
@@ -47,14 +53,20 @@ const DashboardHeader = () => {
             </Button>
           )}
 
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            {pendingCount > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white">
-                {pendingCount > 9 ? "9+" : pendingCount}
-              </span>
-            )}
+          {/* Global search */}
+          <Button variant="ghost" size="icon" onClick={() => setSearchOpen(true)} title="Search (Ctrl+K)">
+            <Search className="h-4 w-4" />
           </Button>
+
+          {/* Notification center */}
+          <NotificationCenter />
+
+          {/* Dark mode toggle */}
+          <Button variant="ghost" size="icon" onClick={toggle} title="Toggle theme">
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </Button>
+
+          {/* Avatar */}
           <Button variant="ghost" size="icon">
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
               {user?.name ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) : <User className="h-4 w-4" />}
@@ -83,6 +95,8 @@ const DashboardHeader = () => {
           ))}
         </div>
       </div>
+
+      <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
     </header>
   );
 };
