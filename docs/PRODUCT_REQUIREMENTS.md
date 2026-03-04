@@ -5,7 +5,7 @@
 > It covers **what we are building, why, for whom, and exactly how** — grounded in real Indian SME use cases.
 >
 > **Maintained by**: Update this document whenever a feature ships, a use case is validated, or competitive landscape shifts.
-> **Version**: 2.3 — 2026-03-04
+> **Version**: 2.5 — 2026-03-05
 
 ---
 
@@ -1686,7 +1686,7 @@ Remaining = 0 → done. Any leftover → customer credit advance.
 
 | Feature                                                  | Status     |
 | -------------------------------------------------------- | ---------- |
-| Barcode scan to add product                              | 🔴 TODO    |
+| ~~Barcode scan to add product~~                          | ✅ Built   |
 | Repeat last bill ("same as before")                      | 🔴 TODO    |
 | Customer credit limit enforcement                        | 🔴 TODO    |
 | Partial payment at billing time ("500 diye baki kal")    | ✅ Built   |
@@ -1823,6 +1823,10 @@ This removes the app install barrier entirely. Growth = viral WhatsApp sharing.
 - **[Sprint 7] Reminder WS real-time** — `reminder:created` and `reminder:cancelled` events added to WS broadcaster (reminder routes) and `useWsInvalidation` map; overdue page updates live
 - **[Sprint 7] Phone-optional reminders** — removed hard phone-required check from `scheduleReminder()`; channels now computed from customer contact data (whatsapp if phone exists, email if email exists); bulk scheduling uses `Promise.allSettled` so one missing-phone customer never blocks the rest
 - **[Sprint 7] Customers list WS sync** — `customer:created`, `customer:updated` events broadcast from customer routes; all voice + REST mutations invalidate React Query cache in real time
+- **[Sprint 8] Barcode scan** — `apps/web/src/components/BarcodeScanner.tsx`; ZXing-based mobile camera scanner; scans EAN-13/QR → product lookup by barcode (`GET /api/v1/products/barcode/:barcode`) → auto-adds to invoice item list or inventory; works from Invoice creation page and Inventory page
+- **[Sprint 8] NotificationCenter live draft alert** — bell icon queries `GET /api/v1/drafts?status=pending` every 15 s; shows "Pending Drafts" notification with count badge; "Review →" action dispatches `open-draft-panel` custom event to open DraftManagerPanel from anywhere in the app
+- **[Sprint 8] DraftManagerPanel — Standard Mode** — `apps/web/src/components/DraftManagerPanel.tsx`; slide-over panel listing all pending drafts grouped by type (Purchase / New Product / Stock Adj.); per-card Confirm / Discard / Detail-Edit buttons; red count badge on trigger; "Confirm All" bulk action; WS-invalidated via `useWsInvalidation(['drafts'])`
+- **[Sprint 8] DraftManagerPanel — Fast Mode (Excel spreadsheet)** — ⚡ toggle in panel header; switches to an Excel-like table showing all product drafts with inline-editable columns (Name · Category · Price ₹ · Stock · Unit · Notes); auto-saves on Tab/Enter via `draftApi.update()`; per-row status indicator (amber=unsaved, blue spinner=saving, green ✓=saved, red=error); Confirm button disabled until row is saved; panel widens to 860 px; preference persisted in localStorage; non-product drafts shown as compact rows below table; OCR-scanned bill items flow directly into this view for bulk review
 
 ### Pending / Critical Gaps 🔴
 
@@ -1863,11 +1867,11 @@ This removes the app install barrier entirely. Growth = viral WhatsApp sharing.
 
 #### Inventory & Stock
 
-| Feature                              | Priority | Notes                                |
-| ------------------------------------ | -------- | ------------------------------------ |
-| Barcode product scan (mobile camera) | P1       | Major time saver for busy counter    |
-| Customer credit limit enforcement    | P1       | Block bill if customer exceeds limit |
-| Expiry date tracking (batch)         | P1       | Pharma/FMCG vertical requirement     |
+| Feature                                  | Priority | Notes                                                                                            |
+| ---------------------------------------- | -------- | ------------------------------------------------------------------------------------------------ |
+| ~~Barcode product scan (mobile camera)~~ | ~~P1~~   | ✅ Built — ZXing library, camera scan EAN/QR → product lookup → auto-add to invoice or inventory |
+| Customer credit limit enforcement        | P1       | Block bill if customer exceeds limit                                                             |
+| Expiry date tracking (batch)             | P1       | Pharma/FMCG vertical requirement                                                                 |
 
 #### Reports & Compliance
 
@@ -1879,15 +1883,15 @@ This removes the app install barrier entirely. Growth = viral WhatsApp sharing.
 
 #### Platform
 
-| Feature                          | Priority | Notes                                              |
-| -------------------------------- | -------- | -------------------------------------------------- |
-| Mobile-responsive layout               | P0       | Counter use = mobile. Current UI is desktop-first  |
-| Single-screen classic billing UI       | P0       | Top UX complaint across 193+ reviews — no page flips during bill creation |
-| Offline mode (PWA + IndexedDB queue)   | P0       | 22% of users cite offline as reason to switch tools; elevated from P2 |
-| OCR purchase bill ingestion (AI)       | P0       | Photo → OpenAI Vision → stock update. Zero competitors have this. Users call it "game changer" |
-| UPI payment QR code embedded in invoice| P0       | Frequently requested; trivial to add via QR generation library |
-| WhatsApp chatbot interface             | P2       | Send voice note to WhatsApp → AI processes → reply |
-| Tally/Vyapar data import               | P2       | Migration path for existing users                  |
+| Feature                                 | Priority | Notes                                                                                          |
+| --------------------------------------- | -------- | ---------------------------------------------------------------------------------------------- |
+| Mobile-responsive layout                | P0       | Counter use = mobile. Current UI is desktop-first                                              |
+| Single-screen classic billing UI        | P0       | Top UX complaint across 193+ reviews — no page flips during bill creation                      |
+| Offline mode (PWA + IndexedDB queue)    | P0       | 22% of users cite offline as reason to switch tools; elevated from P2                          |
+| OCR purchase bill ingestion (AI)        | P0       | Photo → OpenAI Vision → stock update. Zero competitors have this. Users call it "game changer" |
+| UPI payment QR code embedded in invoice | P0       | Frequently requested; trivial to add via QR generation library                                 |
+| WhatsApp chatbot interface              | P2       | Send voice note to WhatsApp → AI processes → reply                                             |
+| Tally/Vyapar data import                | P2       | Migration path for existing users                                                              |
 
 ---
 
@@ -1971,6 +1975,7 @@ Mode 3 — True Agent (planned): STT → LLM with tool definitions → tool call
 ## 14. User Research Findings — Review-Backed Priority Updates (v2.4)
 
 ### Research Basis
+
 193+ verified user reviews analysed from SoftwareSuggest (Vyapar 125, myBillBook 68),
 Trustpilot, GetApp (181 ratings), and Play Store. Full analysis in
 `docs/audit/USER_RESEARCH_IMPROVEMENT_ANALYSIS.md`.
@@ -1999,21 +2004,22 @@ Trustpilot, GetApp (181 ratings), and Play Store. Full analysis in
 
 ### Priority Upgrades (backed by review data)
 
-| Feature                              | Old Priority | New Priority | Reason                                    |
-| ------------------------------------ | ------------ | ------------ | ----------------------------------------- |
-| Offline mode (PWA + IndexedDB queue) | P2           | P0           | 22% of users cite offline as dealbreaker  |
-| Single-screen classic billing UI     | Not listed   | P0           | #1 UX complaint, zero backend work needed |
-| OCR purchase bill ingestion          | Not listed   | P0           | Highest-impact AI differentiator found    |
-| UPI QR code on invoice               | Not listed   | P0           | Low effort, very high request frequency   |
-| Recurring/automatic billing          | P2           | P1           | Mentioned in 18% of positive reviews      |
-| Batch/expiry tracking (pharma)       | P1           | P1 fast-track | Pharmacy segment has zero alternatives   |
-| Multiple price tiers per product     | Not listed   | P1           | Core pain for wholesale + retail split    |
-| Customer portal (read-only link)     | Not listed   | P1           | New trust + retention mechanism           |
-| Invoice template customization       | P1           | P1 fast-track | Requested in 15%+ of reviews             |
+| Feature                              | Old Priority | New Priority  | Reason                                    |
+| ------------------------------------ | ------------ | ------------- | ----------------------------------------- |
+| Offline mode (PWA + IndexedDB queue) | P2           | P0            | 22% of users cite offline as dealbreaker  |
+| Single-screen classic billing UI     | Not listed   | P0            | #1 UX complaint, zero backend work needed |
+| OCR purchase bill ingestion          | Not listed   | P0            | Highest-impact AI differentiator found    |
+| UPI QR code on invoice               | Not listed   | P0            | Low effort, very high request frequency   |
+| Recurring/automatic billing          | P2           | P1            | Mentioned in 18% of positive reviews      |
+| Batch/expiry tracking (pharma)       | P1           | P1 fast-track | Pharmacy segment has zero alternatives    |
+| Multiple price tiers per product     | Not listed   | P1            | Core pain for wholesale + retail split    |
+| Customer portal (read-only link)     | Not listed   | P1            | New trust + retention mechanism           |
+| Invoice template customization       | P1           | P1 fast-track | Requested in 15%+ of reviews              |
 
 ---
 
 _Document maintained by the Execora engineering team._
 _v2.3: Sprint 7 — Overdue page, bulk reminders, phone-optional reminder path._
 _v2.4: Priority matrix updated based on 193+ real user reviews. New P0: OCR purchase bill ingestion, single-screen billing, offline queue, UPI QR. Full research: docs/audit/USER_RESEARCH_IMPROVEMENT_ANALYSIS.md._
+_v2.5: Sprint 8 — Barcode scanning (ZXing, EAN/QR, invoice + inventory), DraftManagerPanel Standard Mode + Fast Mode Excel spreadsheet (inline edit + auto-save), NotificationCenter live draft notifications._
 _Next review: when any P0 gap is closed, or a new competitor feature is identified._
