@@ -461,28 +461,29 @@ function FastModeTable({
 				<div className="p-3 space-y-4">
 					{/* ── Product Excel table ── */}
 					<div>
-						{/* Table toolbar — always visible */}
-						<div className="flex items-center justify-between mb-2 gap-2">
-							<div className="flex items-center gap-1.5">
-								<span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-									New Products
-								</span>
-								{productRows.length > 0 && (
-									<Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-										{productRows.length}
-									</Badge>
-								)}
-								{dirtyCount > 0 && (
-									<Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-700 border-amber-200">
-										{dirtyCount} unsaved
-									</Badge>
-								)}
-							</div>
-							{/* Column-group toggle — always visible */}
-							<div className="flex items-center rounded-md border overflow-hidden text-[10px] font-medium shrink-0">
+						{/* Row 1: label + count + dirty badge */}
+						<div className="flex items-center gap-1.5 mb-1.5">
+							<span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+								New Products
+							</span>
+							{productRows.length > 0 && (
+								<Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+									{productRows.length}
+								</Badge>
+							)}
+							{dirtyCount > 0 && (
+								<Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-700 border-amber-200">
+									{dirtyCount} unsaved
+								</Badge>
+							)}
+						</div>
+						{/* Row 2: Column-group toggle — always on its own line, full width */}
+						<div className="flex items-center gap-1 mb-2">
+							<span className="text-[10px] text-muted-foreground mr-1">Columns:</span>
+							<div className="flex items-center rounded-md border overflow-hidden text-[10px] font-medium">
 								<button
 									onClick={() => onColGroupChange('core')}
-									className={`px-2 py-1 transition-colors ${
+									className={`px-3 py-1.5 transition-colors ${
 										colGroup === 'core'
 											? 'bg-primary text-primary-foreground'
 											: 'hover:bg-muted text-muted-foreground'
@@ -492,7 +493,7 @@ function FastModeTable({
 								</button>
 								<button
 									onClick={() => onColGroupChange('full')}
-									className={`px-2 py-1 transition-colors border-l ${
+									className={`px-3 py-1.5 transition-colors border-l ${
 										colGroup === 'full'
 											? 'bg-primary text-primary-foreground'
 											: 'hover:bg-muted text-muted-foreground'
