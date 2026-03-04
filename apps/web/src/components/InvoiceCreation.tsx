@@ -23,7 +23,7 @@ import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
 import { wsClient } from '@/lib/ws';
 import { useCreateCustomer, useCreateInvoice, useCustomers } from '@/hooks/useQueries';
-import { formatCurrency, type Customer, invoiceApi } from '@/lib/api';
+import { formatCurrency, type Customer, invoiceApi, customerApi } from '@/lib/api';
 import { useQueryClient } from '@tanstack/react-query';
 
 type SpeechWindow = Window & {
@@ -664,18 +664,30 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 	};
 
 	const handleWalkInCustomer = async () => {
-		const existing = customers.find((c) => /walk\s*-?\s*in|cash customer/i.test(c.name));
-		if (existing) {
-			await handleSelectCustomer(existing);
-			return;
-		}
-
+		setError('');
 		try {
+			// Always do a live search so stale cache never causes a false "not found"
+			const { customers: found } = await customerApi.search('Walk-in', 20);
+			const existing = found.find((c: Customer) => /walk\s*-?\s*in|cash\s*customer/i.test(c.name));
+			if (existing) {
+				await handleSelectCustomer(existing);
+				return;
+			}
+			// Not found — create once
 			const created = await createCustomer.mutateAsync({ name: 'Walk-in Customer' });
 			const walkIn = (created as { customer: Customer }).customer;
 			await handleSelectCustomer(walkIn);
-		} catch {
-			setError('Could not create walk-in customer. Please pick a customer manually.');
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err);
+			// If duplicate created in a race condition, search again and use it
+			if (/duplicate|already exists|unique/i.test(msg)) {
+				try {
+					const { customers: retry } = await customerApi.search('Walk-in', 20);
+					const found2 = retry.find((c: Customer) => /walk\s*-?\s*in|cash\s*customer/i.test(c.name));
+					if (found2) { await handleSelectCustomer(found2); return; }
+				} catch { /* fall through */ }
+			}
+			setError(`Cash Sale failed: ${msg}`);
 		}
 	};
 
