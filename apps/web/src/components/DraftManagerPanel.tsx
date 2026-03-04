@@ -457,7 +457,7 @@ function FastModeTable({
 
 	return (
 		<div className="flex flex-col flex-1 min-h-0">
-			<ScrollArea className="flex-1">
+			<div className="flex-1 overflow-auto">
 				<div className="p-3 space-y-4">
 					{/* ── Product Excel table ── */}
 					<div>
@@ -518,7 +518,7 @@ function FastModeTable({
 							<>
 								{/* Spreadsheet */}
 								<div className="overflow-x-auto rounded-lg border shadow-sm text-xs">
-									<table className="w-full border-collapse">
+									<table className="min-w-full border-collapse">
 										<thead className="sticky top-0 z-10">
 											<tr className="bg-muted border-b-2 border-border">
 												<th className="px-2 py-2 text-center font-semibold text-muted-foreground w-10 select-none">
@@ -750,7 +750,7 @@ function FastModeTable({
 						</div>
 					)}
 				</div>
-			</ScrollArea>
+			</div>
 		</div>
 	);
 }
