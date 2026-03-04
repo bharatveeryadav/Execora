@@ -395,6 +395,8 @@ export const invoiceApi = {
 			body: JSON.stringify(payment ?? {}),
 		}),
 	cancel: (id: string) => request<{ invoice: Invoice }>(`/api/v1/invoices/${id}/cancel`, { method: 'POST' }),
+	sendEmail: (id: string) =>
+		request<{ ok: boolean; invoiceId: string }>(`/api/v1/invoices/${id}/send-email`, { method: 'POST' }),
 };
 
 export const productApi = {

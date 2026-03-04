@@ -101,6 +101,12 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 					invoiceId: result.invoice.id,
 					invoiceNo: result.invoice.invoiceNo,
 				});
+			// Fire-and-forget: generate PDF (with UPI QR) + send email to customer
+			invoiceService
+				.dispatchInvoicePdfEmail(result.invoice.id)
+				.catch((err) =>
+					fastify.log.error({ err, invoiceId: result.invoice.id }, 'invoice pdf/email dispatch failed')
+				);
 			return reply.code(201).send({ invoice: result.invoice, autoCreatedProducts: result.autoCreatedProducts });
 		}
 	);
@@ -176,6 +182,12 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 			const tid = (request as any).user?.tenantId;
 			if (tid)
 				broadcaster.send(tid, 'invoice:confirmed', { invoiceId: invoice.id, invoiceNo: invoice.invoiceNo });
+			// Fire-and-forget: re-generate PDF (confirmed, not proforma) + send email
+			invoiceService
+				.dispatchInvoicePdfEmail(invoice.id)
+				.catch((err) =>
+					fastify.log.error({ err, invoiceId: invoice.id }, 'invoice pdf/email dispatch failed on convert')
+				);
 			return { invoice };
 		}
 	);
@@ -251,6 +263,15 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 			return { invoice };
 		}
 	);
+
+	// ── POST /api/v1/invoices/:id/send-email — (re-)send invoice PDF to customer ──
+	fastify.post<{ Params: { id: string } }>('/api/v1/invoices/:id/send-email', async (request, reply) => {
+		const invoice = await invoiceService.getInvoiceById(request.params.id);
+		if (!invoice) return reply.code(404).send({ error: 'Invoice not found' });
+		// Fire synchronously so the caller knows if it succeeded
+		await invoiceService.dispatchInvoicePdfEmail(request.params.id);
+		return { ok: true, invoiceId: request.params.id };
+	});
 
 	// ── POST /api/v1/ledger/mixed-payment — cash+UPI split payment ────────────
 	fastify.post(

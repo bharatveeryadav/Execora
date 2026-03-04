@@ -5,57 +5,122 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    ".":            { "require": "./dist/index.js",          "types": "./dist/index.d.ts" },
-    "./config":     { "require": "./dist/config.js",         "types": "./dist/config.d.ts" },
-    "./logger":     { "require": "./dist/logger.js",         "types": "./dist/logger.d.ts" },
-    "./database":   { "require": "./dist/database.js",       "types": "./dist/database.d.ts" },
-    "./auth":       { "require": "./dist/auth.js",           "types": "./dist/auth.d.ts" },
-    "./metrics":    { "require": "./dist/metrics.js",        "types": "./dist/metrics.d.ts" },
-    "./metrics-plugin": { "require": "./dist/metrics-plugin.js", "types": "./dist/metrics-plugin.d.ts" },
-    "./error-handler":  { "require": "./dist/error-handler.js",  "types": "./dist/error-handler.d.ts" },
-    "./queue":      { "require": "./dist/queue.js",          "types": "./dist/queue.d.ts" },
-    "./redis-client": { "require": "./dist/redis-client.js", "types": "./dist/redis-client.d.ts" },
-    "./storage":    { "require": "./dist/storage.js",        "types": "./dist/storage.d.ts" },
-    "./email":      { "require": "./dist/email.js",          "types": "./dist/email.d.ts" },
-    "./whatsapp":   { "require": "./dist/whatsapp.js",       "types": "./dist/whatsapp.d.ts" },
-    "./tenant-context": { "require": "./dist/tenant-context.js", "types": "./dist/tenant-context.d.ts" },
-    "./runtime-config": { "require": "./dist/runtime-config.js", "types": "./dist/runtime-config.d.ts" },
-    "./workers":    { "require": "./dist/workers.js",        "types": "./dist/workers.d.ts" },
-    "./bootstrap":  { "require": "./dist/bootstrap.js",      "types": "./dist/bootstrap.d.ts" },
-    "./fuzzy-match": { "require": "./dist/fuzzy-match.js",   "types": "./dist/fuzzy-match.d.ts" },
-    "./llm-cache":  { "require": "./dist/llm-cache.js",      "types": "./dist/llm-cache.d.ts" },
-    "./pdf":        { "require": "./dist/pdf.js",            "types": "./dist/pdf.d.ts" },
-    "./reminder-ops": { "require": "./dist/reminder-ops.js", "types": "./dist/reminder-ops.d.ts" }
+    ".": {
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./config": {
+      "require": "./dist/config.js",
+      "types": "./dist/config.d.ts"
+    },
+    "./logger": {
+      "require": "./dist/logger.js",
+      "types": "./dist/logger.d.ts"
+    },
+    "./database": {
+      "require": "./dist/database.js",
+      "types": "./dist/database.d.ts"
+    },
+    "./auth": {
+      "require": "./dist/auth.js",
+      "types": "./dist/auth.d.ts"
+    },
+    "./metrics": {
+      "require": "./dist/metrics.js",
+      "types": "./dist/metrics.d.ts"
+    },
+    "./metrics-plugin": {
+      "require": "./dist/metrics-plugin.js",
+      "types": "./dist/metrics-plugin.d.ts"
+    },
+    "./error-handler": {
+      "require": "./dist/error-handler.js",
+      "types": "./dist/error-handler.d.ts"
+    },
+    "./queue": {
+      "require": "./dist/queue.js",
+      "types": "./dist/queue.d.ts"
+    },
+    "./redis-client": {
+      "require": "./dist/redis-client.js",
+      "types": "./dist/redis-client.d.ts"
+    },
+    "./storage": {
+      "require": "./dist/storage.js",
+      "types": "./dist/storage.d.ts"
+    },
+    "./email": {
+      "require": "./dist/email.js",
+      "types": "./dist/email.d.ts"
+    },
+    "./whatsapp": {
+      "require": "./dist/whatsapp.js",
+      "types": "./dist/whatsapp.d.ts"
+    },
+    "./tenant-context": {
+      "require": "./dist/tenant-context.js",
+      "types": "./dist/tenant-context.d.ts"
+    },
+    "./runtime-config": {
+      "require": "./dist/runtime-config.js",
+      "types": "./dist/runtime-config.d.ts"
+    },
+    "./workers": {
+      "require": "./dist/workers.js",
+      "types": "./dist/workers.d.ts"
+    },
+    "./bootstrap": {
+      "require": "./dist/bootstrap.js",
+      "types": "./dist/bootstrap.d.ts"
+    },
+    "./fuzzy-match": {
+      "require": "./dist/fuzzy-match.js",
+      "types": "./dist/fuzzy-match.d.ts"
+    },
+    "./llm-cache": {
+      "require": "./dist/llm-cache.js",
+      "types": "./dist/llm-cache.d.ts"
+    },
+    "./pdf": {
+      "require": "./dist/pdf.js",
+      "types": "./dist/pdf.d.ts"
+    },
+    "./reminder-ops": {
+      "require": "./dist/reminder-ops.js",
+      "types": "./dist/reminder-ops.d.ts"
+    }
   },
   "scripts": {
-    "build":     "tsc",
-    "dev":       "tsc --watch",
+    "build": "tsc",
+    "dev": "tsc --watch",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@execora/types":  "workspace:*",
-    "@prisma/client":  "^5.9.1",
+    "@execora/types": "workspace:*",
     "@fastify/rate-limit": "^9.1.0",
-    "axios":           "^1.6.7",
-    "bullmq":          "^5.1.9",
-    "date-fns":        "^3.3.1",
-    "date-fns-tz":     "^3.1.3",
-    "dotenv":          "^16.4.1",
-    "fastify":         "^4.26.1",
-    "form-data":       "^4.0.0",
-    "ioredis":         "^5.3.2",
-    "minio":           "^7.1.3",
-    "nodemailer":      "^6.9.7",
-    "openai":          "^4.28.0",
-    "pdfkit":          "^0.17.2",
-    "pino":            "^8.19.0",
-    "pino-pretty":     "^10.3.1",
-    "prom-client":     "^15.1.0"
+    "@prisma/client": "^5.9.1",
+    "@types/qrcode": "^1.5.6",
+    "axios": "^1.6.7",
+    "bullmq": "^5.1.9",
+    "date-fns": "^3.3.1",
+    "date-fns-tz": "^3.1.3",
+    "dotenv": "^16.4.1",
+    "fastify": "^4.26.1",
+    "form-data": "^4.0.0",
+    "ioredis": "^5.3.2",
+    "minio": "^7.1.3",
+    "nodemailer": "^6.9.7",
+    "openai": "^4.28.0",
+    "pdfkit": "^0.17.2",
+    "pino": "^8.19.0",
+    "pino-pretty": "^10.3.1",
+    "prom-client": "^15.1.0",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
-    "@types/node":       "^20.11.17",
+    "@types/node": "^20.11.17",
     "@types/nodemailer": "^6.4.14",
-    "@types/pdfkit":     "^0.17.5",
-    "typescript":        "^5.3.3"
+    "@types/pdfkit": "^0.17.5",
+    "typescript": "^5.3.3"
   }
 }

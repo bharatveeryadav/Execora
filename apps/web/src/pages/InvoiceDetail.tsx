@@ -16,6 +16,7 @@ import {
 	Edit3,
 	Plus,
 	Minus,
+	Mail,
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -25,7 +26,7 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { useInvoice, useCancelInvoice, useUpdateInvoice, useConvertProforma, useMe } from '@/hooks/useQueries';
 import { useWsInvalidation } from '@/hooks/useWsInvalidation';
-import { formatCurrency, formatDate, getToken } from '@/lib/api';
+import { formatCurrency, formatDate, getToken, invoiceApi } from '@/lib/api';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileCheck } from 'lucide-react';
@@ -88,6 +89,7 @@ export default function InvoiceDetail() {
 	const { toast } = useToast();
 	const [confirmCancel, setConfirmCancel] = useState(false);
 	const [editOpen, setEditOpen] = useState(false);
+	const [sendingEmail, setSendingEmail] = useState(false);
 	const [editItems, setEditItems] = useState<
 		Array<{ id: string; name: string; qty: number; price: number; discount: number }>
 	>([]);
@@ -152,6 +154,27 @@ export default function InvoiceDetail() {
 				onError: () => toast({ title: 'Failed to update invoice', variant: 'destructive' }),
 			}
 		);
+	}
+
+	async function handleSendEmail() {
+		if (!invoice) return;
+		if (!invoice.customer?.email) {
+			toast({
+				title: 'No email on file',
+				description: 'Add an email address to this customer first.',
+				variant: 'destructive',
+			});
+			return;
+		}
+		setSendingEmail(true);
+		try {
+			await invoiceApi.sendEmail(invoice.id);
+			toast({ title: '✉️ Invoice sent', description: `Sent to ${invoice.customer.email}` });
+		} catch {
+			toast({ title: 'Failed to send email', variant: 'destructive' });
+		} finally {
+			setSendingEmail(false);
+		}
 	}
 
 	if (isLoading) {
@@ -430,10 +453,15 @@ export default function InvoiceDetail() {
 
 				{/* UPI QR — shown when there is a pending balance and a UPI VPA is configured */}
 				{(() => {
-					const upiVpa: string = (meData as any)?.tenant?.upiVpa ?? '';
+					// UPI VPA lives in tenant.settings.upiVpa (stored as JSON blob)
+					const tenantSettings = (meData as any)?.tenant?.settings ?? {};
+					const upiVpa: string = tenantSettings.upiVpa ?? '';
 					if (!upiVpa || pending <= 0) return null;
 					const bizName: string =
-						(meData as any)?.tenant?.legalName ?? (meData as any)?.tenant?.name ?? 'Store';
+						tenantSettings.shopName ??
+						(meData as any)?.tenant?.legalName ??
+						(meData as any)?.tenant?.name ??
+						'Store';
 					const upiUri = `upi://pay?pa=${encodeURIComponent(upiVpa)}&pn=${encodeURIComponent(bizName)}&am=${pending.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Invoice ${invoice.invoiceNo}`)}`;
 					const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=8&data=${encodeURIComponent(upiUri)}`;
 					return (
@@ -479,6 +507,20 @@ export default function InvoiceDetail() {
 					</Button>
 					<Button variant="outline" className="gap-2" onClick={() => window.open(printUrl, '_blank')}>
 						<Printer className="h-4 w-4" /> Print
+					</Button>
+					<Button
+						variant="outline"
+						className={`gap-2 ${invoice.customer?.email ? 'border-blue-500/30 text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20' : 'text-muted-foreground'}`}
+						onClick={handleSendEmail}
+						disabled={sendingEmail}
+						title={invoice.customer?.email ? `Send to ${invoice.customer.email}` : 'No email on customer'}
+					>
+						{sendingEmail ? (
+							<div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+						) : (
+							<Mail className="h-4 w-4" />
+						)}
+						Email Invoice
 					</Button>
 					<Button
 						variant="outline"
