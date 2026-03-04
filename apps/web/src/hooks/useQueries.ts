@@ -26,6 +26,7 @@ import {
 	type AppUser,
 	type Expense,
 	type CashEntry,
+	type CommPrefs,
 } from '@/lib/api';
 
 // ── Query keys ────────────────────────────────────────────────────────────────
@@ -75,14 +76,13 @@ export function useSummaryRange(from: string, to: string) {
 
 // ── Customers ─────────────────────────────────────────────────────────────────
 
-export function useCustomers(q = '', limit = 50) {
+export function useCustomers(q = '', limit = 200) {
 	return useQuery<Customer[]>({
 		queryKey: QK.customers(q),
 		queryFn: async () => {
 			const data = await customerApi.search(q, limit);
 			return data.customers ?? [];
 		},
-		staleTime: 30_000,
 	});
 }
 
@@ -100,17 +100,48 @@ export function useCustomer(id: string) {
 export function useCreateCustomer() {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: (data: { name: string; phone?: string; nickname?: string; landmark?: string }) =>
-			customerApi.create(data),
+		mutationFn: (data: {
+			name: string;
+			phone?: string;
+			email?: string;
+			nickname?: string;
+			landmark?: string;
+			notes?: string;
+			openingBalance?: number;
+			tags?: string[];
+		}) => customerApi.create(data),
 		onSuccess: () => qc.invalidateQueries({ queryKey: ['customers'] }),
+	});
+}
+
+export function useDeleteCustomer() {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (id: string) => customerApi.delete(id),
+		onSuccess: () => {
+			qc.invalidateQueries({ queryKey: ['customers'] });
+			qc.invalidateQueries({ queryKey: QK.summary });
+		},
 	});
 }
 
 export function useUpdateCustomer() {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: ({ id, ...data }: { id: string; name?: string; phone?: string; email?: string; nickname?: string; landmark?: string; creditLimit?: number; tags?: string[] }) =>
-			customerApi.update(id, data),
+		mutationFn: ({
+			id,
+			...data
+		}: {
+			id: string;
+			name?: string;
+			phone?: string;
+			email?: string;
+			nickname?: string;
+			landmark?: string;
+			creditLimit?: number;
+			tags?: string[];
+			notes?: string;
+		}) => customerApi.update(id, data),
 		onSuccess: (_d, vars) => {
 			qc.invalidateQueries({ queryKey: QK.customer(vars.id) });
 			qc.invalidateQueries({ queryKey: ['customers'] });
@@ -374,6 +405,41 @@ export function useBulkReminders() {
 	});
 }
 
+// ── Communication Prefs ───────────────────────────────────────────────────────
+
+export function useCommPrefs(customerId: string) {
+	return useQuery<CommPrefs | null>({
+		queryKey: ['commPrefs', customerId],
+		queryFn: async () => {
+			const data = await customerApi.getCommPrefs(customerId);
+			return data.prefs;
+		},
+		enabled: Boolean(customerId),
+		staleTime: 60_000,
+	});
+}
+
+export function useUpdateCommPrefs() {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: ({
+			customerId,
+			...data
+		}: {
+			customerId: string;
+			whatsappEnabled?: boolean;
+			whatsappNumber?: string;
+			emailEnabled?: boolean;
+			emailAddress?: string;
+			smsEnabled?: boolean;
+			preferredLanguage?: string;
+		}) => customerApi.updateCommPrefs(customerId, data),
+		onSuccess: (_d, vars) => {
+			qc.invalidateQueries({ queryKey: ['commPrefs', vars.customerId] });
+		},
+	});
+}
+
 // ── Reports ───────────────────────────────────────────────────────────────────
 
 export function useGstr1Report(params: ReportParams = {}) {
@@ -509,12 +575,12 @@ export function useRemoveUser() {
 
 const EXP_KEY = ['expenses'] as const;
 const PUR_KEY = ['purchases'] as const;
-const CB_KEY  = ['cashbook']  as const;
+const CB_KEY = ['cashbook'] as const;
 
 export function useExpenses(params: { from?: string; to?: string; category?: string } = {}) {
 	return useQuery<{ expenses: Expense[]; total: number; count: number }>({
 		queryKey: [...EXP_KEY, params.from, params.to, params.category],
-		queryFn:  () => expenseApi.list(params),
+		queryFn: () => expenseApi.list(params),
 		staleTime: 60_000,
 	});
 }
@@ -541,7 +607,7 @@ export function useDeleteExpense() {
 export function usePurchases(params: { from?: string; to?: string } = {}) {
 	return useQuery<{ purchases: Expense[]; total: number; count: number }>({
 		queryKey: [...PUR_KEY, params.from, params.to],
-		queryFn:  () => purchaseApi.list(params),
+		queryFn: () => purchaseApi.list(params),
 		staleTime: 60_000,
 	});
 }
@@ -550,9 +616,15 @@ export function useCreatePurchase() {
 	const qc = useQueryClient();
 	return useMutation({
 		mutationFn: (data: {
-			category: string; amount: number; itemName: string;
-			vendor?: string; quantity?: number; unit?: string;
-			ratePerUnit?: number; note?: string; date?: string;
+			category: string;
+			amount: number;
+			itemName: string;
+			vendor?: string;
+			quantity?: number;
+			unit?: string;
+			ratePerUnit?: number;
+			note?: string;
+			date?: string;
 		}) => purchaseApi.create(data),
 		onSuccess: () => qc.invalidateQueries({ queryKey: PUR_KEY }),
 	});
@@ -571,7 +643,7 @@ export function useDeletePurchase() {
 export function useCashbook(params: { from?: string; to?: string } = {}) {
 	return useQuery<{ entries: CashEntry[]; totalIn: number; totalOut: number; balance: number }>({
 		queryKey: [...CB_KEY, params.from, params.to],
-		queryFn:  () => cashbookApi.get(params),
+		queryFn: () => cashbookApi.get(params),
 		staleTime: 30_000,
 		refetchOnWindowFocus: true,
 	});

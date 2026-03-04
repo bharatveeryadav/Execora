@@ -1,9 +1,23 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Phone, MessageCircle, Clock, FileText, CreditCard, TrendingUp, PencilLine } from 'lucide-react';
+import {
+	ArrowLeft,
+	Phone,
+	MessageCircle,
+	Clock,
+	FileText,
+	CreditCard,
+	TrendingUp,
+	PencilLine,
+	Bell,
+	Plus,
+	Receipt,
+	Trash2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import {
 	useCustomer,
@@ -11,6 +25,10 @@ import {
 	useCustomerLedger,
 	useReminders,
 	useUpdateCustomer,
+	useCommPrefs,
+	useUpdateCommPrefs,
+	useCreateReminder,
+	useDeleteCustomer,
 } from '@/hooks/useQueries';
 import { useWsInvalidation } from '@/hooks/useWsInvalidation';
 import { LedgerEntry } from '@/lib/api';
@@ -44,6 +62,27 @@ const CustomerDetail = () => {
 	const [editCreditLimit, setEditCreditLimit] = useState('');
 	const [editTags, setEditTags] = useState<string[]>([]);
 
+	// Notes in edit dialog
+	const [editNotes, setEditNotes] = useState('');
+
+	// Delete confirm
+	const [deleteConfirm, setDeleteConfirm] = useState(false);
+
+	// Reminder dialog state
+	const [reminderOpen, setReminderOpen] = useState(false);
+	const [remAmount, setRemAmount] = useState('');
+	const [remDate, setRemDate] = useState('');
+	const [remMessage, setRemMessage] = useState('');
+
+	// Notification prefs state
+	const [prefsOpen, setPrefsOpen] = useState(false);
+	const [pWaEnabled, setPWaEnabled] = useState(true);
+	const [pWaNumber, setPWaNumber] = useState('');
+	const [pEmailEnabled, setPEmailEnabled] = useState(false);
+	const [pEmailAddress, setPEmailAddress] = useState('');
+	const [pSmsEnabled, setPSmsEnabled] = useState(false);
+	const [pLang, setPLang] = useState('hi');
+
 	const CUSTOMER_TAGS = ['VIP', 'Wholesale', 'Blacklist', 'Regular'] as const;
 
 	const { data: customer, isLoading } = useCustomer(id!);
@@ -52,16 +91,22 @@ const CustomerDetail = () => {
 	const { data: ledger = [] } = useCustomerLedger(id!) as { data: LedgerEntry[] };
 	const { data: allReminders = [] } = useReminders(id);
 	const updateCustomer = useUpdateCustomer();
+	const createReminder = useCreateReminder();
+	const deleteCustomer = useDeleteCustomer();
+	const { data: commPrefs } = useCommPrefs(id!);
+	const updateCommPrefs = useUpdateCommPrefs();
 
 	function openEdit() {
 		if (!customer) return;
 		setEditName(customer.name ?? '');
 		setEditPhone(customer.phone ?? '');
 		setEditEmail(customer.email ?? '');
-		setEditNickname((customer as any).nickname ?? '');
-		setEditLandmark((customer as any).landmark ?? '');
-		setEditCreditLimit(String((customer as any).creditLimit ?? ''));
-		setEditTags((customer as any).tags ?? []);
+		setEditNickname(Array.isArray(customer.nickname) ? (customer.nickname[0] ?? '') : (customer.nickname ?? ''));
+		setEditLandmark(customer.landmark ?? '');
+		setEditCreditLimit(String(customer.creditLimit ?? ''));
+		setEditTags(customer.tags ?? []);
+		setEditNotes(customer.notes ?? '');
+		setDeleteConfirm(false);
 		setEditOpen(true);
 	}
 
@@ -76,6 +121,7 @@ const CustomerDetail = () => {
 				landmark: editLandmark,
 				creditLimit: editCreditLimit ? Number(editCreditLimit) : undefined,
 				tags: editTags.length ? editTags : undefined,
+				notes: editNotes || undefined,
 			},
 			{
 				onSuccess: () => {
@@ -83,6 +129,37 @@ const CustomerDetail = () => {
 					setEditOpen(false);
 				},
 				onError: () => toast({ title: 'Update failed', variant: 'destructive' }),
+			}
+		);
+	}
+
+	function openPrefs() {
+		setPWaEnabled(commPrefs?.whatsappEnabled ?? true);
+		setPWaNumber(commPrefs?.whatsappNumber ?? customer?.phone ?? '');
+		setPEmailEnabled(commPrefs?.emailEnabled ?? false);
+		setPEmailAddress(commPrefs?.emailAddress ?? customer?.email ?? '');
+		setPSmsEnabled(commPrefs?.smsEnabled ?? false);
+		setPLang(commPrefs?.preferredLanguage ?? 'hi');
+		setPrefsOpen(true);
+	}
+
+	function handleSavePrefs() {
+		updateCommPrefs.mutate(
+			{
+				customerId: id!,
+				whatsappEnabled: pWaEnabled,
+				whatsappNumber: pWaNumber || undefined,
+				emailEnabled: pEmailEnabled,
+				emailAddress: pEmailAddress || undefined,
+				smsEnabled: pSmsEnabled,
+				preferredLanguage: pLang,
+			},
+			{
+				onSuccess: () => {
+					toast({ title: 'Notification preferences saved' });
+					setPrefsOpen(false);
+				},
+				onError: () => toast({ title: 'Save failed', variant: 'destructive' }),
 			}
 		);
 	}
@@ -132,7 +209,7 @@ const CustomerDetail = () => {
 							<p className="text-xs text-muted-foreground">{customer.phone ?? 'No phone'}</p>
 						</div>
 						{/* Actions */}
-						<div className="flex gap-2">
+						<div className="flex gap-1">
 							{customer.phone && (
 								<Button variant="ghost" size="icon" asChild title="WhatsApp">
 									<a
@@ -151,6 +228,14 @@ const CustomerDetail = () => {
 									</a>
 								</Button>
 							)}
+							<Button
+								variant="ghost"
+								size="icon"
+								title="New Invoice"
+								onClick={() => navigate(`/invoice/new?customerId=${customer.id}`)}
+							>
+								<Receipt className="h-5 w-5 text-primary" />
+							</Button>
 							<Button variant="ghost" size="icon" title="Edit customer" onClick={openEdit}>
 								<PencilLine className="h-5 w-5" />
 							</Button>
@@ -227,16 +312,16 @@ const CustomerDetail = () => {
 						</div>
 
 						{/* Credit limit + tags */}
-						{((customer as any).creditLimit > 0 || ((customer as any).tags ?? []).length > 0) && (
+						{(Number(customer.creditLimit) > 0 || (customer.tags ?? []).length > 0) && (
 							<div className="rounded-xl border bg-card p-4 space-y-2">
-								{(customer as any).creditLimit > 0 && (
+								{Number(customer.creditLimit) > 0 && (
 									<div className="flex items-center justify-between">
 										<span className="text-xs text-muted-foreground">Credit Limit</span>
 										<div className="flex items-center gap-1.5">
 											<span className="text-sm font-semibold">
-												{formatCurrency((customer as any).creditLimit)}
+												{formatCurrency(customer.creditLimit)}
 											</span>
-											{balance >= (customer as any).creditLimit && (
+											{balance >= Number(customer.creditLimit) && (
 												<span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
 													⚠️ Limit reached
 												</span>
@@ -244,9 +329,9 @@ const CustomerDetail = () => {
 										</div>
 									</div>
 								)}
-								{((customer as any).tags ?? []).length > 0 && (
+								{(customer.tags ?? []).length > 0 && (
 									<div className="flex flex-wrap gap-1">
-										{((customer as any).tags as string[]).map((tag) => (
+										{(customer.tags ?? []).map((tag) => (
 											<span
 												key={tag}
 												className={`rounded-full px-2 py-0.5 text-[10px] font-medium border ${
@@ -270,10 +355,66 @@ const CustomerDetail = () => {
 							<p className="text-xs font-semibold uppercase text-muted-foreground">Contact Info</p>
 							{customer.phone && <p className="text-sm">📞 {customer.phone}</p>}
 							{customer.email && <p className="text-sm">✉️ {customer.email}</p>}
-							{(customer as any).address && <p className="text-sm">📍 {(customer as any).address}</p>}
-							{(customer as any).gstin && (
-								<p className="text-sm font-mono text-xs">GST: {(customer as any).gstin}</p>
+							{customer.landmark && <p className="text-sm">📍 {customer.landmark}</p>}
+							{customer.gstin && <p className="text-sm font-mono text-xs">GST: {customer.gstin}</p>}
+							{customer.notes && (
+								<div className="mt-1 rounded-lg border bg-muted/40 px-3 py-2">
+									<p className="text-[10px] font-semibold uppercase text-muted-foreground mb-0.5">
+										Notes
+									</p>
+									<p className="text-[13px] text-foreground/80 whitespace-pre-line">
+										{customer.notes}
+									</p>
+								</div>
 							)}
+						</div>
+
+						{/* Notification Preferences */}
+						<div className="rounded-xl border bg-card p-4 space-y-3">
+							<div className="flex items-center justify-between">
+								<div className="flex items-center gap-2">
+									<Bell className="h-4 w-4 text-muted-foreground" />
+									<p className="text-xs font-semibold uppercase text-muted-foreground">
+										Notification Channels
+									</p>
+								</div>
+								<Button variant="ghost" size="sm" className="h-7 text-xs" onClick={openPrefs}>
+									Edit
+								</Button>
+							</div>
+							<div className="space-y-2">
+								<div className="flex items-center justify-between">
+									<span className="text-sm">WhatsApp</span>
+									<span
+										className={`text-xs font-medium ${(commPrefs?.whatsappEnabled ?? true) ? 'text-green-600' : 'text-muted-foreground'}`}
+									>
+										{(commPrefs?.whatsappEnabled ?? true) ? '✓ On' : 'Off'}
+										{commPrefs?.whatsappNumber ? ` · ${commPrefs.whatsappNumber}` : ''}
+									</span>
+								</div>
+								<div className="flex items-center justify-between">
+									<span className="text-sm">Email</span>
+									<span
+										className={`text-xs font-medium ${commPrefs?.emailEnabled ? 'text-green-600' : 'text-muted-foreground'}`}
+									>
+										{commPrefs?.emailEnabled ? '✓ On' : 'Off'}
+										{commPrefs?.emailAddress ? ` · ${commPrefs.emailAddress}` : ''}
+									</span>
+								</div>
+								<div className="flex items-center justify-between">
+									<span className="text-sm">SMS</span>
+									<span
+										className={`text-xs font-medium ${commPrefs?.smsEnabled ? 'text-green-600' : 'text-muted-foreground'}`}
+									>
+										{commPrefs?.smsEnabled ? '✓ On' : 'Off'}
+									</span>
+								</div>
+								{!commPrefs && (
+									<p className="text-[11px] text-muted-foreground italic">
+										No preferences set — using defaults
+									</p>
+								)}
+							</div>
 						</div>
 					</>
 				)}
@@ -345,34 +486,55 @@ const CustomerDetail = () => {
 
 				{/* ── REMINDERS ── */}
 				{tab === 'Reminders' && (
-					<div className="overflow-hidden rounded-xl border bg-card">
-						{allReminders.length === 0 ? (
-							<div className="py-10 text-center text-sm text-muted-foreground">No reminders</div>
-						) : (
-							<div className="divide-y">
-								{allReminders.map((r) => (
-									<div key={r.id} className="flex items-center gap-3 px-4 py-2.5">
-										<Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
-										<div className="min-w-0 flex-1">
-											<p className="truncate text-sm">{(r as any).message ?? 'Reminder'}</p>
-											<p className="text-xs text-muted-foreground">
-												{formatDate(r.scheduledTime)}
-											</p>
+					<>
+						<div className="flex items-center justify-between">
+							<p className="text-xs font-semibold uppercase text-muted-foreground">
+								{allReminders.length} reminder{allReminders.length !== 1 ? 's' : ''}
+							</p>
+							<Button
+								size="sm"
+								className="gap-1.5"
+								onClick={() => {
+									setRemAmount('');
+									setRemDate('');
+									setRemMessage('');
+									setReminderOpen(true);
+								}}
+							>
+								<Plus className="h-4 w-4" />
+								Set Reminder
+							</Button>
+						</div>
+
+						<div className="overflow-hidden rounded-xl border bg-card">
+							{allReminders.length === 0 ? (
+								<div className="py-10 text-center text-sm text-muted-foreground">No reminders yet</div>
+							) : (
+								<div className="divide-y">
+									{allReminders.map((r) => (
+										<div key={r.id} className="flex items-center gap-3 px-4 py-2.5">
+											<Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
+											<div className="min-w-0 flex-1">
+												<p className="truncate text-sm">{(r as any).message ?? 'Reminder'}</p>
+												<p className="text-xs text-muted-foreground">
+													{formatDate(r.scheduledTime)}
+												</p>
+											</div>
+											<span
+												className={`rounded-full px-2 py-0.5 text-[10px] font-medium capitalize ${
+													r.status === 'sent'
+														? 'bg-green-500/10 text-green-700 dark:text-green-400'
+														: 'bg-muted text-muted-foreground'
+												}`}
+											>
+												{r.status}
+											</span>
 										</div>
-										<span
-											className={`rounded-full px-2 py-0.5 text-[10px] font-medium capitalize ${
-												r.status === 'sent'
-													? 'bg-green-500/10 text-green-700 dark:text-green-400'
-													: 'bg-muted text-muted-foreground'
-											}`}
-										>
-											{r.status}
-										</span>
-									</div>
-								))}
-							</div>
-						)}
-					</div>
+									))}
+								</div>
+							)}
+						</div>
+					</>
 				)}
 			</main>
 
@@ -464,6 +626,62 @@ const CustomerDetail = () => {
 								})}
 							</div>
 						</div>
+
+						{/* Notes */}
+						<div className="space-y-1.5">
+							<Label className="text-xs">Notes</Label>
+							<Input
+								value={editNotes}
+								onChange={(e) => setEditNotes(e.target.value)}
+								placeholder="Any notes about this customer…"
+							/>
+						</div>
+
+						{/* Delete section */}
+						<div className="border-t pt-3">
+							{!deleteConfirm ? (
+								<button
+									type="button"
+									className="flex items-center gap-1.5 text-xs text-destructive hover:underline"
+									onClick={() => setDeleteConfirm(true)}
+								>
+									<Trash2 className="h-3.5 w-3.5" />
+									Delete this customer
+								</button>
+							) : (
+								<div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2">
+									<p className="text-xs font-medium text-destructive">
+										⚠️ Deleting <strong>{customer?.name}</strong> will remove all their invoices,
+										ledger entries and reminders. This cannot be undone.
+									</p>
+									<div className="flex gap-2">
+										<Button
+											size="sm"
+											variant="destructive"
+											className="gap-1.5"
+											disabled={deleteCustomer.isPending}
+											onClick={() => {
+												deleteCustomer.mutate(id!, {
+													onSuccess: () => {
+														toast({ title: `${customer?.name ?? 'Customer'} deleted` });
+														setEditOpen(false);
+														navigate('/customers');
+													},
+													onError: () =>
+														toast({ title: 'Delete failed', variant: 'destructive' }),
+												});
+											}}
+										>
+											<Trash2 className="h-3.5 w-3.5" />
+											{deleteCustomer.isPending ? 'Deleting…' : 'Yes, Delete'}
+										</Button>
+										<Button size="sm" variant="outline" onClick={() => setDeleteConfirm(false)}>
+											Cancel
+										</Button>
+									</div>
+								</div>
+							)}
+						</div>
 					</div>
 					<DialogFooter>
 						<Button variant="outline" onClick={() => setEditOpen(false)}>
@@ -477,6 +695,162 @@ const CustomerDetail = () => {
 			</Dialog>
 
 			<BottomNav />
+
+			{/* Notification Prefs Dialog */}
+			<Dialog open={prefsOpen} onOpenChange={setPrefsOpen}>
+				<DialogContent className="sm:max-w-md">
+					<DialogHeader>
+						<DialogTitle>Notification Preferences</DialogTitle>
+					</DialogHeader>
+					<div className="space-y-4 py-2">
+						{/* WhatsApp */}
+						<div className="space-y-2 rounded-lg border p-3">
+							<div className="flex items-center justify-between">
+								<Label className="text-sm font-medium">WhatsApp</Label>
+								<Switch checked={pWaEnabled} onCheckedChange={setPWaEnabled} />
+							</div>
+							{pWaEnabled && (
+								<div className="space-y-1">
+									<Label className="text-xs text-muted-foreground">WhatsApp Number</Label>
+									<Input
+										value={pWaNumber}
+										onChange={(e) => setPWaNumber(e.target.value)}
+										placeholder="10-digit number"
+										type="tel"
+									/>
+								</div>
+							)}
+						</div>
+
+						{/* Email */}
+						<div className="space-y-2 rounded-lg border p-3">
+							<div className="flex items-center justify-between">
+								<Label className="text-sm font-medium">Email Reminders</Label>
+								<Switch checked={pEmailEnabled} onCheckedChange={setPEmailEnabled} />
+							</div>
+							{pEmailEnabled && (
+								<div className="space-y-1">
+									<Label className="text-xs text-muted-foreground">Email Address</Label>
+									<Input
+										value={pEmailAddress}
+										onChange={(e) => setPEmailAddress(e.target.value)}
+										placeholder="customer@email.com"
+										type="email"
+									/>
+								</div>
+							)}
+						</div>
+
+						{/* SMS */}
+						<div className="flex items-center justify-between rounded-lg border p-3">
+							<Label className="text-sm font-medium">SMS Reminders</Label>
+							<Switch checked={pSmsEnabled} onCheckedChange={setPSmsEnabled} />
+						</div>
+
+						{/* Language */}
+						<div className="space-y-1.5">
+							<Label className="text-xs">Preferred Language</Label>
+							<div className="flex gap-2">
+								{(['hi', 'en', 'mr', 'gu'] as const).map((lang) => (
+									<button
+										key={lang}
+										type="button"
+										onClick={() => setPLang(lang)}
+										className={`rounded-full border px-3 py-0.5 text-xs font-medium transition-colors ${
+											pLang === lang
+												? 'border-primary bg-primary/10 text-primary'
+												: 'border-border bg-muted text-muted-foreground'
+										}`}
+									>
+										{{ hi: 'Hindi', en: 'English', mr: 'Marathi', gu: 'Gujarati' }[lang]}
+									</button>
+								))}
+							</div>
+						</div>
+
+						<p className="text-[11px] text-muted-foreground">
+							Reminders are sent email-first. If email is off or fails, WhatsApp is used as fallback.
+						</p>
+					</div>
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setPrefsOpen(false)}>
+							Cancel
+						</Button>
+						<Button onClick={handleSavePrefs} disabled={updateCommPrefs.isPending}>
+							{updateCommPrefs.isPending ? 'Saving…' : 'Save'}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			{/* Set Reminder Dialog */}
+			<Dialog open={reminderOpen} onOpenChange={setReminderOpen}>
+				<DialogContent className="sm:max-w-sm">
+					<DialogHeader>
+						<DialogTitle>Set Reminder</DialogTitle>
+					</DialogHeader>
+					<div className="space-y-3 py-2">
+						<div className="space-y-1.5">
+							<Label className="text-xs">Amount Outstanding (₹)</Label>
+							<div className="relative">
+								<span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+									₹
+								</span>
+								<Input
+									className="pl-7"
+									type="number"
+									min={0}
+									step="any"
+									value={remAmount}
+									onChange={(e) => setRemAmount(e.target.value)}
+									placeholder={String(balance > 0 ? balance : 0)}
+									inputMode="decimal"
+								/>
+							</div>
+						</div>
+						<div className="space-y-1.5">
+							<Label className="text-xs">Date &amp; Time</Label>
+							<Input type="datetime-local" value={remDate} onChange={(e) => setRemDate(e.target.value)} />
+						</div>
+						<div className="space-y-1.5">
+							<Label className="text-xs">Message (optional)</Label>
+							<Input
+								value={remMessage}
+								onChange={(e) => setRemMessage(e.target.value)}
+								placeholder={`Reminder for ${customer?.name ?? 'customer'}`}
+							/>
+						</div>
+					</div>
+					<DialogFooter>
+						<Button variant="outline" onClick={() => setReminderOpen(false)}>
+							Cancel
+						</Button>
+						<Button
+							disabled={!remDate || createReminder.isPending}
+							onClick={() => {
+								createReminder.mutate(
+									{
+										customerId: id!,
+										amount: remAmount ? parseFloat(remAmount) : balance,
+										datetime: remDate,
+										message: remMessage || undefined,
+									},
+									{
+										onSuccess: () => {
+											toast({ title: 'Reminder set' });
+											setReminderOpen(false);
+										},
+										onError: () =>
+											toast({ title: 'Failed to set reminder', variant: 'destructive' }),
+									}
+								);
+							}}
+						>
+							{createReminder.isPending ? 'Saving…' : 'Set Reminder'}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 };

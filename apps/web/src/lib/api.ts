@@ -97,11 +97,17 @@ async function request<T>(path: string, options: RequestInit = {}, retried = fal
 	}
 
 	if (!res.ok) {
-		const err = (await res.json().catch(() => ({ message: res.statusText }))) as {
-			message?: string;
-			error?: string;
-		};
-		throw new Error(err.message ?? err.error ?? `Request failed: ${res.status}`);
+		const body = await res.json().catch(() => ({ message: res.statusText }));
+		// Safely extract a string message — body.message may itself be an object
+		const msg =
+			typeof body?.message === 'string'
+				? body.message
+				: typeof body?.error === 'string'
+					? body.error
+					: body?.message
+						? JSON.stringify(body.message)
+						: `Request failed: ${res.status}`;
+		throw new Error(msg);
 	}
 
 	const text = await res.text();
@@ -129,8 +135,10 @@ export interface Customer {
 	name: string;
 	phone?: string;
 	email?: string;
-	nickname?: string;
+	nickname?: string | string[];
 	landmark?: string;
+	gstin?: string;
+	notes?: string;
 	balance: string | number;
 	totalPurchases: string | number;
 	totalPayments: string | number;
@@ -138,6 +146,20 @@ export interface Customer {
 	tags?: string[];
 	createdAt: string;
 	updatedAt: string;
+}
+
+export interface CommPrefs {
+	id?: string;
+	customerId: string;
+	whatsappEnabled: boolean;
+	whatsappNumber?: string | null;
+	emailEnabled: boolean;
+	emailAddress?: string | null;
+	smsEnabled: boolean;
+	preferredLanguage: string;
+	optedOut: boolean;
+	createdAt?: string;
+	updatedAt?: string;
 }
 
 export interface TenantProfile {
@@ -285,12 +307,49 @@ export const customerApi = {
 	search: (q = '', limit = 50) =>
 		request<{ customers: Customer[] }>(`/api/v1/customers/search?q=${encodeURIComponent(q)}&limit=${limit}`),
 	getById: (id: string) => request<{ customer: Customer }>(`/api/v1/customers/${id}`),
-	create: (data: { name: string; phone?: string; nickname?: string; landmark?: string }) =>
-		request<{ customer: Customer }>('/api/v1/customers', { method: 'POST', body: JSON.stringify(data) }),
+	create: (data: {
+		name: string;
+		phone?: string;
+		email?: string;
+		nickname?: string;
+		landmark?: string;
+		notes?: string;
+		openingBalance?: number;
+		tags?: string[];
+	}) => request<{ customer: Customer }>('/api/v1/customers', { method: 'POST', body: JSON.stringify(data) }),
+	delete: (id: string) => request<{ ok: boolean }>(`/api/v1/customers/${id}`, { method: 'DELETE' }),
 	invoices: (customerId: string, limit = 50) =>
 		request<{ invoices: Invoice[] }>(`/api/v1/customers/${customerId}/invoices?limit=${limit}`),
-	update: (id: string, data: { name?: string; phone?: string; email?: string; nickname?: string; landmark?: string; creditLimit?: number; tags?: string[] }) =>
-		request<{ customer: Customer }>(`/api/v1/customers/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+	update: (
+		id: string,
+		data: {
+			name?: string;
+			phone?: string;
+			email?: string;
+			nickname?: string;
+			landmark?: string;
+			creditLimit?: number;
+			tags?: string[];
+			notes?: string;
+		}
+	) => request<{ customer: Customer }>(`/api/v1/customers/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+	getCommPrefs: (customerId: string) =>
+		request<{ prefs: CommPrefs | null }>(`/api/v1/customers/${customerId}/communication-prefs`),
+	updateCommPrefs: (
+		customerId: string,
+		data: {
+			whatsappEnabled?: boolean;
+			whatsappNumber?: string;
+			emailEnabled?: boolean;
+			emailAddress?: string;
+			smsEnabled?: boolean;
+			preferredLanguage?: string;
+		}
+	) =>
+		request<{ prefs: CommPrefs }>(`/api/v1/customers/${customerId}/communication-prefs`, {
+			method: 'PUT',
+			body: JSON.stringify(data),
+		}),
 };
 
 export interface InvoiceCreateOptions {
@@ -603,78 +662,89 @@ export const reportApi = {
 // ── Expense & Purchase types ──────────────────────────────────────────────────
 
 export interface Expense {
-        id:         string;
-        type:       'expense' | 'purchase';
-        category:   string;
-        amount:     number;
-        note?:      string;
-        vendor?:    string;
-        itemName?:  string;
-        quantity?:  number;
-        unit?:      string;
-        ratePerUnit?: number;
-        date:       string;
-        createdAt:  string;
+	id: string;
+	type: 'expense' | 'purchase';
+	category: string;
+	amount: number;
+	note?: string;
+	vendor?: string;
+	itemName?: string;
+	quantity?: number;
+	unit?: string;
+	ratePerUnit?: number;
+	date: string;
+	createdAt: string;
 }
 
 export interface CashEntry {
-        id:        string;
-        type:      'in' | 'out';
-        amount:    number;
-        category:  string;
-        note:      string;
-        date:      string;
-        createdAt: number;
+	id: string;
+	type: 'in' | 'out';
+	amount: number;
+	category: string;
+	note: string;
+	date: string;
+	createdAt: number;
 }
 
 // ── Expense API ───────────────────────────────────────────────────────────────
 
 export const expenseApi = {
-        list: (params: { from?: string; to?: string; category?: string } = {}) => {
-                const q = new URLSearchParams();
-                if (params.from)     q.set('from',     params.from);
-                if (params.to)       q.set('to',       params.to);
-                if (params.category) q.set('category', params.category);
-                const s = q.toString();
-                return request<{ expenses: Expense[]; total: number; count: number }>(`/api/v1/expenses${s ? `?${s}` : ''}`);
-        },
-        create: (data: { category: string; amount: number; note?: string; vendor?: string; date?: string }) =>
-                request<{ expense: Expense }>('/api/v1/expenses', { method: 'POST', body: JSON.stringify(data) }),
-        remove: (id: string) =>
-                request<{ ok: boolean }>(`/api/v1/expenses/${id}`, { method: 'DELETE' }),
-        summary: (params: { from?: string; to?: string } = {}) => {
-                const q = new URLSearchParams();
-                if (params.from) q.set('from', params.from);
-                if (params.to)   q.set('to',   params.to);
-                const s = q.toString();
-                return request<{ total: number; byCategory: Record<string, number>; count: number }>(`/api/v1/expenses/summary${s ? `?${s}` : ''}`);
-        },
+	list: (params: { from?: string; to?: string; category?: string } = {}) => {
+		const q = new URLSearchParams();
+		if (params.from) q.set('from', params.from);
+		if (params.to) q.set('to', params.to);
+		if (params.category) q.set('category', params.category);
+		const s = q.toString();
+		return request<{ expenses: Expense[]; total: number; count: number }>(`/api/v1/expenses${s ? `?${s}` : ''}`);
+	},
+	create: (data: { category: string; amount: number; note?: string; vendor?: string; date?: string }) =>
+		request<{ expense: Expense }>('/api/v1/expenses', { method: 'POST', body: JSON.stringify(data) }),
+	remove: (id: string) => request<{ ok: boolean }>(`/api/v1/expenses/${id}`, { method: 'DELETE' }),
+	summary: (params: { from?: string; to?: string } = {}) => {
+		const q = new URLSearchParams();
+		if (params.from) q.set('from', params.from);
+		if (params.to) q.set('to', params.to);
+		const s = q.toString();
+		return request<{ total: number; byCategory: Record<string, number>; count: number }>(
+			`/api/v1/expenses/summary${s ? `?${s}` : ''}`
+		);
+	},
 };
 
 // ── Purchases API ─────────────────────────────────────────────────────────────
 
 export const purchaseApi = {
-        list: (params: { from?: string; to?: string } = {}) => {
-                const q = new URLSearchParams();
-                if (params.from) q.set('from', params.from);
-                if (params.to)   q.set('to',   params.to);
-                const s = q.toString();
-                return request<{ purchases: Expense[]; total: number; count: number }>(`/api/v1/purchases${s ? `?${s}` : ''}`);
-        },
-        create: (data: { category: string; amount: number; itemName: string; vendor?: string; quantity?: number; unit?: string; ratePerUnit?: number; note?: string; date?: string }) =>
-                request<{ purchase: Expense }>('/api/v1/purchases', { method: 'POST', body: JSON.stringify(data) }),
-        remove: (id: string) =>
-                request<{ ok: boolean }>(`/api/v1/purchases/${id}`, { method: 'DELETE' }),
+	list: (params: { from?: string; to?: string } = {}) => {
+		const q = new URLSearchParams();
+		if (params.from) q.set('from', params.from);
+		if (params.to) q.set('to', params.to);
+		const s = q.toString();
+		return request<{ purchases: Expense[]; total: number; count: number }>(`/api/v1/purchases${s ? `?${s}` : ''}`);
+	},
+	create: (data: {
+		category: string;
+		amount: number;
+		itemName: string;
+		vendor?: string;
+		quantity?: number;
+		unit?: string;
+		ratePerUnit?: number;
+		note?: string;
+		date?: string;
+	}) => request<{ purchase: Expense }>('/api/v1/purchases', { method: 'POST', body: JSON.stringify(data) }),
+	remove: (id: string) => request<{ ok: boolean }>(`/api/v1/purchases/${id}`, { method: 'DELETE' }),
 };
 
 // ── CashBook API ──────────────────────────────────────────────────────────────
 
 export const cashbookApi = {
-        get: (params: { from?: string; to?: string } = {}) => {
-                const q = new URLSearchParams();
-                if (params.from) q.set('from', params.from);
-                if (params.to)   q.set('to',   params.to);
-                const s = q.toString();
-                return request<{ entries: CashEntry[]; totalIn: number; totalOut: number; balance: number }>(`/api/v1/cashbook${s ? `?${s}` : ''}`);
-        },
+	get: (params: { from?: string; to?: string } = {}) => {
+		const q = new URLSearchParams();
+		if (params.from) q.set('from', params.from);
+		if (params.to) q.set('to', params.to);
+		const s = q.toString();
+		return request<{ entries: CashEntry[]; totalIn: number; totalOut: number; balance: number }>(
+			`/api/v1/cashbook${s ? `?${s}` : ''}`
+		);
+	},
 };

@@ -36,6 +36,7 @@
 ### The Core Problem
 
 A kirana store owner in Kanpur serves 300 customers per day:
+
 - Bills are written on paper or not written at all
 - GST means nothing to them — non-compliance is a daily risk
 - Udaar (credit to customers) is tracked in a notebook that gets lost
@@ -49,6 +50,7 @@ A kirana store owner in Kanpur serves 300 customers per day:
 ### What Execora Is
 
 Execora is a **real-time voice-driven business operating system** that:
+
 - Understands Hindi, Hinglish, and regional language commands
 - Creates GST-compliant invoices from spoken words in under 3 seconds
 - Tracks inventory, customer credit (udaar), and payments automatically
@@ -68,11 +70,11 @@ Execora is a **real-time voice-driven business operating system** that:
 - **Tech level**: Uses WhatsApp heavily, UPI daily, but types slowly on phones
 - **Language**: Hindi primary, some English words
 - **Pain points**:
-  - Creating bills mid-rush is too slow with any typing app
-  - GST filing is outsourced to a CA at extra cost because he can't operate Tally
-  - 50-100 customers on credit (udaar) — he forgets who owes what
-  - Stock runs out without warning (especially flour, oil, salt)
-  - Collecting payments from credit customers requires awkward phone calls
+    - Creating bills mid-rush is too slow with any typing app
+    - GST filing is outsourced to a CA at extra cost because he can't operate Tally
+    - 50-100 customers on credit (udaar) — he forgets who owes what
+    - Stock runs out without warning (especially flour, oil, salt)
+    - Collecting payments from credit customers requires awkward phone calls
 - **What he needs**: Say the order in Hindi → invoice done → WhatsApp reminder sent → stock updated → no more paper
 
 ### Persona 2: Meena — Cosmetics/FMCG Shop Owner
@@ -81,10 +83,10 @@ Execora is a **real-time voice-driven business operating system** that:
 - **Business**: Beauty products, skincare, cosmetics — 80-150 customers/day
 - **Language**: Hindi + regional (Marathi/Telugu/Kannada)
 - **Pain points**:
-  - Product names are complex (English brand names + Hindi quantities)
-  - Product expiry tracking is manual
-  - Small margin business — GST input credit matters a lot
-  - Many loyal customers on monthly credit
+    - Product names are complex (English brand names + Hindi quantities)
+    - Product expiry tracking is manual
+    - Small margin business — GST input credit matters a lot
+    - Many loyal customers on monthly credit
 
 ### Persona 3: Ramesh — Small Wholesaler/Distributor
 
@@ -92,11 +94,11 @@ Execora is a **real-time voice-driven business operating system** that:
 - **Business**: Supplies 50-200 kirana stores, ₹5-50 lakh daily B2B turnover
 - **Language**: Hindi + local language
 - **Pain points**:
-  - Orders come via WhatsApp voice notes all day
-  - Each kirana store has different pricing (volume discounts)
-  - Credit cycles of 15-30 days make cash flow hard to track
-  - Delivery tracking is manual
-  - B2B invoices must be GST-compliant with proper GSTIN of buyer
+    - Orders come via WhatsApp voice notes all day
+    - Each kirana store has different pricing (volume discounts)
+    - Credit cycles of 15-30 days make cash flow hard to track
+    - Delivery tracking is manual
+    - B2B invoices must be GST-compliant with proper GSTIN of buyer
 
 ### Persona 4: Priya — Pharmacy Owner
 
@@ -104,10 +106,10 @@ Execora is a **real-time voice-driven business operating system** that:
 - **Business**: Pharmacy, 100-200 daily prescriptions + OTC
 - **Language**: Hindi + English
 - **Pain points**:
-  - Drug names are complex (brand + generic + dose)
-  - Expiry date tracking is mandatory
-  - Batch number tracking for returns/recalls
-  - GST rates vary per drug category (0%, 5%, 12%)
+    - Drug names are complex (brand + generic + dose)
+    - Expiry date tracking is mandatory
+    - Batch number tracking for returns/recalls
+    - GST rates vary per drug category (0%, 5%, 12%)
 
 ---
 
@@ -116,6 +118,7 @@ Execora is a **real-time voice-driven business operating system** that:
 ### Daily Use Cases (Every Single Day)
 
 #### Morning (7-9 AM) — Opening Procedures
+
 ```
 UC-D-01: Morning stock check
   - Shopkeeper says "aaj ka stock dikhao" or opens dashboard
@@ -338,25 +341,28 @@ UC-Y-06: Annual report for CA/auditor
 ### F-01: Billing & Invoice Engine
 
 #### F-01.1 — Invoice Creation Modes
-| Mode | Description | Priority |
-|------|-------------|----------|
-| Voice (Agent Mode) | Speak in Hindi/English → AI parses → invoice draft | P0 |
-| Form (Classic Mode) | Manual form with customer + items | P0 |
-| Quick Bill (Walk-in) | No customer name required | P0 |
-| Repeat Last Bill | "Same as Ramesh's last bill" | P1 |
-| Barcode Scan | Scan product → auto-add to bill | P2 |
-| Template Bill | Pre-saved bill for frequent orders | P2 |
+
+| Mode                 | Description                                        | Priority |
+| -------------------- | -------------------------------------------------- | -------- |
+| Voice (Agent Mode)   | Speak in Hindi/English → AI parses → invoice draft | P0       |
+| Form (Classic Mode)  | Manual form with customer + items                  | P0       |
+| Quick Bill (Walk-in) | No customer name required                          | P0       |
+| Repeat Last Bill     | "Same as Ramesh's last bill"                       | P1       |
+| Barcode Scan         | Scan product → auto-add to bill                    | P2       |
+| Template Bill        | Pre-saved bill for frequent orders                 | P2       |
 
 #### F-01.2 — Invoice Types
-| Type | Description | GST Treatment |
-|------|-------------|---------------|
-| B2C with GST | Retail customer, GSTIN not required | CGST+SGST (intra-state) |
-| B2B with GST | Business customer with GSTIN | CGST+SGST or IGST |
-| Non-GST cash memo | Fresh produce, exempt items, unregistered seller | No GST |
-| Credit note | Goods returned, invoice cancelled | Negative amounts |
-| Proforma invoice | Quote/estimate, not final | No tax collection |
+
+| Type              | Description                                      | GST Treatment           |
+| ----------------- | ------------------------------------------------ | ----------------------- |
+| B2C with GST      | Retail customer, GSTIN not required              | CGST+SGST (intra-state) |
+| B2B with GST      | Business customer with GSTIN                     | CGST+SGST or IGST       |
+| Non-GST cash memo | Fresh produce, exempt items, unregistered seller | No GST                  |
+| Credit note       | Goods returned, invoice cancelled                | Negative amounts        |
+| Proforma invoice  | Quote/estimate, not final                        | No tax collection       |
 
 #### F-01.3 — Invoice Fields
+
 ```
 Required: customer (or walk-in), items (name + qty + price), date
 Optional: GSTIN, HSN codes, discount %, payment mode, notes, email
@@ -364,6 +370,7 @@ Auto-computed: subtotal, GST breakup, total, invoice number (FY-based sequence)
 ```
 
 #### F-01.4 — Discount Handling
+
 ```
 Item-level discount: each item has its own discount %
 Bill-level discount: applied after subtotal (before GST)
@@ -373,6 +380,7 @@ Cash discount: applies after GST (shown separately)
 ```
 
 #### F-01.5 — Multi-Turn Draft Flow (Voice)
+
 ```
 Turn 1: "Ramesh ka bill"  → "Ramesh Sharma? Kya dena hai?"
 Turn 2: "2 aata 1 tel"   → "2 kg Aata ₹88, 1L Saffola ₹180. Aur kuch?"
@@ -382,6 +390,7 @@ OR Turn 4: "GST mat lagao, naya price ₹250 kar"  → "₹250 fixed. Confirm?"
 ```
 
 #### F-01.6 — Invoice Editing (Post-Creation)
+
 ```
 - Edit items (add/remove/change qty) on PENDING invoices
 - Change customer on PENDING invoices
@@ -393,6 +402,7 @@ OR Turn 4: "GST mat lagao, naya price ₹250 kar"  → "₹250 fixed. Confirm?"
 ```
 
 #### F-01.7 — Invoice Numbering
+
 ```
 Format: INV/2025-26/00001
 Resets: April 1 every year (Indian Financial Year)
@@ -405,6 +415,7 @@ B2B format: Can be customized per business (e.g., prefix with shop code)
 ### F-02: Customer Management
 
 #### F-02.1 — Customer Profile
+
 ```
 Core: name, phone, email (optional)
 Identity helpers: nickname ("Chhote bhaiya"), landmark ("market ke paas wala")
@@ -414,6 +425,7 @@ Tags: VIP, blacklisted, new, wholesale
 ```
 
 #### F-02.2 — Customer Search / Resolution
+
 ```
 - Exact phone match (highest priority)
 - Fuzzy name match (Levenshtein distance + token overlap)
@@ -424,6 +436,7 @@ Tags: VIP, blacklisted, new, wholesale
 ```
 
 #### F-02.3 — Walk-In Customer
+
 ```
 - System has a pre-created "Walk-in Customer" record per tenant
 - All anonymous bills link to this record
@@ -433,6 +446,7 @@ Tags: VIP, blacklisted, new, wholesale
 ```
 
 #### F-02.4 — Customer Credit (Udaar)
+
 ```
 - Balance field: positive = customer owes shop, negative = shop owes customer
 - Credit limit: alert when customer tries to exceed limit
@@ -446,6 +460,7 @@ Tags: VIP, blacklisted, new, wholesale
 ### F-03: Inventory & Stock Management
 
 #### F-03.1 — Product Catalog
+
 ```
 Fields: name, category, HSN code, GST rate, unit (kg/g/ltr/ml/piece/packet/box/dozen/bundle)
 Price: selling price, MRP, purchase price (cost), wholesale price tier
@@ -456,18 +471,20 @@ Expiry: best-before date tracking (for pharma/FMCG)
 ```
 
 #### F-03.2 — Stock Movements (Audit Trail)
-| Movement Type | Trigger | Stock Change |
-|---------------|---------|--------------|
-| sale | Invoice confirmed | Decrease |
-| purchase | Supplier invoice entered | Increase |
-| return_from_customer | Credit note / cancellation | Increase |
-| return_to_supplier | Supplier return | Decrease |
-| damage | Manual entry | Decrease |
-| expiry | Manual or auto-detected | Decrease |
-| adjustment | Physical count mismatch | Increase or Decrease |
-| opening_stock | Initial entry | Set to value |
+
+| Movement Type        | Trigger                    | Stock Change         |
+| -------------------- | -------------------------- | -------------------- |
+| sale                 | Invoice confirmed          | Decrease             |
+| purchase             | Supplier invoice entered   | Increase             |
+| return_from_customer | Credit note / cancellation | Increase             |
+| return_to_supplier   | Supplier return            | Decrease             |
+| damage               | Manual entry               | Decrease             |
+| expiry               | Manual or auto-detected    | Decrease             |
+| adjustment           | Physical count mismatch    | Increase or Decrease |
+| opening_stock        | Initial entry              | Set to value         |
 
 #### F-03.3 — Low Stock & Alerts
+
 ```
 - Configurable per product: minStock threshold
 - Real-time alert when stock ≤ minStock
@@ -478,6 +495,7 @@ Expiry: best-before date tracking (for pharma/FMCG)
 ```
 
 #### F-03.4 — Fast-Moving Products Report
+
 ```
 - Top N products by units sold (configurable: last 7/30/90 days)
 - Real data from SUM(invoice_items.quantity) — NOT sorted by lowest stock
@@ -490,6 +508,7 @@ Expiry: best-before date tracking (for pharma/FMCG)
 ### F-04: Payment & Ledger
 
 #### F-04.1 — Payment Recording
+
 ```
 Payment methods: Cash, UPI (PhonePe/GPay/Paytm), Card (debit/credit),
                  Bank transfer (NEFT/RTGS/IMPS), Credit (udaar), Cheque
@@ -500,6 +519,7 @@ Advance payment: before invoice is raised (deposit)
 ```
 
 #### F-04.2 — Auto-Settlement (Khata Style)
+
 ```
 When payment received:
 1. Apply to oldest PENDING invoice first
@@ -510,6 +530,7 @@ When payment received:
 ```
 
 #### F-04.3 — Ledger Entries
+
 ```
 Immutable (no edits after creation)
 Every entry has: type, amount, description, created_at, payment_mode
@@ -518,6 +539,7 @@ Audit trail: every financial event is a ledger row
 ```
 
 #### F-04.4 — Payment Analytics
+
 ```
 Daily: cash vs UPI vs credit breakdown
 Weekly: payment collection chart
@@ -530,20 +552,22 @@ Overdue tracking: invoices > 7/15/30/60 days unpaid
 ### F-05: Reminder & Notification Engine
 
 #### F-05.1 — Reminder Types
-| Type | Use Case | Channel |
-|------|----------|---------|
-| payment_due | "₹500 due today" | WhatsApp |
-| payment_overdue | "₹500 overdue 7 days" | WhatsApp |
-| invoice_reminder | "Invoice #123 pending" | WhatsApp |
-| low_stock | "Aata running low" | Internal dashboard |
-| expiry_alert | "Batch expires in 7 days" | WhatsApp / dashboard |
-| birthday | Customer birthday greeting | WhatsApp |
-| follow_up | Custom follow-up | WhatsApp |
-| gst_filing | Monthly GST filing due | Internal dashboard |
-| staff_task | "Clean shelves Saturday" | Internal dashboard |
-| custom | Any free-text reminder | WhatsApp / dashboard |
+
+| Type             | Use Case                   | Channel              |
+| ---------------- | -------------------------- | -------------------- |
+| payment_due      | "₹500 due today"           | WhatsApp             |
+| payment_overdue  | "₹500 overdue 7 days"      | WhatsApp             |
+| invoice_reminder | "Invoice #123 pending"     | WhatsApp             |
+| low_stock        | "Aata running low"         | Internal dashboard   |
+| expiry_alert     | "Batch expires in 7 days"  | WhatsApp / dashboard |
+| birthday         | Customer birthday greeting | WhatsApp             |
+| follow_up        | Custom follow-up           | WhatsApp             |
+| gst_filing       | Monthly GST filing due     | Internal dashboard   |
+| staff_task       | "Clean shelves Saturday"   | Internal dashboard   |
+| custom           | Any free-text reminder     | WhatsApp / dashboard |
 
 #### F-05.2 — Scheduling Formats (Natural Language)
+
 ```
 "Kal subah 9 baje"           → tomorrow 09:00
 "Parso shaam 5 baje"         → day after tomorrow 17:00
@@ -556,6 +580,7 @@ Overdue tracking: invoices > 7/15/30/60 days unpaid
 ```
 
 #### F-05.3 — Bulk Reminders
+
 ```
 "Saare pending customers ko reminder bhejo" →
   All customers with balance > 0 → WhatsApp sent with their specific amount
@@ -564,12 +589,12 @@ Configurable message template with {customer_name}, {amount}, {shop_name}
 
 #### F-05.4 — Reminder Delivery & Status
 
-| Channel | Status | Notes |
-|---------|--------|-------|
-| WhatsApp (Meta Cloud API) | ✅ Built | Primary channel, delivery status tracked |
-| Email (Nodemailer/SMTP) | 🔴 TODO | Secondary channel, formal reminders |
-| In-app dashboard | ✅ Built | Staff tasks, GST alerts, internal notifications |
-| SMS | 🔴 TODO P2 | Fallback if WhatsApp + email both fail |
+| Channel                   | Status     | Notes                                           |
+| ------------------------- | ---------- | ----------------------------------------------- |
+| WhatsApp (Meta Cloud API) | ✅ Built   | Primary channel, delivery status tracked        |
+| Email (Nodemailer/SMTP)   | 🔴 TODO    | Secondary channel, formal reminders             |
+| In-app dashboard          | ✅ Built   | Staff tasks, GST alerts, internal notifications |
+| SMS                       | 🔴 TODO P2 | Fallback if WhatsApp + email both fail          |
 
 ```
 Status tracking: scheduled → sent → delivered → read → failed
@@ -583,6 +608,7 @@ Failed after all retries = alert on dashboard
 ### F-06: Voice Engine (Agent Mode)
 
 #### F-06.1 — Speech-to-Text Pipeline
+
 ```
 Input: Raw PCM audio (16kHz, mono) streamed via WebSocket
 STT providers: Deepgram (primary), ElevenLabs (secondary), Browser WebSpeech (free fallback)
@@ -592,6 +618,7 @@ Hinglish handling: native support for code-switching
 ```
 
 #### F-06.2 — Intent Classification (23 Intents)
+
 ```
 CREATE_INVOICE       — "Ramesh ka bill banao"
 CONFIRM_INVOICE      — "Haan", "Confirm", "Theek hai"
@@ -619,6 +646,7 @@ SWITCH_LANGUAGE      — "English mein baat karo"
 ```
 
 #### F-06.3 — Conversation Memory (Context)
+
 ```
 - Redis-backed, 4-hour TTL, per session
 - Last 20 turns in context for every LLM call
@@ -628,6 +656,7 @@ SWITCH_LANGUAGE      — "English mein baat karo"
 ```
 
 #### F-06.4 — Real-Time Multi-Task
+
 ```
 - Up to 3 parallel tasks per session
 - Priority-based: new task = higher priority interrupts
@@ -638,6 +667,7 @@ SWITCH_LANGUAGE      — "English mein baat karo"
 ```
 
 #### F-06.5 — TTS (Text-to-Speech) Response
+
 ```
 Providers: ElevenLabs (Hindi voice), OpenAI TTS, Browser Speech API
 Language: matches detected input language
@@ -651,6 +681,7 @@ Streaming: audio chunks sent via WebSocket as they are generated
 ### F-07: Classic Mode (Non-Voice UI)
 
 #### F-07.1 — Dashboard
+
 ```
 Real-time widgets (all WebSocket-powered):
 - Today's revenue (₹)
@@ -674,6 +705,7 @@ Quick actions:
 ```
 
 #### F-07.2 — Invoice Management Page
+
 ```
 List view: all invoices with filters (status, date range, customer)
 Detail view: full invoice with all line items, payment history
@@ -683,6 +715,7 @@ Bulk actions: export to CSV, bulk mark paid
 ```
 
 #### F-07.3 — Customer Page
+
 ```
 List: all customers, searchable, with outstanding balance badge
 Detail: profile, invoice history, payment history, ledger
@@ -690,6 +723,7 @@ Quick actions: Record payment, Send reminder, Create invoice for this customer
 ```
 
 #### F-07.4 — Inventory Page
+
 ```
 Product list: search, filter by category, stock status
 Low stock view: only products at or below reorder point
@@ -699,6 +733,7 @@ Bulk update: import from Excel/CSV (P2)
 ```
 
 #### F-07.5 — Reports Page
+
 ```
 Daily report: single day P&L
 Date range report: custom from-to period
@@ -710,6 +745,7 @@ Export: PDF and CSV
 ```
 
 #### F-07.6 — Settings Page
+
 ```
 Business profile: name, address, GSTIN, logo
 Invoice settings: prefix, starting number, terms & conditions
@@ -725,22 +761,23 @@ Integrations: WhatsApp API key, email SMTP
 
 ### Scenario Matrix
 
-| # | Customer | GST | Discount | Payment | Scenario Name |
-|---|----------|-----|----------|---------|---------------|
-| S-01 | Named | With GST | None | Cash | Standard kirana bill |
-| S-02 | Walk-in | With GST | None | UPI | Anonymous GST bill |
-| S-03 | Named | No GST | None | Credit (udaar) | Fresh produce / exempt items |
-| S-04 | Walk-in | No GST | None | Cash | Quick cash memo |
-| S-05 | Named | With GST | Item discount | Cash+UPI | Mixed payment with discount |
-| S-06 | Named | With GST | Bill discount % | Credit | Wholesale % discount |
-| S-07 | Named (GSTIN) | With GST | None | Bank transfer | B2B GST invoice |
-| S-08 | Named | With GST | None | Partial | Part payment at billing |
-| S-09 | Walk-in | No GST | ₹X off | Cash | Fixed amount discount |
-| S-10 | Named | With GST | None | Advance | Customer paid advance, deduct |
-| S-11 | Named | With GST | None | UPI | Same day bill + payment |
-| S-12 | Named | No GST | None | Cash | Agriculture/composite scheme |
+| #    | Customer      | GST      | Discount        | Payment        | Scenario Name                 |
+| ---- | ------------- | -------- | --------------- | -------------- | ----------------------------- |
+| S-01 | Named         | With GST | None            | Cash           | Standard kirana bill          |
+| S-02 | Walk-in       | With GST | None            | UPI            | Anonymous GST bill            |
+| S-03 | Named         | No GST   | None            | Credit (udaar) | Fresh produce / exempt items  |
+| S-04 | Walk-in       | No GST   | None            | Cash           | Quick cash memo               |
+| S-05 | Named         | With GST | Item discount   | Cash+UPI       | Mixed payment with discount   |
+| S-06 | Named         | With GST | Bill discount % | Credit         | Wholesale % discount          |
+| S-07 | Named (GSTIN) | With GST | None            | Bank transfer  | B2B GST invoice               |
+| S-08 | Named         | With GST | None            | Partial        | Part payment at billing       |
+| S-09 | Walk-in       | No GST   | ₹X off          | Cash           | Fixed amount discount         |
+| S-10 | Named         | With GST | None            | Advance        | Customer paid advance, deduct |
+| S-11 | Named         | With GST | None            | UPI            | Same day bill + payment       |
+| S-12 | Named         | No GST   | None            | Cash           | Agriculture/composite scheme  |
 
 ### Scenario S-01 Voice Example — Standard Bill
+
 ```
 User: "Ramesh ka bill — 2 aata, ek chawal, ek tel, Amul butter"
 AI:   "Ramesh Sharma? 2kg Aata ₹88, 1kg Chawal ₹72, 1L Saffola ₹180, Amul Butter ₹52. Total ₹392 + GST = ₹420. Confirm?"
@@ -749,6 +786,7 @@ User: "Haan"
 ```
 
 ### Scenario S-04 Voice Example — Walk-In, No GST
+
 ```
 User: "Bina naam ke — do pyaaz kilo 40 rupay, ek packet namak"
 AI:   "Walk-in customer. 2kg Pyaaz ₹80, 1 Namak ₹20. Total ₹100. Cash bill, GST nahi. Confirm?"
@@ -757,6 +795,7 @@ User: "Ha de do"
 ```
 
 ### Scenario S-05 Voice Example — Mixed Payment + Discount
+
 ```
 User: "Seema ka bill — 5 soap, 2 shampoo, 10% discount, 500 cash diye baaki UPI se"
 AI:   "Seema Gupta? 5 Lux Soap ₹225, 2 Dove Shampoo ₹380. Subtotal ₹605.
@@ -767,6 +806,7 @@ User: "Haan"
 ```
 
 ### Scenario S-07 Voice Example — B2B GST Invoice
+
 ```
 User: "Sharma Provision Store ka GST bill — unka GSTIN 09AABCS1429B1Z1 —
        100 aata bags 480 rupay each, 50 tel can 1100 rupay"
@@ -833,16 +873,16 @@ Execora has **three distinct execution modes**. Understanding the difference bet
 
 #### Characteristics of Intent-Based Mode
 
-| Property | Value |
-|----------|-------|
-| LLM role | Extraction only (input) + phrasing only (output). Does NOT decide logic. |
-| Execution path | 100% deterministic — `switch(intent)` in `engine/index.ts` |
-| Tool calling | None — handler code is pre-written, not dynamically selected |
-| Multi-step reasoning | None — one intent = one handler = one result |
-| Error recovery | None — if intent unknown, returns `UNKNOWN_INTENT` error |
-| Context injection | Manual — conversation history + draft injected into prompt as text |
-| Reliability | Very high — no hallucination in execution path |
-| Speed | Fast — one extraction call + one response call |
+| Property             | Value                                                                    |
+| -------------------- | ------------------------------------------------------------------------ |
+| LLM role             | Extraction only (input) + phrasing only (output). Does NOT decide logic. |
+| Execution path       | 100% deterministic — `switch(intent)` in `engine/index.ts`               |
+| Tool calling         | None — handler code is pre-written, not dynamically selected             |
+| Multi-step reasoning | None — one intent = one handler = one result                             |
+| Error recovery       | None — if intent unknown, returns `UNKNOWN_INTENT` error                 |
+| Context injection    | Manual — conversation history + draft injected into prompt as text       |
+| Reliability          | Very high — no hallucination in execution path                           |
+| Speed                | Fast — one extraction call + one response call                           |
 
 #### When It Fails
 
@@ -880,15 +920,15 @@ Cannot reason: "if X then Y else Z" is not in the intent schema.
 
 #### Characteristics of Form/Dashboard Mode
 
-| Property | Value |
-|----------|-------|
-| AI involvement | None |
-| Execution | Direct service calls from route handlers |
-| Speed for forms | 30-90 seconds per operation |
-| Hands-free | No |
-| Bulk operations | Easy (checkboxes, filters) |
-| Complex edits | Easy (visual forms) |
-| Offline-ready | Yes (can cache with service worker) |
+| Property        | Value                                    |
+| --------------- | ---------------------------------------- |
+| AI involvement  | None                                     |
+| Execution       | Direct service calls from route handlers |
+| Speed for forms | 30-90 seconds per operation              |
+| Hands-free      | No                                       |
+| Bulk operations | Easy (checkboxes, filters)               |
+| Complex edits   | Easy (visual forms)                      |
+| Offline-ready   | Yes (can cache with service worker)      |
 
 #### The Killer Feature: Same WebSocket = Real-Time Sync
 
@@ -911,16 +951,16 @@ When User A creates an invoice via voice:
 
 #### The Core Difference
 
-| | Intent-Based Mode | True Agent Mode |
-|---|---|---|
-| LLM role | Extract JSON, then step aside | Orchestrate the entire execution |
-| Execution control | Pre-written switch/case | LLM decides which tool(s) to call |
-| Multi-step | No — one intent per turn | Yes — LLM chains tools |
-| Conditional logic | No | Yes — "if balance > X then..." |
-| Error recovery | No | Yes — LLM retries with different tool |
-| New capabilities | Requires code change (new intent case) | Describe tool in English → LLM uses it |
-| Unpredictability | Zero (safe) | Low but exists |
-| Power | Limited to predefined intents | Anything expressible in language |
+|                   | Intent-Based Mode                      | True Agent Mode                        |
+| ----------------- | -------------------------------------- | -------------------------------------- |
+| LLM role          | Extract JSON, then step aside          | Orchestrate the entire execution       |
+| Execution control | Pre-written switch/case                | LLM decides which tool(s) to call      |
+| Multi-step        | No — one intent per turn               | Yes — LLM chains tools                 |
+| Conditional logic | No                                     | Yes — "if balance > X then..."         |
+| Error recovery    | No                                     | Yes — LLM retries with different tool  |
+| New capabilities  | Requires code change (new intent case) | Describe tool in English → LLM uses it |
+| Unpredictability  | Zero (safe)                            | Low but exists                         |
+| Power             | Limited to predefined intents          | Anything expressible in language       |
 
 #### True Agent Architecture (OpenAI Tool Calling)
 
@@ -1090,14 +1130,14 @@ Rather than a single monolithic agent, use two specialized agents that work toge
 
 #### Why Two Agents?
 
-| Concern | Single Agent | Two-Agent |
-|---------|-------------|-----------|
-| Tool explosion | LLM gets confused with 30+ tools + conversation | Executor has tools, Guide has context |
-| Response quality | Hard to be both "good at tasks" and "good at conversation" | Specialist agents do one thing well |
-| Error messages | Generic LLM error handling | Guide crafts human-friendly explanation |
-| Suggestions | Baked into task execution (messy) | Guide always suggests next step |
-| Cost | One big prompt | Two smaller focused prompts (cheaper) |
-| Debugging | Hard to trace: conversation or execution issue? | Clear separation |
+| Concern          | Single Agent                                               | Two-Agent                               |
+| ---------------- | ---------------------------------------------------------- | --------------------------------------- |
+| Tool explosion   | LLM gets confused with 30+ tools + conversation            | Executor has tools, Guide has context   |
+| Response quality | Hard to be both "good at tasks" and "good at conversation" | Specialist agents do one thing well     |
+| Error messages   | Generic LLM error handling                                 | Guide crafts human-friendly explanation |
+| Suggestions      | Baked into task execution (messy)                          | Guide always suggests next step         |
+| Cost             | One big prompt                                             | Two smaller focused prompts (cheaper)   |
+| Debugging        | Hard to trace: conversation or execution issue?            | Clear separation                        |
 
 #### Conversation Agent — Responsibilities
 
@@ -1176,22 +1216,22 @@ export async function executeNewThing(entities, conversationId) {
 
 ### Mode Comparison — Full Matrix
 
-| Capability | Intent-Based (Current Voice) | Form/Dashboard (UI) | True Agent Mode (Planned) |
-|---|---|---|---|
-| Speed for common task | ⚡ 3s | 30-90s | ⚡ 3-5s |
-| Learning curve | Near zero | Low | Zero |
-| Multi-step reasoning | ❌ One intent per turn | ❌ N/A | ✅ LLM chains steps |
-| Conditional logic | ❌ | ✅ (user does it) | ✅ Agent reasons |
-| Error recovery | ❌ Returns error | ✅ User fixes form | ✅ Agent retries |
-| Complex edits | ❌ | ✅ Visual forms | ✅ Conversational edits |
-| Hands-free counter use | ✅ | ❌ | ✅ |
-| Bulk operations | ❌ | ✅ Checkboxes | ✅ "Top 5 ko remind karo" |
-| New capabilities | New code required | New route required | Describe in English |
-| Offline support | ❌ STT needs internet | ✅ (with cache) | ❌ LLM needs internet |
-| Predictability | ✅ 100% deterministic | ✅ 100% deterministic | ✅ High (tools are safe) |
-| Multi-language | ✅ Via LLM prompt | ❌ Hindi UI only | ✅ Any language |
-| Suggestions | ❌ | ❌ | ✅ "Aur kuch chahiye?" |
-| Cost per interaction | Low (2 LLM calls) | Zero (no LLM) | Medium (3-5 LLM calls) |
+| Capability             | Intent-Based (Current Voice) | Form/Dashboard (UI)   | True Agent Mode (Planned) |
+| ---------------------- | ---------------------------- | --------------------- | ------------------------- |
+| Speed for common task  | ⚡ 3s                        | 30-90s                | ⚡ 3-5s                   |
+| Learning curve         | Near zero                    | Low                   | Zero                      |
+| Multi-step reasoning   | ❌ One intent per turn       | ❌ N/A                | ✅ LLM chains steps       |
+| Conditional logic      | ❌                           | ✅ (user does it)     | ✅ Agent reasons          |
+| Error recovery         | ❌ Returns error             | ✅ User fixes form    | ✅ Agent retries          |
+| Complex edits          | ❌                           | ✅ Visual forms       | ✅ Conversational edits   |
+| Hands-free counter use | ✅                           | ❌                    | ✅                        |
+| Bulk operations        | ❌                           | ✅ Checkboxes         | ✅ "Top 5 ko remind karo" |
+| New capabilities       | New code required            | New route required    | Describe in English       |
+| Offline support        | ❌ STT needs internet        | ✅ (with cache)       | ❌ LLM needs internet     |
+| Predictability         | ✅ 100% deterministic        | ✅ 100% deterministic | ✅ High (tools are safe)  |
+| Multi-language         | ✅ Via LLM prompt            | ❌ Hindi UI only      | ✅ Any language           |
+| Suggestions            | ❌                           | ❌                    | ✅ "Aur kuch chahiye?"    |
+| Cost per interaction   | Low (2 LLM calls)            | Zero (no LLM)         | Medium (3-5 LLM calls)    |
 
 ---
 
@@ -1201,22 +1241,22 @@ Every document, notification, and alert in Execora has **two delivery channels**
 
 #### Invoice Delivery
 
-| Trigger | Channel | Content | Status |
-|---------|---------|---------|--------|
-| Invoice confirmed (voice or form) | WhatsApp | PDF download link + amount | ✅ Built |
-| Invoice confirmed (voice or form) | Email | PDF attachment + invoice HTML | ✅ Built |
-| Invoice confirmed | In-app WebSocket | Live dashboard update | ✅ Built |
-| User says "email bhejo" | Email | PDF to customer email | ✅ Built (PROVIDE_EMAIL intent) |
-| User says "WhatsApp karo" | WhatsApp | PDF link to customer phone | 🔴 TODO (auto-send) |
+| Trigger                           | Channel          | Content                       | Status                          |
+| --------------------------------- | ---------------- | ----------------------------- | ------------------------------- |
+| Invoice confirmed (voice or form) | WhatsApp         | PDF download link + amount    | ✅ Built                        |
+| Invoice confirmed (voice or form) | Email            | PDF attachment + invoice HTML | ✅ Built                        |
+| Invoice confirmed                 | In-app WebSocket | Live dashboard update         | ✅ Built                        |
+| User says "email bhejo"           | Email            | PDF to customer email         | ✅ Built (PROVIDE_EMAIL intent) |
+| User says "WhatsApp karo"         | WhatsApp         | PDF link to customer phone    | 🔴 TODO (auto-send)             |
 
 #### Reminder Delivery
 
-| Channel | Use Case | Status |
-|---------|----------|--------|
-| WhatsApp | Primary: payment reminders, overdue alerts | ✅ Built (BullMQ + Meta API) |
-| Email | Secondary: formal reminders, monthly statements | 🔴 TODO |
-| In-app dashboard | Staff tasks, GST filing alerts, low stock | ✅ Built |
-| SMS | Fallback when WhatsApp fails | 🔴 TODO (P2) |
+| Channel          | Use Case                                        | Status                       |
+| ---------------- | ----------------------------------------------- | ---------------------------- |
+| WhatsApp         | Primary: payment reminders, overdue alerts      | ✅ Built (BullMQ + Meta API) |
+| Email            | Secondary: formal reminders, monthly statements | 🔴 TODO                      |
+| In-app dashboard | Staff tasks, GST filing alerts, low stock       | ✅ Built                     |
+| SMS              | Fallback when WhatsApp fails                    | 🔴 TODO (P2)                 |
 
 #### Delivery Preference Settings
 
@@ -1276,30 +1316,30 @@ Status: scheduled → sent → delivered → read → failed
 
 #### Server → Client Events
 
-| Event | Triggered By | Payload | UI Action |
-|-------|-------------|---------|-----------|
-| `voice:transcript` | STT chunk | `{text, isFinal}` | Show live transcript |
-| `voice:start` | Session starts | `{ttsProvider, ttsAvailable}` | Init audio pipeline |
-| `voice:end` | Session ends | `{}` | Close mic |
-| `voice:response` | AI responds | `{text, audioUrl?}` | Show + play response |
-| `task:status` | Task state change | `{taskId, status, intent}` | Show task indicator |
-| `invoice:created` | Invoice saved | `{invoiceId, total, customer}` | Add to invoice list |
-| `invoice:updated` | Invoice edited | `{invoiceId, changes}` | Update invoice detail |
-| `invoice:cancelled` | Invoice cancelled | `{invoiceId}` | Mark cancelled |
-| `payment:recorded` | Payment saved | `{customerId, amount, method}` | Update ledger |
-| `product:updated` | Stock changed | `{productId, stock}` | Update stock widget |
-| `reminder:scheduled` | Reminder saved | `{reminderId}` | Update reminder count |
-| `customer:created` | New customer | `{customerId, name}` | Add to customer list |
-| `stock:low` | Stock ≤ minStock | `{productId, name, stock}` | Alert badge |
+| Event                | Triggered By      | Payload                        | UI Action             |
+| -------------------- | ----------------- | ------------------------------ | --------------------- |
+| `voice:transcript`   | STT chunk         | `{text, isFinal}`              | Show live transcript  |
+| `voice:start`        | Session starts    | `{ttsProvider, ttsAvailable}`  | Init audio pipeline   |
+| `voice:end`          | Session ends      | `{}`                           | Close mic             |
+| `voice:response`     | AI responds       | `{text, audioUrl?}`            | Show + play response  |
+| `task:status`        | Task state change | `{taskId, status, intent}`     | Show task indicator   |
+| `invoice:created`    | Invoice saved     | `{invoiceId, total, customer}` | Add to invoice list   |
+| `invoice:updated`    | Invoice edited    | `{invoiceId, changes}`         | Update invoice detail |
+| `invoice:cancelled`  | Invoice cancelled | `{invoiceId}`                  | Mark cancelled        |
+| `payment:recorded`   | Payment saved     | `{customerId, amount, method}` | Update ledger         |
+| `product:updated`    | Stock changed     | `{productId, stock}`           | Update stock widget   |
+| `reminder:scheduled` | Reminder saved    | `{reminderId}`                 | Update reminder count |
+| `customer:created`   | New customer      | `{customerId, name}`           | Add to customer list  |
+| `stock:low`          | Stock ≤ minStock  | `{productId, name, stock}`     | Alert badge           |
 
 #### Client → Server Events
 
-| Event | Triggered By | Payload |
-|-------|-------------|---------|
-| `voice:audio` | Mic input | PCM audio buffer |
+| Event         | Triggered By         | Payload                                  |
+| ------------- | -------------------- | ---------------------------------------- |
+| `voice:audio` | Mic input            | PCM audio buffer                         |
 | `voice:start` | User starts speaking | `{audioFormat, sampleRate, ttsProvider}` |
-| `voice:stop` | User stops | `{}` |
-| `ping` | Heartbeat (30s) | `{timestamp}` |
+| `voice:stop`  | User stops           | `{}`                                     |
+| `ping`        | Heartbeat (30s)      | `{timestamp}`                            |
 
 ### React Query Integration (Cache Invalidation)
 
@@ -1307,36 +1347,36 @@ Status: scheduled → sent → delivered → read → failed
 // WSContext.tsx handles all server events and invalidates React Query cache
 // This ensures Classic Mode UI always shows fresh data after any Agent Mode action
 
-wsClient.on("invoice:created", () => {
-  qc.invalidateQueries({ queryKey: ["invoices"] });
-  qc.invalidateQueries({ queryKey: ["summary"] });
+wsClient.on('invoice:created', () => {
+	qc.invalidateQueries({ queryKey: ['invoices'] });
+	qc.invalidateQueries({ queryKey: ['summary'] });
 });
 
-wsClient.on("product:updated", () => {
-  qc.invalidateQueries({ queryKey: ["products"] });
-  qc.invalidateQueries({ queryKey: ["products", "low-stock"] });
+wsClient.on('product:updated', () => {
+	qc.invalidateQueries({ queryKey: ['products'] });
+	qc.invalidateQueries({ queryKey: ['products', 'low-stock'] });
 });
 
-wsClient.on("payment:recorded", () => {
-  qc.invalidateQueries({ queryKey: ["invoices"] });
-  qc.invalidateQueries({ queryKey: ["customers"] });
-  qc.invalidateQueries({ queryKey: ["ledger"] });
-  qc.invalidateQueries({ queryKey: ["summary"] });
+wsClient.on('payment:recorded', () => {
+	qc.invalidateQueries({ queryKey: ['invoices'] });
+	qc.invalidateQueries({ queryKey: ['customers'] });
+	qc.invalidateQueries({ queryKey: ['ledger'] });
+	qc.invalidateQueries({ queryKey: ['summary'] });
 });
 ```
 
 ### Real-Time Dashboard Widgets Priority
 
-| Widget | Refresh Trigger | Priority |
-|--------|----------------|----------|
-| Today's Revenue | Every invoice + payment | P0 |
-| Pending Collections | Every invoice + payment | P0 |
-| Low Stock Alerts | Every stock change | P0 |
-| Recent Invoices | Every invoice | P0 |
-| Top Selling Products | Every 2 minutes | P1 |
-| Weekly Sales Chart | Every day midnight | P1 |
-| Business Health Score | Every hour | P2 |
-| Customer Activity | Every 5 minutes | P2 |
+| Widget                | Refresh Trigger         | Priority |
+| --------------------- | ----------------------- | -------- |
+| Today's Revenue       | Every invoice + payment | P0       |
+| Pending Collections   | Every invoice + payment | P0       |
+| Low Stock Alerts      | Every stock change      | P0       |
+| Recent Invoices       | Every invoice           | P0       |
+| Top Selling Products  | Every 2 minutes         | P1       |
+| Weekly Sales Chart    | Every day midnight      | P1       |
+| Business Health Score | Every hour              | P2       |
+| Customer Activity     | Every 5 minutes         | P2       |
 
 ---
 
@@ -1344,20 +1384,20 @@ wsClient.on("payment:recorded", () => {
 
 ### Supported Languages (Priority Order)
 
-| Language | Script | Speakers | Priority |
-|----------|--------|---------|----------|
-| Hindi | Devanagari / Roman | 528M | P0 |
-| Hinglish (Hindi+English mix) | Roman | ~350M | P0 |
-| English | Roman | 125M urban | P0 |
-| Marathi | Devanagari | 83M | P1 |
-| Gujarati | Gujarati script | 57M | P1 |
-| Tamil | Tamil script | 69M | P1 |
-| Telugu | Telugu script | 83M | P1 |
-| Bengali | Bengali script | 97M | P1 |
-| Kannada | Kannada script | 44M | P2 |
-| Malayalam | Malayalam script | 38M | P2 |
-| Punjabi | Gurmukhi | 33M | P2 |
-| Odia | Odia script | 38M | P2 |
+| Language                     | Script             | Speakers   | Priority |
+| ---------------------------- | ------------------ | ---------- | -------- |
+| Hindi                        | Devanagari / Roman | 528M       | P0       |
+| Hinglish (Hindi+English mix) | Roman              | ~350M      | P0       |
+| English                      | Roman              | 125M urban | P0       |
+| Marathi                      | Devanagari         | 83M        | P1       |
+| Gujarati                     | Gujarati script    | 57M        | P1       |
+| Tamil                        | Tamil script       | 69M        | P1       |
+| Telugu                       | Telugu script      | 83M        | P1       |
+| Bengali                      | Bengali script     | 97M        | P1       |
+| Kannada                      | Kannada script     | 44M        | P2       |
+| Malayalam                    | Malayalam script   | 38M        | P2       |
+| Punjabi                      | Gurmukhi           | 33M        | P2       |
+| Odia                         | Odia script        | 38M        | P2       |
 
 ### Hinglish Handling — Real Examples
 
@@ -1377,6 +1417,7 @@ wsClient.on("payment:recorded", () => {
 ```
 
 ### Number Normalization
+
 ```
 "Ek"     → 1    "Gyarah"   → 11   "Ikkis"  → 21
 "Do"     → 2    "Barah"    → 12   "Pachis" → 25
@@ -1391,6 +1432,7 @@ wsClient.on("payment:recorded", () => {
 ```
 
 ### Devanagari Transliteration
+
 ```
 रामेश → Ramesh (for entity extraction)
 आटा   → Aata / Atta (product matching)
@@ -1400,16 +1442,16 @@ wsClient.on("payment:recorded", () => {
 
 ### Multi-Language Intent Examples
 
-| Language | User says | Extracted intent |
-|----------|-----------|-----------------|
-| Hindi | "Ramesh ka bill banao — 2 aata" | CREATE_INVOICE |
-| Marathi | "Ramesh cha bill kara — 2 kilo pith" | CREATE_INVOICE |
-| Tamil | "Ramesh bill pottu — 2 kilo maavu" | CREATE_INVOICE |
-| Telugu | "Ramesh bill veyyi — 2 kilo pindi" | CREATE_INVOICE |
-| Gujarati | "Ramesh no bill banavo — 2 kilo lot" | CREATE_INVOICE |
-| Hinglish | "Ramesh ko invoice do 2kg flour" | CREATE_INVOICE |
+| Language | User says                            | Extracted intent |
+| -------- | ------------------------------------ | ---------------- |
+| Hindi    | "Ramesh ka bill banao — 2 aata"      | CREATE_INVOICE   |
+| Marathi  | "Ramesh cha bill kara — 2 kilo pith" | CREATE_INVOICE   |
+| Tamil    | "Ramesh bill pottu — 2 kilo maavu"   | CREATE_INVOICE   |
+| Telugu   | "Ramesh bill veyyi — 2 kilo pindi"   | CREATE_INVOICE   |
+| Gujarati | "Ramesh no bill banavo — 2 kilo lot" | CREATE_INVOICE   |
+| Hinglish | "Ramesh ko invoice do 2kg flour"     | CREATE_INVOICE   |
 
-*The LLM handles all of these with the same prompt + conversation context — no separate parsers needed per language.*
+_The LLM handles all of these with the same prompt + conversation context — no separate parsers needed per language._
 
 ---
 
@@ -1417,34 +1459,35 @@ wsClient.on("payment:recorded", () => {
 
 ### Feature Comparison Matrix
 
-| Feature | Execora | Tally | Vyapar | Khatabook | Zoho Books | Odoo | Pilloo AI |
-|---------|---------|-------|--------|-----------|------------|------|-----------|
-| Voice commands | ✅ P0 | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ (new) |
-| Hindi/Hinglish native | ✅ | ❌ | ❌ | Partial | ❌ | ❌ | ✅ |
-| Real-time streaming voice | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | Unknown |
-| Multi-turn conversation | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | Unknown |
-| Conversation memory (Redis) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | Unknown |
-| Active customer context | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | Unknown |
-| GST invoicing | ✅ | ✅ | ✅ | ❌ | ✅ | ⚠️ | ✅ |
-| Walk-in billing (no name) | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | Unknown |
-| Customer ledger (udaar) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | Unknown |
-| WhatsApp reminders | ✅ | ❌ | ❌ | ✅ (basic) | ❌ | ❌ | Unknown |
-| Real-time WebSocket dashboard | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | Unknown |
-| Multi-task parallel voice | ✅ (3) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Auto payment settlement | ✅ | ❌ | Manual | Manual | Manual | ❌ | Unknown |
-| Inventory management | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | Unknown |
-| PDF invoice + email | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | Unknown |
-| Multi-user / RBAC | ✅ | ✅ | ⚠️ | ❌ | ✅ | ✅ | Unknown |
-| Open source / self-host | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| Mobile-first | ✅ | ❌ | ✅ | ✅ | Partial | ❌ | Unknown |
-| Monthly cost (India) | TBD | ₹1,875+ | ₹108+ | Free | ₹899+ | ₹4,500+ | Unknown |
-| Offline capability | ⚠️ | ✅ | ✅ | ✅ | ❌ | Partial | Unknown |
-| Agent mode (AI-driven) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | Partial |
+| Feature                       | Execora | Tally   | Vyapar | Khatabook  | Zoho Books | Odoo    | Pilloo AI |
+| ----------------------------- | ------- | ------- | ------ | ---------- | ---------- | ------- | --------- |
+| Voice commands                | ✅ P0   | ❌      | ❌     | ❌         | ❌         | ❌      | ✅ (new)  |
+| Hindi/Hinglish native         | ✅      | ❌      | ❌     | Partial    | ❌         | ❌      | ✅        |
+| Real-time streaming voice     | ✅      | ❌      | ❌     | ❌         | ❌         | ❌      | Unknown   |
+| Multi-turn conversation       | ✅      | ❌      | ❌     | ❌         | ❌         | ❌      | Unknown   |
+| Conversation memory (Redis)   | ✅      | ❌      | ❌     | ❌         | ❌         | ❌      | Unknown   |
+| Active customer context       | ✅      | ❌      | ❌     | ❌         | ❌         | ❌      | Unknown   |
+| GST invoicing                 | ✅      | ✅      | ✅     | ❌         | ✅         | ⚠️      | ✅        |
+| Walk-in billing (no name)     | ✅      | ✅      | ✅     | ❌         | ✅         | ✅      | Unknown   |
+| Customer ledger (udaar)       | ✅      | ✅      | ✅     | ✅         | ✅         | ✅      | Unknown   |
+| WhatsApp reminders            | ✅      | ❌      | ❌     | ✅ (basic) | ❌         | ❌      | Unknown   |
+| Real-time WebSocket dashboard | ✅      | ❌      | ❌     | ❌         | ❌         | ❌      | Unknown   |
+| Multi-task parallel voice     | ✅ (3)  | ❌      | ❌     | ❌         | ❌         | ❌      | ❌        |
+| Auto payment settlement       | ✅      | ❌      | Manual | Manual     | Manual     | ❌      | Unknown   |
+| Inventory management          | ✅      | ✅      | ✅     | ❌         | ✅         | ✅      | Unknown   |
+| PDF invoice + email           | ✅      | ✅      | ✅     | ❌         | ✅         | ✅      | Unknown   |
+| Multi-user / RBAC             | ✅      | ✅      | ⚠️     | ❌         | ✅         | ✅      | Unknown   |
+| Open source / self-host       | ❌      | ❌      | ❌     | ❌         | ❌         | ✅      | ❌        |
+| Mobile-first                  | ✅      | ❌      | ✅     | ✅         | Partial    | ❌      | Unknown   |
+| Monthly cost (India)          | TBD     | ₹1,875+ | ₹108+  | Free       | ₹899+      | ₹4,500+ | Unknown   |
+| Offline capability            | ⚠️      | ✅      | ✅     | ✅         | ❌         | Partial | Unknown   |
+| Agent mode (AI-driven)        | ✅      | ❌      | ❌     | ❌         | ❌         | ❌      | Partial   |
 
 ### Where Execora Wins
 
 **1. The only real-time streaming voice engine for Indian SMEs**
 Pilloo AI launched Feb 2026 and is brand new. Its tech depth is unknown. Execora has:
+
 - Sub-800ms transcript latency (streaming, not batch upload)
 - Multi-turn drafts that survive reconnects (Redis-backed)
 - 3 parallel tasks in a single session
@@ -1452,6 +1495,7 @@ Pilloo AI launched Feb 2026 and is brand new. Its tech depth is unknown. Execora
 
 **2. Agent Mode is a category of its own**
 No competitor has an AI agent that:
+
 - Maintains customer context across turns
 - Injects pending invoice state into every LLM call
 - Auto-settles payments khata-style
@@ -1467,6 +1511,7 @@ Execora's entire AI pipeline is built for Hindi/Hinglish from the start.
 
 **5. WhatsApp-native reminders**
 Khatabook has basic WhatsApp reminders. Execora has:
+
 - 10 reminder types
 - Natural language scheduling ("kal 9 baje")
 - Recurring reminders
@@ -1475,14 +1520,14 @@ Khatabook has basic WhatsApp reminders. Execora has:
 
 ### Where Competitors Win Today
 
-| Gap | Competitor | Our Plan |
-|-----|-----------|---------|
-| Offline mode | Vyapar, Tally | PWA with local queue (P2) |
-| Barcode scanning | Vyapar, Marg | Mobile camera barcode (P2) |
-| Tally import | Busy, Zoho | CSV/Tally XML import (P2) |
-| CA/accountant ecosystem | Tally | Partner program (v3) |
-| Name recognition (all India) | None | More regional training data |
-| Cheaper entry price | Vyapar (₹108/mo) | Freemium tier (v2) |
+| Gap                          | Competitor       | Our Plan                    |
+| ---------------------------- | ---------------- | --------------------------- |
+| Offline mode                 | Vyapar, Tally    | PWA with local queue (P2)   |
+| Barcode scanning             | Vyapar, Marg     | Mobile camera barcode (P2)  |
+| Tally import                 | Busy, Zoho       | CSV/Tally XML import (P2)   |
+| CA/accountant ecosystem      | Tally            | Partner program (v3)        |
+| Name recognition (all India) | None             | More regional training data |
+| Cheaper entry price          | Vyapar (₹108/mo) | Freemium tier (v2)          |
 
 ---
 
@@ -1543,25 +1588,25 @@ execora/
 
 ### Key Files Every Agent Must Know
 
-| File | Purpose |
-|------|---------|
-| `packages/modules/src/modules/voice/engine/index.ts` | Intent dispatcher (switch/case) — add new intents here |
-| `packages/modules/src/modules/voice/engine/invoice.handler.ts` | Invoice intent handlers |
-| `packages/modules/src/modules/voice/engine/customer.handler.ts` | Customer intent handlers |
-| `packages/modules/src/modules/voice/engine/payment.handler.ts` | Payment intent handlers |
-| `packages/modules/src/modules/voice/engine/reminder.handler.ts` | Reminder intent handlers |
-| `packages/modules/src/modules/voice/engine/report.handler.ts` | Report/stock intent handlers |
-| `packages/modules/src/modules/voice/conversation.ts` | Conversation memory, context building |
-| `packages/modules/src/modules/invoice/invoice.service.ts` | Invoice CRUD, GST calc, PDF, top-selling |
-| `packages/modules/src/modules/customer/customer.service.ts` | Customer CRUD, fuzzy matching |
-| `packages/modules/src/modules/ledger/ledger.service.ts` | Payment recording, auto-settlement |
-| `packages/modules/src/modules/product/product.service.ts` | Stock management, low-stock query |
-| `packages/modules/src/modules/reminder/reminder.service.ts` | Scheduling, WhatsApp delivery |
-| `apps/api/src/ws/enhanced-handler.ts` | WebSocket message routing, multi-task |
-| `apps/web/src/contexts/WSContext.tsx` | WebSocket → React Query invalidation |
-| `apps/web/src/hooks/useQueries.ts` | All React Query hooks |
-| `apps/web/src/lib/api.ts` | All API types + fetch helpers |
-| `prisma/schema.prisma` | Source of truth for all DB models |
+| File                                                            | Purpose                                                |
+| --------------------------------------------------------------- | ------------------------------------------------------ |
+| `packages/modules/src/modules/voice/engine/index.ts`            | Intent dispatcher (switch/case) — add new intents here |
+| `packages/modules/src/modules/voice/engine/invoice.handler.ts`  | Invoice intent handlers                                |
+| `packages/modules/src/modules/voice/engine/customer.handler.ts` | Customer intent handlers                               |
+| `packages/modules/src/modules/voice/engine/payment.handler.ts`  | Payment intent handlers                                |
+| `packages/modules/src/modules/voice/engine/reminder.handler.ts` | Reminder intent handlers                               |
+| `packages/modules/src/modules/voice/engine/report.handler.ts`   | Report/stock intent handlers                           |
+| `packages/modules/src/modules/voice/conversation.ts`            | Conversation memory, context building                  |
+| `packages/modules/src/modules/invoice/invoice.service.ts`       | Invoice CRUD, GST calc, PDF, top-selling               |
+| `packages/modules/src/modules/customer/customer.service.ts`     | Customer CRUD, fuzzy matching                          |
+| `packages/modules/src/modules/ledger/ledger.service.ts`         | Payment recording, auto-settlement                     |
+| `packages/modules/src/modules/product/product.service.ts`       | Stock management, low-stock query                      |
+| `packages/modules/src/modules/reminder/reminder.service.ts`     | Scheduling, WhatsApp delivery                          |
+| `apps/api/src/ws/enhanced-handler.ts`                           | WebSocket message routing, multi-task                  |
+| `apps/web/src/contexts/WSContext.tsx`                           | WebSocket → React Query invalidation                   |
+| `apps/web/src/hooks/useQueries.ts`                              | All React Query hooks                                  |
+| `apps/web/src/lib/api.ts`                                       | All API types + fetch helpers                          |
+| `prisma/schema.prisma`                                          | Source of truth for all DB models                      |
 
 ### Database Models (Key)
 
@@ -1614,64 +1659,64 @@ Remaining = 0 → done. Any leftover → customer credit advance.
 
 ### P0 — Must Have (Core Product, Ship First)
 
-| Feature | Status |
-|---------|--------|
-| Voice invoice creation (Hindi/Hinglish) | ✅ Built |
-| Walk-in billing (no customer name) | ✅ Built |
-| GST invoice (B2C intra-state) | ✅ Built |
-| Non-GST cash memo | ✅ Built |
-| Customer ledger (udaar) | ✅ Built |
-| Payment recording (cash/UPI/card) | ✅ Built |
-| Auto-settlement (khata style) | ✅ Built |
-| WhatsApp payment reminders | ✅ Built |
-| Real-time dashboard (WebSocket) | ✅ Built |
-| Low stock alerts | ✅ Built |
-| Top selling products (real units sold) | ✅ Built |
-| Invoice status tracking (paid/partial/pending) | ✅ Built |
-| Multi-turn voice drafts with Redis persistence | ✅ Built |
-| TTS voice response (ElevenLabs/OpenAI/Browser) | ✅ Built |
-| Bill-level discount (voice "10% discount karo" + form) | ✅ Built |
-| Item-level discount | 🔴 TODO |
-| B2B invoice with buyer GSTIN | ✅ Built |
-| IGST (inter-state) calculation | ✅ Built |
-| Invoice PDF via WhatsApp | ✅ Built |
-| Mobile-responsive UI | ⚠️ Partial |
+| Feature                                                | Status     |
+| ------------------------------------------------------ | ---------- |
+| Voice invoice creation (Hindi/Hinglish)                | ✅ Built   |
+| Walk-in billing (no customer name)                     | ✅ Built   |
+| GST invoice (B2C intra-state)                          | ✅ Built   |
+| Non-GST cash memo                                      | ✅ Built   |
+| Customer ledger (udaar)                                | ✅ Built   |
+| Payment recording (cash/UPI/card)                      | ✅ Built   |
+| Auto-settlement (khata style)                          | ✅ Built   |
+| WhatsApp payment reminders                             | ✅ Built   |
+| Real-time dashboard (WebSocket)                        | ✅ Built   |
+| Low stock alerts                                       | ✅ Built   |
+| Top selling products (real units sold)                 | ✅ Built   |
+| Invoice status tracking (paid/partial/pending)         | ✅ Built   |
+| Multi-turn voice drafts with Redis persistence         | ✅ Built   |
+| TTS voice response (ElevenLabs/OpenAI/Browser)         | ✅ Built   |
+| Bill-level discount (voice "10% discount karo" + form) | ✅ Built   |
+| Item-level discount                                    | 🔴 TODO    |
+| B2B invoice with buyer GSTIN                           | ✅ Built   |
+| IGST (inter-state) calculation                         | ✅ Built   |
+| Invoice PDF via WhatsApp                               | ✅ Built   |
+| Mobile-responsive UI                                   | ⚠️ Partial |
 
 ### P1 — Should Have (Differentiation, Ship Second)
 
-| Feature | Status |
-|---------|--------|
-| Barcode scan to add product | 🔴 TODO |
-| Repeat last bill ("same as before") | 🔴 TODO |
-| Customer credit limit enforcement | 🔴 TODO |
-| Partial payment at billing time ("500 diye baki kal") | ✅ Built |
-| Mixed-mode payment voice intent (cash + UPI split) | ✅ Built |
-| Expiry date tracking | 🔴 TODO |
-| GST report (GSTR-1 ready) — B2B/B2CS/HSN + PDF/CSV/email | ✅ Built |
-| Date range reports + export (CSV/PDF/email) — P&L | ✅ Built |
-| Bulk WhatsApp reminders | ✅ Built |
-| Regional language support (Marathi, Tamil, etc.) | ⚠️ Partial |
-| Proforma invoice / quotation (form + voice CONFIRM flow) | ✅ Built |
-| Invoice editing (post-creation) | ⚠️ Partial |
-| Customer tags (VIP, wholesale, blacklist) | 🔴 TODO |
-| Stock batch/expiry tracking | 🔴 TODO |
-| WhatsApp chatbot interface | 🔴 TODO |
+| Feature                                                  | Status     |
+| -------------------------------------------------------- | ---------- |
+| Barcode scan to add product                              | 🔴 TODO    |
+| Repeat last bill ("same as before")                      | 🔴 TODO    |
+| Customer credit limit enforcement                        | 🔴 TODO    |
+| Partial payment at billing time ("500 diye baki kal")    | ✅ Built   |
+| Mixed-mode payment voice intent (cash + UPI split)       | ✅ Built   |
+| Expiry date tracking                                     | 🔴 TODO    |
+| GST report (GSTR-1 ready) — B2B/B2CS/HSN + PDF/CSV/email | ✅ Built   |
+| Date range reports + export (CSV/PDF/email) — P&L        | ✅ Built   |
+| Bulk WhatsApp reminders                                  | ✅ Built   |
+| Regional language support (Marathi, Tamil, etc.)         | ⚠️ Partial |
+| Proforma invoice / quotation (form + voice CONFIRM flow) | ✅ Built   |
+| Invoice editing (post-creation)                          | ⚠️ Partial |
+| Customer tags (VIP, wholesale, blacklist)                | 🔴 TODO    |
+| Stock batch/expiry tracking                              | 🔴 TODO    |
+| WhatsApp chatbot interface                               | 🔴 TODO    |
 
 ### P2 — Nice to Have (Scale Features)
 
-| Feature | Status |
-|---------|--------|
-| Offline mode (PWA + local queue) | 🔴 TODO |
-| Tally/Vyapar data import | 🔴 TODO |
-| Barcode label printing | 🔴 TODO |
-| Thermal receipt printer support | 🔴 TODO |
+| Feature                                      | Status  |
+| -------------------------------------------- | ------- |
+| Offline mode (PWA + local queue)             | 🔴 TODO |
+| Tally/Vyapar data import                     | 🔴 TODO |
+| Barcode label printing                       | 🔴 TODO |
+| Thermal receipt printer support              | 🔴 TODO |
 | Supplier invoice entry (purchase management) | 🔴 TODO |
-| Staff attendance tracking | 🔴 TODO |
-| Customer loyalty points | 🔴 TODO |
-| Price lists (wholesale vs retail) | 🔴 TODO |
-| Multi-branch support | 🔴 TODO |
-| Freemium tier | 🔴 TODO |
-| Analytics AI ("explain my sales drop") | 🔴 TODO |
+| Staff attendance tracking                    | 🔴 TODO |
+| Customer loyalty points                      | 🔴 TODO |
+| Price lists (wholesale vs retail)            | 🔴 TODO |
+| Multi-branch support                         | 🔴 TODO |
+| Freemium tier                                | 🔴 TODO |
+| Analytics AI ("explain my sales drop")       | 🔴 TODO |
 | E-commerce integration (Shopify/WooCommerce) | 🔴 TODO |
 
 ---
@@ -1685,9 +1730,11 @@ Remaining = 0 → done. Any leftover → customer credit advance.
 **Channel**: Direct WhatsApp outreach to kirana owners via their distributors
 
 **The demo hook**:
+
 > Record a 60-second video: Owner speaks "2 aata 1 tel ek Maggi" → invoice appears in 3 seconds with GST breakdown. Share on WhatsApp. Watch it spread.
 
 **Pilot approach**:
+
 1. Find 10 kirana stores in one locality
 2. Onboard free for 30 days
 3. Collect stories: "before = paper, after = Execora"
@@ -1709,23 +1756,23 @@ This removes the app install barrier entirely. Growth = viral WhatsApp sharing.
 
 ### YouTube Content Strategy
 
-| Video | Format | Hook |
-|-------|--------|------|
-| "Kirana store never types again" | 60-sec Short | Hindi demo video |
-| "Why Tally doesn't work for kirana" | 7-min explainer | Pain story + solution |
-| "Building India's first voice billing" | 15-min tech deep dive | Architecture for devs |
-| "12 crore shops, zero billing software" | 5-min market story | Investor/media hook |
-| "Regional language billing demo" | Short | Show Marathi/Tamil demo |
+| Video                                   | Format                | Hook                    |
+| --------------------------------------- | --------------------- | ----------------------- |
+| "Kirana store never types again"        | 60-sec Short          | Hindi demo video        |
+| "Why Tally doesn't work for kirana"     | 7-min explainer       | Pain story + solution   |
+| "Building India's first voice billing"  | 15-min tech deep dive | Architecture for devs   |
+| "12 crore shops, zero billing software" | 5-min market story    | Investor/media hook     |
+| "Regional language billing demo"        | Short                 | Show Marathi/Tamil demo |
 
 ### LinkedIn Content Strategy
 
-| Post Type | Content | Expected Reach |
-|-----------|---------|---------------|
-| Demo GIF | Voice → GST invoice in 3s | Viral in India startup community |
-| Market data | "0/10 billing tools support Hindi voice" | Shared by VCs, journalists |
-| Builder story | "3 months talking to kirana owners" | Personal brand, community |
-| Architecture | "WebSocket → STT → GPT-4 → DB" | Developer sharing |
-| Competitor teardown | "Why ₹26,550 Tally doesn't work for kirana" | Controversy = reach |
+| Post Type           | Content                                     | Expected Reach                   |
+| ------------------- | ------------------------------------------- | -------------------------------- |
+| Demo GIF            | Voice → GST invoice in 3s                   | Viral in India startup community |
+| Market data         | "0/10 billing tools support Hindi voice"    | Shared by VCs, journalists       |
+| Builder story       | "3 months talking to kirana owners"         | Personal brand, community        |
+| Architecture        | "WebSocket → STT → GPT-4 → DB"              | Developer sharing                |
+| Competitor teardown | "Why ₹26,550 Tally doesn't work for kirana" | Controversy = reach              |
 
 ---
 
@@ -1774,58 +1821,64 @@ This removes the app install barrier entirely. Growth = viral WhatsApp sharing.
 ### Pending / Critical Gaps 🔴
 
 #### Billing & Invoice
-| Feature | Priority | Notes |
-|---------|----------|-------|
-| ~~Discount system — bill-level~~ | ~~P0~~ | ✅ Built — voice + form. "10% discount karo" or "₹50 kam karo" |
-| Item-level discount (per line) | P0 | Still TODO — each product line needs its own discount field |
-| Walk-in billing UX — truly frictionless | P0 | First tap = bill started, no menu navigation. Still requires customer step |
-| ~~Partial payment AT invoice creation~~ | ~~P0~~ | ✅ Built — "500 diye baki kal" auto-creates payment + marks partial |
-| ~~B2B invoice with buyer GSTIN~~ | ~~P0~~ | ✅ Built — GSTIN field in invoice form + voice capture |
-| ~~IGST for inter-state supply~~ | ~~P0~~ | ✅ Built — auto-switch via voice ("interstate bill") + form toggle |
-| ~~Mixed payment (cash + UPI split)~~ | ~~P1~~ | ✅ Built via RECORD_MIXED_PAYMENT voice intent |
-| ~~Mixed payment UI in Payment page~~ | ~~P1~~ | ✅ Built — `Payment.tsx` has split-mode toggle with per-method amount inputs |
-| ~~Proforma invoice / quotation~~ | ~~P1~~ | ✅ Built — create proforma + convert to invoice with initial payment |
-| Invoice editing after creation | P1 | Edit items/notes on PENDING; change customer or add discount to existing — still TODO |
+
+| Feature                                 | Priority | Notes                                                                                 |
+| --------------------------------------- | -------- | ------------------------------------------------------------------------------------- |
+| ~~Discount system — bill-level~~        | ~~P0~~   | ✅ Built — voice + form. "10% discount karo" or "₹50 kam karo"                        |
+| Item-level discount (per line)          | P0       | Still TODO — each product line needs its own discount field                           |
+| Walk-in billing UX — truly frictionless | P0       | First tap = bill started, no menu navigation. Still requires customer step            |
+| ~~Partial payment AT invoice creation~~ | ~~P0~~   | ✅ Built — "500 diye baki kal" auto-creates payment + marks partial                   |
+| ~~B2B invoice with buyer GSTIN~~        | ~~P0~~   | ✅ Built — GSTIN field in invoice form + voice capture                                |
+| ~~IGST for inter-state supply~~         | ~~P0~~   | ✅ Built — auto-switch via voice ("interstate bill") + form toggle                    |
+| ~~Mixed payment (cash + UPI split)~~    | ~~P1~~   | ✅ Built via RECORD_MIXED_PAYMENT voice intent                                        |
+| ~~Mixed payment UI in Payment page~~    | ~~P1~~   | ✅ Built — `Payment.tsx` has split-mode toggle with per-method amount inputs          |
+| ~~Proforma invoice / quotation~~        | ~~P1~~   | ✅ Built — create proforma + convert to invoice with initial payment                  |
+| Invoice editing after creation          | P1       | Edit items/notes on PENDING; change customer or add discount to existing — still TODO |
 
 #### Delivery Channels (Email + WhatsApp)
-| Feature | Priority | Notes |
-|---------|----------|-------|
-| WhatsApp auto-send PDF on invoice confirm | P0 | Currently only email auto-sends. WhatsApp needs voice trigger |
-| Email reminders | P1 | Currently reminders only go via WhatsApp. Add email channel |
-| Customer email on profile (prompted at onboarding) | P0 | Needed for email delivery to work reliably |
-| Delivery preference per customer | P1 | Choose: WhatsApp only / Email only / Both |
-| Fallback: WhatsApp fail → try email | P1 | After 3 WhatsApp retries, fallback to email |
+
+| Feature                                            | Priority | Notes                                                         |
+| -------------------------------------------------- | -------- | ------------------------------------------------------------- |
+| WhatsApp auto-send PDF on invoice confirm          | P0       | Currently only email auto-sends. WhatsApp needs voice trigger |
+| Email reminders                                    | P1       | Currently reminders only go via WhatsApp. Add email channel   |
+| Customer email on profile (prompted at onboarding) | P0       | Needed for email delivery to work reliably                    |
+| Delivery preference per customer                   | P1       | Choose: WhatsApp only / Email only / Both                     |
+| Fallback: WhatsApp fail → try email                | P1       | After 3 WhatsApp retries, fallback to email                   |
 
 #### Voice & Agent Mode
-| Feature | Priority | Notes |
-|---------|----------|-------|
-| True Agent Mode (tool-calling LLM) | P1 | LLM selects and chains tools. See Section 6 for full design |
-| Conversation Agent + Task Agent split | P1 | Two-agent pattern. Guide + Executor |
-| Conditional voice logic ("if balance > X then...") | P1 | Requires Agent Mode |
-| ~~ADD_DISCOUNT voice intent~~ | ~~P0~~ | ✅ Built — ADD_DISCOUNT + SET_SUPPLY_TYPE intents wired |
-| UPDATE_STOCK voice intent | P0 | "50 kilo aata aaya" — inbound stock receipt |
+
+| Feature                                            | Priority | Notes                                                       |
+| -------------------------------------------------- | -------- | ----------------------------------------------------------- |
+| True Agent Mode (tool-calling LLM)                 | P1       | LLM selects and chains tools. See Section 6 for full design |
+| Conversation Agent + Task Agent split              | P1       | Two-agent pattern. Guide + Executor                         |
+| Conditional voice logic ("if balance > X then...") | P1       | Requires Agent Mode                                         |
+| ~~ADD_DISCOUNT voice intent~~                      | ~~P0~~   | ✅ Built — ADD_DISCOUNT + SET_SUPPLY_TYPE intents wired     |
+| UPDATE_STOCK voice intent                          | P0       | "50 kilo aata aaya" — inbound stock receipt                 |
 
 #### Inventory & Stock
-| Feature | Priority | Notes |
-|---------|----------|-------|
-| Barcode product scan (mobile camera) | P1 | Major time saver for busy counter |
-| Customer credit limit enforcement | P1 | Block bill if customer exceeds limit |
-| Expiry date tracking (batch) | P1 | Pharma/FMCG vertical requirement |
+
+| Feature                              | Priority | Notes                                |
+| ------------------------------------ | -------- | ------------------------------------ |
+| Barcode product scan (mobile camera) | P1       | Major time saver for busy counter    |
+| Customer credit limit enforcement    | P1       | Block bill if customer exceeds limit |
+| Expiry date tracking (batch)         | P1       | Pharma/FMCG vertical requirement     |
 
 #### Reports & Compliance
-| Feature | Priority | Notes |
-|---------|----------|-------|
-| ~~GST report export (GSTR-1 ready)~~ | ~~P1~~ | ✅ Built — B2B/B2CL/B2CS/HSN, Indian FY, PDF + CSV + email |
-| ~~Date range reports with CSV export~~ | ~~P1~~ | ✅ Built — P&L month-wise, period comparison, PDF + CSV + email |
-| GSTR-2A / GSTR-3B reconciliation | P2 | Input credit reconciliation against purchase invoices |
+
+| Feature                                | Priority | Notes                                                           |
+| -------------------------------------- | -------- | --------------------------------------------------------------- |
+| ~~GST report export (GSTR-1 ready)~~   | ~~P1~~   | ✅ Built — B2B/B2CL/B2CS/HSN, Indian FY, PDF + CSV + email      |
+| ~~Date range reports with CSV export~~ | ~~P1~~   | ✅ Built — P&L month-wise, period comparison, PDF + CSV + email |
+| GSTR-2A / GSTR-3B reconciliation       | P2       | Input credit reconciliation against purchase invoices           |
 
 #### Platform
-| Feature | Priority | Notes |
-|---------|----------|-------|
-| Mobile-responsive layout | P0 | Counter use = mobile. Current UI is desktop-first |
-| Offline mode (PWA + local queue) | P2 | Major Vyapar advantage — sync when online |
-| WhatsApp chatbot interface | P2 | Send voice note to WhatsApp → AI processes → reply |
-| Tally/Vyapar data import | P2 | Migration path for existing users |
+
+| Feature                          | Priority | Notes                                              |
+| -------------------------------- | -------- | -------------------------------------------------- |
+| Mobile-responsive layout         | P0       | Counter use = mobile. Current UI is desktop-first  |
+| Offline mode (PWA + local queue) | P2       | Major Vyapar advantage — sync when online          |
+| WhatsApp chatbot interface       | P2       | Send voice note to WhatsApp → AI processes → reply |
+| Tally/Vyapar data import         | P2       | Migration path for existing users                  |
 
 ---
 
@@ -1854,7 +1907,7 @@ import { prisma, logger } from '@execora/infrastructure';
 
 // Database: always include tenantId in all queries
 const results = await prisma.product.findMany({
-  where: { tenantId: tenantContext.get().tenantId, isActive: true },
+	where: { tenantId: tenantContext.get().tenantId, isActive: true },
 });
 
 // Invoice status values: 'draft' | 'pending' | 'partial' | 'paid' | 'cancelled'
@@ -1887,10 +1940,10 @@ Mode 3 — True Agent (planned): STT → LLM with tool definitions → tool call
 1. **Service layer** — implement in `packages/modules/src/modules/X/x.service.ts`
 2. **REST route** — thin wrapper in `apps/api/src/api/routes/x.routes.ts` (Form/Dashboard mode ✅)
 3. **Intent handler** — add to `packages/modules/src/modules/voice/engine/x.handler.ts`
-   - Add case to `engine/index.ts` switch statement
-   - Add to LLM extraction prompt with Hindi few-shot examples (Intent-Based mode ✅)
+    - Add case to `engine/index.ts` switch statement
+    - Add to LLM extraction prompt with Hindi few-shot examples (Intent-Based mode ✅)
 4. **Agent tool** — add tool definition to `packages/modules/src/providers/llm/agent-tools.ts`
-   - Description in plain English so LLM can discover and use it (Agent Mode ✅)
+    - Description in plain English so LLM can discover and use it (Agent Mode ✅)
 5. **React Query hook** — add to `apps/web/src/hooks/useQueries.ts`
 6. **WebSocket** — add invalidation to `apps/web/src/contexts/WSContext.tsx`
 7. **Update this document** — Section 4 (requirements) + Section 13 (built/pending)
@@ -1904,5 +1957,5 @@ Mode 3 — True Agent (planned): STT → LLM with tool definitions → tool call
 
 ---
 
-*Document maintained by the Execora engineering team. Last updated: 2026-03-04 (v2.2 — Sprint 5: Expenses/Purchases/CashBook REST API; Sprint 6: full real-time WS wiring, DayBook + InvoiceDetail localStorage → API, split payment UI).*
-*Next review: when any P0 gap is closed, or a new competitor feature is identified.*
+_Document maintained by the Execora engineering team. Last updated: 2026-03-04 (v2.2 — Sprint 5: Expenses/Purchases/CashBook REST API; Sprint 6: full real-time WS wiring, DayBook + InvoiceDetail localStorage → API, split payment UI)._
+_Next review: when any P0 gap is closed, or a new competitor feature is identified._

@@ -17,6 +17,7 @@ import { LiveTranscriptionSession } from '@execora/modules';
 interface VoiceSession {
 	ws: WebSocket;
 	sessionId: string;
+	tenantId?: string; // Populated from JWT token on connect
 	conversationSessionId?: string;
 	transcript: string;
 	isActive: boolean;
@@ -180,11 +181,15 @@ class EnhancedWebSocketHandler {
 		const sessionId = this.generateSessionId();
 
 		// Register with broadcaster for REST→WS event push (per-tenant fan-out)
+		let resolvedTenantId: string | undefined;
 		try {
 			const token = (request.query as any)?.token as string | undefined;
 			if (token) {
 				const payload = verifyAccessToken(token);
-				if (payload?.tenantId) broadcaster.register(payload.tenantId, connection);
+				if (payload?.tenantId) {
+					broadcaster.register(payload.tenantId, connection);
+					resolvedTenantId = payload.tenantId;
+				}
 			}
 		} catch {
 			/* anonymous WS — voice only, no broadcasts needed */
@@ -193,6 +198,7 @@ class EnhancedWebSocketHandler {
 		const session: VoiceSession = {
 			ws: connection,
 			sessionId,
+			tenantId: resolvedTenantId,
 			transcript: '',
 			isActive: false,
 			isRecording: false,
@@ -792,6 +798,38 @@ class EnhancedWebSocketHandler {
 						{ sessionId: session.sessionId, invoiceNo: d.invoiceNo },
 						'invoice:confirmed pushed immediately'
 					);
+				}
+			}
+
+			// ── Fan-out voice operation results to all connected tabs (real-time sync) ──
+			if (executionResult.success && session.tenantId) {
+				const d = executionResult.data ?? {};
+				const tid = session.tenantId;
+				switch (intent.intent) {
+					case IntentType.CONFIRM_INVOICE:
+					case IntentType.SEND_INVOICE:
+						broadcaster.send(tid, 'invoice:created', { invoiceId: d.invoiceId, invoiceNo: d.invoiceNo });
+						break;
+					case IntentType.CANCEL_INVOICE:
+						broadcaster.send(tid, 'invoice:cancelled', { invoiceId: d.invoiceId });
+						break;
+					case IntentType.RECORD_PAYMENT:
+					case IntentType.ADD_CREDIT:
+					case IntentType.RECORD_MIXED_PAYMENT:
+						broadcaster.send(tid, 'payment:recorded', { customerId: d.customerId });
+						break;
+					case IntentType.CREATE_CUSTOMER:
+						broadcaster.send(tid, 'customer:created', { customerId: d.customerId ?? d.id });
+						break;
+					case IntentType.UPDATE_CUSTOMER:
+					case IntentType.UPDATE_CUSTOMER_PHONE:
+						broadcaster.send(tid, 'customer:updated', { customerId: d.customerId ?? d.id });
+						break;
+					case IntentType.DELETE_CUSTOMER_DATA:
+						broadcaster.send(tid, 'customer:deleted', { customerId: d.customerId ?? d.id });
+						break;
+					default:
+						break;
 				}
 			}
 
