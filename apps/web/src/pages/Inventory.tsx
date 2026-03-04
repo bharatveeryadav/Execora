@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useRef, useCallback, type FormEvent } from 'react';
 import {
 	ArrowLeft,
 	Plus,
@@ -11,6 +11,10 @@ import {
 	Edit,
 	Eye,
 	ScanLine,
+	ImagePlus,
+	CheckCircle,
+	XCircle,
+	Loader2,
 } from 'lucide-react';
 import VoiceBar from '@/components/VoiceBar';
 import BarcodeScanner from '@/components/BarcodeScanner';
@@ -32,7 +36,11 @@ import {
 	useProductByBarcode,
 } from '@/hooks/useQueries';
 import { useWsInvalidation } from '@/hooks/useWsInvalidation';
-import { formatCurrency, type Product } from '@/lib/api';
+import { formatCurrency, draftApi, aiApi, type Product, type Draft, type OcrJob } from '@/lib/api';
+import { DraftConfirmDialog } from '@/components/DraftConfirmDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { useQueryClient } from '@tanstack/react-query';
+import { ReplenishmentBanner } from '@/components/ReplenishmentBanner';
 
 const voiceCommands = [
 	'Show low stock',
@@ -48,6 +56,7 @@ const voiceCommands = [
 const Inventory = () => {
 	const navigate = useNavigate();
 	const { toast } = useToast();
+	const queryClient = useQueryClient();
 	const [search, setSearch] = useState('');
 	const [category, setCategory] = useState('All');
 
@@ -79,6 +88,71 @@ const Inventory = () => {
 	const [addStock, setAddStock] = useState('0');
 	const [addUnit, setAddUnit] = useState('Piece');
 	const [addCategory, setAddCategory] = useState('');
+	const [addBarcode, setAddBarcode] = useState('');
+	const [addSku, setAddSku] = useState('');
+
+	// Draft review state for the confirm dialog
+	const [pendingDraft, setPendingDraft] = useState<Draft | null>(null);
+
+	// ── Bulk Product Import (OCR) state ───────────────────────────────────────
+	const bulkImportFileRef = useRef<HTMLInputElement>(null);
+	const [bulkOcrJobId, setBulkOcrJobId] = useState<string | null>(null);
+	const [bulkOcrJob, setBulkOcrJob] = useState<OcrJob | null>(null);
+	const [bulkOcrOpen, setBulkOcrOpen] = useState(false);
+	const [bulkUploading, setBulkUploading] = useState(false);
+
+	/** Poll catalog seed OCR job every 2 s until completed / failed */
+	const pollBulkOcr = useCallback(
+		(jobId: string) => {
+			const timer = setInterval(async () => {
+				try {
+					const job = await aiApi.getOcrJob(jobId);
+					setBulkOcrJob(job);
+					if (job.status === 'completed' || job.status === 'failed') {
+						clearInterval(timer);
+						if (job.status === 'completed') {
+							await queryClient.invalidateQueries({ queryKey: ['drafts'] });
+							toast({
+								title: '✅ Drafts ready for review',
+								description: `${job.productsCreated ?? 0} product draft${(job.productsCreated ?? 0) === 1 ? '' : 's'} created — review in the Draft panel.`,
+							});
+						} else {
+							toast({
+								title: 'Import failed',
+								description: job.errorMessage ?? 'Could not read products from the image',
+								variant: 'destructive',
+							});
+						}
+					}
+				} catch {
+					// silently retry
+				}
+			}, 2000);
+		},
+		[queryClient, toast]
+	);
+
+	async function handleBulkImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+		const file = e.target.files?.[0];
+		if (!file) return;
+		e.target.value = ''; // allow re-selecting same file
+
+		setBulkUploading(true);
+		setBulkOcrJob(null);
+		setBulkOcrJobId(null);
+		setBulkOcrOpen(true);
+		try {
+			const { jobId } = await aiApi.seedCatalogFromPhoto(file);
+			setBulkOcrJobId(jobId);
+			setBulkOcrJob({ jobId, jobType: 'product_catalog', status: 'pending', productsCreated: 0 });
+			pollBulkOcr(jobId);
+		} catch (err: any) {
+			toast({ title: 'Upload failed', description: err?.message, variant: 'destructive' });
+			setBulkOcrOpen(false);
+		} finally {
+			setBulkUploading(false);
+		}
+	}
 
 	const resetAddProduct = () => {
 		setAddName('');
@@ -86,12 +160,15 @@ const Inventory = () => {
 		setAddStock('0');
 		setAddUnit('Piece');
 		setAddCategory('');
+		setAddBarcode('');
+		setAddSku('');
 	};
 
 	// ── Inline stock quick-edit ─────────────────────────────────────────────────
 	const [inlineEditId, setInlineEditId] = useState<string | null>(null);
 	const [inlineEditQty, setInlineEditQty] = useState('');
 	const [inlineSaving, setInlineSaving] = useState(false);
+	const [inventoryScannerOpen, setInventoryScannerOpen] = useState(false);
 
 	const startInlineEdit = (p: Product) => {
 		setInlineEditId(p.id);
@@ -267,21 +344,28 @@ const Inventory = () => {
 			return;
 		}
 		try {
-			await createProduct.mutateAsync({
-				name: addName.trim(),
-				price,
-				stock: isNaN(stock) ? 0 : stock,
-				unit: addUnit || undefined,
-				category: addCategory.trim() || undefined,
-				barcode: addBarcode.trim() || undefined,
-				sku: addSku.trim() || undefined,
-			});
-			toast({ title: `✅ "${addName.trim()}" added to inventory` });
+			// Save as draft first — user reviews before final save
+			const { draft } = await draftApi.create(
+				'product',
+				{
+					name: addName.trim(),
+					price,
+					stock: isNaN(stock) ? 0 : stock,
+					unit: addUnit || undefined,
+					category: addCategory.trim() || undefined,
+					barcode: addBarcode.trim() || undefined,
+					sku: addSku.trim() || undefined,
+				},
+				`New product: ${addName.trim()}`
+			);
+			// Immediately refresh the draft panel badge
+			queryClient.invalidateQueries({ queryKey: ['drafts'] });
+			setPendingDraft(draft);
 			resetAddProduct();
 			setAddProductOpen(false);
 		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : 'Failed to add product';
-			toast({ title: '❌ Could not add product', description: msg, variant: 'destructive' });
+			const msg = err instanceof Error ? err.message : 'Failed to create draft';
+			toast({ title: '❌ Could not create draft', description: msg, variant: 'destructive' });
 		}
 	};
 
@@ -297,10 +381,34 @@ const Inventory = () => {
 						<h1 className="text-lg font-bold">📦 Inventory Dashboard</h1>
 					</div>
 					<div className="flex gap-2">
-						<Button size="sm" onClick={handleAddProduct} disabled={createProduct.isPending}>
+						{/* Bulk Import via Photo — opens file picker, sends to AI OCR */}
+						<Button
+							size="sm"
+							variant="outline"
+							onClick={() => bulkImportFileRef.current?.click()}
+							disabled={bulkUploading}
+							title="Import multiple products from a photo or image"
+						>
+							{bulkUploading ? (
+								<Loader2 className="mr-1 h-4 w-4 animate-spin" />
+							) : (
+								<ImagePlus className="mr-1 h-4 w-4" />
+							)}
+							Import
+						</Button>
+						<Button size="sm" onClick={handleAddProduct}>
 							<Plus className="mr-1 h-4 w-4" /> Add Product
 						</Button>
 					</div>
+
+					{/* Hidden file input — accept images only, no camera capture */}
+					<input
+						ref={bulkImportFileRef}
+						type="file"
+						accept="image/*"
+						className="hidden"
+						onChange={handleBulkImportFile}
+					/>
 				</div>
 			</header>
 
@@ -322,6 +430,9 @@ const Inventory = () => {
 						/>
 					</CardContent>
 				</Card>
+
+				{/* Replenishment Banner — AI stock advisor */}
+				<ReplenishmentBanner />
 
 				{/* Inventory Summary */}
 				<div>
@@ -1017,7 +1128,11 @@ const Inventory = () => {
 					>
 						<h2 className="mb-4 text-base font-bold">➕ Add New Product</h2>
 						<form onSubmit={handleSubmitAddProduct} className="space-y-3">
-							{/* Barcode scan row */}
+							{/*
+							 * Barcode row — SCAN ONLY.
+							 * No photo capture / camera image upload here.
+							 * Use the "Import" button in the header for bulk imports from photos.
+							 */}
 							<div className="flex items-center gap-2">
 								<div className="flex-1">
 									<label className="mb-1 block text-xs text-muted-foreground">Barcode / EAN</label>
@@ -1028,6 +1143,7 @@ const Inventory = () => {
 										onChange={(e) => setAddBarcode(e.target.value)}
 									/>
 								</div>
+								{/* Scan button — opens live barcode scanner (camera), NOT a photo picker */}
 								<button
 									type="button"
 									onClick={() => setInventoryScannerOpen(true)}
@@ -1142,6 +1258,127 @@ const Inventory = () => {
 					onClose={() => setInventoryScannerOpen(false)}
 				/>
 			)}
+
+			{/* ── Bulk Product Import — OCR progress dialog ────────────────── */}
+			<Dialog
+				open={bulkOcrOpen}
+				onOpenChange={(o) => {
+					if (!o && bulkOcrJob?.status !== 'pending' && bulkOcrJob?.status !== 'processing') {
+						setBulkOcrOpen(false);
+						setBulkOcrJobId(null);
+						setBulkOcrJob(null);
+					}
+				}}
+			>
+				<DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
+					<DialogHeader>
+						<DialogTitle className="flex items-center gap-2">
+							<ImagePlus className="h-5 w-5" />
+							Bulk Product Import
+						</DialogTitle>
+					</DialogHeader>
+
+					{/* Uploading / Processing */}
+					{(!bulkOcrJob || bulkOcrJob.status === 'pending' || bulkOcrJob.status === 'processing') && (
+						<div className="flex flex-col items-center gap-3 py-8">
+							<Loader2 className="h-10 w-10 animate-spin text-primary" />
+							<p className="text-sm text-muted-foreground">
+								{bulkUploading ? 'Uploading image…' : 'AI is reading product details…'}
+							</p>
+							<p className="text-xs text-muted-foreground/60">This usually takes 5–20 seconds</p>
+						</div>
+					)}
+
+					{/* Completed */}
+					{bulkOcrJob?.status === 'completed' && (
+						<div className="space-y-4 py-2">
+							<div className="flex items-center gap-2 text-green-600">
+								<CheckCircle className="h-6 w-6 flex-shrink-0" />
+								<div>
+									<p className="font-medium">Drafts created for review!</p>
+									<p className="text-sm text-muted-foreground">
+										{bulkOcrJob.productsCreated || (bulkOcrJob as any).parsedItems?.length || 0} product draft
+										{(bulkOcrJob.productsCreated || (bulkOcrJob as any).parsedItems?.length || 0) === 1 ? '' : 's'} waiting for your approval
+									</p>
+								</div>
+							</div>
+							<div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800 dark:bg-green-950 dark:text-green-200">
+								📋 Open the <strong>Drafts panel</strong> (top-right) to review and confirm each product
+								before it's saved.
+							</div>
+							{/* Preview parsed items */}
+							{Array.isArray((bulkOcrJob as any).parsedItems) &&
+								(bulkOcrJob as any).parsedItems.length > 0 && (
+									<div className="max-h-48 space-y-1 overflow-y-auto rounded-md border p-2">
+										{(
+											(bulkOcrJob as any).parsedItems as Array<{
+												name?: string;
+												price?: number;
+												category?: string;
+											}>
+										).map((item, idx) => (
+											<div key={idx} className="flex items-center justify-between text-xs">
+												<span className="truncate pr-2">{item.name ?? 'Product'}</span>
+												{item.price != null && (
+													<span className="shrink-0 text-muted-foreground">
+														₹{item.price}
+													</span>
+												)}
+											</div>
+										))}
+									</div>
+								)}
+						</div>
+					)}
+
+					{/* Failed */}
+					{bulkOcrJob?.status === 'failed' && (
+						<div className="flex items-start gap-2 py-4 text-destructive">
+							<XCircle className="mt-0.5 h-5 w-5 flex-shrink-0" />
+							<div>
+								<p className="font-medium">Import failed</p>
+								<p className="text-sm">
+									{bulkOcrJob.errorMessage ?? 'Could not extract products from the image'}
+								</p>
+							</div>
+						</div>
+					)}
+
+					<DialogFooter>
+						<Button
+							variant="outline"
+							onClick={() => {
+								setBulkOcrOpen(false);
+								setBulkOcrJobId(null);
+								setBulkOcrJob(null);
+							}}
+						>
+							Close
+						</Button>
+						{bulkOcrJob?.status === 'failed' && (
+							<Button
+								onClick={() => {
+									setBulkOcrOpen(false);
+									setBulkOcrJob(null);
+									setBulkOcrJobId(null);
+									setTimeout(() => bulkImportFileRef.current?.click(), 100);
+								}}
+							>
+								Try Again
+							</Button>
+						)}
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			{/* Draft review & confirm */}
+			<DraftConfirmDialog
+				draft={pendingDraft}
+				open={!!pendingDraft}
+				onClose={() => setPendingDraft(null)}
+				onConfirmed={() => setPendingDraft(null)}
+				onDiscarded={() => setPendingDraft(null)}
+			/>
 		</div>
 	);
 };

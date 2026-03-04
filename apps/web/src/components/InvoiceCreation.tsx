@@ -24,9 +24,10 @@ import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
 import { wsClient } from '@/lib/ws';
 import { useCreateCustomer, useCreateInvoice, useCustomers, useProductByBarcode } from '@/hooks/useQueries';
-import { formatCurrency, type Customer, invoiceApi, customerApi } from '@/lib/api';
+import { formatCurrency, type Customer, invoiceApi, customerApi, aiApi } from '@/lib/api';
 import { useQueryClient } from '@tanstack/react-query';
 import BarcodeScanner from '@/components/BarcodeScanner';
+import { useToast } from '@/hooks/use-toast';
 
 type SpeechWindow = Window & {
 	SpeechRecognition?: new () => {
@@ -78,6 +79,10 @@ interface InvoiceItem {
 interface InvoiceCreationProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
+	/** Open directly in manual billing mode for this customer (skips start screen) */
+	repeatForCustomer?: Customer;
+	/** Pre-fill items from a previous invoice (for "Repeat last order") */
+	repeatItems?: Array<{ name: string; qty: string; price: number; discount: number; total: number }>;
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -99,7 +104,12 @@ function escapeHtml(value: string): string {
 
 // ── component ─────────────────────────────────────────────────────────────────
 
-const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
+const InvoiceCreation = ({
+	open,
+	onOpenChange,
+	repeatForCustomer,
+	repeatItems: repeatItemsProp,
+}: InvoiceCreationProps) => {
 	const [step, setStep] = useState<Step>('start');
 	const [progress, setProgress] = useState(0);
 	const [items, setItems] = useState<InvoiceItem[]>([]);
@@ -121,9 +131,15 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 	const priceTiers = useMemo(() => loadPriceTiers(), []);
 	const [buyerGstin, setBuyerGstin] = useState('');
 	const [placeOfSupply, setPlaceOfSupply] = useState('');
-	// Partial payment at billing
+	// Partial payment at billing (voice flow — single method)
 	const [partialAmount, setPartialAmount] = useState(0);
 	const [partialMethod, setPartialMethod] = useState<'cash' | 'upi' | 'card' | 'other'>('cash');
+	// Split payment (manual billing — cash + UPI + card individually)
+	const [splitCash, setSplitCash] = useState(0);
+	const [splitUpi, setSplitUpi] = useState(0);
+	const [splitCard, setSplitCard] = useState(0);
+	// Inline customer selection for manual step (no page-flip)
+	const [inlineCustomer, setInlineCustomer] = useState<Customer | null>(null);
 
 	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 	const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -134,6 +150,7 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 	const createCustomer = useCreateCustomer();
 	const { data: customers = [] } = useCustomers(customerSearch);
 	const qc = useQueryClient();
+	const { toast } = useToast();
 	const lookupByBarcode = useProductByBarcode();
 	const [invoiceScannerOpen, setInvoiceScannerOpen] = useState(false);
 
@@ -203,15 +220,27 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 			setDiscountFlat(0);
 			setPartialAmount(0);
 			setPartialMethod('cash');
+			setSplitCash(0);
+			setSplitUpi(0);
+			setSplitCard(0);
 			setIsProforma(false);
 			setPriceTierIdx(null);
 			setBuyerGstin('');
 			setPlaceOfSupply('');
+			// Repeat / pre-fill mode
+			if (repeatForCustomer) {
+				setStep('manual');
+				setInlineCustomer(repeatForCustomer);
+				if (repeatItemsProp?.length) setItems(repeatItemsProp);
+			} else {
+				setInlineCustomer(null);
+				setCustomerSearch('');
+			}
 		} else {
 			cleanupAudio();
 			wsClient.send('voice:stop');
 		}
-	}, [open, cleanupAudio]);
+	}, [open, cleanupAudio]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	// ── WebSocket events ──────────────────────────────────────────────────────
 	useEffect(() => {
@@ -745,6 +774,82 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 		}
 	};
 
+	// ── Inline confirm (manual billing — single screen, no page flip) ─────────
+	const handleInlineConfirm = async () => {
+		setError('');
+		const splitTotal = splitCash + splitUpi + splitCard;
+		const dominantMethod: 'cash' | 'upi' | 'card' | 'other' =
+			splitUpi >= splitCash && splitUpi >= splitCard ? 'upi' : splitCard > splitCash ? 'card' : 'cash';
+		const invItems =
+			items.filter((it) => it.name.trim()).length > 0
+				? items
+						.filter((it) => it.name.trim())
+						.map((it) => ({ productName: it.name, quantity: parseInt(it.qty) || 1 }))
+				: [{ productName: 'General Items', quantity: 1 }];
+		const opts = {
+			withGst: withGst || undefined,
+			supplyType: supplyType !== 'INTRASTATE' ? supplyType : undefined,
+			discountPercent: discountPct > 0 ? discountPct : undefined,
+			discountAmount: discountPct === 0 && discountFlat > 0 ? discountFlat : undefined,
+			buyerGstin: buyerGstin.trim() || undefined,
+			placeOfSupply: placeOfSupply.trim() || undefined,
+			initialPayment: splitTotal > 0 ? { amount: splitTotal, method: dominantMethod } : undefined,
+		};
+
+		const getCustomer = async (): Promise<Customer> => {
+			if (inlineCustomer) return inlineCustomer;
+			const { customers: found } = await customerApi.search('Walk-in', 20);
+			const existing = found.find((c: Customer) => /walk\s*-?\s*in|cash\s*customer/i.test(c.name));
+			if (existing) return existing;
+			const created = await createCustomer.mutateAsync({ name: 'Walk-in Customer' });
+			return (created as { customer: Customer }).customer;
+		};
+
+		try {
+			const c = await getCustomer();
+
+			// ── AI anomaly check (non-blocking) ─────────────────────────────────
+			// Only run when we have a real (non-walk-in) customer and a non-zero total
+			if (inlineCustomer && total > 0) {
+				try {
+					const anomaly = await aiApi.checkAnomaly(inlineCustomer.id, total);
+					if (anomaly.isAnomaly && anomaly.severity !== 'none') {
+						const sevLabel =
+							anomaly.severity === 'high'
+								? '🔴 High'
+								: anomaly.severity === 'medium'
+									? '🟠 Medium'
+									: '🟡 Low';
+						toast({
+							title: `${sevLabel} anomaly detected`,
+							description: anomaly.message,
+							variant: 'destructive',
+						});
+					}
+				} catch {
+					// Anomaly check failure must never block invoice creation
+				}
+			}
+
+			setSelectedCustomer(c);
+			setStep('final');
+			let res: { invoice?: { invoiceNo?: string } };
+			if (isProforma) {
+				res = await invoiceApi.proforma({ customerId: c.id, items: invItems, ...opts });
+				setCreatedInvoiceNo(res.invoice?.invoiceNo ?? 'PRO-NEW');
+			} else {
+				res = await createInvoice.mutateAsync({ customerId: c.id, items: invItems, ...opts });
+				setCreatedInvoiceNo(res.invoice?.invoiceNo ?? 'INV-NEW');
+			}
+			void qc.invalidateQueries({ queryKey: ['invoices'] });
+			void qc.invalidateQueries({ queryKey: ['customers'] });
+			void qc.invalidateQueries({ queryKey: ['summary'] });
+		} catch {
+			setError('Invoice save failed. Please try again.');
+			setStep('manual');
+		}
+	};
+
 	// ── render ────────────────────────────────────────────────────────────────
 	return (
 		<>
@@ -976,16 +1081,29 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 					{/* ── STEP 3: PROCESSING ────────────────────────────────────────── */}
 					{step === 'processing' && (
 						<div className="space-y-4 py-4">
-							<div className="flex items-center gap-2">
-								<div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-								<span className="text-sm font-medium">Execora is processing...</span>
+							<div className="flex items-center gap-3">
+								<div className="relative flex h-5 w-5 shrink-0">
+									<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-50" />
+									<span className="relative inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
+										🧠
+									</span>
+								</div>
+								<div>
+									<span className="text-sm font-medium">Execora is thinking…</span>
+									<span className="ml-1 inline-flex gap-0.5">
+										<span className="inline-block h-1 w-1 animate-bounce rounded-full bg-primary [animation-delay:0ms]" />
+										<span className="inline-block h-1 w-1 animate-bounce rounded-full bg-primary [animation-delay:150ms]" />
+										<span className="inline-block h-1 w-1 animate-bounce rounded-full bg-primary [animation-delay:300ms]" />
+									</span>
+								</div>
 							</div>
 							{transcript && (
-								<div className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
-									Heard: "{transcript}"
+								<div className="rounded-lg border-l-4 border-primary/40 bg-muted px-3 py-2.5">
+									<p className="text-[10px] uppercase tracking-wide text-muted-foreground">Heard</p>
+									<p className="text-sm font-medium">"{transcript}"</p>
 								</div>
 							)}
-							<Progress value={progress} className="h-2" />
+							<Progress value={progress} className="h-1.5" />
 						</div>
 					)}
 
@@ -1066,13 +1184,79 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 						</div>
 					)}
 
-					{/* ── STEP 5: CUSTOMER SEARCH ───────────────────────────────────── */}
-					{/* ── STEP: MANUAL BILLING */}
+					{/* ── STEP: MANUAL BILLING — single screen, no page flips ──────── */}
 					{step === 'manual' && (
-						<div className="space-y-4">
+						<div className="space-y-3">
+							{/* Inline customer — search & select without leaving the screen */}
+							<div className="rounded-lg border bg-muted/30 px-3 py-2.5">
+								{inlineCustomer ? (
+									<div className="flex items-center justify-between">
+										<div>
+											<p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+												Customer
+											</p>
+											<p className="text-sm font-semibold">{inlineCustomer.name}</p>
+											{inlineCustomer.phone && (
+												<p className="text-xs text-muted-foreground">
+													📞 {inlineCustomer.phone}
+												</p>
+											)}
+										</div>
+										<button
+											onClick={() => {
+												setInlineCustomer(null);
+												setCustomerSearch('');
+											}}
+											className="text-xs text-primary hover:underline"
+										>
+											Change
+										</button>
+									</div>
+								) : (
+									<div className="space-y-1.5">
+										<input
+											type="text"
+											placeholder="Customer name / phone (blank = walk-in)…"
+											value={customerSearch}
+											onChange={(e) => setCustomerSearch(e.target.value)}
+											className="w-full rounded border px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+										/>
+										{customerSearch ? (
+											<div className="max-h-28 overflow-y-auto rounded border divide-y">
+												{customers.slice(0, 5).map((c) => (
+													<button
+														key={c.id}
+														onClick={() => {
+															setInlineCustomer(c);
+															setCustomerSearch('');
+														}}
+														className="flex w-full items-center justify-between px-2.5 py-1.5 text-xs hover:bg-muted text-left"
+													>
+														<span className="font-medium">{c.name}</span>
+														{c.phone && (
+															<span className="text-muted-foreground">{c.phone}</span>
+														)}
+													</button>
+												))}
+												{customers.length === 0 && (
+													<p className="px-2.5 py-2 text-xs text-muted-foreground">
+														No customer found
+													</p>
+												)}
+											</div>
+										) : (
+											<p className="text-[10px] text-muted-foreground">
+												Leave blank for walk-in / cash sale
+											</p>
+										)}
+									</div>
+								)}
+							</div>
+
+							{/* Items */}
 							<div className="flex items-center justify-between">
 								<p className="text-xs text-muted-foreground">
-									Type item name, price &amp; qty. Tap <strong>+ Add row</strong> for more.
+									Add items · Tap <strong>+ Add row</strong> or scan barcode
 								</p>
 								<button
 									type="button"
@@ -1091,9 +1275,11 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 								discountAmt={discountAmt}
 								discountPct={discountPct}
 								discountFlat={discountFlat}
-								partialAmount={partialAmount}
+								partialAmount={splitCash + splitUpi + splitCard}
 								showPriceEdit
 							/>
+
+							{/* Discount */}
 							<div className="flex items-center gap-2">
 								<Tag className="h-3.5 w-3.5 text-muted-foreground" />
 								<input
@@ -1121,28 +1307,81 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 									className="w-24 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
 								/>
 							</div>
-							<div className="grid grid-cols-2 gap-2 pt-1">
-								<Button
-									className="gap-1.5"
-									onClick={() => void handleWalkInCustomer()}
-									disabled={
-										items.every((i) => !i.name.trim()) ||
-										createCustomer.isPending ||
-										createInvoice.isPending
-									}
-								>
-									<Wallet className="h-4 w-4" />
-									{createCustomer.isPending ? 'Saving…' : 'Cash Sale'}
-								</Button>
-								<Button
-									variant="outline"
-									className="gap-1.5"
-									onClick={handleConfirm}
-									disabled={items.every((i) => !i.name.trim())}
-								>
-									<Users className="h-4 w-4" /> Select Customer
-								</Button>
-							</div>
+
+							{/* Split payment — cash + UPI + card in parallel, no single-method dropdown */}
+							{!isProforma && (
+								<div className="rounded-lg border bg-muted/20 px-3 py-2.5 space-y-2">
+									<p className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+										<Wallet className="h-3 w-3" /> Payment received now (optional)
+									</p>
+									<div className="grid grid-cols-3 gap-2">
+										<div>
+											<label className="text-[10px] text-muted-foreground">💵 Cash</label>
+											<input
+												type="number"
+												min={0}
+												placeholder="₹0"
+												value={splitCash || ''}
+												onChange={(e) => setSplitCash(Number(e.target.value))}
+												className="mt-0.5 w-full rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+											/>
+										</div>
+										<div>
+											<label className="text-[10px] text-muted-foreground">📱 UPI</label>
+											<input
+												type="number"
+												min={0}
+												placeholder="₹0"
+												value={splitUpi || ''}
+												onChange={(e) => setSplitUpi(Number(e.target.value))}
+												className="mt-0.5 w-full rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+											/>
+										</div>
+										<div>
+											<label className="text-[10px] text-muted-foreground">💳 Card</label>
+											<input
+												type="number"
+												min={0}
+												placeholder="₹0"
+												value={splitCard || ''}
+												onChange={(e) => setSplitCard(Number(e.target.value))}
+												className="mt-0.5 w-full rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+											/>
+										</div>
+									</div>
+									{splitCash + splitUpi + splitCard > 0 && (
+										<p className="text-xs font-medium text-green-600">
+											✓ Paid: {formatCurrency(splitCash + splitUpi + splitCard)}
+											{total > 0 && splitCash + splitUpi + splitCard < total && (
+												<span className="ml-1 text-muted-foreground">
+													· Balance due:{' '}
+													{formatCurrency(
+														Math.max(0, total - splitCash - splitUpi - splitCard)
+													)}
+												</span>
+											)}
+										</p>
+									)}
+								</div>
+							)}
+
+							{/* Single confirm button — no second page */}
+							<Button
+								className="w-full gap-1.5"
+								onClick={() => void handleInlineConfirm()}
+								disabled={
+									items.every((i) => !i.name.trim()) ||
+									createCustomer.isPending ||
+									createInvoice.isPending
+								}
+							>
+								<Check className="h-4 w-4" />
+								{createCustomer.isPending || createInvoice.isPending
+									? 'Saving…'
+									: inlineCustomer
+										? `${isProforma ? 'Create Quote' : 'Create Bill'} · ${inlineCustomer.name.split(' ')[0]}`
+										: `${isProforma ? 'Create Quote' : 'Cash Sale'} · Walk-in`}
+							</Button>
 							<Button
 								variant="ghost"
 								size="sm"

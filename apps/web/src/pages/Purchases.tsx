@@ -1,20 +1,25 @@
 /**
  * Purchases — Track stock/supplier purchases.
+ * Sprint 2: added OCR bill scanning via OpenAI Vision API.
  * Data persisted via REST API → PostgreSQL.
  * Separate from Expenses: focused on inventory procurement with unit/qty/rate.
  */
-import { useState, useMemo } from 'react';
-import { ArrowLeft, Plus, Trash2, Package, TrendingDown } from 'lucide-react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import { ArrowLeft, Plus, Trash2, Package, TrendingDown, Scan, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { usePurchases, useCreatePurchase, useDeletePurchase } from '@/hooks/useQueries';
 import { useWsInvalidation } from '@/hooks/useWsInvalidation';
+import { aiApi, draftApi, type OcrJob, type Draft } from '@/lib/api';
+import { DraftConfirmDialog } from '@/components/DraftConfirmDialog';
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const PURCHASE_CATEGORIES = [
@@ -82,6 +87,73 @@ export default function Purchases() {
 	const deletePurchase = useDeletePurchase();
 	useWsInvalidation(['purchases']);
 
+	// ── Draft state ─────────────────────────────────────────────────────────
+	const [pendingDraft, setPendingDraft] = useState<Draft | null>(null);
+
+	// ── OCR state ────────────────────────────────────────────────────────────
+	const fileInputRef = useRef<HTMLInputElement>(null);
+	const queryClient = useQueryClient();
+	const [ocrJobId, setOcrJobId] = useState<string | null>(null);
+	const [ocrJob, setOcrJob] = useState<OcrJob | null>(null);
+	const [ocrDialogOpen, setOcrDialogOpen] = useState(false);
+	const [ocrUploading, setOcrUploading] = useState(false);
+
+	// Poll for OCR job status every 2s until completed/failed
+	const pollOcrJob = useCallback(
+		async (jobId: string) => {
+			const timer = setInterval(async () => {
+				try {
+					const job = await aiApi.getOcrJob(jobId);
+					setOcrJob(job);
+					if (job.status === 'completed' || job.status === 'failed') {
+						clearInterval(timer);
+						if (job.status === 'completed') {
+							// Invalidate purchases list so new PO items appear
+							await queryClient.invalidateQueries({ queryKey: ['purchases'] });
+							toast({
+								title: '✅ Bill scanned',
+								description: `${Array.isArray(job.parsedItems) ? job.parsedItems.length : 0} items imported from bill.`,
+							});
+						} else {
+							toast({
+								title: 'OCR failed',
+								description: job.errorMessage ?? 'Could not read the bill',
+								variant: 'destructive',
+							});
+						}
+					}
+				} catch {
+					// Silently ignore poll errors — will retry next interval
+				}
+			}, 2000);
+			return () => clearInterval(timer);
+		},
+		[queryClient, toast]
+	);
+
+	async function handleOcrFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+		const file = e.target.files?.[0];
+		if (!file) return;
+		// Reset input so same file can be re-selected
+		e.target.value = '';
+
+		setOcrUploading(true);
+		setOcrJob(null);
+		setOcrJobId(null);
+		setOcrDialogOpen(true);
+		try {
+			const { jobId } = await aiApi.uploadPurchaseBill(file);
+			setOcrJobId(jobId);
+			setOcrJob({ jobId, jobType: 'purchase_bill', status: 'pending', productsCreated: 0 });
+			pollOcrJob(jobId);
+		} catch (err: any) {
+			toast({ title: 'Upload failed', description: err?.message, variant: 'destructive' });
+			setOcrDialogOpen(false);
+		} finally {
+			setOcrUploading(false);
+		}
+	}
+
 	const purchases = purData?.purchases ?? [];
 	const monthPurchases = monthData?.purchases ?? [];
 
@@ -116,22 +188,28 @@ export default function Purchases() {
 		}
 		const total = Math.round(q * r * 100) / 100;
 		try {
-			await createPurchase.mutateAsync({
-				category,
-				amount: total,
-				itemName: itemName.trim(),
-				vendor: supplier.trim() || undefined,
-				quantity: q,
-				unit,
-				ratePerUnit: r,
-				note: notes.trim() || undefined,
-				date,
-			});
-			toast({ title: `Purchase added — ${fmt(total)}` });
+			// Save as draft — user reviews and confirms before real DB write
+			const { draft } = await draftApi.create(
+				'purchase_entry',
+				{
+					category,
+					amount: total,
+					itemName: itemName.trim(),
+					vendor: supplier.trim() || undefined,
+					quantity: q,
+					unit,
+					ratePerUnit: r,
+					note: notes.trim() || undefined,
+					date,
+				},
+				`${itemName.trim()} — ${fmt(total)}`
+			);
+			setPendingDraft(draft);
+			queryClient.invalidateQueries({ queryKey: ['drafts'] });
 			resetForm();
 			setOpen(false);
 		} catch {
-			toast({ title: 'Failed to add purchase', variant: 'destructive' });
+			toast({ title: 'Failed to create draft', variant: 'destructive' });
 		}
 	}
 
@@ -179,9 +257,32 @@ export default function Purchases() {
 						</Button>
 						<h1 className="text-lg font-semibold">Purchases</h1>
 					</div>
-					<Button size="sm" className="gap-1" onClick={() => setOpen(true)}>
-						<Plus className="h-4 w-4" /> Add
-					</Button>
+					<div className="flex gap-2">
+						{/* OCR Scan Bill button */}
+						<Button
+							variant="outline"
+							size="sm"
+							className="gap-1"
+							disabled={ocrUploading}
+							onClick={() => fileInputRef.current?.click()}
+							title="Scan a supplier bill photo with AI"
+						>
+							{ocrUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Scan className="h-4 w-4" />}
+							<span className="hidden sm:inline">Scan Bill</span>
+						</Button>
+						{/* Hidden file input for OCR */}
+						<input
+							ref={fileInputRef}
+							type="file"
+							accept="image/*"
+							capture="environment"
+							className="hidden"
+							onChange={handleOcrFileSelected}
+						/>
+						<Button size="sm" className="gap-1" onClick={() => setOpen(true)}>
+							<Plus className="h-4 w-4" /> Add
+						</Button>
+					</div>
 				</div>
 			</header>
 
@@ -450,6 +551,124 @@ export default function Purchases() {
 					</form>
 				</DialogContent>
 			</Dialog>
+
+			{/* ── OCR Progress Dialog ──────────────────────────────────────────── */}
+			<Dialog
+				open={ocrDialogOpen}
+				onOpenChange={(v) => {
+					setOcrDialogOpen(v);
+					if (!v) {
+						setOcrJobId(null);
+						setOcrJob(null);
+					}
+				}}
+			>
+				<DialogContent className="sm:max-w-sm">
+					<DialogHeader>
+						<DialogTitle className="flex items-center gap-2">
+							<Scan className="h-5 w-5" />
+							OCR Purchase Bill
+						</DialogTitle>
+					</DialogHeader>
+
+					{/* Uploading / Pending / Processing */}
+					{(!ocrJob || ocrJob.status === 'pending' || ocrJob.status === 'processing') && (
+						<div className="flex flex-col items-center gap-3 py-8">
+							<Loader2 className="h-10 w-10 animate-spin text-primary" />
+							<p className="text-sm text-muted-foreground">
+								{ocrUploading ? 'Uploading bill…' : 'Reading bill with AI…'}
+							</p>
+							<p className="text-xs text-muted-foreground/60">This usually takes 5–15 seconds</p>
+						</div>
+					)}
+
+					{/* Completed */}
+					{ocrJob?.status === 'completed' && (
+						<div className="space-y-4 py-2">
+							<div className="flex items-center gap-2 text-green-600">
+								<CheckCircle className="h-6 w-6 flex-shrink-0" />
+								<div>
+									<p className="font-medium">Bill scanned successfully</p>
+									<p className="text-sm text-muted-foreground">
+										{Array.isArray(ocrJob.parsedItems) ? ocrJob.parsedItems.length : 0} items
+										extracted
+									</p>
+								</div>
+							</div>
+
+							{ocrJob.purchaseOrderId && (
+								<div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800 dark:bg-green-950 dark:text-green-200">
+									✅ Purchase order created &amp; stock levels updated automatically.
+								</div>
+							)}
+
+							{/* Parsed item list preview */}
+							{Array.isArray(ocrJob.parsedItems) && ocrJob.parsedItems.length > 0 && (
+								<div className="max-h-48 space-y-1 overflow-y-auto rounded-md border p-2">
+									{(ocrJob.parsedItems as Array<{ name?: string; qty?: number; rate?: number }>).map(
+										(item, idx) => (
+											<div key={idx} className="flex items-center justify-between text-xs">
+												<span className="truncate pr-2">{item.name ?? 'Item'}</span>
+												<Badge variant="secondary" className="shrink-0 text-xs">
+													×{item.qty ?? 1}
+												</Badge>
+											</div>
+										)
+									)}
+								</div>
+							)}
+						</div>
+					)}
+
+					{/* Failed */}
+					{ocrJob?.status === 'failed' && (
+						<div className="flex items-start gap-2 py-4 text-destructive">
+							<XCircle className="mt-0.5 h-5 w-5 flex-shrink-0" />
+							<div>
+								<p className="font-medium">OCR processing failed</p>
+								<p className="text-sm">
+									{ocrJob.errorMessage ?? 'Could not extract data from the image'}
+								</p>
+							</div>
+						</div>
+					)}
+
+					<DialogFooter>
+						<Button
+							variant="outline"
+							onClick={() => {
+								setOcrDialogOpen(false);
+								setOcrJobId(null);
+								setOcrJob(null);
+							}}
+						>
+							Close
+						</Button>
+						{ocrJob?.status === 'failed' && (
+							<Button
+								onClick={() => {
+									setOcrDialogOpen(false);
+									setOcrJob(null);
+									setOcrJobId(null);
+									// Re-open file picker
+									setTimeout(() => fileInputRef.current?.click(), 100);
+								}}
+							>
+								Try Again
+							</Button>
+						)}
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			{/* Draft review & confirm */}
+			<DraftConfirmDialog
+				draft={pendingDraft}
+				open={!!pendingDraft}
+				onClose={() => setPendingDraft(null)}
+				onConfirmed={() => setPendingDraft(null)}
+				onDiscarded={() => setPendingDraft(null)}
+			/>
 		</div>
 	);
 }

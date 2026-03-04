@@ -35,6 +35,13 @@ export const WS_EVENT_QUERIES: Record<string, string[][]> = {
 	'expense:deleted': [['expenses'], ['cashbook']],
 	'purchase:created': [['purchases'], ['cashbook']],
 	'purchase:deleted': [['purchases'], ['cashbook']],
+	// Draft / staging system
+	'draft:created': [['drafts']],
+	'draft:updated': [['drafts']],
+	'draft:confirmed': [['drafts'], ['purchases'], ['products'], ['expenses']],
+	'draft:discarded': [['drafts']],
+	// product create via draft confirm
+	'product:created': [['products'], ['lowStock']],
 };
 
 /**

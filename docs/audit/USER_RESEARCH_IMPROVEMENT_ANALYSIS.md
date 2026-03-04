@@ -1,4 +1,5 @@
 # User Research & Improvement Analysis — Execora
+
 ## Market Research from Real User Reviews | 193+ Verified Reviews Analysed
 
 **Research Date:** 2026  
@@ -12,12 +13,14 @@ GetApp (181 ratings), Play Store (QuickBooks 69.6K reviews), Reddit
 ## Executive Summary — 5 Findings That Matter Most
 
 ### Finding 1: Speed is the only thing that wins counter users
+
 "Generates invoice in less than a minute" — this single phrase appears in 34% of
 5-star reviews across all platforms. Every friction point — page flip, confirmation
 dialog, manual field entry — chips away at the one metric users actually care about.
 Execora's voice mode already wins this. The risk is the classic mode.
 
 ### Finding 2: OCR purchase bill scanning is the next breakthrough AI feature
+
 "OCR upload purchase bill image → auto-updates stock. Game changer for me. Not need
 to update purchase bill manually. Just click photo upload and done."
 — Verified Trustpilot review, 5 stars
@@ -27,6 +30,7 @@ is already AI-native — adding OCR purchase entry requires adding one tool to t
 agent layer plus a minimal UI surface. This is a P0-level AI differentiator.
 
 ### Finding 3: Screen navigation friction is the #1 UX complaint
+
 "Screen flipping during customer selection and item addition is time-consuming.
 Constant flipping takes time for approval of each command."
 — SoftwareSuggest, Vyapar review
@@ -37,7 +41,9 @@ this in classic mode. The fix: single-screen billing with sliding panels, not
 page navigation.
 
 ### Finding 4: Purchase/AP side is underbuilt everywhere — 3.0/5 rating
+
 GetApp ratings for Vyapar:
+
 - Purchase order management: **3.0/5** (lowest rated feature)
 - Reporting & statistics: **3.3/5**
 - Billing & invoicing: **4.4/5** (highest)
@@ -47,6 +53,7 @@ purchase return — is consistently weak across all tools. This represents the
 largest functional gap in the market.
 
 ### Finding 5: Offline trust gap is a retention risk
+
 "Fully offline app" appears as a request in 22% of reviews across all platforms.
 Users who own shops in areas with patchy connectivity are moving to desktop apps
 specifically for offline capability. Execora is cloud-only today.
@@ -124,60 +131,61 @@ immediately on app."
 
 ### What Users Want (Feature Requests, Ranked by Frequency)
 
-| Rank | Request                                          | Platform(s)         | Frequency |
-|------|--------------------------------------------------|---------------------|-----------|
-| 1    | E-invoicing feature on mobile app                | SS, GetApp          | Very High |
-| 2    | UPI payment link directly in invoice             | SS, Trustpilot      | Very High |
-| 3    | Multi-currency / foreign client support          | SS, GetApp          | High      |
-| 4    | TDS calculation and deduction recording          | SS (multiple)       | High      |
-| 5    | Better/more reports (journal, balance sheet)     | SS, GetApp          | High      |
-| 6    | Full invoice template customization              | SS, Trustpilot      | High      |
-| 7    | Fully offline mode                               | SS, Trustpilot      | High      |
-| 8    | Import from Excel for purchase bills             | SS                  | Medium    |
-| 9    | E-commerce integration (Shopify/Amazon/Flipkart) | SS                  | Medium    |
-| 10   | Customer portal (view invoices/history online)   | SS                  | Medium    |
-| 11   | Payroll module                                   | SS (multiple)       | Medium    |
-| 12   | Proper journal entry / double-entry accounting   | SS                  | Medium    |
-| 13   | Barcode column inside invoice line-item entry    | SS                  | Medium    |
-| 14   | Batch/expiry/serial tracking (pharma)            | SS, Trustpilot      | Medium    |
-| 15   | iOS / macOS native app                           | SS (8+ users)       | Medium    |
+| Rank | Request                                          | Platform(s)    | Frequency |
+| ---- | ------------------------------------------------ | -------------- | --------- |
+| 1    | E-invoicing feature on mobile app                | SS, GetApp     | Very High |
+| 2    | UPI payment link directly in invoice             | SS, Trustpilot | Very High |
+| 3    | Multi-currency / foreign client support          | SS, GetApp     | High      |
+| 4    | TDS calculation and deduction recording          | SS (multiple)  | High      |
+| 5    | Better/more reports (journal, balance sheet)     | SS, GetApp     | High      |
+| 6    | Full invoice template customization              | SS, Trustpilot | High      |
+| 7    | Fully offline mode                               | SS, Trustpilot | High      |
+| 8    | Import from Excel for purchase bills             | SS             | Medium    |
+| 9    | E-commerce integration (Shopify/Amazon/Flipkart) | SS             | Medium    |
+| 10   | Customer portal (view invoices/history online)   | SS             | Medium    |
+| 11   | Payroll module                                   | SS (multiple)  | Medium    |
+| 12   | Proper journal entry / double-entry accounting   | SS             | Medium    |
+| 13   | Barcode column inside invoice line-item entry    | SS             | Medium    |
+| 14   | Batch/expiry/serial tracking (pharma)            | SS, Trustpilot | Medium    |
+| 15   | iOS / macOS native app                           | SS (8+ users)  | Medium    |
 
 ---
 
 ## Feature Gap Matrix — User Pain vs Execora State
 
 ### Legend
-- ✅ Built and working  
-- ⚠️ Partial / in progress  
-- 🔴 Not built  
+
+- ✅ Built and working
+- ⚠️ Partial / in progress
+- 🔴 Not built
 - 🔥 High-impact AI opportunity
 
-| User Need (from reviews)               | Execora State | Priority | AI Angle           |
-|----------------------------------------|--------------|----------|--------------------|
-| Sub-60-second invoice via voice        | ✅ Voice mode | PROTECT  | Already done       |
-| Barcode scan to add items instantly    | ✅ Just shipped | PROTECT | Camera + USB done  |
-| WhatsApp invoice + reminder send       | ✅ Built      | PROTECT  | Core channel       |
-| Real-time dashboard (no refresh)       | ✅ WebSocket  | PROTECT  | Unique differentiator |
-| GST reports (GSTR-1 ready)             | ✅ Built      | PROTECT  | Core retention     |
-| Single-screen billing (no page flips)  | ⚠️ Classic mode needs work | P0 | Sliding panel UX |
-| OCR: photo purchase bill → stock update | 🔴 Not built | P0 🔥   | #1 AI opportunity  |
-| Offline mode with sync queue           | 🔴 Not built  | P0       | PWA + local queue  |
-| Multiple price tiers per product       | ⚠️ MRP field only | P0  | Voice: "wholesale price do" |
-| UPI payment link embedded in invoice   | 🔴 Not built  | P0       | QR code generation |
-| Recurring / automatic billing          | 🔴 Not built  | P1       | Cron + AI confirm  |
-| E-invoicing (IRN + QR on invoice)      | 🔴 Not built  | P1       | Govt API call      |
-| Purchase bills / AP lifecycle          | 🔴 Not built  | P1       | Market's weakest point |
-| TDS calculation                        | 🔴 Not built  | P1       | Rule lookup + auto |
-| Invoice template customization         | 🔴 Not built  | P1       | Template builder UI |
-| Customer portal (invoice view)         | 🔴 Not built  | P1       | Read-only link     |
-| Batch/expiry tracking (pharma)         | ⚠️ Expiry field only | P1 | Alert automation |
-| iOS / web PWA parity                   | ⚠️ Web-only   | P1       | PWA installable    |
-| Import from Excel (products/customers) | 🔴 Not built  | P2       | AI column mapper   |
-| E-Way Bill generation                  | 🔴 Not built  | P2       | Government API     |
-| Multi-currency support                 | 🔴 Not built  | P2       | Exchange rate API  |
-| E-commerce integration                 | 🔴 Not built  | P2       | Webhook receiver   |
-| Payroll module                         | 🔴 Not built  | P3       | Separate vertical  |
-| Double-entry journal / balance sheet   | 🔴 Not built  | P3       | Accountant tier    |
+| User Need (from reviews)                | Execora State              | Priority | AI Angle                    |
+| --------------------------------------- | -------------------------- | -------- | --------------------------- |
+| Sub-60-second invoice via voice         | ✅ Voice mode              | PROTECT  | Already done                |
+| Barcode scan to add items instantly     | ✅ Just shipped            | PROTECT  | Camera + USB done           |
+| WhatsApp invoice + reminder send        | ✅ Built                   | PROTECT  | Core channel                |
+| Real-time dashboard (no refresh)        | ✅ WebSocket               | PROTECT  | Unique differentiator       |
+| GST reports (GSTR-1 ready)              | ✅ Built                   | PROTECT  | Core retention              |
+| Single-screen billing (no page flips)   | ⚠️ Classic mode needs work | P0       | Sliding panel UX            |
+| OCR: photo purchase bill → stock update | 🔴 Not built               | P0 🔥    | #1 AI opportunity           |
+| Offline mode with sync queue            | 🔴 Not built               | P0       | PWA + local queue           |
+| Multiple price tiers per product        | ⚠️ MRP field only          | P0       | Voice: "wholesale price do" |
+| UPI payment link embedded in invoice    | 🔴 Not built               | P0       | QR code generation          |
+| Recurring / automatic billing           | 🔴 Not built               | P1       | Cron + AI confirm           |
+| E-invoicing (IRN + QR on invoice)       | 🔴 Not built               | P1       | Govt API call               |
+| Purchase bills / AP lifecycle           | 🔴 Not built               | P1       | Market's weakest point      |
+| TDS calculation                         | 🔴 Not built               | P1       | Rule lookup + auto          |
+| Invoice template customization          | 🔴 Not built               | P1       | Template builder UI         |
+| Customer portal (invoice view)          | 🔴 Not built               | P1       | Read-only link              |
+| Batch/expiry tracking (pharma)          | ⚠️ Expiry field only       | P1       | Alert automation            |
+| iOS / web PWA parity                    | ⚠️ Web-only                | P1       | PWA installable             |
+| Import from Excel (products/customers)  | 🔴 Not built               | P2       | AI column mapper            |
+| E-Way Bill generation                   | 🔴 Not built               | P2       | Government API              |
+| Multi-currency support                  | 🔴 Not built               | P2       | Exchange rate API           |
+| E-commerce integration                  | 🔴 Not built               | P2       | Webhook receiver            |
+| Payroll module                          | 🔴 Not built               | P3       | Separate vertical           |
+| Double-entry journal / balance sheet    | 🔴 Not built               | P3       | Accountant tier             |
 
 ---
 
@@ -195,6 +203,7 @@ photograph bills but still type everything. Verified users called OCR ingestion
 "game changer" and "not need to update manually."
 
 **What to build:**
+
 ```
 User opens "Add Purchase" form OR says "Purchase bill add karo"
   ↓
@@ -221,6 +230,7 @@ Confirm → Stock updated + Supplier payment recorded + Purchase entry saved
 ```
 
 **Voice execution path:**
+
 ```
 User: "Kal ka purchase bill scan karo"
 AI:   "Camera khol raha hoon — bill ka photo lo"
@@ -232,6 +242,7 @@ User: "Haan"
 ```
 
 **Implementation path:**
+
 - Add `ocr_purchase_bill` tool to agent tool definitions
 - Add one route: `POST /api/v1/purchases/ocr` (calls OpenAI Vision)
 - Build UI: `PurchaseBillOCR.tsx` — camera → extracted table → confirm
@@ -247,6 +258,7 @@ User: "Haan"
 misses context — seasons, running promos, out-of-stock items.
 
 **What to build:**
+
 ```
 AI tracks order patterns per customer. When user starts a bill:
   ↓
@@ -259,8 +271,8 @@ User says "Wahi wala" or modifies
 Invoice issued — stock checked before confirming, not after
 ```
 
-**Implementation:** Add `get_last_order(customerId)` tool + 
-`suggest_repeat_items(customerId)` to the agent layer. Frontend: inline "Repeat 
+**Implementation:** Add `get_last_order(customerId)` tool +
+`suggest_repeat_items(customerId)` to the agent layer. Frontend: inline "Repeat
 last order" button on customer card.
 
 ---
@@ -271,6 +283,7 @@ last order" button on customer card.
 No tool predicts who is likely to pay today vs who needs nudging.
 
 **What to build:**
+
 ```
 Background analysis (runs nightly):
   - Which customers have a pattern of paying on specific days of month?
@@ -293,6 +306,7 @@ data and names customers.
 to reorder. Users waste time calculating manually.
 
 **What to build:**
+
 ```
 At low-stock alert, AI adds:
   "Aata — stock 5 bags remaining
@@ -314,6 +328,7 @@ purchase order from last-known supplier details.
 customer). These are caught late — sometimes by the customer.
 
 **What to build:**
+
 ```
 Before confirmation, AI runs quick checks:
   - Price > 3× normal price for this product? → Flag
@@ -333,6 +348,7 @@ bill ₹2,500 hai. Kuch galti ho gayi kya, ya sahi hai?"
 Users give up and never see the value of the product catalog.
 
 **What to build:**
+
 ```
 User photographs shelf of products (packaging visible)
   ↓
@@ -355,6 +371,7 @@ This removes the biggest onboarding friction for kirana and FMCG shops.
 **Symptom:** Separate pages for customer selection, item addition, discount, payment
 
 **Fix:**
+
 ```
 Single billing screen layout:
 
@@ -374,7 +391,7 @@ Single billing screen layout:
 └──────────────────────────────────┘
 ```
 
-**Impact:** Eliminates the primary source of "slow billing" complaints in classic 
+**Impact:** Eliminates the primary source of "slow billing" complaints in classic
 mode. This is achievable with zero backend change — CSS/React restructure only.
 
 ---
@@ -385,6 +402,7 @@ mode. This is achievable with zero backend change — CSS/React restructure only
 **Symptom:** Exact match search on mobile, user types partial name or wrong spelling
 
 **Fix:**
+
 - Replace exact-match search with the fuzzy search already in customer resolver
 - Debounced live search: results appear after 200ms, not on-enter
 - Highlight the matching substring in results
@@ -398,6 +416,7 @@ mode. This is achievable with zero backend change — CSS/React restructure only
 **Symptom:** 2-3 second gap between user speaking and AI response appearing
 
 **Fix:**
+
 - Show transcript as it is being produced (streaming, already supported)
 - Show "Processing..." with a live pulse animation immediately on voice end
 - Show intent card instantly ("Creating bill for Ramesh…") before full response
@@ -411,6 +430,7 @@ mode. This is achievable with zero backend change — CSS/React restructure only
 **Symptom:** Logo + business name only; no color, no layout, no custom fields
 
 **Fix — Template Builder (minimum viable):**
+
 ```
 Settings → Invoice Template
   - Upload logo
@@ -430,6 +450,7 @@ Settings → Invoice Template
 **Symptom:** No indication of connectivity state; actions silently fail or are lost
 
 **Fix — Offline Queue (Phase 1, no server change needed):**
+
 ```
 1. Service Worker intercepts all POST/PATCH mutations
 2. If offline: queue to IndexedDB, show "Saved offline — will sync when connected"
@@ -446,6 +467,7 @@ Settings → Invoice Template
 **Symptom:** User cannot record ₹500 cash + ₹200 UPI in one transaction
 
 **Split Payment UI:**
+
 ```
 Payment Mode:
 [✓ Cash] ₹500     [✓ UPI]  ₹200     [ Card]     [ Credit]
@@ -454,7 +476,7 @@ Payment Mode:
 ```
 
 Backend already handles split payment (mixed-mode payment already in PRD F-04.1).
-This is a UI gap — the form currently shows one payment mode selector, not a 
+This is a UI gap — the form currently shows one payment mode selector, not a
 multi-select with amounts.
 
 ---
@@ -465,61 +487,61 @@ Based on user review frequency, impact score, and implementation effort.
 
 ### Sprint 1 — Billing Speed & Core UX (Highest impact, lowest effort)
 
-| Task | Source | Effort | Impact |
-|------|--------|--------|--------|
-| Single-screen classic billing (no page flips) | UX Issue 1 | Medium | 🔥 Very High |
-| Split payment UI (cash + UPI in same form) | F-04.1 already exists | Low | High |
-| Fuzzy invoice search on mobile | UX Issue 2 | Low | High |
-| Voice feedback: instant transcript + intent pulse | UX Issue 3 | Low | High |
-| Repeat last bill — "same as before" | AI Opp 2 | Low | High |
+| Task                                              | Source                | Effort | Impact       |
+| ------------------------------------------------- | --------------------- | ------ | ------------ |
+| Single-screen classic billing (no page flips)     | UX Issue 1            | Medium | 🔥 Very High |
+| Split payment UI (cash + UPI in same form)        | F-04.1 already exists | Low    | High         |
+| Fuzzy invoice search on mobile                    | UX Issue 2            | Low    | High         |
+| Voice feedback: instant transcript + intent pulse | UX Issue 3            | Low    | High         |
+| Repeat last bill — "same as before"               | AI Opp 2              | Low    | High         |
 
 ---
 
 ### Sprint 2 — AI Differentiators (What no competitor has)
 
-| Task | Source | Effort | Impact |
-|------|--------|--------|--------|
+| Task                                        | Source   | Effort | Impact     |
+| ------------------------------------------- | -------- | ------ | ---------- |
 | OCR purchase bill ingestion (photo → stock) | AI Opp 1 | Medium | 🔥 Highest |
-| Photo-to-product catalog seeding | AI Opp 6 | Medium | High |
-| Smart stock replenishment suggestions | AI Opp 4 | Medium | High |
-| Predictive payment reminder engine | AI Opp 3 | Medium | High |
-| Invoice anomaly detection (before confirm) | AI Opp 5 | Low | Medium |
+| Photo-to-product catalog seeding            | AI Opp 6 | Medium | High       |
+| Smart stock replenishment suggestions       | AI Opp 4 | Medium | High       |
+| Predictive payment reminder engine          | AI Opp 3 | Medium | High       |
+| Invoice anomaly detection (before confirm)  | AI Opp 5 | Low    | Medium     |
 
 ---
 
 ### Sprint 3 — Trust & Retention Features
 
-| Task | Source | Effort | Impact |
-|------|--------|--------|--------|
-| Offline mode (PWA + IndexedDB queue) | 22% of users | High | 🔥 High |
-| Invoice template customization (5 presets + logo) | UX Issue 4 | Medium | High |
-| Multiple price tiers per product (retail/wholesale) | Review data | Medium | High |
-| UPI QR code on invoice (payment link) | Review data | Low | High |
-| E-invoicing (government IRN + QR) | Review data | High | High |
+| Task                                                | Source       | Effort | Impact  |
+| --------------------------------------------------- | ------------ | ------ | ------- |
+| Offline mode (PWA + IndexedDB queue)                | 22% of users | High   | 🔥 High |
+| Invoice template customization (5 presets + logo)   | UX Issue 4   | Medium | High    |
+| Multiple price tiers per product (retail/wholesale) | Review data  | Medium | High    |
+| UPI QR code on invoice (payment link)               | Review data  | Low    | High    |
+| E-invoicing (government IRN + QR)                   | Review data  | High   | High    |
 
 ---
 
 ### Sprint 4 — Purchase / AP Side (Market's biggest gap)
 
-| Task | Source | Effort | Impact |
-|------|--------|--------|--------|
-| Purchase bill entry (from OCR or manual) | GetApp 3.0/5 | High | 🔥 High |
-| Supplier management (create, track, history) | Prerequisite | Medium | Medium |
-| Purchase return / debit note | Full AP cycle | Medium | Medium |
-| Supplier payment tracking | Ledger extension | Low | Medium |
-| Purchase order → receive against PO | Advanced | High | Medium |
+| Task                                         | Source           | Effort | Impact  |
+| -------------------------------------------- | ---------------- | ------ | ------- |
+| Purchase bill entry (from OCR or manual)     | GetApp 3.0/5     | High   | 🔥 High |
+| Supplier management (create, track, history) | Prerequisite     | Medium | Medium  |
+| Purchase return / debit note                 | Full AP cycle    | Medium | Medium  |
+| Supplier payment tracking                    | Ledger extension | Low    | Medium  |
+| Purchase order → receive against PO          | Advanced         | High   | Medium  |
 
 ---
 
 ### Sprint 5 — Vertical Expansion
 
-| Task | Source | Effort | Impact |
-|------|--------|--------|--------|
-| Pharmacy features (batch, expiry, CDSCO compliance) | 1-star reviews | High | High |
-| TDS calculation and deduction recording | Requested by CAs | Medium | Medium |
-| Customer portal (read-only invoice/payment view) | Review data | Medium | Medium |
-| Multi-currency support (USD/EUR invoicing) | Review data | High | Low |
-| Excel import for products and customers | Review data | Medium | Medium |
+| Task                                                | Source           | Effort | Impact |
+| --------------------------------------------------- | ---------------- | ------ | ------ |
+| Pharmacy features (batch, expiry, CDSCO compliance) | 1-star reviews   | High   | High   |
+| TDS calculation and deduction recording             | Requested by CAs | Medium | Medium |
+| Customer portal (read-only invoice/payment view)    | Review data      | Medium | Medium |
+| Multi-currency support (USD/EUR invoicing)          | Review data      | High   | Low    |
+| Excel import for products and customers             | Review data      | Medium | Medium |
 
 ---
 
@@ -544,6 +566,7 @@ Review data shows existing tools get 1-star reviews from pharmacy owners because
 of complete feature absence. This is an underserved segment that pays premium.
 
 **What pharmacy requires (not in any current tool):**
+
 ```
 Batch/lot number tracking per item
 Expiry date per batch (with alerts 30/60/90 days before)
@@ -555,6 +578,7 @@ Pack/strip/tablet unit conversion (1 strip = 10 tablets)
 ```
 
 **Why it matters for Execora:**
+
 - Pharmacy owners are accustomed to paying ₹3,000+/month for specialised software
 - Voice billing is even more valuable: "Paracetamol 500mg 3 strips, batch ABC123,
   expiry March 2026" → entire record created in one sentence
@@ -564,17 +588,17 @@ Pack/strip/tablet unit conversion (1 strip = 10 tablets)
 
 ## Key Numbers from Review Data
 
-| Metric | Value | Source |
-|--------|-------|--------|
-| % of 5-star reviews citing "fast billing" | 34% | SS myBillBook (68 reviews) |
-| Lowest rated feature (purchase mgmt) | 3.0/5 | GetApp Vyapar (181 ratings) |
-| Lowest rated feature (reporting) | 3.3/5 | GetApp Vyapar |
-| Users requesting iOS support | 8+ explicit | SS Vyapar (125 reviews) |
-| Users requesting offline mode | ~22% | All platforms |
-| Users citing screen navigation pain | ~19% | SS Vyapar |
-| Users requesting TDS | 5+ explicit | SS myBillBook |
-| Users praising barcode scan | 12% | SS myBillBook |
-| Users calling OCR "game changer" | Multiple | Trustpilot |
+| Metric                                    | Value       | Source                      |
+| ----------------------------------------- | ----------- | --------------------------- |
+| % of 5-star reviews citing "fast billing" | 34%         | SS myBillBook (68 reviews)  |
+| Lowest rated feature (purchase mgmt)      | 3.0/5       | GetApp Vyapar (181 ratings) |
+| Lowest rated feature (reporting)          | 3.3/5       | GetApp Vyapar               |
+| Users requesting iOS support              | 8+ explicit | SS Vyapar (125 reviews)     |
+| Users requesting offline mode             | ~22%        | All platforms               |
+| Users citing screen navigation pain       | ~19%        | SS Vyapar                   |
+| Users requesting TDS                      | 5+ explicit | SS myBillBook               |
+| Users praising barcode scan               | 12%         | SS myBillBook               |
+| Users calling OCR "game changer"          | Multiple    | Trustpilot                  |
 
 ---
 

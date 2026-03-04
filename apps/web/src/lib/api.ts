@@ -78,7 +78,8 @@ async function refreshAccessToken(): Promise<string | null> {
 async function request<T>(path: string, options: RequestInit = {}, retried = false): Promise<T> {
 	const token = getToken();
 	const headers: Record<string, string> = {
-		'Content-Type': 'application/json',
+		// Only set Content-Type when there's a body — Fastify 400s on DELETE/GET with Content-Type but no body
+		...(options.body != null ? { 'Content-Type': 'application/json' } : {}),
 		...(options.headers as Record<string, string>),
 	};
 	if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -763,4 +764,151 @@ export const cashbookApi = {
 			`/api/v1/cashbook${s ? `?${s}` : ''}`
 		);
 	},
+};
+
+// ── Sprint 2: AI Features API ─────────────────────────────────────────────────
+
+export interface OcrJob {
+	jobId: string;
+	jobType: 'purchase_bill' | 'product_catalog';
+	status: 'pending' | 'processing' | 'completed' | 'failed';
+	parsedItems?: unknown[] | null;
+	purchaseOrderId?: string | null;
+	productsCreated: number;
+	errorMessage?: string | null;
+	processedAt?: string | null;
+	createdAt?: string;
+}
+
+export interface ReplenishmentSuggestion {
+	productId: string;
+	productName: string;
+	currentStock: number;
+	minStock: number;
+	suggestedOrderQty: number;
+	urgency: 'critical' | 'high' | 'normal';
+	velocity30d: number;
+	preferredSupplier: string | null;
+}
+
+export interface AnomalyResult {
+	isAnomaly: boolean;
+	severity: 'none' | 'low' | 'medium' | 'high';
+	message: string;
+	expectedRange: { min: number; max: number };
+}
+
+export interface PredictiveReminderResult {
+	scheduled: number;
+	skipped: number;
+}
+
+/**
+ * Upload a file for AI processing via multipart form.
+ * Returns immediately with { jobId, status: 'pending' }.
+ * Poll aiApi.getOcrJob(jobId) until status is 'completed' or 'failed'.
+ */
+async function uploadForOcr(endpoint: string, file: File): Promise<{ jobId: string; status: string }> {
+	const token = getToken();
+	const form = new FormData();
+	form.append('file', file);
+
+	const res = await fetch(`${API_BASE}${endpoint}`, {
+		method: 'POST',
+		headers: token ? { Authorization: `Bearer ${token}` } : {},
+		body: form,
+	});
+
+	if (!res.ok) {
+		const body = await res.json().catch(() => ({ message: res.statusText }));
+		const msg =
+			typeof body?.message === 'string'
+				? body.message
+				: typeof body?.error === 'string'
+					? body.error
+					: `Upload failed: ${res.status}`;
+		throw new Error(msg);
+	}
+
+	return res.json() as Promise<{ jobId: string; status: string }>;
+}
+
+export const aiApi = {
+	/** Upload a supplier bill photo → async OCR → PurchaseOrder creation */
+	uploadPurchaseBill: (file: File) => uploadForOcr('/api/v1/ai/purchase-bill/ocr', file),
+
+	/** Upload a shelf photo → async catalog seeding */
+	seedCatalogFromPhoto: (file: File) => uploadForOcr('/api/v1/ai/catalog/seed-from-photo', file),
+
+	/** Poll for OCR job status */
+	getOcrJob: (jobId: string) => request<OcrJob>(`/api/v1/ai/ocr-jobs/${jobId}`),
+
+	/** List recent OCR jobs */
+	listOcrJobs: (limit = 20) => request<{ jobs: OcrJob[] }>(`/api/v1/ai/ocr-jobs?limit=${limit}`),
+
+	/** Get stock replenishment suggestions */
+	getReplenishmentSuggestions: () =>
+		request<{ suggestions: ReplenishmentSuggestion[] }>('/api/v1/ai/replenishment-suggestions'),
+
+	/** Check if an invoice total is anomalous for a customer */
+	checkAnomaly: (customerId: string, total: number) =>
+		request<{ anomaly: AnomalyResult }>(
+			`/api/v1/ai/anomaly-check?customerId=${encodeURIComponent(customerId)}&total=${total}`
+		),
+
+	/** Schedule predictive payment reminders for near-due invoices */
+	schedulePredictiveReminders: () =>
+		request<PredictiveReminderResult>('/api/v1/ai/predictive-reminders/schedule', {
+			method: 'POST',
+			body: '{}',
+		}),
+};
+
+// ─── Draft / Staging API ──────────────────────────────────────────────────────
+
+export interface Draft {
+	id: string;
+	type: 'purchase_entry' | 'product' | 'stock_adjustment';
+	status: 'pending' | 'confirmed' | 'discarded';
+	title: string | null;
+	data: Record<string, unknown>;
+	notes: string | null;
+	createdBy: string | null;
+	confirmedAt: string | null;
+	discardedAt: string | null;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export const draftApi = {
+	/** Create a new pending draft */
+	create: (type: Draft['type'], data: Record<string, unknown>, title?: string, notes?: string) =>
+		request<{ draft: Draft }>('/api/v1/drafts', {
+			method: 'POST',
+			body: JSON.stringify({ type, data, title, notes }),
+		}),
+
+	/** List drafts — defaults to pending */
+	list: (type?: Draft['type'], status: Draft['status'] = 'pending') =>
+		request<{ drafts: Draft[]; count: number }>(`/api/v1/drafts?${type ? `type=${type}&` : ''}status=${status}`),
+
+	/** Fetch a single draft by id */
+	get: (id: string) => request<{ draft: Draft }>(`/api/v1/drafts/${id}`),
+
+	/** Update draft fields (only while pending) */
+	update: (id: string, patch: { data?: Record<string, unknown>; title?: string; notes?: string }) =>
+		request<{ draft: Draft }>(`/api/v1/drafts/${id}`, {
+			method: 'PUT',
+			body: JSON.stringify(patch),
+		}),
+
+	/** Confirm a draft — executes the real DB write */
+	confirm: (id: string) =>
+		request<{ draft: Draft; result: unknown }>(`/api/v1/drafts/${id}/confirm`, {
+			method: 'POST',
+			body: '{}',
+		}),
+
+	/** Discard a draft */
+	discard: (id: string) => request<{ ok: boolean }>(`/api/v1/drafts/${id}`, { method: 'DELETE' }),
 };

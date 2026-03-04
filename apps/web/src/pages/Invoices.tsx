@@ -10,6 +10,19 @@ import { Invoice } from '@/lib/api';
 import InvoiceCreation from '@/components/InvoiceCreation';
 import BottomNav from '@/components/BottomNav';
 
+// Fuzzy match: all characters of query appear in target in order (typo-tolerant)
+function fuzzyMatch(query: string, target: string): boolean {
+	if (!query) return true;
+	const q = query.toLowerCase().replace(/\s+/g, '');
+	const t = target.toLowerCase().replace(/\s+/g, '');
+	if (t.includes(q)) return true; // fast-path exact substring
+	let qi = 0;
+	for (let ti = 0; ti < t.length && qi < q.length; ti++) {
+		if (t[ti] === q[qi]) qi++;
+	}
+	return qi === q.length;
+}
+
 const STATUS_TABS = ['All', 'Draft', 'Pending', 'Partial', 'Paid', 'Cancelled'] as const;
 type StatusTab = (typeof STATUS_TABS)[number];
 
@@ -39,8 +52,7 @@ const Invoices = () => {
 	const filtered = invoices.filter((inv: Invoice) => {
 		const matchStatus = statusTab === 'All' || inv.status.toLowerCase() === statusTab.toLowerCase();
 		const q = search.toLowerCase();
-		const matchSearch =
-			!q || inv.invoiceNo?.toLowerCase().includes(q) || inv.customer?.name?.toLowerCase().includes(q);
+		const matchSearch = !q || fuzzyMatch(q, inv.invoiceNo ?? '') || fuzzyMatch(q, inv.customer?.name ?? '');
 		return matchStatus && matchSearch;
 	});
 

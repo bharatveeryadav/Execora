@@ -220,6 +220,7 @@ model Tenant {
   conversationFlows      ConversationFlow[]
   voiceRecordings        VoiceRecording[]
   expenses               Expense[]
+  drafts                 Draft[]
 
   @@index([status, plan])
   @@index([createdAt])
@@ -1367,6 +1368,66 @@ model GstAudit {
 
   @@index([tenantId, createdAt(sort: Desc)])
   @@map("gst_audit")
+}
+
+// =====================================================
+// MODEL: OCR JOBS (Sprint 2 — async AI image processing)
+// =====================================================
+// Tracks every AI image-processing request: OCR of supplier bills
+// ("purchase_bill") or photo-to-catalog seeding ("product_catalog").
+// Status lifecycle: pending → processing → completed | failed
+model OcrJob {
+  id              String    @id @default(uuid())
+  tenantId        String    @map("tenant_id")
+  jobType         String    @map("job_type")          // "purchase_bill" | "product_catalog"
+  status          String    @default("pending")        // pending | processing | completed | failed
+  imageKey        String    @map("image_key")          // MinIO object key of the uploaded image
+  imageMimeType   String    @default("image/jpeg") @map("image_mime_type")
+  rawResult       Json?     @map("raw_result")         // raw OpenAI Vision JSON response
+  parsedItems     Json?     @map("parsed_items")       // normalised extracted items array
+  purchaseOrderId String?   @unique @map("purchase_order_id")  // set when a PO was auto-created
+  productsCreated Int       @default(0) @map("products_created")
+  errorMessage    String?   @map("error_message")
+  retryCount      Int       @default(0) @map("retry_count")
+  processedAt     DateTime? @map("processed_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@map("ocr_jobs")
+}
+
+// =====================================================
+// MODEL: DRAFT (user-editable staging records)
+// =====================================================
+// Every form that mutates data saves here first.
+// Confirming a draft commits it to the real table and broadcasts via WS.
+// Users can accumulate multiple pending drafts and confirm/discard later.
+model Draft {
+  id           String    @id @default(uuid())
+  tenantId     String    @map("tenant_id")
+  /// purchase_entry | product | stock_adjustment
+  type         String
+  /// pending | confirmed | discarded
+  status       String    @default("pending")
+  /// Human-readable summary shown in the manager panel
+  title        String?
+  /// The raw form data to replay on confirm
+  data         Json      @default("{}")
+  notes        String?
+  createdBy    String?   @map("created_by")
+  confirmedAt  DateTime? @map("confirmed_at")
+  discardedAt  DateTime? @map("discarded_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@index([tenantId, type, status])
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@map("drafts")
 }
 
 // =====================================================
