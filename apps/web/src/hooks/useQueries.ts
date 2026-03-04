@@ -190,6 +190,20 @@ export function useUpdateInvoice() {
 	});
 }
 
+export function useConvertProforma() {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: ({ id, payment }: { id: string; payment?: { amount: number; method: string } }) =>
+			invoiceApi.convertProforma(id, payment),
+		onSuccess: (_result, { id }) => {
+			qc.invalidateQueries({ queryKey: QK.invoice(id) });
+			qc.invalidateQueries({ queryKey: ['invoices'] });
+			qc.invalidateQueries({ queryKey: QK.summary });
+			qc.invalidateQueries({ queryKey: ['customers'] });
+		},
+	});
+}
+
 // ── Products ──────────────────────────────────────────────────────────────────
 
 export function useProducts() {

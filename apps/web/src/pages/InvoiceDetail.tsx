@@ -13,8 +13,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { useInvoice, useCancelInvoice, useUpdateInvoice } from "@/hooks/useQueries";
+import { useInvoice, useCancelInvoice, useUpdateInvoice, useConvertProforma } from "@/hooks/useQueries";
 import { formatCurrency, formatDate, getToken } from "@/lib/api";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FileCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -52,10 +55,14 @@ export default function InvoiceDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [editItems, setEditItems] = useState<Array<{ id: string; name: string; qty: number; price: number; discount: number }>>([]);
   const [editNotes, setEditNotes] = useState("");
+  const [convertOpen, setConvertOpen] = useState(false);
+  const [convertAmount, setConvertAmount] = useState("");
+  const [convertMethod, setConvertMethod] = useState("cash");
 
   const { data: invoice, isLoading } = useInvoice(id!);
   const cancelInvoice = useCancelInvoice();
   const updateInvoice = useUpdateInvoice();
+  const convertProforma = useConvertProforma();
 
   function openEditModal() {
     if (!invoice) return;
@@ -136,6 +143,22 @@ export default function InvoiceDetail() {
   const waLink = customerPhone
     ? `https://wa.me/91${customerPhone.replace(/\D/g, "")}?text=${waText}`
     : null;
+
+  function handleConvert() {
+    if (!invoice) return;
+    const amt = parseFloat(convertAmount);
+    convertProforma.mutate(
+      { id: invoice.id, payment: amt > 0 ? { amount: amt, method: convertMethod } : undefined },
+      {
+        onSuccess: () => {
+          toast({ title: "Proforma converted to Invoice ✅" });
+          setConvertOpen(false);
+          setConvertAmount("");
+        },
+        onError: () => toast({ title: "Conversion failed", variant: "destructive" }),
+      }
+    );
+  }
 
   function handleCancel() {
     cancelInvoice.mutate(invoice!.id, {
@@ -398,6 +421,16 @@ export default function InvoiceDetail() {
           </Button>
         </div>
 
+        {/* Convert Proforma → Invoice */}
+        {invoice.status === "proforma" && (
+          <Button
+            className="w-full gap-2 bg-blue-600 text-white hover:bg-blue-700"
+            onClick={() => { setConvertAmount(String(total)); setConvertOpen(true); }}
+          >
+            <FileCheck className="h-4 w-4" /> Convert to Tax Invoice
+          </Button>
+        )}
+
         {/* Cancel button — only if not already cancelled/paid */}
         {invoice.status !== "cancelled" && invoice.status !== "paid" && (
           <Button
@@ -430,6 +463,54 @@ export default function InvoiceDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Convert Proforma Dialog */}
+      <Dialog open={convertOpen} onOpenChange={setConvertOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Convert {invoice.invoiceNo} to Tax Invoice</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              This will convert the proforma into a final tax invoice. Optionally record an initial payment.
+            </p>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Payment Amount (optional)</label>
+              <Input
+                type="number"
+                min="0"
+                placeholder={`Max ${formatCurrency(total)}`}
+                value={convertAmount}
+                onChange={(e) => setConvertAmount(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Payment Method</label>
+              <Select value={convertMethod} onValueChange={setConvertMethod}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="upi">UPI</SelectItem>
+                  <SelectItem value="card">Card</SelectItem>
+                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConvertOpen(false)}>Cancel</Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={handleConvert}
+              disabled={convertProforma.isPending}
+            >
+              {convertProforma.isPending ? "Converting…" : "Convert to Invoice"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Invoice Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>

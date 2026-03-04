@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
 	Mic,
 	MicOff,
@@ -48,6 +48,21 @@ type SpeechWindow = Window & {
 };
 
 type Step = 'start' | 'listening' | 'processing' | 'confirmation' | 'manual' | 'customer' | 'final' | 'whatsapp';
+
+// ── Price Tiers ───────────────────────────────────────────────────────────────
+const DEFAULT_PRICE_TIERS = [
+	{ name: 'Retail', disc: 0 },
+	{ name: 'Wholesale', disc: 15 },
+	{ name: 'Dealer', disc: 25 },
+];
+
+function loadPriceTiers(): typeof DEFAULT_PRICE_TIERS {
+	try {
+		return JSON.parse(localStorage.getItem('execora:pricetiers') ?? 'null') ?? DEFAULT_PRICE_TIERS;
+	} catch {
+		return DEFAULT_PRICE_TIERS;
+	}
+}
 type SupplyType = 'INTRASTATE' | 'INTERSTATE';
 
 interface InvoiceItem {
@@ -100,6 +115,8 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 	const [discountPct, setDiscountPct] = useState(0);
 	const [discountFlat, setDiscountFlat] = useState(0);
 	const [isProforma, setIsProforma] = useState(false);
+	const [priceTierIdx, setPriceTierIdx] = useState<number | null>(null);
+	const priceTiers = useMemo(() => loadPriceTiers(), []);
 	const [buyerGstin, setBuyerGstin] = useState('');
 	const [placeOfSupply, setPlaceOfSupply] = useState('');
 	// Partial payment at billing
@@ -156,6 +173,7 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 			setPartialAmount(0);
 			setPartialMethod('cash');
 			setIsProforma(false);
+			setPriceTierIdx(null);
 			setBuyerGstin('');
 			setPlaceOfSupply('');
 		} else {
@@ -740,6 +758,37 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 									}
 								/>
 							)}
+						</div>
+
+						{/* Price Tier selector */}
+						<div className="flex items-center gap-2">
+							<Tag className="h-4 w-4 shrink-0 text-muted-foreground" />
+							<span className="text-xs text-muted-foreground whitespace-nowrap">Price List</span>
+							<div className="flex gap-1 flex-wrap">
+								{priceTiers.map((tier, idx) => (
+									<button
+										key={tier.name}
+										onClick={() => {
+											if (priceTierIdx === idx) {
+												setPriceTierIdx(null);
+												setDiscountPct(0);
+												setDiscountFlat(0);
+											} else {
+												setPriceTierIdx(idx);
+												setDiscountPct(tier.disc);
+												setDiscountFlat(0);
+											}
+										}}
+										className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors ${
+											priceTierIdx === idx
+												? 'border-primary bg-primary text-primary-foreground'
+												: 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground'
+										}`}
+									>
+										{tier.name}{tier.disc > 0 && <span className="opacity-60"> -{tier.disc}%</span>}
+									</button>
+								))}
+							</div>
 						</div>
 
 						{/* Discount row */}

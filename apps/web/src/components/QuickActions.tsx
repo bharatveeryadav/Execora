@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, Wallet, Package, UserPlus, ShoppingCart, Users, BarChart3 } from "lucide-react";
+import { FileText, Wallet, Package, UserPlus, ShoppingCart, Users, BarChart3, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +41,7 @@ const QuickActions = () => {
     { label: "Invoices",     icon: FileText,    primary: false, onClick: () => navigate("/invoices") },
     { label: "Customers",    icon: Users,       primary: false, onClick: () => navigate("/customers") },
     { label: "Expenses",     icon: ShoppingCart,primary: false, onClick: () => navigate("/expenses") },
+    { label: "Purchases",    icon: Truck,       primary: false, onClick: () => navigate("/purchases") },
     { label: "Reports",      icon: BarChart3,   primary: false, onClick: () => navigate("/reports") },
   ];
 

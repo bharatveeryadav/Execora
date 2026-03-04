@@ -13,6 +13,7 @@ import CustomerDetail from "./pages/CustomerDetail";
 import Invoices from "./pages/Invoices";
 import InvoiceDetail from "./pages/InvoiceDetail";
 import Expenses from "./pages/Expenses";
+import Purchases from "./pages/Purchases";
 import CashBook from "./pages/CashBook";
 import DayBook from "./pages/DayBook";
 import NotFound from "./pages/NotFound";
@@ -119,6 +120,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Expenses />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/purchases"
+        element={
+          <ProtectedRoute>
+            <Purchases />
           </ProtectedRoute>
         }
       />
