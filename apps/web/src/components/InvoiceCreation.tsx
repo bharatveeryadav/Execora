@@ -16,15 +16,17 @@ import {
 	Wallet,
 	Users,
 	Keyboard,
+	ScanLine,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
 import { wsClient } from '@/lib/ws';
-import { useCreateCustomer, useCreateInvoice, useCustomers } from '@/hooks/useQueries';
+import { useCreateCustomer, useCreateInvoice, useCustomers, useProductByBarcode } from '@/hooks/useQueries';
 import { formatCurrency, type Customer, invoiceApi, customerApi } from '@/lib/api';
 import { useQueryClient } from '@tanstack/react-query';
+import BarcodeScanner from '@/components/BarcodeScanner';
 
 type SpeechWindow = Window & {
 	SpeechRecognition?: new () => {
@@ -132,6 +134,35 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 	const createCustomer = useCreateCustomer();
 	const { data: customers = [] } = useCustomers(customerSearch);
 	const qc = useQueryClient();
+	const lookupByBarcode = useProductByBarcode();
+	const [invoiceScannerOpen, setInvoiceScannerOpen] = useState(false);
+
+	/** Scan barcode → look up product → add row to invoice items */
+	const handleInvoiceBarcodeScan = async (code: string) => {
+		setInvoiceScannerOpen(false);
+		try {
+			const res = await lookupByBarcode.mutateAsync(code);
+			if (res?.product) {
+				const p = res.product;
+				const price = parseFloat(String(p.price));
+				setItems((prev) => {
+					// If item already in list, increment qty
+					const existingIdx = prev.findIndex((it) => it.name === p.name);
+					if (existingIdx >= 0) {
+						return prev.map((it, i) => {
+							if (i !== existingIdx) return it;
+							const qty = parseInt(it.qty) + 1;
+							return { ...it, qty: String(qty), total: Math.round(price * qty * 100) / 100 };
+						});
+					}
+					// New item
+					return [...prev, { name: p.name, qty: '1', price, discount: 0, total: price }];
+				});
+			}
+		} catch {
+			setError(`Product not found for barcode: ${code}`);
+		}
+	};
 
 	// ── totals ────────────────────────────────────────────────────────────────
 	const subtotal = items.reduce((s, i) => s + i.total, 0);
@@ -604,7 +635,7 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 					<td>${escapeHtml(item.qty)}</td>
 					<td style="text-align:right">₹${Number(item.price || 0).toFixed(2)}</td>
 					<td style="text-align:right">₹${Number(item.total || 0).toFixed(2)}</td>
-				</tr>`,
+				</tr>`
 			)
 			.join('');
 
@@ -702,8 +733,13 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 				try {
 					const { customers: retry } = await customerApi.search('Walk-in', 20);
 					const found2 = retry.find((c: Customer) => /walk\s*-?\s*in|cash\s*customer/i.test(c.name));
-					if (found2) { await handleSelectCustomer(found2); return; }
-				} catch { /* fall through */ }
+					if (found2) {
+						await handleSelectCustomer(found2);
+						return;
+					}
+				} catch {
+					/* fall through */
+				}
 			}
 			setError(`Cash Sale failed: ${msg}`);
 		}
@@ -711,96 +747,280 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 
 	// ── render ────────────────────────────────────────────────────────────────
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-				<DialogHeader>
-					<DialogTitle className="flex items-center gap-2 text-lg">
-						🧾 {step === 'start' && (isProforma ? 'New Quotation / Proforma' : 'New Invoice')}
-						{step === 'listening' && 'Listening...'}
-						{step === 'processing' && 'Processing...'}
-						{step === 'confirmation' && 'Confirm Items'}
-						{step === 'customer' && 'Add Customer'}
-						{step === 'final' && `${isProforma ? 'Proforma' : 'Invoice'} ${createdInvoiceNo || '#NEW'}`}
-						{step === 'whatsapp' && 'Share via WhatsApp'}
-					</DialogTitle>
-				</DialogHeader>
+		<>
+			<Dialog open={open} onOpenChange={onOpenChange}>
+				<DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+					<DialogHeader>
+						<DialogTitle className="flex items-center gap-2 text-lg">
+							🧾 {step === 'start' && (isProforma ? 'New Quotation / Proforma' : 'New Invoice')}
+							{step === 'listening' && 'Listening...'}
+							{step === 'processing' && 'Processing...'}
+							{step === 'confirmation' && 'Confirm Items'}
+							{step === 'customer' && 'Add Customer'}
+							{step === 'final' && `${isProforma ? 'Proforma' : 'Invoice'} ${createdInvoiceNo || '#NEW'}`}
+							{step === 'whatsapp' && 'Share via WhatsApp'}
+						</DialogTitle>
+					</DialogHeader>
 
-				{error && (
-					<div className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</div>
-				)}
+					{error && (
+						<div className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</div>
+					)}
 
-				{/* ── STEP 1: START ─────────────────────────────────────────────── */}
-				{step === 'start' && (
-					<div className="flex flex-col gap-5 py-4">
-						{/* Billing option toggles */}
-						<div className="grid grid-cols-2 gap-2 text-xs">
-							<ToggleChip
-								active={withGst}
-								onClick={() => setWithGst((v) => !v)}
-								icon="🧾"
-								label="GST Invoice"
-							/>
-							<ToggleChip
-								active={isProforma}
-								onClick={() => setIsProforma((v) => !v)}
-								icon="📋"
-								label="Proforma / Quote"
-							/>
-							{withGst && (
+					{/* ── STEP 1: START ─────────────────────────────────────────────── */}
+					{step === 'start' && (
+						<div className="flex flex-col gap-5 py-4">
+							{/* Billing option toggles */}
+							<div className="grid grid-cols-2 gap-2 text-xs">
 								<ToggleChip
-									active={supplyType === 'INTERSTATE'}
-									onClick={() =>
-										setSupplyType((s) => (s === 'INTRASTATE' ? 'INTERSTATE' : 'INTRASTATE'))
-									}
-									icon="🚛"
-									label={
-										supplyType === 'INTERSTATE' ? 'IGST (Inter-state)' : 'CGST+SGST (Intra-state)'
-									}
+									active={withGst}
+									onClick={() => setWithGst((v) => !v)}
+									icon="🧾"
+									label="GST Invoice"
 								/>
-							)}
-						</div>
+								<ToggleChip
+									active={isProforma}
+									onClick={() => setIsProforma((v) => !v)}
+									icon="📋"
+									label="Proforma / Quote"
+								/>
+								{withGst && (
+									<ToggleChip
+										active={supplyType === 'INTERSTATE'}
+										onClick={() =>
+											setSupplyType((s) => (s === 'INTRASTATE' ? 'INTERSTATE' : 'INTRASTATE'))
+										}
+										icon="🚛"
+										label={
+											supplyType === 'INTERSTATE'
+												? 'IGST (Inter-state)'
+												: 'CGST+SGST (Intra-state)'
+										}
+									/>
+								)}
+							</div>
 
-						{/* Price Tier selector */}
-						<div className="flex items-center gap-2">
-							<Tag className="h-4 w-4 shrink-0 text-muted-foreground" />
-							<span className="text-xs text-muted-foreground whitespace-nowrap">Price List</span>
-							<div className="flex gap-1 flex-wrap">
-								{priceTiers.map((tier, idx) => (
-									<button
-										key={tier.name}
-										onClick={() => {
-											if (priceTierIdx === idx) {
-												setPriceTierIdx(null);
-												setDiscountPct(0);
-												setDiscountFlat(0);
-											} else {
-												setPriceTierIdx(idx);
-												setDiscountPct(tier.disc);
-												setDiscountFlat(0);
-											}
+							{/* Price Tier selector */}
+							<div className="flex items-center gap-2">
+								<Tag className="h-4 w-4 shrink-0 text-muted-foreground" />
+								<span className="text-xs text-muted-foreground whitespace-nowrap">Price List</span>
+								<div className="flex gap-1 flex-wrap">
+									{priceTiers.map((tier, idx) => (
+										<button
+											key={tier.name}
+											onClick={() => {
+												if (priceTierIdx === idx) {
+													setPriceTierIdx(null);
+													setDiscountPct(0);
+													setDiscountFlat(0);
+												} else {
+													setPriceTierIdx(idx);
+													setDiscountPct(tier.disc);
+													setDiscountFlat(0);
+												}
+											}}
+											className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors ${
+												priceTierIdx === idx
+													? 'border-primary bg-primary text-primary-foreground'
+													: 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground'
+											}`}
+										>
+											{tier.name}
+											{tier.disc > 0 && <span className="opacity-60"> -{tier.disc}%</span>}
+										</button>
+									))}
+								</div>
+							</div>
+
+							{/* Discount row */}
+							<div className="flex items-center gap-2">
+								<Tag className="h-4 w-4 shrink-0 text-muted-foreground" />
+								<span className="text-xs text-muted-foreground w-20">Discount</span>
+								<div className="flex gap-1 flex-1">
+									<input
+										type="number"
+										min={0}
+										max={100}
+										placeholder="% off"
+										value={discountPct || ''}
+										onChange={(e) => {
+											setDiscountPct(Number(e.target.value));
+											setDiscountFlat(0);
 										}}
-										className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors ${
-											priceTierIdx === idx
-												? 'border-primary bg-primary text-primary-foreground'
-												: 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground'
-										}`}
+										className="w-20 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+									/>
+									<span className="text-xs text-muted-foreground self-center">or</span>
+									<input
+										type="number"
+										min={0}
+										placeholder="₹ flat"
+										value={discountFlat || ''}
+										onChange={(e) => {
+											setDiscountFlat(Number(e.target.value));
+											setDiscountPct(0);
+										}}
+										className="w-24 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+									/>
+								</div>
+							</div>
+
+							{/* B2B GSTIN */}
+							<div className="flex items-center gap-2">
+								<Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+								<input
+									placeholder="Buyer GSTIN (B2B, optional)"
+									value={buyerGstin}
+									onChange={(e) => setBuyerGstin(e.target.value.toUpperCase())}
+									maxLength={15}
+									className="flex-1 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+								/>
+								{withGst && (
+									<input
+										placeholder="State code"
+										value={placeOfSupply}
+										onChange={(e) => setPlaceOfSupply(e.target.value)}
+										maxLength={2}
+										className="w-20 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+									/>
+								)}
+							</div>
+
+							{/* Partial payment at billing */}
+							{!isProforma && (
+								<div className="flex items-center gap-2">
+									<Wallet className="h-4 w-4 shrink-0 text-muted-foreground" />
+									<span className="text-xs text-muted-foreground w-20">Paid now</span>
+									<input
+										type="number"
+										min={0}
+										placeholder="₹ amount"
+										value={partialAmount || ''}
+										onChange={(e) => setPartialAmount(Number(e.target.value))}
+										className="w-24 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+									/>
+									<select
+										value={partialMethod}
+										onChange={(e) => setPartialMethod(e.target.value as typeof partialMethod)}
+										className="rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
 									>
-										{tier.name}{tier.disc > 0 && <span className="opacity-60"> -{tier.disc}%</span>}
-									</button>
-								))}
+										<option value="cash">Cash</option>
+										<option value="upi">UPI</option>
+										<option value="card">Card</option>
+										<option value="other">Other</option>
+									</select>
+								</div>
+							)}
+
+							{/* Input options */}
+							<div className="flex flex-col items-center gap-3 pt-2">
+								<p className="text-sm text-muted-foreground text-center">
+									Tap mic or say{' '}
+									<span className="font-medium text-foreground">"Hey Execora, naya bill banao"</span>
+								</p>
+								<button
+									onClick={() => void startVoiceInput()}
+									className="flex h-20 w-20 items-center justify-center rounded-full bg-destructive/10 text-destructive transition-transform hover:scale-105 active:scale-95"
+								>
+									<Mic className="h-9 w-9" />
+								</button>
+								<span className="text-xs text-muted-foreground">Tap to start voice input</span>
+								<div className="flex w-full items-center gap-2">
+									<div className="flex-1 border-t border-border" />
+									<span className="text-xs text-muted-foreground">or</span>
+									<div className="flex-1 border-t border-border" />
+								</div>
+								<Button
+									variant="outline"
+									className="w-full gap-2"
+									onClick={() => {
+										setItems([{ name: '', qty: '1', price: 0, discount: 0, total: 0 }]);
+										setStep('manual');
+									}}
+								>
+									<Keyboard className="h-4 w-4" /> Type Items Manually
+								</Button>
 							</div>
 						</div>
+					)}
 
-						{/* Discount row */}
-						<div className="flex items-center gap-2">
-							<Tag className="h-4 w-4 shrink-0 text-muted-foreground" />
-							<span className="text-xs text-muted-foreground w-20">Discount</span>
-							<div className="flex gap-1 flex-1">
+					{/* ── STEP 2: LISTENING ─────────────────────────────────────────── */}
+					{step === 'listening' && (
+						<div className="space-y-4 py-4">
+							<div className="flex items-center justify-between">
+								<div className="flex items-center gap-2">
+									<span className="relative flex h-3 w-3">
+										<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
+										<span className="relative inline-flex h-3 w-3 rounded-full bg-destructive" />
+									</span>
+									<span className="text-sm font-medium text-destructive">Listening...</span>
+								</div>
+								{isListening && (
+									<Button
+										size="sm"
+										variant="outline"
+										onClick={stopVoiceInput}
+										className="gap-1 text-xs"
+									>
+										<MicOff className="h-3 w-3" /> Stop
+									</Button>
+								)}
+							</div>
+							{transcript && (
+								<div className="rounded-lg bg-muted p-4">
+									<p className="text-sm italic">"{transcript}"</p>
+								</div>
+							)}
+							<Progress value={progress} className="h-2" />
+						</div>
+					)}
+
+					{/* ── STEP 3: PROCESSING ────────────────────────────────────────── */}
+					{step === 'processing' && (
+						<div className="space-y-4 py-4">
+							<div className="flex items-center gap-2">
+								<div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+								<span className="text-sm font-medium">Execora is processing...</span>
+							</div>
+							{transcript && (
+								<div className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
+									Heard: "{transcript}"
+								</div>
+							)}
+							<Progress value={progress} className="h-2" />
+						</div>
+					)}
+
+					{/* ── STEP 4: CONFIRMATION ──────────────────────────────────────── */}
+					{step === 'confirmation' && (
+						<div className="space-y-4">
+							<p className="flex items-center gap-2 text-sm font-medium text-green-600">
+								<Check className="h-4 w-4" />
+								{transcript ? `I heard: "${transcript}"` : 'Items detected:'}
+							</p>
+
+							{items.length > 0 ? (
+								<EditableItemTable
+									items={items}
+									setItems={setItems}
+									withGst={withGst}
+									discountAmt={discountAmt}
+									discountPct={discountPct}
+									discountFlat={discountFlat}
+									partialAmount={partialAmount}
+								/>
+							) : (
+								<div className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
+									No items detected. Proceed to assign customer.
+								</div>
+							)}
+
+							{/* Quick-edit discount */}
+							<div className="flex items-center gap-2">
+								<Tag className="h-3.5 w-3.5 text-muted-foreground" />
 								<input
 									type="number"
 									min={0}
 									max={100}
-									placeholder="% off"
+									placeholder="Discount %"
 									value={discountPct || ''}
 									onChange={(e) => {
 										setDiscountPct(Number(e.target.value));
@@ -808,7 +1028,7 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 									}}
 									className="w-20 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
 								/>
-								<span className="text-xs text-muted-foreground self-center">or</span>
+								<span className="text-xs text-muted-foreground">or</span>
 								<input
 									type="number"
 									min={0}
@@ -821,138 +1041,49 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 									className="w-24 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
 								/>
 							</div>
-						</div>
 
-						{/* B2B GSTIN */}
-						<div className="flex items-center gap-2">
-							<Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-							<input
-								placeholder="Buyer GSTIN (B2B, optional)"
-								value={buyerGstin}
-								onChange={(e) => setBuyerGstin(e.target.value.toUpperCase())}
-								maxLength={15}
-								className="flex-1 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-							/>
-							{withGst && (
-								<input
-									placeholder="State code"
-									value={placeOfSupply}
-									onChange={(e) => setPlaceOfSupply(e.target.value)}
-									maxLength={2}
-									className="w-20 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-								/>
-							)}
-						</div>
-
-						{/* Partial payment at billing */}
-						{!isProforma && (
-							<div className="flex items-center gap-2">
-								<Wallet className="h-4 w-4 shrink-0 text-muted-foreground" />
-								<span className="text-xs text-muted-foreground w-20">Paid now</span>
-								<input
-									type="number"
-									min={0}
-									placeholder="₹ amount"
-									value={partialAmount || ''}
-									onChange={(e) => setPartialAmount(Number(e.target.value))}
-									className="w-24 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-								/>
-								<select
-									value={partialMethod}
-									onChange={(e) => setPartialMethod(e.target.value as typeof partialMethod)}
-									className="rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-								>
-									<option value="cash">Cash</option>
-									<option value="upi">UPI</option>
-									<option value="card">Card</option>
-									<option value="other">Other</option>
-								</select>
+							<div className="rounded-lg bg-muted px-3 py-2 text-sm">
+								<span className="text-muted-foreground">Customer: </span>
+								<span className="font-medium">Not specified</span>
+								{isProforma && (
+									<span className="ml-2 rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
+										Proforma
+									</span>
+								)}
 							</div>
-						)}
 
-						{/* Input options */}
-						<div className="flex flex-col items-center gap-3 pt-2">
-							<p className="text-sm text-muted-foreground text-center">
-								Tap mic or say{' '}
-								<span className="font-medium text-foreground">"Hey Execora, naya bill banao"</span>
-							</p>
-							<button
-								onClick={() => void startVoiceInput()}
-								className="flex h-20 w-20 items-center justify-center rounded-full bg-destructive/10 text-destructive transition-transform hover:scale-105 active:scale-95"
-							>
-								<Mic className="h-9 w-9" />
-							</button>
-							<span className="text-xs text-muted-foreground">Tap to start voice input</span>
-							<div className="flex w-full items-center gap-2">
-								<div className="flex-1 border-t border-border" />
-								<span className="text-xs text-muted-foreground">or</span>
-								<div className="flex-1 border-t border-border" />
-							</div>
-							<Button
-								variant="outline"
-								className="w-full gap-2"
-								onClick={() => {
-									setItems([{ name: '', qty: '1', price: 0, discount: 0, total: 0 }]);
-									setStep('manual');
-								}}
-							>
-								<Keyboard className="h-4 w-4" /> Type Items Manually
-							</Button>
-						</div>
-					</div>
-				)}
-
-				{/* ── STEP 2: LISTENING ─────────────────────────────────────────── */}
-				{step === 'listening' && (
-					<div className="space-y-4 py-4">
-						<div className="flex items-center justify-between">
-							<div className="flex items-center gap-2">
-								<span className="relative flex h-3 w-3">
-									<span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75" />
-									<span className="relative inline-flex h-3 w-3 rounded-full bg-destructive" />
-								</span>
-								<span className="text-sm font-medium text-destructive">Listening...</span>
-							</div>
-							{isListening && (
-								<Button size="sm" variant="outline" onClick={stopVoiceInput} className="gap-1 text-xs">
-									<MicOff className="h-3 w-3" /> Stop
+							<div className="flex gap-2">
+								<Button onClick={handleConfirm} className="flex-1 gap-1.5">
+									<Check className="h-4 w-4" /> Confirm
 								</Button>
-							)}
-						</div>
-						{transcript && (
-							<div className="rounded-lg bg-muted p-4">
-								<p className="text-sm italic">"{transcript}"</p>
+								<Button variant="outline" className="gap-1.5" onClick={() => setStep('start')}>
+									<Edit2 className="h-4 w-4" /> Retry
+								</Button>
+								<Button variant="outline" className="gap-1.5" onClick={() => onOpenChange(false)}>
+									<X className="h-4 w-4" /> Cancel
+								</Button>
 							</div>
-						)}
-						<Progress value={progress} className="h-2" />
-					</div>
-				)}
-
-				{/* ── STEP 3: PROCESSING ────────────────────────────────────────── */}
-				{step === 'processing' && (
-					<div className="space-y-4 py-4">
-						<div className="flex items-center gap-2">
-							<div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-							<span className="text-sm font-medium">Execora is processing...</span>
 						</div>
-						{transcript && (
-							<div className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
-								Heard: "{transcript}"
+					)}
+
+					{/* ── STEP 5: CUSTOMER SEARCH ───────────────────────────────────── */}
+					{/* ── STEP: MANUAL BILLING */}
+					{step === 'manual' && (
+						<div className="space-y-4">
+							<div className="flex items-center justify-between">
+								<p className="text-xs text-muted-foreground">
+									Type item name, price &amp; qty. Tap <strong>+ Add row</strong> for more.
+								</p>
+								<button
+									type="button"
+									onClick={() => setInvoiceScannerOpen(true)}
+									className="flex items-center gap-1.5 rounded-md border border-primary px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary/10"
+									disabled={lookupByBarcode.isPending}
+								>
+									<ScanLine className="h-3.5 w-3.5" />
+									{lookupByBarcode.isPending ? 'Scanning…' : 'Scan'}
+								</button>
 							</div>
-						)}
-						<Progress value={progress} className="h-2" />
-					</div>
-				)}
-
-				{/* ── STEP 4: CONFIRMATION ──────────────────────────────────────── */}
-				{step === 'confirmation' && (
-					<div className="space-y-4">
-						<p className="flex items-center gap-2 text-sm font-medium text-green-600">
-							<Check className="h-4 w-4" />
-							{transcript ? `I heard: "${transcript}"` : 'Items detected:'}
-						</p>
-
-						{items.length > 0 ? (
 							<EditableItemTable
 								items={items}
 								setItems={setItems}
@@ -961,301 +1092,257 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 								discountPct={discountPct}
 								discountFlat={discountFlat}
 								partialAmount={partialAmount}
+								showPriceEdit
 							/>
-						) : (
-							<div className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
-								No items detected. Proceed to assign customer.
+							<div className="flex items-center gap-2">
+								<Tag className="h-3.5 w-3.5 text-muted-foreground" />
+								<input
+									type="number"
+									min={0}
+									max={100}
+									placeholder="Discount %"
+									value={discountPct || ''}
+									onChange={(e) => {
+										setDiscountPct(Number(e.target.value));
+										setDiscountFlat(0);
+									}}
+									className="w-20 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+								/>
+								<span className="text-xs text-muted-foreground">or</span>
+								<input
+									type="number"
+									min={0}
+									placeholder="₹ flat"
+									value={discountFlat || ''}
+									onChange={(e) => {
+										setDiscountFlat(Number(e.target.value));
+										setDiscountPct(0);
+									}}
+									className="w-24 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+								/>
 							</div>
-						)}
-
-						{/* Quick-edit discount */}
-						<div className="flex items-center gap-2">
-							<Tag className="h-3.5 w-3.5 text-muted-foreground" />
-							<input
-								type="number"
-								min={0}
-								max={100}
-								placeholder="Discount %"
-								value={discountPct || ''}
-								onChange={(e) => {
-									setDiscountPct(Number(e.target.value));
-									setDiscountFlat(0);
-								}}
-								className="w-20 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-							/>
-							<span className="text-xs text-muted-foreground">or</span>
-							<input
-								type="number"
-								min={0}
-								placeholder="₹ flat"
-								value={discountFlat || ''}
-								onChange={(e) => {
-									setDiscountFlat(Number(e.target.value));
-									setDiscountPct(0);
-								}}
-								className="w-24 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-							/>
-						</div>
-
-						<div className="rounded-lg bg-muted px-3 py-2 text-sm">
-							<span className="text-muted-foreground">Customer: </span>
-							<span className="font-medium">Not specified</span>
-							{isProforma && (
-								<span className="ml-2 rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
-									Proforma
-								</span>
-							)}
-						</div>
-
-						<div className="flex gap-2">
-							<Button onClick={handleConfirm} className="flex-1 gap-1.5">
-								<Check className="h-4 w-4" /> Confirm
-							</Button>
-							<Button variant="outline" className="gap-1.5" onClick={() => setStep('start')}>
-								<Edit2 className="h-4 w-4" /> Retry
-							</Button>
-							<Button variant="outline" className="gap-1.5" onClick={() => onOpenChange(false)}>
-								<X className="h-4 w-4" /> Cancel
-							</Button>
-						</div>
-					</div>
-				)}
-
-				{/* ── STEP 5: CUSTOMER SEARCH ───────────────────────────────────── */}
-				{/* ── STEP: MANUAL BILLING */}
-				{step === 'manual' && (
-					<div className="space-y-4">
-						<p className="text-xs text-muted-foreground">
-							Type item name, price &amp; qty. Tap <strong>+ Add row</strong> for more.
-						</p>
-						<EditableItemTable
-							items={items}
-							setItems={setItems}
-							withGst={withGst}
-							discountAmt={discountAmt}
-							discountPct={discountPct}
-							discountFlat={discountFlat}
-							partialAmount={partialAmount}
-							showPriceEdit
-						/>
-						<div className="flex items-center gap-2">
-							<Tag className="h-3.5 w-3.5 text-muted-foreground" />
-							<input
-								type="number" min={0} max={100} placeholder="Discount %"
-								value={discountPct || ''}
-								onChange={(e) => { setDiscountPct(Number(e.target.value)); setDiscountFlat(0); }}
-								className="w-20 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-							/>
-							<span className="text-xs text-muted-foreground">or</span>
-							<input
-								type="number" min={0} placeholder="₹ flat"
-								value={discountFlat || ''}
-								onChange={(e) => { setDiscountFlat(Number(e.target.value)); setDiscountPct(0); }}
-								className="w-24 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-							/>
-						</div>
-						<div className="grid grid-cols-2 gap-2 pt-1">
+							<div className="grid grid-cols-2 gap-2 pt-1">
+								<Button
+									className="gap-1.5"
+									onClick={() => void handleWalkInCustomer()}
+									disabled={
+										items.every((i) => !i.name.trim()) ||
+										createCustomer.isPending ||
+										createInvoice.isPending
+									}
+								>
+									<Wallet className="h-4 w-4" />
+									{createCustomer.isPending ? 'Saving…' : 'Cash Sale'}
+								</Button>
+								<Button
+									variant="outline"
+									className="gap-1.5"
+									onClick={handleConfirm}
+									disabled={items.every((i) => !i.name.trim())}
+								>
+									<Users className="h-4 w-4" /> Select Customer
+								</Button>
+							</div>
 							<Button
-								className="gap-1.5"
+								variant="ghost"
+								size="sm"
+								className="w-full text-xs"
+								onClick={() => setStep('start')}
+							>
+								← Back to options
+							</Button>
+						</div>
+					)}
+
+					{step === 'customer' && (
+						<div className="space-y-4">
+							<Button
+								className="w-full justify-start gap-2"
+								variant="default"
 								onClick={() => void handleWalkInCustomer()}
-								disabled={items.every((i) => !i.name.trim()) || createCustomer.isPending || createInvoice.isPending}
+								disabled={createCustomer.isPending || createInvoice.isPending}
 							>
 								<Wallet className="h-4 w-4" />
-								{createCustomer.isPending ? 'Saving…' : 'Cash Sale'}
+								{createCustomer.isPending
+									? 'Preparing walk-in customer...'
+									: 'Walk-in / Cash Customer (Quick Bill)'}
 							</Button>
-							<Button
-								variant="outline"
-								className="gap-1.5"
-								onClick={handleConfirm}
-								disabled={items.every((i) => !i.name.trim())}
-							>
-								<Users className="h-4 w-4" /> Select Customer
-							</Button>
-						</div>
-						<Button
-							variant="ghost" size="sm" className="w-full text-xs"
-							onClick={() => setStep('start')}
-						>
-							← Back to options
-						</Button>
-					</div>
-				)}
 
-				{step === 'customer' && (
-					<div className="space-y-4">
-						<Button
-							className="w-full justify-start gap-2"
-							variant="default"
-							onClick={() => void handleWalkInCustomer()}
-							disabled={createCustomer.isPending || createInvoice.isPending}
-						>
-							<Wallet className="h-4 w-4" />
-							{createCustomer.isPending
-								? 'Preparing walk-in customer...'
-								: 'Walk-in / Cash Customer (Quick Bill)'}
-						</Button>
-
-						<input
-							type="text"
-							placeholder="Search customer name or phone…"
-							value={customerSearch}
-							onChange={(e) => setCustomerSearch(e.target.value)}
-							className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-						/>
-						<div className="max-h-48 space-y-2 overflow-y-auto">
-							{customers.slice(0, 8).map((c) => (
-								<Card
-									key={c.id}
-									className="cursor-pointer border-primary/20 hover:border-primary/50 transition-colors"
-									onClick={() => void handleSelectCustomer(c)}
-								>
-									<CardContent className="p-3">
-										<div className="flex items-center justify-between">
-											<div>
-												<p className="text-sm font-semibold">{c.name}</p>
-												{c.phone && (
-													<p className="flex items-center gap-1 text-xs text-muted-foreground">
-														<Phone className="h-3 w-3" /> {c.phone}
+							<input
+								type="text"
+								placeholder="Search customer name or phone…"
+								value={customerSearch}
+								onChange={(e) => setCustomerSearch(e.target.value)}
+								className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+							/>
+							<div className="max-h-48 space-y-2 overflow-y-auto">
+								{customers.slice(0, 8).map((c) => (
+									<Card
+										key={c.id}
+										className="cursor-pointer border-primary/20 hover:border-primary/50 transition-colors"
+										onClick={() => void handleSelectCustomer(c)}
+									>
+										<CardContent className="p-3">
+											<div className="flex items-center justify-between">
+												<div>
+													<p className="text-sm font-semibold">{c.name}</p>
+													{c.phone && (
+														<p className="flex items-center gap-1 text-xs text-muted-foreground">
+															<Phone className="h-3 w-3" /> {c.phone}
+														</p>
+													)}
+												</div>
+												{parseFloat(String(c.balance)) > 0 && (
+													<p className="text-xs text-destructive font-medium">
+														Owes {formatCurrency(parseFloat(String(c.balance)))}
 													</p>
 												)}
 											</div>
-											{parseFloat(String(c.balance)) > 0 && (
-												<p className="text-xs text-destructive font-medium">
-													Owes {formatCurrency(parseFloat(String(c.balance)))}
-												</p>
-											)}
-										</div>
-									</CardContent>
-								</Card>
-							))}
-							{customers.length === 0 && customerSearch && (
-								<p className="text-center text-sm text-muted-foreground py-4">No customer found</p>
-							)}
-						</div>
-					</div>
-				)}
-
-				{/* ── STEP 6: FINAL ────────────────────────────────────────────── */}
-				{step === 'final' && (
-					<div className="space-y-4">
-						<div className="flex items-center justify-between text-xs text-muted-foreground">
-							<span>
-								{new Date().toLocaleString('en-IN', {
-									day: '2-digit',
-									month: 'short',
-									year: 'numeric',
-									hour: '2-digit',
-									minute: '2-digit',
-								})}
-							</span>
-							<span
-								className={`rounded px-2 py-0.5 ${isProforma ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300' : 'bg-warning/10 text-warning'}`}
-							>
-								{createInvoice.isPending ? '⏳ Saving...' : isProforma ? '📋 Proforma' : '✅ Saved'}
-							</span>
-						</div>
-
-						{selectedCustomer && (
-							<div className="rounded-lg bg-muted px-3 py-2 text-sm">
-								<p className="font-medium">{selectedCustomer.name}</p>
-								{selectedCustomer.phone && (
-									<p className="text-muted-foreground">📞 {selectedCustomer.phone}</p>
+										</CardContent>
+									</Card>
+								))}
+								{customers.length === 0 && customerSearch && (
+									<p className="text-center text-sm text-muted-foreground py-4">No customer found</p>
 								)}
-								{buyerGstin && <p className="text-xs text-muted-foreground">GSTIN: {buyerGstin}</p>}
 							</div>
-						)}
+						</div>
+					)}
 
-						{items.length > 0 && (
-							<InvoiceSummaryTable
-								items={items}
-								subtotal={subtotal}
-								gstAmt={gstAmt}
-								discountAmt={discountAmt}
-								total={total}
-								partialAmount={partialAmount}
-								balanceDue={balanceDue}
-								withGst={withGst}
-								isProforma={isProforma}
-							/>
-						)}
-
-						{partialAmount > 0 && (
-							<div className="rounded-lg bg-green-50 px-3 py-2 text-xs dark:bg-green-950/30">
-								<span className="text-green-700 dark:text-green-400 font-medium">
-									✓ Paid: {formatCurrency(partialAmount)} ({partialMethod.toUpperCase()})
+					{/* ── STEP 6: FINAL ────────────────────────────────────────────── */}
+					{step === 'final' && (
+						<div className="space-y-4">
+							<div className="flex items-center justify-between text-xs text-muted-foreground">
+								<span>
+									{new Date().toLocaleString('en-IN', {
+										day: '2-digit',
+										month: 'short',
+										year: 'numeric',
+										hour: '2-digit',
+										minute: '2-digit',
+									})}
 								</span>
-								{balanceDue > 0 && (
-									<span className="ml-2 text-destructive">
-										· Balance due: {formatCurrency(balanceDue)}
-									</span>
-								)}
-							</div>
-						)}
-
-						<div className="grid grid-cols-2 gap-2">
-							<Button variant="outline" className="gap-1.5 text-xs" onClick={handlePrintInvoice}>
-								<Printer className="h-4 w-4" /> Print
-							</Button>
-							{selectedCustomer?.phone ? (
-								<Button onClick={handleWhatsApp} className="gap-1.5 text-xs">
-									<MessageSquare className="h-4 w-4" /> WhatsApp
-								</Button>
-							) : (
-								<Button className="gap-1.5 text-xs" onClick={() => onOpenChange(false)}>
-									<Check className="h-4 w-4" /> Done
-								</Button>
-							)}
-							<Button variant="outline" className="gap-1.5 text-xs" onClick={() => onOpenChange(false)}>
-								<Download className="h-4 w-4" /> Close
-							</Button>
-							<Button variant="outline" className="gap-1.5 text-xs" onClick={() => setStep('start')}>
-								<Edit2 className="h-4 w-4" /> New Invoice
-							</Button>
-						</div>
-					</div>
-				)}
-
-				{/* ── STEP 7: WHATSAPP ─────────────────────────────────────────── */}
-				{step === 'whatsapp' && selectedCustomer && (
-					<div className="space-y-4">
-						<div className="rounded-lg bg-muted px-3 py-2 text-sm">
-							<p className="text-muted-foreground">
-								To:{' '}
-								<span className="font-medium text-foreground">
-									{selectedCustomer.name} ({selectedCustomer.phone})
-								</span>{' '}
-								✓
-							</p>
-						</div>
-						<div className="rounded-lg border p-3">
-							<p className="text-sm italic">
-								"{selectedCustomer.name.split(' ')[0]} ji, aapka {isProforma ? 'quotation' : 'bill'}{' '}
-								{formatCurrency(total)} ka. Dhanyavaad!"
-							</p>
-							<button className="mt-1 text-xs text-primary hover:underline">Edit Message</button>
-						</div>
-						{!whatsappSent ? (
-							<Button className="w-full gap-1.5" asChild>
-								<a
-									href={`https://wa.me/91${selectedCustomer.phone?.replace(/\D/g, '')}?text=${encodeURIComponent(`${selectedCustomer.name.split(' ')[0]} ji, aapka ${isProforma ? 'quotation' : 'bill'} ${formatCurrency(total)} ka. Dhanyavaad! — Execora`)}`}
-									target="_blank"
-									rel="noreferrer"
-									onClick={() => setTimeout(() => setWhatsappSent(true), 500)}
+								<span
+									className={`rounded px-2 py-0.5 ${isProforma ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300' : 'bg-warning/10 text-warning'}`}
 								>
-									<MessageSquare className="h-4 w-4" /> Send via WhatsApp
-								</a>
-							</Button>
-						) : (
-							<div className="rounded-lg bg-green-50 p-3 text-sm dark:bg-green-950/30">
-								<p className="flex items-center gap-1.5 font-medium text-green-700 dark:text-green-400">
-									<Check className="h-4 w-4" /> Shared successfully!
+									{createInvoice.isPending ? '⏳ Saving...' : isProforma ? '📋 Proforma' : '✅ Saved'}
+								</span>
+							</div>
+
+							{selectedCustomer && (
+								<div className="rounded-lg bg-muted px-3 py-2 text-sm">
+									<p className="font-medium">{selectedCustomer.name}</p>
+									{selectedCustomer.phone && (
+										<p className="text-muted-foreground">📞 {selectedCustomer.phone}</p>
+									)}
+									{buyerGstin && <p className="text-xs text-muted-foreground">GSTIN: {buyerGstin}</p>}
+								</div>
+							)}
+
+							{items.length > 0 && (
+								<InvoiceSummaryTable
+									items={items}
+									subtotal={subtotal}
+									gstAmt={gstAmt}
+									discountAmt={discountAmt}
+									total={total}
+									partialAmount={partialAmount}
+									balanceDue={balanceDue}
+									withGst={withGst}
+									isProforma={isProforma}
+								/>
+							)}
+
+							{partialAmount > 0 && (
+								<div className="rounded-lg bg-green-50 px-3 py-2 text-xs dark:bg-green-950/30">
+									<span className="text-green-700 dark:text-green-400 font-medium">
+										✓ Paid: {formatCurrency(partialAmount)} ({partialMethod.toUpperCase()})
+									</span>
+									{balanceDue > 0 && (
+										<span className="ml-2 text-destructive">
+											· Balance due: {formatCurrency(balanceDue)}
+										</span>
+									)}
+								</div>
+							)}
+
+							<div className="grid grid-cols-2 gap-2">
+								<Button variant="outline" className="gap-1.5 text-xs" onClick={handlePrintInvoice}>
+									<Printer className="h-4 w-4" /> Print
+								</Button>
+								{selectedCustomer?.phone ? (
+									<Button onClick={handleWhatsApp} className="gap-1.5 text-xs">
+										<MessageSquare className="h-4 w-4" /> WhatsApp
+									</Button>
+								) : (
+									<Button className="gap-1.5 text-xs" onClick={() => onOpenChange(false)}>
+										<Check className="h-4 w-4" /> Done
+									</Button>
+								)}
+								<Button
+									variant="outline"
+									className="gap-1.5 text-xs"
+									onClick={() => onOpenChange(false)}
+								>
+									<Download className="h-4 w-4" /> Close
+								</Button>
+								<Button variant="outline" className="gap-1.5 text-xs" onClick={() => setStep('start')}>
+									<Edit2 className="h-4 w-4" /> New Invoice
+								</Button>
+							</div>
+						</div>
+					)}
+
+					{/* ── STEP 7: WHATSAPP ─────────────────────────────────────────── */}
+					{step === 'whatsapp' && selectedCustomer && (
+						<div className="space-y-4">
+							<div className="rounded-lg bg-muted px-3 py-2 text-sm">
+								<p className="text-muted-foreground">
+									To:{' '}
+									<span className="font-medium text-foreground">
+										{selectedCustomer.name} ({selectedCustomer.phone})
+									</span>{' '}
+									✓
 								</p>
 							</div>
-						)}
-					</div>
-				)}
-			</DialogContent>
-		</Dialog>
+							<div className="rounded-lg border p-3">
+								<p className="text-sm italic">
+									"{selectedCustomer.name.split(' ')[0]} ji, aapka {isProforma ? 'quotation' : 'bill'}{' '}
+									{formatCurrency(total)} ka. Dhanyavaad!"
+								</p>
+								<button className="mt-1 text-xs text-primary hover:underline">Edit Message</button>
+							</div>
+							{!whatsappSent ? (
+								<Button className="w-full gap-1.5" asChild>
+									<a
+										href={`https://wa.me/91${selectedCustomer.phone?.replace(/\D/g, '')}?text=${encodeURIComponent(`${selectedCustomer.name.split(' ')[0]} ji, aapka ${isProforma ? 'quotation' : 'bill'} ${formatCurrency(total)} ka. Dhanyavaad! — Execora`)}`}
+										target="_blank"
+										rel="noreferrer"
+										onClick={() => setTimeout(() => setWhatsappSent(true), 500)}
+									>
+										<MessageSquare className="h-4 w-4" /> Send via WhatsApp
+									</a>
+								</Button>
+							) : (
+								<div className="rounded-lg bg-green-50 p-3 text-sm dark:bg-green-950/30">
+									<p className="flex items-center gap-1.5 font-medium text-green-700 dark:text-green-400">
+										<Check className="h-4 w-4" /> Shared successfully!
+									</p>
+								</div>
+							)}
+						</div>
+					)}
+				</DialogContent>
+			</Dialog>
+
+			{/* Barcode scanner overlay — rendered outside Dialog to avoid z-index clipping */}
+			{invoiceScannerOpen && (
+				<BarcodeScanner
+					hint="Point camera at product barcode to add to bill"
+					onScan={handleInvoiceBarcodeScan}
+					onClose={() => setInvoiceScannerOpen(false)}
+				/>
+			)}
+		</>
 	);
 };
 
@@ -1297,7 +1384,9 @@ function EditableItemTable({
 	showPriceEdit = false,
 }: {
 	items: { name: string; qty: string; price: number; discount: number; total: number }[];
-	setItems: React.Dispatch<React.SetStateAction<{ name: string; qty: string; price: number; discount: number; total: number }[]>>;
+	setItems: React.Dispatch<
+		React.SetStateAction<{ name: string; qty: string; price: number; discount: number; total: number }[]>
+	>;
 	withGst: boolean;
 	discountAmt: number;
 	discountPct: number;
@@ -1425,7 +1514,9 @@ function EditableItemTable({
 							<td className="px-3 py-1.5 text-right">
 								₹{item.total}
 								{item.discount > 0 && (
-									<span className="block text-[10px] text-green-600 leading-none">-{item.discount}%</span>
+									<span className="block text-[10px] text-green-600 leading-none">
+										-{item.discount}%
+									</span>
 								)}
 							</td>
 							<td className="pr-2 text-center">
@@ -1509,7 +1600,7 @@ function EditableItemTable({
 				</tfoot>
 			</table>
 		</div>
-		);
+	);
 }
 
 function InvoiceSummaryTable({

@@ -1,10 +1,10 @@
-# Vyapar vs Execora — Feature Research & Capability Analysis
+# SME Billing Software — Market Feature Analysis
 
 Date: 2026-03-03
 
 ## Scope
 
-This report compares Vyapar’s publicly listed feature set (blog feature page, Dec 2025) against current Execora implementation status across:
+This report analyses the typical feature set of established SME accounting and billing tools in the Indian market and compares it against current Execora implementation status, covering:
 
 - UX/UI surface
 - Backend/business capability
@@ -12,7 +12,7 @@ This report compares Vyapar’s publicly listed feature set (blog feature page, 
 
 ## Method
 
-- Vyapar input source: https://vyaparapp.in/blog/vyapar-app-features/ (marketing + feature catalog claims)
+- Market reference: publicly documented feature catalogs and capability claims of widely-used Indian SME billing software (feature-marketing pages, Dec 2025)
 - Execora evidence source:
     - API route registration and auth scoping
     - Report routes + GST service
@@ -21,27 +21,27 @@ This report compares Vyapar’s publicly listed feature set (blog feature page, 
 
 ## Executive Readout
 
-Execora is strong in modern voice-first workflows and now has real GST reporting backend foundations (GSTR-1 + P&L JSON/PDF/CSV/email), but still trails Vyapar in operational completeness for everyday SME trust features.
+Execora is strong in modern voice-first workflows and now has real GST reporting backend foundations (GSTR-1 + P&L JSON/PDF/CSV/email), but still trails established tools in operational completeness for everyday SME trust features.
 
-### Estimated capability parity vs Vyapar
+### Estimated capability parity vs established SME billing tools
 
-- Backend capability parity: 58-65%
-- UX/UI parity: 40-48%
-- AI capability parity: 125-150% (Execora ahead on conversational workflows)
-- Net product readiness for daily kirana replacement: ~62-68%
+- Backend capability parity: 58–65%
+- UX/UI parity: 40–48%
+- AI capability parity: 125–150% (Execora ahead on conversational workflows)
+- Net product readiness for daily counter-billing replacement: ~62–68%
 
 Interpretation:
 
 - Execora is ahead on AI-native operation.
-- Vyapar remains ahead on breadth, configuration depth, and consistency of day-to-day flows.
+- Established tools remain ahead on breadth, configuration depth, and consistency of day-to-day flows.
 
 ---
 
-## Capability Matrix (Vyapar feature families vs Execora)
+## Capability Matrix (reference software feature families vs Execora)
 
 ### 1) Billing & Sales workflows
 
-Vyapar includes: sale invoice, payment-in, return/credit note, quotation/proforma, sale order, delivery challan, invoice customization, thermal print.
+Typical market standard includes: sale invoice, payment-in, return/credit note, quotation/proforma, sale order, delivery challan, invoice customization, thermal print.
 
 Execora status:
 
@@ -58,18 +58,18 @@ Assessment: Partial parity.
 
 ### 2) Purchase-side accounting
 
-Vyapar includes: purchase bills, payment-out, purchase returns, purchase orders.
+Market standard includes: purchase bills, payment-out, purchase returns, purchase orders.
 
 Execora status:
 
 - Backend and UX surface currently sales/AR heavy.
-- Purchase/AP lifecycle is not feature-complete at Vyapar depth.
+- Purchase/AP lifecycle is not feature-complete at market-standard depth.
 
 Assessment: Major gap.
 
 ### 3) GST & compliance reports
 
-Vyapar includes: GSTR-1, GSTR-2, GSTR-3B, GSTR-9, GST detail reports, HSN reports.
+Market standard includes: GSTR-1, GSTR-2, GSTR-3B, GSTR-9, GST detail reports, HSN reports.
 
 Execora status:
 
@@ -85,22 +85,22 @@ Assessment: Strong start, still behind full compliance suite.
 
 ### 4) Inventory depth
 
-Vyapar includes: barcode workflows, batch/expiry/MRP/serial, rich stock reports, low-stock purchase actions.
+Market standard includes: barcode workflows, batch/expiry/MRP/serial, rich stock reports, low-stock purchase actions.
 
 Execora status:
 
 - Implemented:
     - Product catalog, low stock view, stock adjustments.
+    - Barcode scan and lookup via camera (ZXing library).
 - Partial/missing:
-    - Add product UX uses browser prompt pattern in current page.
-    - Barcode + batch/expiry + serial workflows are not complete.
+    - Batch/expiry + serial workflows are not complete.
     - Min-stock and replenishment UX depth not at parity.
 
-Assessment: Significant gap for retail/pharma use cases.
+Assessment: Improved — barcode shipped; batch/expiry/serial remains a gap for retail/pharma.
 
 ### 5) Reports breadth (business, party, transaction)
 
-Vyapar includes broad report families (cashflow, daybook, balance sheet, party reports, item reports, expense and order reports).
+Market standard includes: broad report families — cashflow, daybook, balance sheet, party reports, item reports, expense and order reports.
 
 Execora status:
 
@@ -113,7 +113,7 @@ Assessment: Medium-large gap.
 
 ### 6) Settings, configuration, user controls
 
-Vyapar includes deep transaction settings, templates/themes, backup policies, user roles, SMS/reminder settings.
+Market standard includes: deep transaction settings, templates/themes, backup policies, user roles, SMS/reminder settings.
 
 Execora status:
 
@@ -127,20 +127,20 @@ Assessment: Critical trust gap.
 
 ### 7) Data safety, backup, utilities, migration
 
-Vyapar includes backup/restore options, imports/exports, utilities, Tally export and migration-oriented workflows.
+Market standard includes: backup/restore options, imports/exports, utilities, legacy accounting software export and migration-oriented workflows.
 
 Execora status:
 
 - Partial:
     - Infrastructure supports modern stack operations and queues.
 - Missing:
-    - User-facing backup/restore + import/export maturity, and migration tooling at Vyapar level.
+    - User-facing backup/restore + import/export maturity, and migration tooling from popular SME tools.
 
 Assessment: Gap for practical adoption switching cost.
 
 ### 8) AI and voice operations
 
-Vyapar mostly markets traditional billing/accounting UX.
+Market standard: established tools primarily market traditional billing/accounting UX without AI-native modes.
 
 Execora status:
 
@@ -159,7 +159,7 @@ Assessment: Execora clear lead.
 - Realtime feel through WebSocket-linked dashboards.
 - Modern card-first analytics surface.
 
-### Where Vyapar UX is more trusted in day-to-day operation
+### Where established tools have higher daily-operation trust
 
 - More complete settings that actually persist.
 - More predictable transaction families (sales + purchase + returns + challans).
@@ -181,6 +181,7 @@ Assessment: Execora clear lead.
 - Protected route scoping with auth middleware for core domains.
 - New report stack: GSTR-1 and P&L APIs with download/email channels.
 - Domain modularization for invoice/ledger/voice/report concerns.
+- Barcode lookup endpoint (`GET /api/v1/products/barcode/:barcode`).
 
 ### Still needed for parity
 
@@ -200,7 +201,7 @@ Assessment: Execora clear lead.
 2. AI confidence + explainability per action
     - Show what was understood: customer, items, tax mode, discount.
 3. Intelligent follow-up assistant
-    - “Who is likely to pay this week?” with explanation and action suggestions.
+    - "Who is likely to pay this week?" with explanation and action suggestions.
 4. Smart reorder suggestions
     - Predict stockout date and generate suggested purchase list.
 5. Auto compliance assistant
@@ -220,8 +221,8 @@ Assessment: Execora clear lead.
 
 1. Fully wired Settings save experience
     - Business profile, invoice config, user roles, notification preferences.
-2. One-tap Walk-in/Cash billing start
-3. Replace prompt-based product creation with modal form
+2. One-tap Walk-in/Cash billing start.
+3. Replace prompt-based product creation with modal form.
 4. Reports trust pass
     - Render real GST tables, expose compare period for P&L, remove placeholder semantics.
 5. Invoice completion actions that truly work
@@ -229,11 +230,10 @@ Assessment: Execora clear lead.
 
 ### Next (P1)
 
-6. Barcode-first billing entry
-7. Batch/expiry UI model and filters
-8. Payment receipt and split-payment UX
-9. Notification center and drill-down from dashboard KPIs
-10. Mobile-first chart and table readability improvements
+6. Batch/expiry UI model and filters.
+7. Payment receipt and split-payment UX.
+8. Notification center and drill-down from dashboard KPIs.
+9. Mobile-first chart and table readability improvements.
 
 ---
 
@@ -248,21 +248,20 @@ Assessment: Execora clear lead.
 ### Phase 2 (31-60 days): Operational parity
 
 - Add purchase/AP core flows.
-- Add barcode and split-payment UX.
+- Add split-payment UX.
 - Expand report families (daybook, balance-sheet-lite, party ledger slices).
 
 ### Phase 3 (61-90 days): AI acceleration
 
 - Add AI correction/confirm layer.
 - Add proactive AR and stock recommendation assistant.
-- Add compliance anomaly copilot and CA-ready handoff workflows.
+- Add compliance anomaly assistant and CA-ready handoff workflows.
 
 ---
 
 ## Bottom Line
 
-If your goal is to beat Vyapar in adoption, do not lead with more AI demos first.
-Lead with reliability parity in settings + daily transaction completeness, then layer AI where it directly saves time and reduces errors.
+Do not lead with more AI demos first. Lead with reliability parity in settings + daily transaction completeness, then layer AI where it directly saves time and reduces errors.
 
 Winning positioning after gap closure:
-“Voice-first billing as reliable as legacy accounting tools, with faster counter operations and smarter collections.”
+"Voice-first billing as reliable as established accounting tools, with faster counter operations and smarter collections."

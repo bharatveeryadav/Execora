@@ -202,6 +202,8 @@ export interface Product {
 	unit: string;
 	stock: number;
 	minStock?: number;
+	barcode?: string | null;
+	sku?: string | null;
 	isActive: boolean;
 	createdAt: string;
 }
@@ -399,6 +401,8 @@ export const productApi = {
 	lowStock: () => request<{ products: Product[] }>('/api/v1/products/low-stock'),
 	topSelling: (limit = 5, days = 30) =>
 		request<{ products: TopSellingProduct[] }>(`/api/v1/products/top-selling?limit=${limit}&days=${days}`),
+	byBarcode: (barcode: string) =>
+		request<{ product: Product }>(`/api/v1/products/barcode/${encodeURIComponent(barcode)}`),
 	create: (data: {
 		name: string;
 		price: number;
@@ -406,10 +410,22 @@ export const productApi = {
 		unit?: string;
 		category?: string;
 		description?: string;
+		barcode?: string;
+		sku?: string;
 	}) => request<{ product: Product }>('/api/v1/products', { method: 'POST', body: JSON.stringify(data) }),
 	update: (
 		id: string,
-		data: { name?: string; price?: number; stock?: number; unit?: string; category?: string; description?: string }
+		data: {
+			name?: string;
+			price?: number;
+			stock?: number;
+			unit?: string;
+			category?: string;
+			description?: string;
+			barcode?: string;
+			sku?: string;
+			minStock?: number;
+		}
 	) => request<{ product: Product }>(`/api/v1/products/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 	adjustStock: (id: string, data: { quantity: number; operation: 'add' | 'subtract'; reason?: string }) =>
 		request<{ product: Product }>(`/api/v1/products/${id}/stock`, { method: 'PATCH', body: JSON.stringify(data) }),

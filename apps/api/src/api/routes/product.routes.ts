@@ -1,6 +1,8 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { productService, invoiceService } from '@execora/modules';
 import { broadcaster } from '../../ws/broadcaster';
+import { prisma } from '@execora/infrastructure';
+import { tenantContext } from '@execora/infrastructure';
 
 export async function productRoutes(fastify: FastifyInstance) {
 	fastify.get('/api/v1/products', async () => {
@@ -11,6 +13,21 @@ export async function productRoutes(fastify: FastifyInstance) {
 	fastify.get('/api/v1/products/low-stock', async () => {
 		const products = await productService.getLowStockProducts();
 		return { products };
+	});
+
+	// ── GET /api/v1/products/barcode/:barcode — look up product by barcode/EAN ──
+	fastify.get<{ Params: { barcode: string } }>('/api/v1/products/barcode/:barcode', async (request, reply) => {
+		const { barcode } = request.params;
+		const tenantId = (request as any).user?.tenantId ?? tenantContext.get().tenantId;
+		const product = await prisma.product.findFirst({
+			where: {
+				tenantId,
+				OR: [{ barcode }, { sku: barcode }],
+				isActive: true,
+			},
+		});
+		if (!product) return reply.code(404).send({ error: 'Product not found for this barcode' });
+		return { product };
 	});
 
 	// ── GET /api/v1/products/top-selling?limit=5&days=30 ─────────────────────────
@@ -42,6 +59,8 @@ export async function productRoutes(fastify: FastifyInstance) {
 						stock: { type: 'integer', minimum: 0 },
 						unit: { type: 'string', maxLength: 50 },
 						category: { type: 'string', maxLength: 100 },
+						barcode: { type: 'string', maxLength: 100 },
+						sku: { type: 'string', maxLength: 100 },
 					},
 					additionalProperties: false,
 				},
@@ -56,6 +75,8 @@ export async function productRoutes(fastify: FastifyInstance) {
 					description?: string;
 					unit?: string;
 					category?: string;
+					barcode?: string;
+					sku?: string;
 				};
 			}>,
 			reply
@@ -68,7 +89,17 @@ export async function productRoutes(fastify: FastifyInstance) {
 	// ── PUT /api/v1/products/:id — update product fields ────────────────────────
 	fastify.put<{
 		Params: { id: string };
-		Body: { name?: string; price?: number; stock?: number; unit?: string; category?: string; description?: string };
+		Body: {
+			name?: string;
+			price?: number;
+			stock?: number;
+			unit?: string;
+			category?: string;
+			description?: string;
+			barcode?: string;
+			sku?: string;
+			minStock?: number;
+		};
 	}>(
 		'/api/v1/products/:id',
 		{
@@ -82,6 +113,9 @@ export async function productRoutes(fastify: FastifyInstance) {
 						stock: { type: 'integer', minimum: 0 },
 						unit: { type: 'string', maxLength: 50 },
 						category: { type: 'string', maxLength: 100 },
+						barcode: { type: 'string', maxLength: 100 },
+						sku: { type: 'string', maxLength: 100 },
+						minStock: { type: 'integer', minimum: 0 },
 					},
 					additionalProperties: false,
 				},

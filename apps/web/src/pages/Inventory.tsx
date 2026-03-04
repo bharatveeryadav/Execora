@@ -10,8 +10,10 @@ import {
 	ShoppingCart,
 	Edit,
 	Eye,
+	ScanLine,
 } from 'lucide-react';
 import VoiceBar from '@/components/VoiceBar';
+import BarcodeScanner from '@/components/BarcodeScanner';
 import { wsClient } from '@/lib/ws';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,6 +29,7 @@ import {
 	useCreateProduct,
 	useUpdateProduct,
 	useAdjustStock,
+	useProductByBarcode,
 } from '@/hooks/useQueries';
 import { useWsInvalidation } from '@/hooks/useWsInvalidation';
 import { formatCurrency, type Product } from '@/lib/api';
@@ -53,6 +56,7 @@ const Inventory = () => {
 	const { data: allInvoices = [] } = useInvoices(200);
 	const createProduct = useCreateProduct();
 	const updateProduct = useUpdateProduct();
+	const lookupByBarcode = useProductByBarcode();
 	const adjustStock = useAdjustStock();
 	useWsInvalidation(['products', 'lowStock']);
 
@@ -228,6 +232,28 @@ const Inventory = () => {
 
 	const handleAddProduct = () => setAddProductOpen(true);
 
+	/** Called when BarcodeScanner finds a code in the Inventory add-product context */
+	const handleInventoryBarcodeScan = async (code: string) => {
+		setInventoryScannerOpen(false);
+		setAddBarcode(code);
+		// Try to look up an existing product with this barcode
+		try {
+			const res = await lookupByBarcode.mutateAsync(code);
+			if (res?.product) {
+				const p = res.product;
+				setAddName(p.name);
+				setAddPrice(String(parseFloat(String(p.price))));
+				setAddUnit(p.unit || 'Piece');
+				if (p.category) setAddCategory(p.category);
+				if (p.sku) setAddSku(p.sku);
+				toast({ title: `🔍 Found: ${p.name}`, description: 'Details pre-filled from existing product' });
+			}
+		} catch {
+			// 404 = new product — that's fine, barcode is set, user fills the rest
+			toast({ title: `🔷 Barcode: ${code}`, description: 'New product — fill in the details below' });
+		}
+	};
+
 	const handleSubmitAddProduct = async (e: FormEvent) => {
 		e.preventDefault();
 		const price = parseFloat(addPrice);
@@ -247,6 +273,8 @@ const Inventory = () => {
 				stock: isNaN(stock) ? 0 : stock,
 				unit: addUnit || undefined,
 				category: addCategory.trim() || undefined,
+				barcode: addBarcode.trim() || undefined,
+				sku: addSku.trim() || undefined,
 			});
 			toast({ title: `✅ "${addName.trim()}" added to inventory` });
 			resetAddProduct();
@@ -989,6 +1017,26 @@ const Inventory = () => {
 					>
 						<h2 className="mb-4 text-base font-bold">➕ Add New Product</h2>
 						<form onSubmit={handleSubmitAddProduct} className="space-y-3">
+							{/* Barcode scan row */}
+							<div className="flex items-center gap-2">
+								<div className="flex-1">
+									<label className="mb-1 block text-xs text-muted-foreground">Barcode / EAN</label>
+									<input
+										className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+										placeholder="Scan or type barcode…"
+										value={addBarcode}
+										onChange={(e) => setAddBarcode(e.target.value)}
+									/>
+								</div>
+								<button
+									type="button"
+									onClick={() => setInventoryScannerOpen(true)}
+									className="mt-5 flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+								>
+									<ScanLine className="h-4 w-4" />
+									Scan
+								</button>
+							</div>
 							<div>
 								<label className="mb-1 block text-xs text-muted-foreground">Product Name *</label>
 								<input
@@ -1056,6 +1104,15 @@ const Inventory = () => {
 									/>
 								</div>
 							</div>
+							<div>
+								<label className="mb-1 block text-xs text-muted-foreground">SKU (optional)</label>
+								<input
+									className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+									placeholder="e.g. SKU-001"
+									value={addSku}
+									onChange={(e) => setAddSku(e.target.value)}
+								/>
+							</div>
 							<div className="mt-4 flex gap-2">
 								<Button
 									type="button"
@@ -1075,6 +1132,15 @@ const Inventory = () => {
 						</form>
 					</div>
 				</div>
+			)}
+
+			{/* ── Barcode Scanner (inventory context) ───────────────────────── */}
+			{inventoryScannerOpen && (
+				<BarcodeScanner
+					hint="Point camera at product barcode to auto-fill details"
+					onScan={handleInventoryBarcodeScan}
+					onClose={() => setInventoryScannerOpen(false)}
+				/>
 			)}
 		</div>
 	);

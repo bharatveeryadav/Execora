@@ -287,11 +287,19 @@ export function useCreateProduct() {
 			unit?: string;
 			category?: string;
 			description?: string;
+			barcode?: string;
+			sku?: string;
 		}) => productApi.create(data),
 		onSuccess: () => {
 			qc.invalidateQueries({ queryKey: QK.products });
 			qc.invalidateQueries({ queryKey: QK.lowStock });
 		},
+	});
+}
+
+export function useProductByBarcode() {
+	return useMutation({
+		mutationFn: (barcode: string) => productApi.byBarcode(barcode),
 	});
 }
 
