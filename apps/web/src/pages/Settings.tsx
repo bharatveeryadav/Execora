@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Mic, Save, UserPlus, Users, HardDrive, Download, RefreshCw, Volume2, Moon, Sun, Building2 } from "lucide-react";
+import { ArrowLeft, Mic, Save, UserPlus, Users, HardDrive, Download, RefreshCw, Volume2, Moon, Sun, Building2, Trash2, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,11 +8,13 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useMe, useUpdateProfile } from "@/hooks/useQueries";
+import { useMe, useUpdateProfile, useUsers, useCreateUser, useRemoveUser } from "@/hooks/useQueries";
 
 const TTS_STORAGE_KEY = "execora:ttsProvider";
 const BIZ_STORAGE_KEY = "execora:bizprofile";
@@ -24,6 +26,49 @@ const Settings = () => {
   const { theme, setTheme } = useTheme();
   const { data: me } = useMe();
   const updateProfile = useUpdateProfile();
+  const { data: teamUsers = [], isLoading: usersLoading } = useUsers();
+  const createUser = useCreateUser();
+  const removeUser = useRemoveUser();
+
+  // Add-user dialog
+  const [addUserOpen, setAddUserOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newRole, setNewRole] = useState<"manager" | "staff" | "viewer">("staff");
+  const [newPassword, setNewPassword] = useState("");
+
+  function resetAddUser() {
+    setNewName(""); setNewEmail(""); setNewPhone(""); setNewRole("staff"); setNewPassword("");
+  }
+
+  async function handleAddUser(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newName.trim() || !newEmail.trim() || newPassword.length < 8) {
+      toast({ title: "Fill all fields; password ≥ 8 chars", variant: "destructive" });
+      return;
+    }
+    try {
+      await createUser.mutateAsync({ name: newName.trim(), email: newEmail.trim(), phone: newPhone.trim() || undefined, role: newRole, password: newPassword });
+      toast({ title: `✅ ${newName} added as ${newRole}` });
+      resetAddUser();
+      setAddUserOpen(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to add user";
+      toast({ title: "❌ " + msg, variant: "destructive" });
+    }
+  }
+
+  async function handleRemoveUser(id: string, name: string) {
+    if (!confirm(`Remove ${name}? They will lose access immediately.`)) return;
+    try {
+      await removeUser.mutateAsync(id);
+      toast({ title: `${name} removed` });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to remove user";
+      toast({ title: "❌ " + msg, variant: "destructive" });
+    }
+  }
 
   const [ttsProvider, setTtsProvider] = useState<string>(
     () => localStorage.getItem(TTS_STORAGE_KEY) ?? "browser",
@@ -60,29 +105,47 @@ const Settings = () => {
   });
   const [lang, setLang] = useState(() => localStorage.getItem(LANG_STORAGE_KEY) ?? "english");
 
-  // Sync with me?.tenant once loaded
+  // Sync with me?.tenant once loaded — seeds from API if localStorage is empty
   useEffect(() => {
     if (me?.tenant) {
-      const stored = JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}");
+      const stored = (() => { try { return JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}"); } catch { return {}; } })();
+      const s = (me.tenant as unknown as { settings?: Record<string, string> }).settings ?? {};
       if (!stored.gstin && me.tenant.gstin) setBizGstin(me.tenant.gstin);
       if (!stored.legalName && (me.tenant.legalName || me.tenant.name)) setBizLegalName(me.tenant.legalName ?? me.tenant.name ?? "");
+      if (!stored.phone && s.phone) setBizPhone(s.phone);
+      if (!stored.address && s.address) setBizAddress(s.address);
+      if (!stored.upiVpa && s.upiVpa) setBizUpiVpa(s.upiVpa);
     }
-  }, [me?.tenant]);
+    if (me?.name && !profileName) setProfileName(me.name);
+  }, [me]);
 
   const handleSave = async () => {
-    // Save business profile to localStorage
-    localStorage.setItem(BIZ_STORAGE_KEY, JSON.stringify({ gstin: bizGstin, legalName: bizLegalName, phone: bizPhone, address: bizAddress, upiVpa: bizUpiVpa }));
+    // Always persist to localStorage for offline / PDF use
+    localStorage.setItem(BIZ_STORAGE_KEY, JSON.stringify({
+      gstin: bizGstin, legalName: bizLegalName, phone: bizPhone,
+      address: bizAddress, upiVpa: bizUpiVpa,
+    }));
     localStorage.setItem(LANG_STORAGE_KEY, lang);
 
-    if (profileName && (profileName !== user?.name || profileEmail !== user?.email)) {
-      try {
-        await updateProfile.mutateAsync({ name: profileName });
-        toast({ title: "✅ Settings saved", description: "Your profile has been updated." });
-      } catch {
-        toast({ title: "✅ Settings saved", description: "Preferences updated locally." });
-      }
-    } else {
-      toast({ title: "✅ Settings saved", description: "Your changes have been saved successfully." });
+    // Persist to backend — updates both user row and tenant row
+    try {
+      await updateProfile.mutateAsync({
+        name: profileName || undefined,
+        tenant: {
+          legalName: bizLegalName || undefined,
+          gstin: bizGstin || undefined,
+          language: lang || undefined,
+          settings: {
+            phone: bizPhone,
+            address: bizAddress,
+            upiVpa: bizUpiVpa,
+          },
+        },
+      });
+      toast({ title: "✅ Settings saved", description: "Business profile synced to server." });
+    } catch {
+      // API fail — localStorage already saved, show partial success
+      toast({ title: "✅ Saved locally", description: "Could not sync to server — check connection." });
     }
   };
 
@@ -366,27 +429,43 @@ const Settings = () => {
         <Card className="border-none shadow-sm">
           <CardHeader className="pb-3"><CardTitle className="text-base">Users & Permissions</CardTitle></CardHeader>
           <CardContent className="space-y-3">
-            {[
-              { name: "Ramesh Kumar", role: "Owner", extra: "(You)", date: "" },
-              { name: "Suresh Patel", role: "Cashier", extra: "", date: "Added 15 Feb 2026" },
-              { name: "Rajesh Singh", role: "Staff", extra: "", date: "Added 10 Jan 2026" },
-            ].map((u) => (
-              <div key={u.name} className="flex items-center justify-between rounded-lg border border-border p-3">
-                <div>
-                  <p className="text-sm font-medium">{u.name} {u.extra && <span className="text-muted-foreground">{u.extra}</span>}</p>
-                  <p className="text-xs text-muted-foreground">{u.role} {u.date && `· ${u.date}`}</p>
-                </div>
-                {!u.extra && (
-                  <div className="flex gap-1.5">
-                    <Button variant="ghost" size="sm" className="text-xs">Edit</Button>
-                    <Button variant="ghost" size="sm" className="text-xs text-destructive">Remove</Button>
+            {usersLoading && <p className="text-xs text-muted-foreground">Loading users…</p>}
+            {teamUsers.map((u) => {
+              const isMe = u.id === me?.id;
+              return (
+                <div key={u.id} className="flex items-center justify-between rounded-lg border border-border p-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {u.name}
+                      {isMe && <span className="ml-1 text-muted-foreground">(You)</span>}
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{u.role}</Badge>
+                      <span className="text-xs text-muted-foreground truncate">{u.email}</span>
+                    </div>
                   </div>
-                )}
-              </div>
-            ))}
+                  {!isMe && (
+                    <button
+                      onClick={() => handleRemoveUser(u.id, u.name)}
+                      className="ml-2 shrink-0 rounded p-1.5 text-destructive/50 hover:bg-destructive/10 hover:text-destructive"
+                      title="Remove user"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+            {teamUsers.length === 0 && !usersLoading && (
+              <p className="text-xs text-muted-foreground">No staff accounts yet.</p>
+            )}
             <div className="flex gap-2 pt-1">
-              <Button variant="outline" size="sm"><UserPlus className="mr-1.5 h-4 w-4" /> Add User</Button>
-              <Button variant="outline" size="sm"><Users className="mr-1.5 h-4 w-4" /> Manage Roles</Button>
+              <Button variant="outline" size="sm" onClick={() => setAddUserOpen(true)}>
+                <UserPlus className="mr-1.5 h-4 w-4" /> Add User
+              </Button>
+              <Button variant="outline" size="sm" disabled>
+                <ShieldCheck className="mr-1.5 h-4 w-4" /> Manage Roles
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -418,6 +497,51 @@ const Settings = () => {
 
         <div className="pb-6" />
       </main>
+
+      {/* Add User Dialog */}
+      <Dialog open={addUserOpen} onOpenChange={(v) => { setAddUserOpen(v); if (!v) resetAddUser(); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Add Staff Account</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleAddUser} className="space-y-3 py-1">
+            <div className="space-y-1">
+              <Label className="text-xs">Full Name *</Label>
+              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Ramesh Kumar" required />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Email *</Label>
+              <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="staff@yourbusiness.com" required />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Phone (optional)</Label>
+              <Input type="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="9876543210" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Role</Label>
+              <Select value={newRole} onValueChange={(v) => setNewRole(v as typeof newRole)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manager">Manager — full access except settings</SelectItem>
+                  <SelectItem value="staff">Staff — billing + inventory</SelectItem>
+                  <SelectItem value="viewer">Viewer — read-only reports</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Temporary Password * (min 8 chars)</Label>
+              <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" minLength={8} required />
+              <p className="text-[11px] text-muted-foreground">They can change it after first login.</p>
+            </div>
+            <DialogFooter className="pt-1">
+              <Button type="button" variant="outline" onClick={() => setAddUserOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={createUser.isPending}>
+                {createUser.isPending ? "Adding…" : "Add User"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
