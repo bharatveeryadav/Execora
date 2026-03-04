@@ -27,6 +27,8 @@ export const WS_EVENT_QUERIES: Record<string, string[][]> = {
 	'customer:deleted': [['customers'], ['summary']],
 	'customer:updated': [['customers']],
 	'customer:balance': [['customers'], ['summary']],
+	'reminder:created': [['reminders']],
+	'reminder:cancelled': [['reminders']],
 	'stock:updated': [['products'], ['lowStock']],
 	'product:updated': [['products'], ['lowStock']],
 	'expense:created': [['expenses'], ['cashbook']],

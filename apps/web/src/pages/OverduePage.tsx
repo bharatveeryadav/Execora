@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
 	ArrowLeft,
@@ -29,6 +29,7 @@ import {
 	useReminders,
 	useBulkReminders,
 	useCancelReminder,
+	useCreateReminder,
 	useRecordPayment,
 } from '@/hooks/useQueries';
 import { formatCurrency, type Customer, type Reminder } from '@/lib/api';
@@ -68,6 +69,22 @@ function daysLeftBadgeCls(days: number) {
 
 function formatDate(d: string) {
 	return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' });
+}
+
+// ── compute ISO datetime for scheduling ──────────────────────────────────────
+type WhenOption = 'now' | 'today' | 'tomorrow' | '2' | '3' | '7';
+
+function computeScheduleDate(when: WhenOption): string {
+	const now = new Date();
+	if (when === 'now') return new Date(now.getTime() + 2 * 60_000).toISOString();
+	const days = when === 'today' ? 0 : when === 'tomorrow' ? 1 : parseInt(when, 10);
+	const d = new Date(now);
+	d.setDate(d.getDate() + days);
+	// 6 PM IST = 12:30 UTC
+	d.setUTCHours(12, 30, 0, 0);
+	// If today and already past 6 PM IST, schedule 1 hour from now instead
+	if (days === 0 && d < now) return new Date(now.getTime() + 3_600_000).toISOString();
+	return d.toISOString();
 }
 
 // ── record-payment mini dialog ───────────────────────────────────────────────
@@ -172,7 +189,7 @@ function RecordPaymentDialog({ customer, onClose }: PayDialogProps) {
 	);
 }
 
-// ── schedule-reminder mini dialog ────────────────────────────────────────────
+// ── schedule-reminder dialog (production-ready) ──────────────────────────────
 
 interface ReminderDialogProps {
 	customers: Customer[];
@@ -180,24 +197,62 @@ interface ReminderDialogProps {
 	onClose: () => void;
 }
 
+const WHEN_LABELS: Record<WhenOption, string> = {
+	now: 'now (2 min)',
+	today: 'today at 6 PM',
+	tomorrow: 'tomorrow at 6 PM',
+	'2': 'in 2 days',
+	'3': 'in 3 days',
+	'7': 'in 1 week',
+};
+
 function ScheduleReminderDialog({ customers, prefillCustomer, onClose }: ReminderDialogProps) {
 	const { toast } = useToast();
-	const bulkReminders = useBulkReminders();
+	const createReminder = useCreateReminder();
+
 	const [selectedId, setSelectedId] = useState(prefillCustomer?.id ?? '');
-	const [daysOffset, setDaysOffset] = useState('1');
+	const [when, setWhen] = useState<WhenOption>('tomorrow');
+	const [amount, setAmount] = useState(
+		prefillCustomer ? String(Math.max(0, parseFloat(String(prefillCustomer.balance)))) : ''
+	);
+	const [waEnabled, setWaEnabled] = useState(true);
+	const [emailEnabled, setEmailEnabled] = useState(true);
+	const [message, setMessage] = useState('');
+
+	// Auto-fill amount when customer picker changes
+	useEffect(() => {
+		if (!selectedId) return;
+		const c = customers.find((cu) => cu.id === selectedId);
+		if (c) setAmount(String(Math.max(0, parseFloat(String(c.balance)))));
+	}, [selectedId, customers]);
 
 	const submit = async () => {
 		if (!selectedId) {
 			toast({ title: 'Select a customer', variant: 'destructive' });
 			return;
 		}
+		const amt = parseFloat(amount);
+		if (!amt || amt <= 0) {
+			toast({ title: 'Enter a valid amount', variant: 'destructive' });
+			return;
+		}
+		if (!waEnabled && !emailEnabled) {
+			toast({ title: 'Enable at least one channel', variant: 'destructive' });
+			return;
+		}
 		try {
-			await bulkReminders.mutateAsync({ customerIds: [selectedId], daysOffset: parseInt(daysOffset, 10) });
-			toast({ title: '📅 Reminder scheduled' });
+			const datetime = computeScheduleDate(when);
+			await createReminder.mutateAsync({
+				customerId: selectedId,
+				amount: amt,
+				datetime,
+				message: message.trim() || undefined,
+			});
+			toast({ title: `📅 Reminder scheduled — ${WHEN_LABELS[when]}` });
 			onClose();
 		} catch (e: unknown) {
 			toast({
-				title: 'Failed',
+				title: 'Failed to schedule',
 				description: e instanceof Error ? e.message : 'Try again',
 				variant: 'destructive',
 			});
@@ -210,7 +265,21 @@ function ScheduleReminderDialog({ customers, prefillCustomer, onClose }: Reminde
 				<DialogHeader>
 					<DialogTitle>📅 Schedule Reminder</DialogTitle>
 				</DialogHeader>
-				<div className="space-y-3">
+
+				{/* Pre-filled customer card OR customer picker */}
+				{prefillCustomer ? (
+					<div className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
+						<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+							{customerInitials(prefillCustomer.name)}
+						</div>
+						<div>
+							<p className="text-sm font-medium">{prefillCustomer.name}</p>
+							{prefillCustomer.phone && (
+								<p className="text-xs text-muted-foreground">{prefillCustomer.phone}</p>
+							)}
+						</div>
+					</div>
+				) : (
 					<div>
 						<Label>Customer</Label>
 						<Select value={selectedId} onValueChange={setSelectedId}>
@@ -227,28 +296,89 @@ function ScheduleReminderDialog({ customers, prefillCustomer, onClose }: Reminde
 							</SelectContent>
 						</Select>
 					</div>
+				)}
+
+				<div className="space-y-3">
+					{/* Amount */}
 					<div>
-						<Label>Send reminder in</Label>
-						<Select value={daysOffset} onValueChange={setDaysOffset}>
+						<Label>Amount (₹)</Label>
+						<Input
+							type="number"
+							value={amount}
+							onChange={(e) => setAmount(e.target.value)}
+							placeholder="0"
+							className="mt-1"
+						/>
+					</div>
+
+					{/* When */}
+					<div>
+						<Label>Send when</Label>
+						<Select value={when} onValueChange={(v) => setWhen(v as WhenOption)}>
 							<SelectTrigger className="mt-1">
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="0">Today</SelectItem>
-								<SelectItem value="1">Tomorrow</SelectItem>
-								<SelectItem value="2">In 2 days</SelectItem>
-								<SelectItem value="3">In 3 days</SelectItem>
-								<SelectItem value="7">In 1 week</SelectItem>
+								<SelectItem value="now">⚡ Now (2 min)</SelectItem>
+								<SelectItem value="today">🌅 Today at 6 PM</SelectItem>
+								<SelectItem value="tomorrow">🌄 Tomorrow at 6 PM</SelectItem>
+								<SelectItem value="2">📅 In 2 days</SelectItem>
+								<SelectItem value="3">📅 In 3 days</SelectItem>
+								<SelectItem value="7">📅 In 1 week</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
+
+					{/* Channels */}
+					<div>
+						<Label className="text-xs">Send via</Label>
+						<div className="mt-1.5 flex gap-2">
+							<button
+								type="button"
+								onClick={() => setWaEnabled((v) => !v)}
+								className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-medium transition-colors ${
+									waEnabled
+										? 'bg-green-500/10 border-green-400 text-green-700 dark:text-green-400'
+										: 'bg-muted/30 border-border text-muted-foreground line-through'
+								}`}
+							>
+								📱 WhatsApp
+							</button>
+							<button
+								type="button"
+								onClick={() => setEmailEnabled((v) => !v)}
+								className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-medium transition-colors ${
+									emailEnabled
+										? 'bg-blue-500/10 border-blue-400 text-blue-700 dark:text-blue-400'
+										: 'bg-muted/30 border-border text-muted-foreground line-through'
+								}`}
+							>
+								📧 Email
+							</button>
+						</div>
+						<p className="mt-1 text-[10px] text-muted-foreground">
+							Sent to customer's saved WhatsApp number and email address
+						</p>
+					</div>
+
+					{/* Custom message */}
+					<div>
+						<Label>Custom message (optional)</Label>
+						<Textarea
+							value={message}
+							onChange={(e) => setMessage(e.target.value)}
+							className="mt-1 h-20 resize-none text-xs"
+							placeholder="Leave empty for default payment reminder…"
+						/>
+					</div>
 				</div>
+
 				<DialogFooter className="gap-2">
 					<Button variant="outline" onClick={onClose}>
 						Cancel
 					</Button>
-					<Button onClick={submit} disabled={bulkReminders.isPending}>
-						{bulkReminders.isPending ? 'Scheduling…' : 'Schedule'}
+					<Button onClick={submit} disabled={createReminder.isPending}>
+						{createReminder.isPending ? 'Scheduling…' : 'Schedule Reminder'}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -742,6 +872,19 @@ const OverduePage = () => {
 																📱
 															</a>
 														)}
+														<Button
+															size="sm"
+															variant="ghost"
+															title="Schedule reminder"
+															className="h-8 w-8 p-0 text-muted-foreground hover:text-primary"
+															onClick={(e) => {
+																e.stopPropagation();
+																setReminderCustomer(customer);
+																setShowReminderDialog(true);
+															}}
+														>
+															<Bell className="h-3.5 w-3.5" />
+														</Button>
 														<Button
 															size="sm"
 															variant="ghost"
