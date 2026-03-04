@@ -394,8 +394,42 @@ function Gstr1Tab() {
         </Card>
       )}
 
+      {/* B2CS table */}
+      {report && (report.b2cs?.length ?? 0) > 0 && (
+        <Card className="border-none shadow-sm">
+          <CardHeader className="pb-2"><CardTitle className="text-sm">7 — B2C Small ({report.b2cs!.length} entries)</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b bg-muted/30">
+                    {["Supply Type","Place of Supply","GST Rate","Taxable Value","IGST","CGST","SGST","CESS"].map((h) => (
+                      <th key={h} className="px-3 py-2 text-left font-semibold text-muted-foreground">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.b2cs!.map((row, i) => (
+                    <tr key={i} className={i % 2 === 0 ? "bg-muted/10" : ""}>
+                      <td className="px-3 py-1.5">{row.supplyType}</td>
+                      <td className="px-3 py-1.5">{row.placeOfSupply}</td>
+                      <td className="px-3 py-1.5 text-right">{row.gstRate}%</td>
+                      <td className="px-3 py-1.5 text-right">{formatCurrency(row.taxableValue)}</td>
+                      <td className="px-3 py-1.5 text-right">{formatCurrency(row.igst)}</td>
+                      <td className="px-3 py-1.5 text-right">{formatCurrency(row.cgst)}</td>
+                      <td className="px-3 py-1.5 text-right">{formatCurrency(row.sgst)}</td>
+                      <td className="px-3 py-1.5 text-right">{formatCurrency(row.cess)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* No data */}
-      {report && report.b2b.length === 0 && report.hsn.length === 0 && (
+      {report && report.b2b.length === 0 && report.hsn.length === 0 && (report.b2cs?.length ?? 0) === 0 && (
         <div className="rounded-lg border-2 border-dashed p-8 text-center text-muted-foreground">
           <FileText className="mx-auto mb-3 h-10 w-10 opacity-30" />
           <p className="text-sm font-medium">No invoice data for FY {fy}</p>
@@ -443,7 +477,22 @@ function PnlTab() {
     return last.toISOString().slice(0, 10);
   });
 
-  const { data: report, isLoading, error, refetch } = usePnlReport({ from, to });
+  // Comparison period defaults to same period of previous month
+  const [showCompare, setShowCompare] = useState(false);
+  const [compareFrom, setCompareFrom] = useState(() => {
+    const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    return d.toISOString().slice(0, 10);
+  });
+  const [compareTo, setCompareTo] = useState(() => {
+    const d = new Date(now.getFullYear(), now.getMonth(), 0);
+    return d.toISOString().slice(0, 10);
+  });
+
+  const { data: report, isLoading, error, refetch } = usePnlReport({
+    from, to,
+    compareFrom: showCompare ? compareFrom : undefined,
+    compareTo:   showCompare ? compareTo   : undefined,
+  });
   const emailMutation = useEmailReport();
   const [emailAddr, setEmailAddr] = useState("");
   const [emailSent, setEmailSent] = useState(false);
@@ -500,6 +549,29 @@ function PnlTab() {
         </div>
       </div>
 
+      {/* Compare period toggle */}
+      <div className="flex flex-wrap items-center gap-3 rounded-xl bg-muted/40 px-4 py-3">
+        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+          <input
+            type="checkbox"
+            checked={showCompare}
+            onChange={(e) => setShowCompare(e.target.checked)}
+            className="h-4 w-4 accent-primary"
+          />
+          Compare with previous period
+        </label>
+        {showCompare && (
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="text-xs text-muted-foreground">Compare From</label>
+            <input type="date" value={compareFrom} onChange={(e) => setCompareFrom(e.target.value)}
+              className="rounded-md border bg-background px-2 py-1 text-xs" />
+            <label className="text-xs text-muted-foreground">To</label>
+            <input type="date" value={compareTo} onChange={(e) => setCompareTo(e.target.value)}
+              className="rounded-md border bg-background px-2 py-1 text-xs" />
+          </div>
+        )}
+      </div>
+
       {/* Summary cards */}
       {t && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -518,6 +590,43 @@ function PnlTab() {
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Period comparison table */}
+      {showCompare && report?.comparison && report.comparison.length > 0 && (
+        <Card className="border-none shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">
+              📊 Period Comparison ({from.slice(0, 7)} vs {compareFrom.slice(0, 7)})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/30">
+                    <th className="px-4 py-2 text-left font-semibold text-muted-foreground">Metric</th>
+                    <th className="px-4 py-2 text-right font-semibold text-muted-foreground">Current Period</th>
+                    <th className="px-4 py-2 text-right font-semibold text-muted-foreground">Previous Period</th>
+                    <th className="px-4 py-2 text-right font-semibold text-muted-foreground">Change</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.comparison.map((row, i) => (
+                    <tr key={i} className={i % 2 === 0 ? "bg-muted/10" : ""}>
+                      <td className="px-4 py-2 font-medium">{row.label}</td>
+                      <td className="px-4 py-2 text-right">{formatCurrency(row.currentValue)}</td>
+                      <td className="px-4 py-2 text-right text-muted-foreground">{formatCurrency(row.previousValue)}</td>
+                      <td className={`px-4 py-2 text-right font-semibold ${row.changePercent >= 0 ? "text-green-600" : "text-destructive"}`}>
+                        {row.changePercent >= 0 ? "▲" : "▼"} {Math.abs(row.changePercent).toFixed(1)}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Collection rate */}

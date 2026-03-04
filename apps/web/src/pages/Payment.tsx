@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Save, Search, Plus, X } from "lucide-react";
+import { ArrowLeft, Save, Search, Plus, X, CheckCircle2, MessageCircle } from "lucide-react";
 import VoiceBar from "@/components/VoiceBar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,6 +39,9 @@ const Payment = () => {
   ]);
 
   const splitTotal = splits.reduce((s, sp) => s + (parseFloat(sp.amount) || 0), 0);
+
+  // Post-payment receipt dialog
+  const [receiptDialog, setReceiptDialog] = useState<{ amount: number; customer: Customer } | null>(null);
 
   // Customer search
   const [customerSearch, setCustomerSearch] = useState("");
@@ -120,7 +123,7 @@ const Payment = () => {
         });
       }
       fireConfetti();
-      navigate("/");
+      setReceiptDialog({ amount: splitMode ? splitTotal : paymentAmount, customer: selectedCustomer! });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to record payment";
       toast({ title: "❌ Error", description: msg, variant: "destructive" });
@@ -482,6 +485,53 @@ const Payment = () => {
           </Button>
         </div>
       </main>
+
+      {/* ── Post-payment Receipt Dialog ─────────────────────────────── */}
+      {receiptDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-card p-6 shadow-2xl">
+            <div className="mb-4 flex flex-col items-center gap-2 text-center">
+              <CheckCircle2 className="h-12 w-12 text-green-500" />
+              <h2 className="text-lg font-bold">Payment Recorded!</h2>
+              <p className="text-sm text-muted-foreground">
+                {formatCurrency(receiptDialog.amount)} received from{" "}
+                <span className="font-semibold text-foreground">{receiptDialog.customer.name}</span>
+              </p>
+              {receiptDialog.customer.phone && (
+                <p className="text-xs text-muted-foreground">
+                  New balance:{" "}
+                  <span className={newBalance <= 0 ? "font-bold text-green-600" : "font-bold text-orange-600"}>
+                    {newBalance <= 0 ? "Cleared ✅" : formatCurrency(newBalance) + " pending"}
+                  </span>
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              {receiptDialog.customer.phone && (
+                <a
+                  href={`https://wa.me/91${receiptDialog.customer.phone.replace(/\D/g, "")}?text=${encodeURIComponent(
+                    `Hi ${receiptDialog.customer.name}, we received your payment of ₹${receiptDialog.amount.toLocaleString("en-IN")}. Thank you! 🙏`
+                  )}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-[#1ebe5d] transition-colors"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Send Receipt via WhatsApp
+                </a>
+              )}
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => { setReceiptDialog(null); navigate("/"); }}
+              >
+                Done
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -273,6 +273,7 @@ export function useUpdateProduct() {
 			unit?: string;
 			category?: string;
 			description?: string;
+			minStock?: number;
 		}) => productApi.update(id, data),
 		onSuccess: () => {
 			qc.invalidateQueries({ queryKey: QK.products });
@@ -383,7 +384,7 @@ export function useGstr1Report(params: ReportParams = {}) {
 }
 
 export function usePnlReport(params: ReportParams & { compareFrom?: string; compareTo?: string } = {}) {
-	const key = `${params.from ?? ''}::${params.to ?? ''}::${params.fy ?? 'current'}`;
+	const key = `${params.from ?? ''}::${params.to ?? ''}::${params.fy ?? 'current'}::${params.compareFrom ?? ''}::${params.compareTo ?? ''}`;
 	return useQuery<PnlReport>({
 		queryKey: ['reports', 'pnl', key],
 		queryFn: async () => {

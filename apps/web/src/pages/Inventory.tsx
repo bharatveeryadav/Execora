@@ -32,9 +32,10 @@ const Inventory = () => {
 
   // ── Edit product state ─────────────────────────────────────────────────────
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [editName, setEditName]     = useState("");
-  const [editPrice, setEditPrice]   = useState("");
+  const [editName, setEditName]         = useState("");
+  const [editPrice, setEditPrice]       = useState("");
   const [editCategory, setEditCategory] = useState("");
+  const [editMinStock, setEditMinStock] = useState("");
 
   // ── Stock adjust state ─────────────────────────────────────────────────────
   const [adjustingProduct, setAdjustingProduct] = useState<Product | null>(null);
@@ -93,6 +94,7 @@ const Inventory = () => {
     setEditName(p.name);
     setEditPrice(String(parseFloat(String(p.price))));
     setEditCategory(p.category ?? "");
+    setEditMinStock(p.minStock != null ? String(p.minStock) : "");
   };
 
   const handleSaveEdit = async () => {
@@ -102,6 +104,7 @@ const Inventory = () => {
       name: editName || undefined,
       price: editPrice ? parseFloat(editPrice) : undefined,
       category: editCategory || undefined,
+      minStock: editMinStock !== "" ? parseInt(editMinStock, 10) : undefined,
     });
     toast({ title: "✅ Product updated" });
     setEditingProduct(null);
@@ -675,6 +678,11 @@ const Inventory = () => {
               <div>
                 <label className="mb-1 block text-xs text-muted-foreground">Category</label>
                 <input className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">Min Stock Alert (units)</label>
+                <input type="number" min="0" placeholder="e.g. 5" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={editMinStock} onChange={(e) => setEditMinStock(e.target.value)} />
+                <p className="mt-0.5 text-[10px] text-muted-foreground">Alert when stock falls below this level</p>
               </div>
             </div>
             <div className="mt-4 flex gap-2">
