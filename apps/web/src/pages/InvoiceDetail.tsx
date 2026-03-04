@@ -5,14 +5,15 @@
 import { useState } from "react";
 import {
   ArrowLeft, Printer, MessageCircle, CheckCircle2, XCircle,
-  Clock, Share2, Download, AlertTriangle,
+  Clock, Share2, Download, AlertTriangle, Edit3, Plus, Minus,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { useInvoice, useCancelInvoice } from "@/hooks/useQueries";
+import { Textarea } from "@/components/ui/textarea";
+import { useInvoice, useCancelInvoice, useUpdateInvoice } from "@/hooks/useQueries";
 import { formatCurrency, formatDate, getToken } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -20,6 +21,9 @@ import {
   AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
 
 const STATUS_CFG: Record<string, { label: string; icon: React.ReactNode; cls: string }> = {
   draft:     { label: "Draft",     icon: <Clock className="h-3 w-3" />,         cls: "bg-muted text-muted-foreground" },
@@ -45,9 +49,56 @@ export default function InvoiceDetail() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editItems, setEditItems] = useState<Array<{ id: string; name: string; qty: number; price: number; discount: number }>>([]);
+  const [editNotes, setEditNotes] = useState("");
 
   const { data: invoice, isLoading } = useInvoice(id!);
   const cancelInvoice = useCancelInvoice();
+  const updateInvoice = useUpdateInvoice();
+
+  function openEditModal() {
+    if (!invoice) return;
+    setEditItems((invoice.items ?? []).map((it) => ({
+      id: it.id,
+      name: it.product?.name ?? it.productName ?? "Product",
+      qty: it.quantity,
+      price: it.unitPrice,
+      discount: 0,
+    })));
+    setEditNotes(invoice.notes ?? "");
+    setEditOpen(true);
+  }
+
+  function editChangeQty(idx: number, delta: number) {
+    setEditItems((prev) => prev.map((it, i) =>
+      i === idx ? { ...it, qty: Math.max(1, it.qty + delta) } : it
+    ));
+  }
+
+  function editChangeDiscount(idx: number, pct: number) {
+    setEditItems((prev) => prev.map((it, i) =>
+      i === idx ? { ...it, discount: Math.min(100, Math.max(0, pct || 0)) } : it
+    ));
+  }
+
+  function editRemoveItem(idx: number) {
+    setEditItems((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  function handleSaveEdit() {
+    if (!invoice) return;
+    updateInvoice.mutate({
+      id: invoice.id,
+      data: {
+        items: editItems.map((it) => ({ productName: it.name, quantity: it.qty })),
+        notes: editNotes || undefined,
+      },
+    }, {
+      onSuccess: () => { toast({ title: "Invoice updated ✅" }); setEditOpen(false); },
+      onError: () => toast({ title: "Failed to update invoice", variant: "destructive" }),
+    });
+  }
 
   if (isLoading) {
     return (
@@ -116,6 +167,11 @@ export default function InvoiceDetail() {
             <Badge className={`flex items-center gap-1 ${statusCfg.cls}`}>
               {statusCfg.icon} {statusCfg.label}
             </Badge>
+            {(invoice.status === "pending" || invoice.status === "partial" || invoice.status === "draft") && (
+              <Button variant="ghost" size="icon" onClick={openEditModal} title="Edit invoice">
+                <Edit3 className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -353,6 +409,81 @@ export default function InvoiceDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Invoice Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit {invoice?.invoiceNo}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="overflow-hidden rounded-lg border text-sm">
+              <table className="w-full">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium">Item</th>
+                    <th className="px-2 py-2 text-center font-medium w-20">Qty</th>
+                    <th className="px-1 py-2 text-center font-medium w-14">Disc%</th>
+                    <th className="px-3 py-2 text-right font-medium">Total</th>
+                    <th className="w-7" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {editItems.map((item, idx) => {
+                    const lineTotal = Math.round(item.price * item.qty * (1 - (item.discount || 0) / 100) * 100) / 100;
+                    return (
+                      <tr key={item.id} className="border-t">
+                        <td className="px-3 py-2 text-sm">{item.name}</td>
+                        <td className="px-2 py-2 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <button onClick={() => editChangeQty(idx, -1)} className="rounded p-0.5 hover:bg-muted">
+                              <Minus className="h-3 w-3" />
+                            </button>
+                            <span className="w-8 text-center">{item.qty}</span>
+                            <button onClick={() => editChangeQty(idx, 1)} className="rounded p-0.5 hover:bg-muted">
+                              <Plus className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-1 py-2 text-center">
+                          <input
+                            type="number" min={0} max={100}
+                            value={item.discount || ''}
+                            onChange={(e) => editChangeDiscount(idx, Number(e.target.value))}
+                            placeholder="0"
+                            className="w-12 rounded border px-1 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          {formatCurrency(lineTotal)}
+                          {item.discount > 0 && <span className="block text-[10px] text-green-600">-{item.discount}%</span>}
+                        </td>
+                        <td className="pr-2 text-center">
+                          <button onClick={() => editRemoveItem(idx)} className="text-muted-foreground hover:text-destructive">
+                            <XCircle className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <Textarea
+              placeholder="Notes (optional)"
+              value={editNotes}
+              onChange={(e) => setEditNotes(e.target.value)}
+              rows={2}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveEdit} disabled={updateInvoice.isPending}>
+              {updateInvoice.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

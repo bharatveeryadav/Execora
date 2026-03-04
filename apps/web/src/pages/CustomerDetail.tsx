@@ -38,6 +38,10 @@ const CustomerDetail = () => {
   const [editEmail, setEditEmail] = useState("");
   const [editNickname, setEditNickname] = useState("");
   const [editLandmark, setEditLandmark] = useState("");
+  const [editCreditLimit, setEditCreditLimit] = useState("");
+  const [editTags, setEditTags] = useState<string[]>([]);
+
+  const CUSTOMER_TAGS = ["VIP", "Wholesale", "Blacklist", "Regular"] as const;
 
   const { data: customer, isLoading } = useCustomer(id!);
   const { data: invoices = [] } = useCustomerInvoices(id!);
@@ -52,12 +56,18 @@ const CustomerDetail = () => {
     setEditEmail(customer.email ?? "");
     setEditNickname((customer as any).nickname ?? "");
     setEditLandmark((customer as any).landmark ?? "");
+    setEditCreditLimit(String((customer as any).creditLimit ?? ""));
+    setEditTags((customer as any).tags ?? []);
     setEditOpen(true);
   }
 
   function handleSave() {
     updateCustomer.mutate(
-      { id: id!, name: editName, phone: editPhone, email: editEmail, nickname: editNickname, landmark: editLandmark },
+      { id: id!, name: editName, phone: editPhone, email: editEmail,
+        nickname: editNickname, landmark: editLandmark,
+        creditLimit: editCreditLimit ? Number(editCreditLimit) : undefined,
+        tags: editTags.length ? editTags : undefined,
+      },
       {
         onSuccess: () => { toast({ title: "Customer updated" }); setEditOpen(false); },
         onError: () => toast({ title: "Update failed", variant: "destructive" }),
@@ -196,6 +206,36 @@ const CustomerDetail = () => {
               </div>
             </div>
 
+            {/* Credit limit + tags */}
+            {((customer as any).creditLimit > 0 || ((customer as any).tags ?? []).length > 0) && (
+              <div className="rounded-xl border bg-card p-4 space-y-2">
+                {(customer as any).creditLimit > 0 && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Credit Limit</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-semibold">{formatCurrency((customer as any).creditLimit)}</span>
+                      {balance >= (customer as any).creditLimit && (
+                        <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-destructive">
+                          ⚠️ Limit reached
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {((customer as any).tags ?? []).length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {((customer as any).tags as string[]).map((tag) => (
+                      <span key={tag} className={`rounded-full px-2 py-0.5 text-[10px] font-medium border ${
+                        tag === "Blacklist" ? "border-destructive/40 text-destructive bg-destructive/10" :
+                        tag === "VIP" ? "border-yellow-400/40 text-yellow-700 bg-yellow-400/10" :
+                        "border-border text-muted-foreground bg-muted"
+                      }`}>{tag}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Contact details */}
             <div className="rounded-xl border bg-card p-4 space-y-2">
               <p className="text-xs font-semibold uppercase text-muted-foreground">Contact Info</p>
@@ -316,6 +356,43 @@ const CustomerDetail = () => {
             <div className="space-y-1.5">
               <Label className="text-xs">Landmark / Area</Label>
               <Input value={editLandmark} onChange={(e) => setEditLandmark(e.target.value)} placeholder="e.g. near Rajiv Chowk" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Credit Limit (0 = no limit)</Label>
+              <Input
+                type="number" min={0} step="any"
+                value={editCreditLimit}
+                onChange={(e) => setEditCreditLimit(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Tags</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {CUSTOMER_TAGS.map((tag) => {
+                  const active = editTags.includes(tag);
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() =>
+                        setEditTags((prev) =>
+                          active ? prev.filter((t) => t !== tag) : [...prev, tag]
+                        )
+                      }
+                      className={`rounded-full border px-3 py-0.5 text-xs font-medium transition-colors ${
+                        active
+                          ? tag === "Blacklist"
+                            ? "border-destructive bg-destructive/10 text-destructive"
+                            : "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-muted text-muted-foreground hover:border-foreground"
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
           <DialogFooter>

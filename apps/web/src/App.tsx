@@ -14,6 +14,7 @@ import Invoices from "./pages/Invoices";
 import InvoiceDetail from "./pages/InvoiceDetail";
 import Expenses from "./pages/Expenses";
 import CashBook from "./pages/CashBook";
+import DayBook from "./pages/DayBook";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/LoginPage";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
@@ -126,6 +127,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <CashBook />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/daybook"
+        element={
+          <ProtectedRoute>
+            <DayBook />
           </ProtectedRoute>
         }
       />

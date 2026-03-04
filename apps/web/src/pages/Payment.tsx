@@ -31,6 +31,15 @@ const Payment = () => {
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
 
+  // Split payment
+  const [splitMode, setSplitMode] = useState(false);
+  const [splits, setSplits] = useState<Array<{ method: string; amount: string }>>([
+    { method: "cash", amount: "" },
+    { method: "upi", amount: "" },
+  ]);
+
+  const splitTotal = splits.reduce((s, sp) => s + (parseFloat(sp.amount) || 0), 0);
+
   // Customer search
   const [customerSearch, setCustomerSearch] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -80,16 +89,36 @@ const Payment = () => {
       return;
     }
     try {
-      await recordPayment.mutateAsync({
-        customerId: selectedCustomer.id,
-        amount: paymentAmount,
-        paymentMode: method,
-        notes: notes || undefined,
-      });
-      toast({
-        title: "✅ Payment Recorded",
-        description: `${formatCurrency(paymentAmount)} received from ${selectedCustomer.name} via ${method}.`,
-      });
+      if (splitMode) {
+        const activeSplits = splits.filter((sp) => parseFloat(sp.amount) > 0);
+        if (activeSplits.length === 0) {
+          toast({ title: "⚠️ Enter at least one split amount", variant: "destructive" });
+          return;
+        }
+        for (const sp of activeSplits) {
+          await recordPayment.mutateAsync({
+            customerId: selectedCustomer.id,
+            amount: parseFloat(sp.amount),
+            paymentMode: sp.method,
+            notes: notes || undefined,
+          });
+        }
+        toast({
+          title: "✅ Split Payment Recorded",
+          description: `${formatCurrency(splitTotal)} from ${selectedCustomer.name} (${activeSplits.length} methods).`,
+        });
+      } else {
+        await recordPayment.mutateAsync({
+          customerId: selectedCustomer.id,
+          amount: paymentAmount,
+          paymentMode: method,
+          notes: notes || undefined,
+        });
+        toast({
+          title: "✅ Payment Recorded",
+          description: `${formatCurrency(paymentAmount)} received from ${selectedCustomer.name} via ${method}.`,
+        });
+      }
       fireConfetti();
       navigate("/");
     } catch (err: unknown) {
@@ -274,24 +303,74 @@ const Payment = () => {
 
             {/* Payment Method */}
             <div className="space-y-1.5">
-              <Label className="text-xs">Payment Method *</Label>
-              <div className="grid grid-cols-4 gap-2">
-                {paymentMethods.map((pm) => (
-                  <button
-                    key={pm.id}
-                    onClick={() => setMethod(pm.id)}
-                    className={`flex flex-col items-center gap-1 rounded-lg border p-3 text-center transition-colors ${
-                      method === pm.id
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border bg-card hover:bg-accent"
-                    }`}
-                  >
-                    <span className="text-lg">{pm.icon}</span>
-                    <span className="text-xs font-medium">{pm.label}</span>
-                    {method === pm.id && <span className="text-[10px]">✓ Selected</span>}
-                  </button>
-                ))}
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">Payment Method *</Label>
+                <button
+                  onClick={() => setSplitMode((v) => !v)}
+                  className={`text-xs font-medium underline-offset-2 ${
+                    splitMode ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {splitMode ? "✕ Single method" : "＋ Split payment"}
+                </button>
               </div>
+
+              {!splitMode ? (
+                <div className="grid grid-cols-4 gap-2">
+                  {paymentMethods.map((pm) => (
+                    <button
+                      key={pm.id}
+                      onClick={() => setMethod(pm.id)}
+                      className={`flex flex-col items-center gap-1 rounded-lg border p-3 text-center transition-colors ${
+                        method === pm.id
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-card hover:bg-accent"
+                      }`}
+                    >
+                      <span className="text-lg">{pm.icon}</span>
+                      <span className="text-xs font-medium">{pm.label}</span>
+                      {method === pm.id && <span className="text-[10px]">✓ Selected</span>}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {splits.map((sp, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <select
+                        value={sp.method}
+                        onChange={(e) => setSplits((prev) => prev.map((s, i) => i === idx ? { ...s, method: e.target.value } : s))}
+                        className="rounded-md border bg-card px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                      >
+                        {paymentMethods.map((pm) => (
+                          <option key={pm.id} value={pm.id}>{pm.icon} {pm.label}</option>
+                        ))}
+                      </select>
+                      <Input
+                        type="number" min={0} step="any" placeholder="Amount"
+                        value={sp.amount}
+                        onChange={(e) => setSplits((prev) => prev.map((s, i) => i === idx ? { ...s, amount: e.target.value } : s))}
+                        className="flex-1"
+                      />
+                      {splits.length > 2 && (
+                        <button onClick={() => setSplits((prev) => prev.filter((_, i) => i !== idx))} className="text-destructive hover:opacity-80">
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => setSplits((prev) => [...prev, { method: "cash", amount: "" }])}
+                    className="flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    <Plus className="h-3 w-3" /> Add split
+                  </button>
+                  <p className="text-right text-xs text-muted-foreground">
+                    Total: <span className={splitTotal !== paymentAmount ? "text-destructive font-medium" : "text-green-600 font-medium"}>{formatCurrency(splitTotal)}</span>
+                    {" / "}{formatCurrency(paymentAmount)}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Reference */}

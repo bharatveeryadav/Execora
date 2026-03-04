@@ -6,7 +6,6 @@ import { useWS } from "@/contexts/WSContext";
 import { wsClient } from "@/lib/ws";
 import { useTheme } from "@/contexts/ThemeContext";
 import VoiceBar from "@/components/VoiceBar";
-import GlobalSearch from "@/components/GlobalSearch";
 import NotificationCenter from "@/components/NotificationCenter";
 
 // ── All voice commands, grouped by category (Vyapar + Execora parity) ─────────
@@ -57,10 +56,9 @@ const DashboardHeader = () => {
   const { user } = useAuth();
   const { isConnected, reconnect } = useWS();
   const { theme, toggle } = useTheme();
-  const [searchOpen, setSearchOpen] = useState(false);
   const [activeGroup, setActiveGroup] = useState(0);
-
   const storeName = user?.name ? `${user.name}'s Store` : "Execora Store";
+  const openSearch = () => window.dispatchEvent(new CustomEvent("execora:search"));
 
   return (
     <header className="border-b bg-card px-4 py-3 md:px-6">
@@ -89,7 +87,7 @@ const DashboardHeader = () => {
               <WifiOff className="h-4 w-4 text-destructive" />
             </Button>
           )}
-          <Button variant="ghost" size="icon" onClick={() => setSearchOpen(true)} title="Search (Ctrl+K)">
+          <Button variant="ghost" size="icon" onClick={openSearch} title="Search (Ctrl+K)">
             <Search className="h-4 w-4" />
           </Button>
           <NotificationCenter />
@@ -142,8 +140,6 @@ const DashboardHeader = () => {
           ))}
         </div>
       </div>
-
-      <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
     </header>
   );
 };

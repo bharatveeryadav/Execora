@@ -1,15 +1,18 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Home, Users, FileText, Plus, MoreHorizontal,
-  BarChart3, Package, Wallet, BookOpen, Settings, ShoppingCart, X,
+  BarChart3, Package, Wallet, BookOpen, Settings, ShoppingCart, X, Search,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import InvoiceCreation from "@/components/InvoiceCreation";
+import GlobalSearch from "@/components/GlobalSearch";
 
 // ── More drawer items (Vyapar feature-parity links) ───────────────────────────
 const MORE_ITEMS = [
   { emoji: "📊", label: "Reports",   path: "/reports",   icon: BarChart3 },
   { emoji: "📦", label: "Inventory", path: "/inventory", icon: Package },
+  { emoji: "🧾", label: "Invoices",  path: "/invoices",  icon: FileText },
+  { emoji: "📒", label: "Day Book",  path: "/daybook",   icon: BookOpen },
   { emoji: "💵", label: "Cash Book", path: "/cashbook",  icon: BookOpen },
   { emoji: "💸", label: "Expenses",  path: "/expenses",  icon: ShoppingCart },
   { emoji: "💳", label: "Payments",  path: "/payment",   icon: Wallet },
@@ -21,7 +24,7 @@ const NAV_ITEMS = [
   { label: "Home",      icon: Home,          path: "/" },
   { label: "Customers", icon: Users,         path: "/customers" },
   { label: "__FAB__",   icon: Plus,          path: "" },
-  { label: "Invoices",  icon: FileText,      path: "/invoices" },
+  { label: "Search",   icon: Search,        path: "__search__" },
   { label: "More",      icon: MoreHorizontal,path: "__more__" },
 ];
 
@@ -30,6 +33,7 @@ const BottomNav = () => {
   const location = useLocation();
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
     const handler = () => setInvoiceOpen(true);
@@ -74,6 +78,20 @@ const BottomNav = () => {
                 >
                   <MoreHorizontal className="h-5 w-5" />
                   <span>More</span>
+                </button>
+              );
+            }
+
+            // Search icon button
+            if (item.path === "__search__") {
+              return (
+                <button
+                  key="search"
+                  onClick={() => setSearchOpen(true)}
+                  className="flex flex-col items-center gap-0.5 py-2 text-[10px] transition-colors text-muted-foreground hover:text-primary"
+                >
+                  <Search className="h-5 w-5" />
+                  <span>Search</span>
                 </button>
               );
             }
@@ -135,6 +153,7 @@ const BottomNav = () => {
       )}
 
       <InvoiceCreation open={invoiceOpen} onOpenChange={setInvoiceOpen} />
+      <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
     </>
   );
 };

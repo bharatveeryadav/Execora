@@ -52,6 +52,7 @@ interface InvoiceItem {
 	name: string;
 	qty: string;
 	price: number;
+	discount: number; // % per item 0-100
 	total: number;
 }
 
@@ -239,6 +240,7 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 							name: it.productName,
 							qty: String(it.quantity),
 							price: it.unitPrice ?? 0,
+							discount: 0,
 							total: it.total ?? (it.unitPrice ?? 0) * it.quantity,
 						}))
 					);
@@ -273,6 +275,7 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 							name: it.productName,
 							qty: String(it.quantity),
 							price: it.unitPrice ?? 0,
+							discount: 0,
 							total: (it as { total?: number }).total ?? (it.unitPrice ?? 0) * it.quantity,
 						}))
 					);
@@ -1155,8 +1158,8 @@ function EditableItemTable({
 	discountFlat,
 	partialAmount,
 }: {
-	items: { name: string; qty: string; price: number; total: number }[];
-	setItems: React.Dispatch<React.SetStateAction<{ name: string; qty: string; price: number; total: number }[]>>;
+	items: { name: string; qty: string; price: number; discount: number; total: number }[];
+	setItems: React.Dispatch<React.SetStateAction<{ name: string; qty: string; price: number; discount: number; total: number }[]>>;
 	withGst: boolean;
 	discountAmt: number;
 	discountPct: number;
@@ -1173,14 +1176,27 @@ function EditableItemTable({
 			prev.map((it, i) => {
 				if (i !== idx) return it;
 				const qty = Math.max(1, parseInt(val) || 1);
-				return { ...it, qty: String(qty), total: Math.round(it.price * qty * 100) / 100 };
+				const effective = it.price * (1 - (it.discount || 0) / 100);
+				return { ...it, qty: String(qty), total: Math.round(effective * qty * 100) / 100 };
+			})
+		);
+	};
+
+	const updateDiscount = (idx: number, pct: number) => {
+		setItems((prev) =>
+			prev.map((it, i) => {
+				if (i !== idx) return it;
+				const discount = Math.min(100, Math.max(0, pct || 0));
+				const qty = parseInt(it.qty) || 1;
+				const effective = it.price * (1 - discount / 100);
+				return { ...it, discount, total: Math.round(effective * qty * 100) / 100 };
 			})
 		);
 	};
 
 	const removeItem = (idx: number) => setItems((prev) => prev.filter((_, i) => i !== idx));
 
-	const addItem = () => setItems((prev) => [...prev, { name: '', qty: '1', price: 0, total: 0 }]);
+	const addItem = () => setItems((prev) => [...prev, { name: '', qty: '1', price: 0, discount: 0, total: 0 }]);
 
 	return (
 		<div className="overflow-hidden rounded-lg border text-sm">
@@ -1189,6 +1205,7 @@ function EditableItemTable({
 					<tr>
 						<th className="px-3 py-2 text-left font-medium">Item</th>
 						<th className="px-2 py-2 text-center font-medium w-20">Qty</th>
+						<th className="px-1 py-2 text-center font-medium w-14">Disc%</th>
 						<th className="px-3 py-2 text-right font-medium">Total</th>
 						<th className="w-7" />
 					</tr>
@@ -1216,7 +1233,23 @@ function EditableItemTable({
 									</button>
 								</div>
 							</td>
-							<td className="px-3 py-1.5 text-right">₹{item.total}</td>
+							<td className="px-1 py-1.5 text-center">
+								<input
+									type="number"
+									min={0}
+									max={100}
+									value={item.discount || ''}
+									onChange={(e) => updateDiscount(idx, Number(e.target.value))}
+									placeholder="0"
+									className="w-12 rounded border px-1 py-0.5 text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary"
+								/>
+							</td>
+							<td className="px-3 py-1.5 text-right">
+								₹{item.total}
+								{item.discount > 0 && (
+									<span className="block text-[10px] text-green-600 leading-none">-{item.discount}%</span>
+								)}
+							</td>
 							<td className="pr-2 text-center">
 								<button
 									onClick={() => removeItem(idx)}

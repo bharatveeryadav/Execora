@@ -104,7 +104,7 @@ export function useCreateCustomer() {
 export function useUpdateCustomer() {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: ({ id, ...data }: { id: string; name?: string; phone?: string; email?: string; nickname?: string; landmark?: string }) =>
+		mutationFn: ({ id, ...data }: { id: string; name?: string; phone?: string; email?: string; nickname?: string; landmark?: string; creditLimit?: number; tags?: string[] }) =>
 			customerApi.update(id, data),
 		onSuccess: (_d, vars) => {
 			qc.invalidateQueries({ queryKey: QK.customer(vars.id) });
@@ -171,6 +171,19 @@ export function useCancelInvoice() {
 	return useMutation({
 		mutationFn: (id: string) => invoiceApi.cancel(id),
 		onSuccess: () => {
+			qc.invalidateQueries({ queryKey: ['invoices'] });
+			qc.invalidateQueries({ queryKey: QK.summary });
+		},
+	});
+}
+
+export function useUpdateInvoice() {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: ({ id, data }: { id: string; data: Parameters<typeof invoiceApi.update>[1] }) =>
+			invoiceApi.update(id, data),
+		onSuccess: (_result, { id }) => {
+			qc.invalidateQueries({ queryKey: QK.invoice(id) });
 			qc.invalidateQueries({ queryKey: ['invoices'] });
 			qc.invalidateQueries({ queryKey: QK.summary });
 		},
