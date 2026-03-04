@@ -1889,36 +1889,38 @@ This removes the app install barrier entirely. Growth = viral WhatsApp sharing.
 
 #### Platform
 
-| Feature                                 | Priority | Notes                                                                                          |
-| --------------------------------------- | -------- | ---------------------------------------------------------------------------------------------- |
-| Mobile-responsive layout                | P0       | Counter use = mobile. Current UI is desktop-first                                              |
-| Single-screen classic billing UI        | P0       | Top UX complaint across 193+ reviews — no page flips during bill creation                      |
-| Offline mode (PWA + IndexedDB queue)    | P0       | 22% of users cite offline as reason to switch tools; elevated from P2                          |
+| Feature                                 | Priority | Notes                                                                                                                                                                                                                                    |
+| --------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mobile-responsive layout                | P0       | Counter use = mobile. Current UI is desktop-first                                                                                                                                                                                        |
+| Single-screen classic billing UI        | P0       | Top UX complaint across 193+ reviews — no page flips during bill creation                                                                                                                                                                |
+| Offline mode (PWA + IndexedDB queue)    | P0       | 22% of users cite offline as reason to switch tools; elevated from P2                                                                                                                                                                    |
 | ~~OCR purchase bill ingestion (AI)~~    | ~~P0~~   | ✅ Partially built — photo → OpenAI Vision → `drafts` table → DraftManagerPanel Fast Mode (12-col review) → confirm to inventory. Full pipeline live since Sprint 8. Remaining: supplier cost capture on purchase side, auto-PO creation |
-| UPI payment QR code embedded in invoice | P0       | Frequently requested; trivial to add via QR generation library                                 |
-| WhatsApp chatbot interface              | P2       | Send voice note to WhatsApp → AI processes → reply                                             |
-| Tally/Vyapar data import                | P2       | Migration path for existing users                                                              |
+| UPI payment QR code embedded in invoice | P0       | Frequently requested; trivial to add via QR generation library                                                                                                                                                                           |
+| WhatsApp chatbot interface              | P2       | Send voice note to WhatsApp → AI processes → reply                                                                                                                                                                                       |
+| Tally/Vyapar data import                | P2       | Migration path for existing users                                                                                                                                                                                                        |
 
 ---
 
 ## 15. Sprint 9 — Plan (2026-03-05 onwards)
 
 ### Goal
+
 Close the top P0 gaps that directly impact daily counter sales: frictionless walk-in billing, WhatsApp PDF delivery on confirm, and UPI QR on invoices. These three together eliminate the most common reasons a kirana owner prefers Vyapar over Execora.
 
 ### Sprint 9 Stories
 
-| # | Story | Priority | Est. | Notes |
-| - | ----- | -------- | ---- | ----- |
-| S9-01 | **WhatsApp auto-send PDF on invoice confirm** | P0 | 4 h | `invoice:confirmed` event → WhatsApp API with PDF URL. Mirrors current email auto-send. Add toggle in Settings per customer. |
-| S9-02 | **Walk-in 1-tap button** | P0 | 2 h | Dashboard/header "New Sale ▶" pre-selects Walk-in customer + opens invoice form in one tap. No customer search step. |
-| S9-03 | **UPI QR code on invoice PDF** | P0 | 3 h | `qrcode` npm → embed UPI deep-link QR in PDF footer. Uses `upiVpa` from business profile. Scanned by customer to pay on the spot. |
-| S9-04 | **Item-level discount** | P0 | 3 h | Each invoice item line gets `discountPct` / `discountAmt` field. Voice: "aata pe 5% discount do". Updates taxable value correctly. |
-| S9-05 | **Single-screen classic billing UI** | P0 | 1 d | Customer search + item addition + totals on one page, no navigation. Mobile-responsive. Addresses #1 UX complaint from 193+ reviews. |
-| S9-06 | **Batch / expiry entry** | P1 | 1 d | Pharma vertical: batch number + expiry date on purchase; alert 30 days before expiry; FIFO deduction. |
-| S9-07 | **Customer email prompt at creation** | P1 | 2 h | Email field highlighted (not required) in Customer form; tooltip explains it enables PDF delivery. |
+| #     | Story                                         | Priority | Est. | Notes                                                                                                                                |
+| ----- | --------------------------------------------- | -------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| S9-01 | **WhatsApp auto-send PDF on invoice confirm** | P0       | 4 h  | `invoice:confirmed` event → WhatsApp API with PDF URL. Mirrors current email auto-send. Add toggle in Settings per customer.         |
+| S9-02 | **Walk-in 1-tap button**                      | P0       | 2 h  | Dashboard/header "New Sale ▶" pre-selects Walk-in customer + opens invoice form in one tap. No customer search step.                 |
+| S9-03 | **UPI QR code on invoice PDF**                | P0       | 3 h  | `qrcode` npm → embed UPI deep-link QR in PDF footer. Uses `upiVpa` from business profile. Scanned by customer to pay on the spot.    |
+| S9-04 | **Item-level discount**                       | P0       | 3 h  | Each invoice item line gets `discountPct` / `discountAmt` field. Voice: "aata pe 5% discount do". Updates taxable value correctly.   |
+| S9-05 | **Single-screen classic billing UI**          | P0       | 1 d  | Customer search + item addition + totals on one page, no navigation. Mobile-responsive. Addresses #1 UX complaint from 193+ reviews. |
+| S9-06 | **Batch / expiry entry**                      | P1       | 1 d  | Pharma vertical: batch number + expiry date on purchase; alert 30 days before expiry; FIFO deduction.                                |
+| S9-07 | **Customer email prompt at creation**         | P1       | 2 h  | Email field highlighted (not required) in Customer form; tooltip explains it enables PDF delivery.                                   |
 
 ### Sprint 9 Success Criteria
+
 - Invoice confirm → WhatsApp PDF received within 5 s (S9-01)
 - Walk-in bill completed in < 10 s from dashboard (S9-02)
 - Any invoice PDF download shows UPI QR in footer (S9-03)
@@ -1930,6 +1932,10 @@ Close the top P0 gaps that directly impact daily counter sales: frictionless wal
 
 > If you are an AI agent working on this codebase, read this section carefully.
 
+> ⚠️ **MANDATORY**: Before writing any code, read [`docs/AGENT_CODING_STANDARDS.md`](./AGENT_CODING_STANDARDS.md) in full.
+> It defines the non-negotiable rules for error handling, logging, metrics, tracing, TypeScript, and code structure.
+> Every PR that violates those rules will be rejected.
+
 ### Before Writing Any Code
 
 1. Find the relevant use case in Section 3 — understand the **real user problem** you are solving.
@@ -1937,6 +1943,7 @@ Close the top P0 gaps that directly impact daily counter sales: frictionless wal
 3. Check Section 13 — is this feature already built? Don't duplicate.
 4. Understand Section 6 — does your feature need to work in **both** Agent Mode and Classic Mode?
 5. Check Section 7 — does your feature emit or consume WebSocket events? Add to `WSContext.tsx` and `enhanced-handler.ts`.
+6. Open [`docs/AGENT_CODING_STANDARDS.md`](./AGENT_CODING_STANDARDS.md) — confirm your code plan follows every rule in §3 (errors), §4 (logging), §5 (metrics), §8 (route anatomy), §9 (service layer).
 
 ### Coding Conventions
 

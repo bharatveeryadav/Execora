@@ -1,5 +1,8 @@
 # 📚 EXECORA PRODUCTION AUDIT - Delivered Documentation
 
+> 🤖 **For AI agents / developers writing code**: Read [`docs/AGENT_CODING_STANDARDS.md`](docs/AGENT_CODING_STANDARDS.md) **first**.
+> It is the mandatory engineering law for this codebase — error handling, logging, metrics, tracing, TypeScript rules, route anatomy, PR checklist.
+
 ## 📁 Complete Deliverables
 
 ```
