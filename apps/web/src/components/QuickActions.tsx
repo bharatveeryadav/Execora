@@ -1,14 +1,16 @@
 import { useState } from 'react';
-import { FileText, Wallet, Package, ShoppingCart, Users, BarChart3, Truck } from 'lucide-react';
+import { FileText, Wallet, Package, ShoppingCart, Users, BarChart3, Truck, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import InvoiceCreation from '@/components/InvoiceCreation';
 
 const QuickActions = () => {
 	const [invoiceOpen, setInvoiceOpen] = useState(false);
+	const [walkInOpen, setWalkInOpen] = useState(false);
 	const navigate = useNavigate();
 
 	const actions = [
-		{ label: 'New Invoice', icon: FileText, primary: true, onClick: () => setInvoiceOpen(true) },
+		{ label: 'Quick Sale ▶', icon: Zap, primary: true, onClick: () => setWalkInOpen(true) },
+		{ label: 'New Invoice', icon: FileText, primary: false, onClick: () => setInvoiceOpen(true) },
 		{ label: 'Payment In', icon: Wallet, primary: false, onClick: () => navigate('/payment') },
 		{ label: 'Stock Check', icon: Package, primary: false, onClick: () => navigate('/inventory') },
 		{ label: 'Invoices', icon: FileText, primary: false, onClick: () => navigate('/invoices') },
@@ -40,6 +42,7 @@ const QuickActions = () => {
 			</div>
 
 			<InvoiceCreation open={invoiceOpen} onOpenChange={setInvoiceOpen} />
+			<InvoiceCreation open={walkInOpen} onOpenChange={setWalkInOpen} startAsWalkIn />
 		</div>
 	);
 };

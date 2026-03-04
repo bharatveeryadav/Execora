@@ -83,6 +83,8 @@ interface InvoiceCreationProps {
 	repeatForCustomer?: Customer;
 	/** Pre-fill items from a previous invoice (for "Repeat last order") */
 	repeatItems?: Array<{ name: string; qty: string; price: number; discount: number; total: number }>;
+	/** Skip start screen — go straight to manual items table with Walk-in customer pre-selected (1-tap billing) */
+	startAsWalkIn?: boolean;
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -109,6 +111,7 @@ const InvoiceCreation = ({
 	onOpenChange,
 	repeatForCustomer,
 	repeatItems: repeatItemsProp,
+	startAsWalkIn,
 }: InvoiceCreationProps) => {
 	const [step, setStep] = useState<Step>('start');
 	const [progress, setProgress] = useState(0);
@@ -232,6 +235,11 @@ const InvoiceCreation = ({
 				setStep('manual');
 				setInlineCustomer(repeatForCustomer);
 				if (repeatItemsProp?.length) setItems(repeatItemsProp);
+			} else if (startAsWalkIn) {
+				// Jump straight to manual step — walk-in customer resolved async below
+				setStep('manual');
+				setInlineCustomer(null);
+				setCustomerSearch('');
 			} else {
 				setInlineCustomer(null);
 				setCustomerSearch('');
@@ -241,6 +249,13 @@ const InvoiceCreation = ({
 			wsClient.send('voice:stop');
 		}
 	}, [open, cleanupAudio]); // eslint-disable-line react-hooks/exhaustive-deps
+
+	// ── Auto-select walk-in customer when opened in 1-tap mode ───────────────
+	useEffect(() => {
+		if (open && startAsWalkIn) {
+			void handleWalkInCustomer();
+		}
+	}, [open, startAsWalkIn]); // eslint-disable-line react-hooks/exhaustive-deps
 
 	// ── WebSocket events ──────────────────────────────────────────────────────
 	useEffect(() => {
