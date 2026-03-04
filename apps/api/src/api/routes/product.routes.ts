@@ -1,98 +1,130 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { productService, invoiceService } from '@execora/modules';
+import { broadcaster } from '../../ws/broadcaster';
 
 export async function productRoutes(fastify: FastifyInstance) {
-  fastify.get('/api/v1/products', async () => {
-    const products = await productService.getAllProducts();
-    return { products };
-  });
+	fastify.get('/api/v1/products', async () => {
+		const products = await productService.getAllProducts();
+		return { products };
+	});
 
-  fastify.get('/api/v1/products/low-stock', async () => {
-    const products = await productService.getLowStockProducts();
-    return { products };
-  });
+	fastify.get('/api/v1/products/low-stock', async () => {
+		const products = await productService.getLowStockProducts();
+		return { products };
+	});
 
-  // ── GET /api/v1/products/top-selling?limit=5&days=30 ─────────────────────────
-  fastify.get('/api/v1/products/top-selling', async (request: FastifyRequest<{
-    Querystring: { limit?: string; days?: string };
-  }>) => {
-    const limit = Math.min(parseInt(String(request.query.limit ?? 5), 10) || 5, 20);
-    const days  = Math.min(parseInt(String(request.query.days  ?? 30), 10) || 30, 365);
-    const products = await invoiceService.getTopSelling(limit, days);
-    return { products };
-  });
+	// ── GET /api/v1/products/top-selling?limit=5&days=30 ─────────────────────────
+	fastify.get(
+		'/api/v1/products/top-selling',
+		async (
+			request: FastifyRequest<{
+				Querystring: { limit?: string; days?: string };
+			}>
+		) => {
+			const limit = Math.min(parseInt(String(request.query.limit ?? 5), 10) || 5, 20);
+			const days = Math.min(parseInt(String(request.query.days ?? 30), 10) || 30, 365);
+			const products = await invoiceService.getTopSelling(limit, days);
+			return { products };
+		}
+	);
 
-  fastify.post('/api/v1/products', {
-    schema: {
-      body: {
-        type: 'object',
-        required: ['name', 'price', 'stock'],
-        properties: {
-          name:        { type: 'string', minLength: 1, maxLength: 255 },
-          description: { type: 'string', maxLength: 1000 },
-          price:       { type: 'number', minimum: 0 },
-          stock:       { type: 'integer', minimum: 0 },
-          unit:        { type: 'string', maxLength: 50 },
-          category:    { type: 'string', maxLength: 100 },
-        },
-        additionalProperties: false,
-      },
-    },
-  }, async (request: FastifyRequest<{
-    Body: { name: string; price: number; stock: number; description?: string; unit?: string; category?: string };
-  }>, reply) => {
-    const product = await productService.createProduct(request.body);
-    return reply.code(201).send({ product });
-  });
+	fastify.post(
+		'/api/v1/products',
+		{
+			schema: {
+				body: {
+					type: 'object',
+					required: ['name', 'price', 'stock'],
+					properties: {
+						name: { type: 'string', minLength: 1, maxLength: 255 },
+						description: { type: 'string', maxLength: 1000 },
+						price: { type: 'number', minimum: 0 },
+						stock: { type: 'integer', minimum: 0 },
+						unit: { type: 'string', maxLength: 50 },
+						category: { type: 'string', maxLength: 100 },
+					},
+					additionalProperties: false,
+				},
+			},
+		},
+		async (
+			request: FastifyRequest<{
+				Body: {
+					name: string;
+					price: number;
+					stock: number;
+					description?: string;
+					unit?: string;
+					category?: string;
+				};
+			}>,
+			reply
+		) => {
+			const product = await productService.createProduct(request.body);
+			return reply.code(201).send({ product });
+		}
+	);
 
-  // ── PUT /api/v1/products/:id — update product fields ────────────────────────
-  fastify.put<{
-    Params: { id: string };
-    Body: { name?: string; price?: number; stock?: number; unit?: string; category?: string; description?: string };
-  }>('/api/v1/products/:id', {
-    schema: {
-      body: {
-        type: 'object',
-        properties: {
-          name:        { type: 'string', minLength: 1, maxLength: 255 },
-          description: { type: 'string', maxLength: 1000 },
-          price:       { type: 'number', minimum: 0 },
-          stock:       { type: 'integer', minimum: 0 },
-          unit:        { type: 'string', maxLength: 50 },
-          category:    { type: 'string', maxLength: 100 },
-        },
-        additionalProperties: false,
-      },
-    },
-  }, async (request, reply) => {
-    const product = await productService.updateProduct(request.params.id, request.body);
-    if (!product) return reply.code(404).send({ error: 'Product not found' });
-    return { product };
-  });
+	// ── PUT /api/v1/products/:id — update product fields ────────────────────────
+	fastify.put<{
+		Params: { id: string };
+		Body: { name?: string; price?: number; stock?: number; unit?: string; category?: string; description?: string };
+	}>(
+		'/api/v1/products/:id',
+		{
+			schema: {
+				body: {
+					type: 'object',
+					properties: {
+						name: { type: 'string', minLength: 1, maxLength: 255 },
+						description: { type: 'string', maxLength: 1000 },
+						price: { type: 'number', minimum: 0 },
+						stock: { type: 'integer', minimum: 0 },
+						unit: { type: 'string', maxLength: 50 },
+						category: { type: 'string', maxLength: 100 },
+					},
+					additionalProperties: false,
+				},
+			},
+		},
+		async (request, reply) => {
+			const product = await productService.updateProduct(request.params.id, request.body);
+			if (!product) return reply.code(404).send({ error: 'Product not found' });
+			const tid = (request as any).user?.tenantId;
+			if (tid) broadcaster.send(tid, 'product:updated', { productId: product.id });
+			return { product };
+		}
+	);
 
-  // ── PATCH /api/v1/products/:id/stock — adjust stock ─────────────────────────
-  fastify.patch<{
-    Params: { id: string };
-    Body: { quantity: number; operation: 'add' | 'subtract'; reason?: string };
-  }>('/api/v1/products/:id/stock', {
-    schema: {
-      body: {
-        type: 'object',
-        required: ['quantity', 'operation'],
-        properties: {
-          quantity:  { type: 'integer', minimum: 1 },
-          operation: { type: 'string', enum: ['add', 'subtract'] },
-          reason:    { type: 'string', maxLength: 500 },
-        },
-        additionalProperties: false,
-      },
-    },
-  }, async (request) => {
-    const product = await productService.updateStock(
-      request.params.id,
-      request.body.quantity,
-      request.body.operation
-    );
-    return { product };
-  });
+	// ── PATCH /api/v1/products/:id/stock — adjust stock ─────────────────────────
+	fastify.patch<{
+		Params: { id: string };
+		Body: { quantity: number; operation: 'add' | 'subtract'; reason?: string };
+	}>(
+		'/api/v1/products/:id/stock',
+		{
+			schema: {
+				body: {
+					type: 'object',
+					required: ['quantity', 'operation'],
+					properties: {
+						quantity: { type: 'integer', minimum: 1 },
+						operation: { type: 'string', enum: ['add', 'subtract'] },
+						reason: { type: 'string', maxLength: 500 },
+					},
+					additionalProperties: false,
+				},
+			},
+		},
+		async (request) => {
+			const product = await productService.updateStock(
+				request.params.id,
+				request.body.quantity,
+				request.body.operation
+			);
+			const tid = (request as any).user?.tenantId;
+			if (tid) broadcaster.send(tid, 'stock:updated', { productId: product.id, stock: product.stock });
+			return { product };
+		}
+	);
 }

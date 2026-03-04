@@ -7,6 +7,7 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma } from '@execora/infrastructure';
 import { Decimal } from '@prisma/client/runtime/library';
+import { broadcaster } from '../../ws/broadcaster';
 
 function parseDateRange(from?: string, to?: string) {
 	const f = from ? new Date(from) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -82,6 +83,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 					date: date ? new Date(date) : new Date(),
 				},
 			});
+			broadcaster.send(tenantId, 'expense:created', { expenseId: expense.id });
 			return reply.code(201).send({ expense });
 		}
 	);
@@ -92,6 +94,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 		const row = await prisma.expense.findFirst({ where: { id: request.params.id, tenantId } });
 		if (!row) return reply.code(404).send({ error: 'Not found' });
 		await prisma.expense.delete({ where: { id: row.id } });
+		broadcaster.send(tenantId, 'expense:deleted', { expenseId: row.id });
 		return { ok: true };
 	});
 
@@ -201,6 +204,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 					date: date ? new Date(date) : new Date(),
 				},
 			});
+			broadcaster.send(tenantId, 'purchase:created', { purchaseId: purchase.id });
 			return reply.code(201).send({ purchase });
 		}
 	);
@@ -211,6 +215,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 		const row = await prisma.expense.findFirst({ where: { id: request.params.id, tenantId, type: 'purchase' } });
 		if (!row) return reply.code(404).send({ error: 'Not found' });
 		await prisma.expense.delete({ where: { id: row.id } });
+		broadcaster.send(tenantId, 'purchase:deleted', { purchaseId: row.id });
 		return { ok: true };
 	});
 
@@ -242,12 +247,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 				id: `pay-${p.id}`,
 				type: 'in' as const,
 				amount: parseFloat(String(p.amount)),
-				category:
-					p.method === 'cash'
-						? 'Cash Receipt'
-						: p.method === 'upi'
-							? 'UPI Receipt'
-							: 'Bank Receipt',
+				category: p.method === 'cash' ? 'Cash Receipt' : p.method === 'upi' ? 'UPI Receipt' : 'Bank Receipt',
 				note: p.customer?.name ? `Payment from ${p.customer.name}` : 'Payment received',
 				date: p.receivedAt.toISOString().slice(0, 10),
 				createdAt: p.receivedAt.getTime(),

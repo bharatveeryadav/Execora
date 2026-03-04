@@ -2,6 +2,7 @@
  * Day Book — All transactions in one chronological view.
  * Real SME use case: daily cash reconciliation, CA handoff, end-of-day check.
  * Shows: GST invoices created, payments received, expenses paid, cash in/out.
+ * All data is server-persisted; no localStorage for transaction data.
  */
 import { useState, useMemo } from "react";
 import { ArrowLeft, Calendar, TrendingUp, TrendingDown, RefreshCw, Filter } from "lucide-react";
@@ -9,7 +10,8 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useInvoices } from "@/hooks/useQueries";
+import { useInvoices, useExpenses, useCashbook } from "@/hooks/useQueries";
+import { useWsInvalidation } from "@/hooks/useWsInvalidation";
 import { formatCurrency, formatDate } from "@/lib/api";
 import BottomNav from "@/components/BottomNav";
 
@@ -27,18 +29,6 @@ interface Transaction {
   status?: string;
   navTo?: string;
 }
-
-// Local storage keys (same as CashBook + Expenses pages)
-const CASH_KEY    = "execora:cashbook";
-const EXPENSE_KEY = "execora:expenses";
-
-function readLocalJSON<T>(key: string, fallback: T): T {
-  try { return JSON.parse(localStorage.getItem(key) ?? "null") ?? fallback; }
-  catch { return fallback; }
-}
-
-// ── Date helpers ──────────────────────────────────────────────────────────────
-const fmtYMD = (d: Date) => d.toISOString().slice(0, 10);
 
 const PERIOD_OPTIONS = [
   "Today",
@@ -70,6 +60,9 @@ function getPeriodRange(period: Period): { from: string; to: string } {
   return { from: fmtYMD(d), to: fmtYMD(last) };
 }
 
+// ── Date helpers ──────────────────────────────────────────────────────────────
+const fmtYMD = (d: Date) => d.toISOString().slice(0, 10);
+
 function inRange(dateStr: string, from: string, to: string) {
   const d = dateStr.slice(0, 10);
   return d >= from && d <= to;
@@ -98,9 +91,24 @@ export default function DayBook() {
   const navigate = useNavigate();
   const [period, setPeriod] = useState<Period>("Today");
   const [typeFilter, setTypeFilter] = useState<TxType | "all">("all");
-  const { data: invoices = [], isLoading, refetch } = useInvoices(1000);
 
   const { from, to } = getPeriodRange(period);
+
+  const { data: invoicesData = [], isLoading: invLoading, refetch: refetchInv } = useInvoices(1000);
+  const { data: expData, isLoading: expLoading, refetch: refetchExp } = useExpenses({ from, to });
+  const { data: cbData, isLoading: cbLoading, refetch: refetchCb } = useCashbook({ from, to });
+
+  const invoices = invoicesData;
+  const isLoading = invLoading || expLoading || cbLoading;
+
+  function refetch() {
+    refetchInv();
+    refetchExp();
+    refetchCb();
+  }
+
+  // Subscribe to real-time WS events and invalidate caches automatically
+  useWsInvalidation(['invoices', 'expenses', 'purchases', 'cashbook']);
 
   // ── Build transaction list ──────────────────────────────────────────────────
   const transactions = useMemo(() => {
@@ -116,13 +124,13 @@ export default function DayBook() {
         label: inv.invoiceNo,
         sublabel: inv.customer?.name ?? "Customer",
         amount: parseFloat(String(inv.total ?? 0)),
-        sign: "debit",  // amount owed by customer — shows as receivable
+        sign: "debit",
         status: inv.status,
         navTo: `/invoices/${inv.id}`,
       });
     }
 
-    // 2. Payments recorded — use paidAt if available, else createdAt
+    // 2. Payments recorded — use paidAt if available, else updatedAt
     for (const inv of invoices) {
       const paidAmt = parseFloat(String(inv.paidAmount ?? 0));
       if (paidAmt <= 0) continue;
@@ -140,31 +148,28 @@ export default function DayBook() {
       });
     }
 
-    // 3. Expenses (localStorage)
-    const rawExpenses = readLocalJSON<Array<{ id: string; date: string; category: string; note: string; amount: number; vendor?: string }>>(EXPENSE_KEY, []);
-    for (const exp of rawExpenses) {
-      if (!inRange(exp.date, from, to)) continue;
+    // 3. Expenses (real API)
+    for (const exp of (expData?.expenses ?? [])) {
       list.push({
         id: `exp-${exp.id}`,
         type: "expense",
-        date: exp.date + "T12:00:00",
+        date: (exp.date ?? exp.createdAt ?? "") as string,
         label: exp.category,
-        sublabel: exp.note || exp.vendor,
-        amount: exp.amount,
+        sublabel: [exp.vendor, exp.note].filter(Boolean).join(" · ") || undefined,
+        amount: Number(exp.amount),
         sign: "debit",
       });
     }
 
-    // 4. Cash entries (localStorage)
-    const rawCash = readLocalJSON<Array<{ id: string; date: string; category: string; description: string; amount: number; type: "in" | "out" }>>(CASH_KEY, []);
-    for (const cash of rawCash) {
-      if (!inRange(cash.date, from, to)) continue;
+    // 4. Cash entries (real API — cashbook entries with type 'in' map to cash_in)
+    for (const cash of (cbData?.entries ?? [])) {
+      if (!inRange(cash.date?.slice(0, 10) ?? "", from, to)) continue;
       list.push({
         id: `cash-${cash.id}`,
         type: cash.type === "in" ? "cash_in" : "cash_out",
-        date: cash.date + "T12:00:00",
+        date: cash.date,
         label: cash.category,
-        sublabel: cash.description,
+        sublabel: cash.note || undefined,
         amount: cash.amount,
         sign: cash.type === "in" ? "credit" : "debit",
       });
@@ -172,7 +177,7 @@ export default function DayBook() {
 
     // Sort newest first
     return list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [invoices, from, to]);
+  }, [invoices, expData, cbData, from, to]);
 
   // Filter by type
   const filtered = typeFilter === "all"
