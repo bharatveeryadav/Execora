@@ -4,6 +4,7 @@ import { tenantContext } from '@execora/infrastructure';
 import { emailService } from '@execora/infrastructure';
 import { generateInvoicePdf } from '@execora/infrastructure';
 import { minioClient } from '@execora/infrastructure';
+import { whatsappService } from '@execora/infrastructure';
 import { InvoiceItemInput } from '@execora/types';
 import { Decimal } from '@prisma/client/runtime/library';
 import { invoiceOperations } from '@execora/infrastructure';
@@ -1160,8 +1161,9 @@ class InvoiceService {
 
 			// ── 6. Send email ────────────────────────────────────────────────────
 			const customerEmail = invoice.customer?.email;
-			if (!customerEmail) {
-				log.info('Customer has no email — PDF generated but email skipped');
+			const customerPhone = invoice.customer?.phone;
+			if (!customerEmail && !customerPhone) {
+				log.info('Customer has no email or phone — PDF generated but delivery skipped');
 				return;
 			}
 
@@ -1173,21 +1175,42 @@ class InvoiceService {
 			}));
 			const invoiceRef = (invoice as any).invoiceNo || invoice.id.slice(-8).toUpperCase();
 
-			try {
-				await emailService.sendInvoiceEmail(
-					customerEmail,
-					invoice.customer!.name,
-					invoice.id,
-					emailItems,
-					grandTotal,
-					shopName,
-					pdfBuffer,
-					pdfUrl,
-					invoiceRef
-				);
-				log.info({ customerEmail, durationMs: Date.now() - start }, 'invoice.pdf.email.sent');
-			} catch (err) {
-				log.error({ err, customerEmail }, 'invoice.pdf.email.failed');
+			if (customerEmail) {
+				try {
+					await emailService.sendInvoiceEmail(
+						customerEmail,
+						invoice.customer!.name,
+						invoice.id,
+						emailItems,
+						grandTotal,
+						shopName,
+						pdfBuffer,
+						pdfUrl,
+						invoiceRef
+					);
+					log.info({ customerEmail, durationMs: Date.now() - start }, 'invoice.pdf.email.sent');
+				} catch (err) {
+					log.error({ err, customerEmail }, 'invoice.pdf.email.failed');
+				}
+			}
+
+			// ── 7. Send WhatsApp document ──────────────────────────────────────
+			if (customerPhone && pdfUrl && whatsappService.isConfigured()) {
+				const invoiceCaption = `${shopName} — Invoice ${invoiceRef}\n₹${grandTotal.toFixed(2)} | Please find your invoice attached.`;
+				try {
+					const waResult = await whatsappService.sendDocumentMessage(
+						customerPhone,
+						pdfUrl,
+						invoiceCaption,
+						`invoice-${invoiceRef}.pdf`
+					);
+					log.info(
+						{ customerPhone, success: waResult.success, durationMs: Date.now() - start },
+						'invoice.pdf.whatsapp.sent'
+					);
+				} catch (err) {
+					log.error({ err, customerPhone }, 'invoice.pdf.whatsapp.failed');
+				}
 			}
 		} catch (err) {
 			log.error({ err }, 'dispatchInvoicePdfEmail: unexpected error');

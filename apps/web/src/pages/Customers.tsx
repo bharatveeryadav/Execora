@@ -12,6 +12,7 @@ import {
 	CheckCircle2,
 	AlertCircle,
 	IndianRupee,
+	Mail,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -392,13 +393,20 @@ const Customers = () => {
 
 						{/* Email */}
 						<div className="space-y-1.5">
-							<Label className="text-xs">Email</Label>
+							<Label className="text-xs flex items-center gap-1 text-blue-600 dark:text-blue-400 font-semibold">
+								<Mail className="h-3 w-3" />
+								Email
+								<span className="ml-1 text-[10px] font-normal text-muted-foreground">
+									(Enables PDF delivery)
+								</span>
+							</Label>
 							<Input
 								value={newEmail}
 								onChange={(e) => setNewEmail(e.target.value)}
 								placeholder="email@example.com"
 								type="email"
 								inputMode="email"
+								className="border-blue-200 dark:border-blue-800 focus-visible:ring-blue-400"
 							/>
 						</div>
 

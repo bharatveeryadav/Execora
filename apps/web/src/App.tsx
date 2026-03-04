@@ -19,6 +19,7 @@ import DayBook from './pages/DayBook';
 import OverduePage from './pages/OverduePage';
 import NotFound from './pages/NotFound';
 import LoginPage from './pages/LoginPage';
+import ClassicBilling from './pages/ClassicBilling';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { WSProvider } from '@/contexts/WSContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -153,6 +154,14 @@ function AppRoutes() {
 				element={
 					<ProtectedRoute>
 						<DayBook />
+					</ProtectedRoute>
+				}
+			/>
+			<Route
+				path="/billing"
+				element={
+					<ProtectedRoute>
+						<ClassicBilling />
 					</ProtectedRoute>
 				}
 			/>

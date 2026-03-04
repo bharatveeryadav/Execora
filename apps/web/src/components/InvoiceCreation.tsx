@@ -331,13 +331,14 @@ const InvoiceCreation = ({
 				const resolvedItems = execData.resolvedItems;
 				if (resolvedItems?.length) {
 					setItems(
-						resolvedItems.map((it) => ({
-							name: it.productName,
-							qty: String(it.quantity),
-							price: it.unitPrice ?? 0,
-							discount: 0,
-							total: it.total ?? (it.unitPrice ?? 0) * it.quantity,
-						}))
+						resolvedItems.map((it) => {
+							const pct: number = (it as any).discountPercent ?? 0;
+							const qty = it.quantity;
+							const price = it.unitPrice ?? 0;
+							const baseTotal = it.total ?? price * qty;
+							const total = pct > 0 ? Math.round(price * qty * (1 - pct / 100) * 100) / 100 : baseTotal;
+							return { name: it.productName, qty: String(qty), price, discount: pct, total };
+						})
 					);
 				}
 				setStep('confirmation');
@@ -366,13 +367,14 @@ const InvoiceCreation = ({
 				const rawItems = d.resolvedItems ?? d.items;
 				if (rawItems?.length) {
 					setItems(
-						rawItems.map((it) => ({
-							name: it.productName,
-							qty: String(it.quantity),
-							price: it.unitPrice ?? 0,
-							discount: 0,
-							total: (it as { total?: number }).total ?? (it.unitPrice ?? 0) * it.quantity,
-						}))
+						rawItems.map((it) => {
+							const pct: number = (it as any).discountPercent ?? 0;
+							const qty = it.quantity;
+							const price = it.unitPrice ?? 0;
+							const baseTotal = (it as { total?: number }).total ?? price * qty;
+							const total = pct > 0 ? Math.round(price * qty * (1 - pct / 100) * 100) / 100 : baseTotal;
+							return { name: it.productName, qty: String(qty), price, discount: pct, total };
+						})
 					);
 				}
 				// Sync billing options from the backend draft

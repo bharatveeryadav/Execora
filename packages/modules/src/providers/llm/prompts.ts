@@ -8,28 +8,28 @@
  * response-generation prompt.
  */
 export function getLangStyle(code: string): string {
-  const styles: Record<string, string> = {
-    hi:    'Hinglish (Hindi verbs + English names/numbers)',
-    'hi-en': 'Hinglish (Hindi verbs + English names/numbers)',
-    en:    'English',
-    bn:    'Bengali',
-    ta:    'Tamil',
-    te:    'Telugu',
-    mr:    'Marathi',
-    gu:    'Gujarati',
-    kn:    'Kannada',
-    pa:    'Punjabi',
-    ml:    'Malayalam',
-    ur:    'Urdu',
-    ar:    'Arabic',
-    es:    'Spanish',
-    fr:    'French',
-    de:    'German',
-    ja:    'Japanese',
-    zh:    'Chinese',
-    pt:    'Portuguese',
-  };
-  return styles[code] ?? 'Hinglish (Hindi verbs + English names/numbers)';
+	const styles: Record<string, string> = {
+		hi: 'Hinglish (Hindi verbs + English names/numbers)',
+		'hi-en': 'Hinglish (Hindi verbs + English names/numbers)',
+		en: 'English',
+		bn: 'Bengali',
+		ta: 'Tamil',
+		te: 'Telugu',
+		mr: 'Marathi',
+		gu: 'Gujarati',
+		kn: 'Kannada',
+		pa: 'Punjabi',
+		ml: 'Malayalam',
+		ur: 'Urdu',
+		ar: 'Arabic',
+		es: 'Spanish',
+		fr: 'French',
+		de: 'German',
+		ja: 'Japanese',
+		zh: 'Chinese',
+		pt: 'Portuguese',
+	};
+	return styles[code] ?? 'Hinglish (Hindi verbs + English names/numbers)';
 }
 
 /**
@@ -37,7 +37,7 @@ export function getLangStyle(code: string): string {
  * Injected with live conversation context before each API call.
  */
 export function buildIntentSystemPrompt(conversationContext: string): string {
-  return `You are an intent extraction system for an Indian SME business assistant.
+	return `You are an intent extraction system for an Indian SME business assistant.
 15) Recognize Hindi/English patterns for total pending payment queries:
   - "total pending payment kitna hai", "टोटल पेंडिंग पेमेंट कितना है", "pending amount batao", "pending balance kitna hai", "kitna paisa baki hai", "sab ka total baki kitna hai", "total kitna baki hai", "total pending kitna hai", "pending kitna hai", "pending payment kitna hai", "pending balance kitna hai", "pending amount kitna hai", "total baki kitna hai", "total amount pending hai", "total payment pending hai", "total balance pending hai" → TOTAL_PENDING_AMOUNT
   - Example: "टोटल पेंडिंग पेमेंट कितना है" → {"intent":"TOTAL_PENDING_AMOUNT","entities":{},"confidence":0.98}
@@ -89,6 +89,7 @@ Available intents:
 - SEND_INVOICE: User explicitly says where to send (email X / WhatsApp Y) — entities.email or entities.phone + entities.channel
 - EXPORT_GSTR1: User wants GSTR-1 report / GST filing report — entities.fy (optional, e.g. "2025-26"), entities.from/to (optional dates), entities.email (optional)
 - EXPORT_PNL: User wants P&L / Profit & Loss report — entities.month (optional, e.g. "march"), entities.from/to (optional dates), entities.email (optional)
+- ADD_DISCOUNT: Apply a discount to the pending invoice. For the whole bill: entities.discountPercent or entities.discountAmount. For a specific item: also set entities.product (the item name in Roman/English)
 - UNKNOWN: Cannot determine intent
 
 Critical extraction rules for Indian voice patterns:
@@ -249,6 +250,17 @@ Critical extraction rules for Indian voice patterns:
    - Example: "is mahine ka P&L dikhao" → {"intent":"EXPORT_PNL","entities":{},"confidence":0.96}
    - Example: "March ka P&L bhejo" → {"intent":"EXPORT_PNL","entities":{"month":"march"},"confidence":0.95}
 
+24) Recognize ADD_DISCOUNT — applying a discount to a pending invoice draft:
+   - Whole-bill: "10% discount karo", "50 rupay kam karo", "discount lagao" → ADD_DISCOUNT, entities.discountPercent or entities.discountAmount
+   - Per-item: "ITEM pe X% discount do", "ITEM mein X% discount lagao", "ITEM pe X rupay kam karo" → ADD_DISCOUNT with entities.product=ITEM name (in Roman script)
+   - "aata pe 5% discount do" → {"intent":"ADD_DISCOUNT","entities":{"product":"aata","discountPercent":5}}
+   - "chawal mein 10 rupay discount karo" → {"intent":"ADD_DISCOUNT","entities":{"product":"chawal","discountAmount":10}}
+   - "saare items pe 5% discount" / "sab pe 5%" → ADD_DISCOUNT, no entities.product (whole-bill)
+   - Always transliterate product name to Roman/English (same as item name extraction rules)
+   - Example: "aata pe 5% discount do" → {"intent":"ADD_DISCOUNT","entities":{"product":"aata","discountPercent":5},"confidence":0.95}
+   - Example: "10% discount karo" → {"intent":"ADD_DISCOUNT","entities":{"discountPercent":10},"confidence":0.96}
+   - Example: "50 rupay kam karo" → {"intent":"ADD_DISCOUNT","entities":{"discountAmount":50},"confidence":0.95}
+
 Also include a "normalized" field: a cleaned version of the input transcript — remove filler words (um, uh, acha suno, haan ji), fix obvious ASR errors, convert spoken numbers to digits. Keep meaning identical.
 
 Respond ONLY with valid JSON. No other text.
@@ -293,14 +305,18 @@ Example responses:
 {"normalized":"is mahine ka P&L report dikhao","intent":"EXPORT_PNL","entities":{},"confidence":0.96}
 {"normalized":"March ka P&L bhejo","intent":"EXPORT_PNL","entities":{"month":"march"},"confidence":0.95}
 {"normalized":"monthly P&L report chahiye","intent":"EXPORT_PNL","entities":{},"confidence":0.94}
-{"normalized":"profit loss report nikalo","intent":"EXPORT_PNL","entities":{},"confidence":0.94}`;
+{"normalized":"profit loss report nikalo","intent":"EXPORT_PNL","entities":{},"confidence":0.94}
+{"normalized":"aata pe 5% discount do","intent":"ADD_DISCOUNT","entities":{"product":"aata","discountPercent":5},"confidence":0.95}
+{"normalized":"chawal mein 10 rupay discount karo","intent":"ADD_DISCOUNT","entities":{"product":"chawal","discountAmount":10},"confidence":0.94}
+{"normalized":"10% discount karo","intent":"ADD_DISCOUNT","entities":{"discountPercent":10},"confidence":0.96}
+{"normalized":"50 rupay kam karo bill mein","intent":"ADD_DISCOUNT","entities":{"discountAmount":50},"confidence":0.95}`;
 }
 
 /**
  * System prompt used for response generation (Groq/OpenAI, free-form text).
  */
 export function buildResponseSystemPrompt(langStyle: string): string {
-  return `You are a voice assistant for an Indian shop. Respond in ${langStyle}.
+	return `You are a voice assistant for an Indian shop. Respond in ${langStyle}.
 
 BREVITY — MOST IMPORTANT RULE:
 - MAX 1 sentence for simple results (balance, payment, credit, stock).
@@ -340,13 +356,12 @@ MULTI-DRAFT RULES:
 }
 
 /** System prompt for transcript normalization (short, plain-text output) */
-export const NORMALIZE_TRANSCRIPT_PROMPT =
-  `You are a transcription normalization assistant for Hindi/English mixed speech.
+export const NORMALIZE_TRANSCRIPT_PROMPT = `You are a transcription normalization assistant for Hindi/English mixed speech.
 Clean up filler words, fix obvious ASR errors, and normalize numbers and product names when possible.
 Keep the meaning identical and keep the text concise.
 Respond with plain text only (no JSON, no quotes).`;
 
 /** System prompt for Devanagari → Roman transliteration fallback */
 export const TRANSLITERATE_PROMPT =
-  'Transliterate the following Devanagari text to Roman/English letters. ' +
-  'Output ONLY the romanized text — no explanation, no JSON, no quotes.';
+	'Transliterate the following Devanagari text to Roman/English letters. ' +
+	'Output ONLY the romanized text — no explanation, no JSON, no quotes.';

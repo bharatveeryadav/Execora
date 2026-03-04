@@ -80,17 +80,17 @@ execora/
 
 ### Layer Laws (never violate)
 
-| From | To | Allowed? |
-|------|----|----------|
-| Route | Service | ✅ Only way business logic is accessed |
-| Route | Prisma | ❌ Never. Always via service. |
-| Service | Prisma | ✅ |
-| Service | Another service | ✅ OK for orchestration |
-| Worker | Service | ✅ Workers call services |
-| Worker | Prisma | ❌ Never directly |
-| UI | REST API (via api.ts) | ✅ |
-| UI | Prisma | ❌ Never |
-| UI | Service | ❌ Never |
+| From    | To                    | Allowed?                               |
+| ------- | --------------------- | -------------------------------------- |
+| Route   | Service               | ✅ Only way business logic is accessed |
+| Route   | Prisma                | ❌ Never. Always via service.          |
+| Service | Prisma                | ✅                                     |
+| Service | Another service       | ✅ OK for orchestration                |
+| Worker  | Service               | ✅ Workers call services               |
+| Worker  | Prisma                | ❌ Never directly                      |
+| UI      | REST API (via api.ts) | ✅                                     |
+| UI      | Prisma                | ❌ Never                               |
+| UI      | Service               | ❌ Never                               |
 
 ---
 
@@ -103,33 +103,33 @@ Every service must throw typed errors, not raw `new Error('string')`:
 ```typescript
 // packages/infrastructure/src/errors.ts
 export class AppError extends Error {
-  constructor(
-    public readonly code: string,      // e.g. 'PRODUCT_NOT_FOUND'
-    public readonly message: string,
-    public readonly statusCode: number = 500,
-    public readonly context?: Record<string, unknown>
-  ) {
-    super(message);
-    this.name = 'AppError';
-  }
+	constructor(
+		public readonly code: string, // e.g. 'PRODUCT_NOT_FOUND'
+		public readonly message: string,
+		public readonly statusCode: number = 500,
+		public readonly context?: Record<string, unknown>
+	) {
+		super(message);
+		this.name = 'AppError';
+	}
 }
 
 export class NotFoundError extends AppError {
-  constructor(resource: string, id: string) {
-    super('NOT_FOUND', `${resource} not found: ${id}`, 404, { resource, id });
-  }
+	constructor(resource: string, id: string) {
+		super('NOT_FOUND', `${resource} not found: ${id}`, 404, { resource, id });
+	}
 }
 
 export class ValidationError extends AppError {
-  constructor(message: string, context?: Record<string, unknown>) {
-    super('VALIDATION_ERROR', message, 400, context);
-  }
+	constructor(message: string, context?: Record<string, unknown>) {
+		super('VALIDATION_ERROR', message, 400, context);
+	}
 }
 
 export class TenantAccessError extends AppError {
-  constructor(resource: string) {
-    super('FORBIDDEN', `Access denied to ${resource}`, 403, { resource });
-  }
+	constructor(resource: string) {
+		super('FORBIDDEN', `Access denied to ${resource}`, 403, { resource });
+	}
 }
 ```
 
@@ -138,23 +138,23 @@ export class TenantAccessError extends AppError {
 ```typescript
 // ✅ CORRECT — every service function
 async function getProduct(tenantId: string, productId: string): Promise<Product> {
-  const product = await prisma.product.findFirst({
-    where: { id: productId, tenantId, isActive: true },
-  });
+	const product = await prisma.product.findFirst({
+		where: { id: productId, tenantId, isActive: true },
+	});
 
-  if (!product) {
-    // Typed error with full context for debugging
-    throw new NotFoundError('Product', productId);
-  }
+	if (!product) {
+		// Typed error with full context for debugging
+		throw new NotFoundError('Product', productId);
+	}
 
-  return product;
+	return product;
 }
 
 // ❌ WRONG — generic error, no context
 async function getProduct(tenantId: string, productId: string) {
-  const product = await prisma.product.findFirst({ where: { id: productId } });
-  if (!product) throw new Error('not found');  // useless in production logs
-  return product;
+	const product = await prisma.product.findFirst({ where: { id: productId } });
+	if (!product) throw new Error('not found'); // useless in production logs
+	return product;
 }
 ```
 
@@ -163,24 +163,26 @@ async function getProduct(tenantId: string, productId: string) {
 ```typescript
 // ✅ CORRECT — Fastify route with full error handling
 fastify.get('/api/v1/products/:id', async (request, reply) => {
-  try {
-    const { tenantId } = request.user;   // always extract tenantId first
-    const { id } = request.params as { id: string };
+	try {
+		const { tenantId } = request.user; // always extract tenantId first
+		const { id } = request.params as { id: string };
 
-    const product = await productService.getProduct(tenantId, id);
-    return reply.send({ product });
+		const product = await productService.getProduct(tenantId, id);
+		return reply.send({ product });
+	} catch (err) {
+		// AppError: structured, known error → return to client
+		if (err instanceof AppError) {
+			request.log.warn({ err, tenantId: request.user?.tenantId }, 'product.get.appError');
+			return reply.status(err.statusCode).send({ error: err.code, message: err.message });
+		}
 
-  } catch (err) {
-    // AppError: structured, known error → return to client
-    if (err instanceof AppError) {
-      request.log.warn({ err, tenantId: request.user?.tenantId }, 'product.get.appError');
-      return reply.status(err.statusCode).send({ error: err.code, message: err.message });
-    }
-
-    // Unknown error: log FULL details, return generic 500
-    request.log.error({ err, route: 'GET /products/:id', tenantId: request.user?.tenantId }, 'product.get.unexpectedError');
-    return reply.status(500).send({ error: 'INTERNAL_ERROR', message: 'Something went wrong' });
-  }
+		// Unknown error: log FULL details, return generic 500
+		request.log.error(
+			{ err, route: 'GET /products/:id', tenantId: request.user?.tenantId },
+			'product.get.unexpectedError'
+		);
+		return reply.status(500).send({ error: 'INTERNAL_ERROR', message: 'Something went wrong' });
+	}
 });
 ```
 
@@ -189,18 +191,18 @@ fastify.get('/api/v1/products/:id', async (request, reply) => {
 ```typescript
 // ✅ Workers must NEVER silently swallow errors
 processor.on('failed', (job, err) => {
-  logger.error(
-    {
-      jobId: job?.id,
-      jobName: job?.name,
-      tenantId: job?.data?.tenantId,
-      attempt: job?.attemptsMade,
-      err,
-    },
-    'worker.job.failed'
-  );
-  // emit metric (see §5)
-  metrics.workerJobFailed.inc({ job_name: job?.name ?? 'unknown' });
+	logger.error(
+		{
+			jobId: job?.id,
+			jobName: job?.name,
+			tenantId: job?.data?.tenantId,
+			attempt: job?.attemptsMade,
+			err,
+		},
+		'worker.job.failed'
+	);
+	// emit metric (see §5)
+	metrics.workerJobFailed.inc({ job_name: job?.name ?? 'unknown' });
 });
 ```
 
@@ -215,34 +217,34 @@ processor.on('failed', (job, err) => {
 import { logger } from '@execora/infrastructure';
 
 // ❌ NEVER use console.log / console.error in production code
-console.log('done');      // invisible in Docker log aggregation
-console.error(err);       // no context, no tenant, no searchability
+console.log('done'); // invisible in Docker log aggregation
+console.error(err); // no context, no tenant, no searchability
 ```
 
 ### 4.2 — Log levels — use the right one
 
-| Level | When | Example |
-|-------|------|---------|
-| `logger.trace` | Very verbose, dev-only (disabled in prod) | Loop iterations |
-| `logger.debug` | Useful during development | "Found 3 matching products" |
-| `logger.info`  | Normal operations — a record was created | "invoice.created" |
-| `logger.warn`  | Expected failure — wrong input, auth fail | "product.notFound" |
-| `logger.error` | Unexpected failure — should never happen | "db.queryFailed" |
-| `logger.fatal` | System is going down | "redis.connectionLost" |
+| Level          | When                                      | Example                     |
+| -------------- | ----------------------------------------- | --------------------------- |
+| `logger.trace` | Very verbose, dev-only (disabled in prod) | Loop iterations             |
+| `logger.debug` | Useful during development                 | "Found 3 matching products" |
+| `logger.info`  | Normal operations — a record was created  | "invoice.created"           |
+| `logger.warn`  | Expected failure — wrong input, auth fail | "product.notFound"          |
+| `logger.error` | Unexpected failure — should never happen  | "db.queryFailed"            |
+| `logger.fatal` | System is going down                      | "redis.connectionLost"      |
 
 ### 4.3 — Always log with a context object + event key
 
 ```typescript
 // ✅ CORRECT — structured, searchable, traceable
 logger.info(
-  {
-    tenantId,
-    invoiceId: invoice.id,
-    customerId: invoice.customerId,
-    total: invoice.total,
-    durationMs: Date.now() - startTime,
-  },
-  'invoice.confirmed'            // ← event key: module.entity.action
+	{
+		tenantId,
+		invoiceId: invoice.id,
+		customerId: invoice.customerId,
+		total: invoice.total,
+		durationMs: Date.now() - startTime,
+	},
+	'invoice.confirmed' // ← event key: module.entity.action
 );
 
 // ❌ WRONG — unstructured string, impossible to search in Grafana
@@ -369,6 +371,7 @@ Gauges (current state):
 ### 5.4 — Instrument every P0 / P1 feature
 
 Every feature that matters to the business (see PRD §11) MUST have at minimum:
+
 - A success counter
 - An error counter
 - A duration histogram
@@ -376,29 +379,29 @@ Every feature that matters to the business (see PRD §11) MUST have at minimum:
 ```typescript
 // Example: OCR worker instrumentation
 const ocrJobTotal = new Counter({
-  name: 'execora_ocr_jobs_total',
-  help: 'Total OCR jobs processed',
-  labelNames: ['status'],   // status: 'success' | 'failed' | 'empty'
-  registers: [metricsRegistry],
+	name: 'execora_ocr_jobs_total',
+	help: 'Total OCR jobs processed',
+	labelNames: ['status'], // status: 'success' | 'failed' | 'empty'
+	registers: [metricsRegistry],
 });
 
 const ocrDuration = new Histogram({
-  name: 'execora_ocr_duration_seconds',
-  help: 'OCR job end-to-end duration',
-  buckets: [0.5, 1, 2, 5, 10, 30],
-  registers: [metricsRegistry],
+	name: 'execora_ocr_duration_seconds',
+	help: 'OCR job end-to-end duration',
+	buckets: [0.5, 1, 2, 5, 10, 30],
+	registers: [metricsRegistry],
 });
 
 // Usage:
 const end = ocrDuration.startTimer();
 try {
-  await processOcrJob(job);
-  ocrJobTotal.inc({ status: 'success' });
+	await processOcrJob(job);
+	ocrJobTotal.inc({ status: 'success' });
 } catch (err) {
-  ocrJobTotal.inc({ status: 'failed' });
-  throw err;
+	ocrJobTotal.inc({ status: 'failed' });
+	throw err;
 } finally {
-  end();    // always record duration, even on failure
+	end(); // always record duration, even on failure
 }
 ```
 
@@ -413,19 +416,16 @@ try {
 // Every request must have request.id propagated to all logs, services, jobs
 
 // ✅ In every route handler:
-const correlationId = request.id;   // Fastify auto-generates, or read from X-Request-ID header
+const correlationId = request.id; // Fastify auto-generates, or read from X-Request-ID header
 
-logger.info(
-  { tenantId, correlationId, invoiceId },
-  'invoice.confirm.start'
-);
+logger.info({ tenantId, correlationId, invoiceId }, 'invoice.confirm.start');
 
 // ✅ When enqueuing a BullMQ job, carry the correlationId:
 await queue.add('ocr-process', {
-  tenantId,
-  correlationId,       // ← pass through so worker logs are traceable
-  imageUrl,
-  jobType: 'product_catalog',
+	tenantId,
+	correlationId, // ← pass through so worker logs are traceable
+	imageUrl,
+	jobType: 'product_catalog',
 });
 ```
 
@@ -434,19 +434,19 @@ await queue.add('ocr-process', {
 ```typescript
 // ✅ In every worker processor:
 const processor = async (job: Job) => {
-  const { tenantId, correlationId } = job.data;
+	const { tenantId, correlationId } = job.data;
 
-  const log = logger.child({ tenantId, correlationId, jobId: job.id, jobName: job.name });
-  // From here, use `log` (not the root logger) so all logs have the job context
+	const log = logger.child({ tenantId, correlationId, jobId: job.id, jobName: job.name });
+	// From here, use `log` (not the root logger) so all logs have the job context
 
-  log.info('worker.job.started');
-  try {
-    // ... do work ...
-    log.info({ durationMs }, 'worker.job.completed');
-  } catch (err) {
-    log.error({ err }, 'worker.job.failed');
-    throw err;   // rethrow so BullMQ marks it failed and retries
-  }
+	log.info('worker.job.started');
+	try {
+		// ... do work ...
+		log.info({ durationMs }, 'worker.job.completed');
+	} catch (err) {
+		log.error({ err }, 'worker.job.failed');
+		throw err; // rethrow so BullMQ marks it failed and retries
+	}
 };
 ```
 
@@ -457,9 +457,9 @@ const processor = async (job: Job) => {
 const correlationId = crypto.randomUUID();
 
 const headers = {
-  'Authorization': `Bearer ${token}`,
-  'X-Request-ID': correlationId,   // ← Fastify uses this as request.id
-  'Content-Type': 'application/json',
+	Authorization: `Bearer ${token}`,
+	'X-Request-ID': correlationId, // ← Fastify uses this as request.id
+	'Content-Type': 'application/json',
 };
 ```
 
@@ -488,20 +488,20 @@ const user = map.get(id)!          // check explicitly instead
 import { z } from 'zod';
 
 const CreateDraftSchema = z.object({
-  type: z.enum(['product', 'purchase', 'expense', 'stock_adjustment']),
-  title: z.string().min(1).max(255).optional(),
-  data: z.record(z.unknown()),
-  notes: z.string().max(1000).optional(),
+	type: z.enum(['product', 'purchase', 'expense', 'stock_adjustment']),
+	title: z.string().min(1).max(255).optional(),
+	data: z.record(z.unknown()),
+	notes: z.string().max(1000).optional(),
 });
 
 // In route:
 const body = CreateDraftSchema.safeParse(request.body);
 if (!body.success) {
-  return reply.status(400).send({
-    error: 'VALIDATION_ERROR',
-    message: 'Invalid request body',
-    details: body.error.flatten(),
-  });
+	return reply.status(400).send({
+		error: 'VALIDATION_ERROR',
+		message: 'Invalid request body',
+		details: body.error.flatten(),
+	});
 }
 // body.data is now fully typed
 ```
@@ -511,12 +511,12 @@ if (!body.success) {
 ```typescript
 // ✅ Explicit return type — contract is clear, TypeScript catches regressions
 async function confirmDraft(tenantId: string, draftId: string): Promise<{ draft: Draft; result: unknown }> {
-  // ...
+	// ...
 }
 
 // ❌ Inferred return type on service boundary — breaks callers silently when implementation changes
 async function confirmDraft(tenantId: string, draftId: string) {
-  // ...
+	// ...
 }
 ```
 
@@ -524,14 +524,12 @@ async function confirmDraft(tenantId: string, draftId: string) {
 
 ```typescript
 // ✅ Rich result types — caller always handles both branches
-type ServiceResult<T> =
-  | { ok: true; data: T }
-  | { ok: false; error: AppError };
+type ServiceResult<T> = { ok: true; data: T } | { ok: false; error: AppError };
 
 // Callers are forced to check:
 const result = await invoiceService.confirm(tenantId, id);
 if (!result.ok) {
-  // handle error — TypeScript won't let you access result.data here
+	// handle error — TypeScript won't let you access result.data here
 }
 ```
 
@@ -550,102 +548,88 @@ import { AppError, NotFoundError } from '@execora/infrastructure';
 import { exampleService } from '@execora/modules';
 
 export async function exampleRoutes(fastify: FastifyInstance) {
+	// ─── GET /api/v1/examples/:id ──────────────────────────────────────────
+	fastify.get<{ Params: { id: string } }>(
+		'/api/v1/examples/:id',
+		{ preHandler: [fastify.authenticate] }, // ← auth always first
+		async (request, reply) => {
+			const t0 = Date.now();
 
-  // ─── GET /api/v1/examples/:id ──────────────────────────────────────────
-  fastify.get<{ Params: { id: string } }>(
-    '/api/v1/examples/:id',
-    { preHandler: [fastify.authenticate] },   // ← auth always first
-    async (request, reply) => {
-      const t0 = Date.now();
+			try {
+				// 1. Extract identity
+				const { tenantId, userId } = request.user;
 
-      try {
-        // 1. Extract identity
-        const { tenantId, userId } = request.user;
+				// 2. Validate params / query (Zod)
+				const { id } = request.params;
 
-        // 2. Validate params / query (Zod)
-        const { id } = request.params;
+				// 3. Call service — NEVER business logic here
+				const item = await exampleService.getById(tenantId, id);
 
-        // 3. Call service — NEVER business logic here
-        const item = await exampleService.getById(tenantId, id);
+				// 4. Log success with timing
+				request.log.info({ tenantId, id, durationMs: Date.now() - t0 }, 'example.get.success');
 
-        // 4. Log success with timing
-        request.log.info(
-          { tenantId, id, durationMs: Date.now() - t0 },
-          'example.get.success'
-        );
+				// 5. Return
+				return reply.send({ item });
+			} catch (err) {
+				// 6. Typed error → 4xx
+				if (err instanceof AppError) {
+					request.log.warn(
+						{ err, tenantId: request.user?.tenantId, durationMs: Date.now() - t0 },
+						'example.get.appError'
+					);
+					return reply.status(err.statusCode).send({
+						error: err.code,
+						message: err.message,
+					});
+				}
 
-        // 5. Return
-        return reply.send({ item });
+				// 7. Unknown error → 500, full log
+				request.log.error(
+					{ err, tenantId: request.user?.tenantId, durationMs: Date.now() - t0 },
+					'example.get.unexpectedError'
+				);
+				return reply.status(500).send({ error: 'INTERNAL_ERROR', message: 'Something went wrong' });
+			}
+		}
+	);
 
-      } catch (err) {
-        // 6. Typed error → 4xx
-        if (err instanceof AppError) {
-          request.log.warn(
-            { err, tenantId: request.user?.tenantId, durationMs: Date.now() - t0 },
-            'example.get.appError'
-          );
-          return reply.status(err.statusCode).send({
-            error: err.code,
-            message: err.message,
-          });
-        }
+	// ─── POST /api/v1/examples ─────────────────────────────────────────────
+	fastify.post('/api/v1/examples', { preHandler: [fastify.authenticate] }, async (request, reply) => {
+		const t0 = Date.now();
 
-        // 7. Unknown error → 500, full log
-        request.log.error(
-          { err, tenantId: request.user?.tenantId, durationMs: Date.now() - t0 },
-          'example.get.unexpectedError'
-        );
-        return reply.status(500).send({ error: 'INTERNAL_ERROR', message: 'Something went wrong' });
-      }
-    }
-  );
+		// Validate body schema
+		const BodySchema = z.object({
+			name: z.string().min(1).max(255),
+			value: z.number().positive(),
+		});
 
+		const parsed = BodySchema.safeParse(request.body);
+		if (!parsed.success) {
+			return reply.status(400).send({
+				error: 'VALIDATION_ERROR',
+				message: 'Invalid body',
+				details: parsed.error.flatten(),
+			});
+		}
 
-  // ─── POST /api/v1/examples ─────────────────────────────────────────────
-  fastify.post(
-    '/api/v1/examples',
-    { preHandler: [fastify.authenticate] },
-    async (request, reply) => {
-      const t0 = Date.now();
+		try {
+			const { tenantId } = request.user;
+			const item = await exampleService.create(tenantId, parsed.data);
 
-      // Validate body schema
-      const BodySchema = z.object({
-        name: z.string().min(1).max(255),
-        value: z.number().positive(),
-      });
+			// Emit metric
+			metrics.exampleCreatedTotal.inc({ tenant_id: tenantId });
 
-      const parsed = BodySchema.safeParse(request.body);
-      if (!parsed.success) {
-        return reply.status(400).send({
-          error: 'VALIDATION_ERROR',
-          message: 'Invalid body',
-          details: parsed.error.flatten(),
-        });
-      }
+			request.log.info({ tenantId, itemId: item.id, durationMs: Date.now() - t0 }, 'example.created');
 
-      try {
-        const { tenantId } = request.user;
-        const item = await exampleService.create(tenantId, parsed.data);
-
-        // Emit metric
-        metrics.exampleCreatedTotal.inc({ tenant_id: tenantId });
-
-        request.log.info(
-          { tenantId, itemId: item.id, durationMs: Date.now() - t0 },
-          'example.created'
-        );
-
-        return reply.status(201).send({ item });
-
-      } catch (err) {
-        if (err instanceof AppError) {
-          return reply.status(err.statusCode).send({ error: err.code, message: err.message });
-        }
-        request.log.error({ err, tenantId: request.user?.tenantId }, 'example.create.unexpectedError');
-        return reply.status(500).send({ error: 'INTERNAL_ERROR', message: 'Something went wrong' });
-      }
-    }
-  );
+			return reply.status(201).send({ item });
+		} catch (err) {
+			if (err instanceof AppError) {
+				return reply.status(err.statusCode).send({ error: err.code, message: err.message });
+			}
+			request.log.error({ err, tenantId: request.user?.tenantId }, 'example.create.unexpectedError');
+			return reply.status(500).send({ error: 'INTERNAL_ERROR', message: 'Something went wrong' });
+		}
+	});
 }
 ```
 
@@ -660,37 +644,36 @@ import { prisma, logger } from '@execora/infrastructure';
 import { NotFoundError, ValidationError } from '@execora/infrastructure';
 
 export class ExampleService {
+	// ── Every public method: explicit params, explicit return type ───────────
+	async getById(tenantId: string, id: string): Promise<Example> {
+		const row = await prisma.example.findFirst({
+			where: { id, tenantId }, // ← tenantId ALWAYS in where clause
+		});
 
-  // ── Every public method: explicit params, explicit return type ───────────
-  async getById(tenantId: string, id: string): Promise<Example> {
-    const row = await prisma.example.findFirst({
-      where: { id, tenantId },    // ← tenantId ALWAYS in where clause
-    });
+		if (!row) throw new NotFoundError('Example', id);
+		return row;
+	}
 
-    if (!row) throw new NotFoundError('Example', id);
-    return row;
-  }
+	// ── Transactions: use prisma.$transaction for multi-step operations ──────
+	async confirmAndUpdate(tenantId: string, id: string, updates: UpdatePayload): Promise<Example> {
+		return prisma.$transaction(async (tx) => {
+			const row = await tx.example.findFirst({ where: { id, tenantId } });
+			if (!row) throw new NotFoundError('Example', id);
 
-  // ── Transactions: use prisma.$transaction for multi-step operations ──────
-  async confirmAndUpdate(tenantId: string, id: string, updates: UpdatePayload): Promise<Example> {
-    return prisma.$transaction(async (tx) => {
-      const row = await tx.example.findFirst({ where: { id, tenantId } });
-      if (!row) throw new NotFoundError('Example', id);
+			const updated = await tx.example.update({
+				where: { id },
+				data: { ...updates, updatedAt: new Date() },
+			});
 
-      const updated = await tx.example.update({
-        where: { id },
-        data: { ...updates, updatedAt: new Date() },
-      });
+			// Side effects inside the transaction (so they roll back on failure)
+			await tx.auditLog.create({
+				data: { tenantId, entityType: 'example', entityId: id, action: 'update' },
+			});
 
-      // Side effects inside the transaction (so they roll back on failure)
-      await tx.auditLog.create({
-        data: { tenantId, entityType: 'example', entityId: id, action: 'update' },
-      });
-
-      logger.info({ tenantId, id }, 'example.updated');
-      return updated;
-    });
-  }
+			logger.info({ tenantId, id }, 'example.updated');
+			return updated;
+		});
+	}
 }
 
 export const exampleService = new ExampleService();
@@ -705,12 +688,12 @@ export const exampleService = new ExampleService();
 ```typescript
 // ✅ CORRECT
 await prisma.product.findMany({
-  where: { tenantId, isActive: true },
+	where: { tenantId, isActive: true },
 });
 
 // ❌ CATASTROPHIC — returns data across ALL tenants
 await prisma.product.findMany({
-  where: { isActive: true },
+	where: { isActive: true },
 });
 ```
 
@@ -719,7 +702,7 @@ await prisma.product.findMany({
 ```typescript
 // ✅ Safe — even if id is somehow wrong tenant's, it returns null
 const product = await prisma.product.findFirst({
-  where: { id: productId, tenantId },
+	where: { id: productId, tenantId },
 });
 
 // ❌ Unsafe for multi-tenant — findUnique only checks the unique index (id)
@@ -741,7 +724,7 @@ const t0 = Date.now();
 const results = await prisma.invoice.findMany({ where: { tenantId, ...filters } });
 const ms = Date.now() - t0;
 if (ms > 500) {
-  logger.warn({ tenantId, ms, query: 'invoice.findMany' }, 'db.slowQuery');
+	logger.warn({ tenantId, ms, query: 'invoice.findMany' }, 'db.slowQuery');
 }
 ```
 
@@ -774,51 +757,60 @@ import type { Product } from '@execora/types';
 
 // ── 2. Types / constants first ─────────────────────────────────────────────
 interface Props {
-  tenantId: string;
-  productId: string;
-  onClose: () => void;
+	tenantId: string;
+	productId: string;
+	onClose: () => void;
 }
 
 // ── 3. Component ───────────────────────────────────────────────────────────
 export function ExampleComponent({ tenantId, productId, onClose }: Props) {
-  const { toast } = useToast();
-  const qc = useQueryClient();
+	const { toast } = useToast();
+	const qc = useQueryClient();
 
-  // ── Queries ──────────────────────────────────────────────────────────────
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['product', productId],
-    queryFn: () => productApi.get(productId),
-    staleTime: 30_000,
-  });
+	// ── Queries ──────────────────────────────────────────────────────────────
+	const { data, isLoading, error } = useQuery({
+		queryKey: ['product', productId],
+		queryFn: () => productApi.get(productId),
+		staleTime: 30_000,
+	});
 
-  // ── Mutations ─────────────────────────────────────────────────────────────
-  const saveMutation = useMutation({
-    mutationFn: (updates: Partial<Product>) => productApi.update(productId, updates),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['products'] });
-      toast({ title: 'Saved!', description: 'Product updated.' });
-      onClose();
-    },
-    onError: (err: Error) => {
-      toast({ title: 'Save failed', description: err.message, variant: 'destructive' });
-    },
-  });
+	// ── Mutations ─────────────────────────────────────────────────────────────
+	const saveMutation = useMutation({
+		mutationFn: (updates: Partial<Product>) => productApi.update(productId, updates),
+		onSuccess: () => {
+			qc.invalidateQueries({ queryKey: ['products'] });
+			toast({ title: 'Saved!', description: 'Product updated.' });
+			onClose();
+		},
+		onError: (err: Error) => {
+			toast({ title: 'Save failed', description: err.message, variant: 'destructive' });
+		},
+	});
 
-  // ── Loading / error states — always handle these ──────────────────────────
-  if (isLoading) return <div className="flex items-center justify-center py-8"><Loader2 className="animate-spin" /></div>;
-  if (error) return <div className="text-destructive text-sm p-4">Failed to load: {(error as Error).message}</div>;
-  if (!data) return null;
+	// ── Loading / error states — always handle these ──────────────────────────
+	if (isLoading)
+		return (
+			<div className="flex items-center justify-center py-8">
+				<Loader2 className="animate-spin" />
+			</div>
+		);
+	if (error) return <div className="text-destructive text-sm p-4">Failed to load: {(error as Error).message}</div>;
+	if (!data) return null;
 
-  // ── Render ────────────────────────────────────────────────────────────────
-  return (
-    <div>
-      {/* JSX */}
-      <Button onClick={() => saveMutation.mutate({})} disabled={saveMutation.isPending}>
-        {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-        Save
-      </Button>
-    </div>
-  );
+	// ── Render ────────────────────────────────────────────────────────────────
+	return (
+		<div>
+			{/* JSX */}
+			<Button onClick={() => saveMutation.mutate({})} disabled={saveMutation.isPending}>
+				{saveMutation.isPending ? (
+					<Loader2 className="h-4 w-4 animate-spin mr-2" />
+				) : (
+					<Save className="h-4 w-4 mr-2" />
+				)}
+				Save
+			</Button>
+		</div>
+	);
 }
 ```
 
@@ -837,12 +829,9 @@ const res = await fetch(`/api/v1/products/${id}`, { headers: { Authorization: `B
 
 ```typescript
 // Consistent key formats — always an array
-['drafts']                        // list of all drafts
-['drafts', 'pending']             // filtered list
-['draft', draftId]                // single item
-['products']                      // list
-['product', productId]            // single
-['invoices', { status: 'paid' }]  // filtered list with options object
+['drafts'][('drafts', 'pending')][('draft', draftId)]['products'][('product', productId)][ // list of all drafts // filtered list // single item // list // single
+	('invoices', { status: 'paid' })
+]; // filtered list with options object
 ```
 
 ### 11.4 — Always show loading and error states
@@ -859,7 +848,7 @@ return <DataTable items={data.items} />;
 
 ```tsx
 // ❌ WRONG — business logic in JSX
-const discountedPrice = price - (price * (discount / 100)) - (price * gstRate / 100);
+const discountedPrice = price - price * (discount / 100) - (price * gstRate) / 100;
 
 // ✅ CORRECT — extract to a utility or use the service result
 const { finalPrice } = useInvoiceTotals({ price, discount, gstRate });
@@ -875,58 +864,57 @@ const { finalPrice } = useInvoiceTotals({ price, discount, gstRate });
 // ── Every worker processor must follow this template ──────────────────────
 
 const processor = async (job: Job) => {
-  const { tenantId, correlationId } = job.data;
+	const { tenantId, correlationId } = job.data;
 
-  // 1. Create child logger with full job context
-  const log = logger.child({
-    tenantId,
-    correlationId,
-    jobId: job.id,
-    jobName: job.name,
-    attempt: job.attemptsMade + 1,
-  });
+	// 1. Create child logger with full job context
+	const log = logger.child({
+		tenantId,
+		correlationId,
+		jobId: job.id,
+		jobName: job.name,
+		attempt: job.attemptsMade + 1,
+	});
 
-  // 2. Start timing
-  const t0 = Date.now();
-  log.info({ data: job.data }, 'worker.job.started');
+	// 2. Start timing
+	const t0 = Date.now();
+	log.info({ data: job.data }, 'worker.job.started');
 
-  // 3. Update job progress so BullMQ dashboard shows activity
-  await job.updateProgress(10);
+	// 3. Update job progress so BullMQ dashboard shows activity
+	await job.updateProgress(10);
 
-  try {
-    // ─── actual work ───
-    const result = await doActualWork(job.data);
+	try {
+		// ─── actual work ───
+		const result = await doActualWork(job.data);
 
-    await job.updateProgress(100);
+		await job.updateProgress(100);
 
-    // 4. Log success with timing
-    log.info({ durationMs: Date.now() - t0, result }, 'worker.job.completed');
+		// 4. Log success with timing
+		log.info({ durationMs: Date.now() - t0, result }, 'worker.job.completed');
 
-    // 5. Emit success metric
-    metrics.workerJobTotal.inc({ job_name: job.name, status: 'success' });
+		// 5. Emit success metric
+		metrics.workerJobTotal.inc({ job_name: job.name, status: 'success' });
 
-    return result;
+		return result;
+	} catch (err) {
+		// 6. Log full error with context
+		log.error({ err, durationMs: Date.now() - t0 }, 'worker.job.failed');
 
-  } catch (err) {
-    // 6. Log full error with context
-    log.error({ err, durationMs: Date.now() - t0 }, 'worker.job.failed');
+		// 7. Emit failure metric
+		metrics.workerJobTotal.inc({ job_name: job.name, status: 'failed' });
 
-    // 7. Emit failure metric
-    metrics.workerJobTotal.inc({ job_name: job.name, status: 'failed' });
-
-    // 8. ALWAYS rethrow — so BullMQ knows the job failed and can retry
-    throw err;
-  }
+		// 8. ALWAYS rethrow — so BullMQ knows the job failed and can retry
+		throw err;
+	}
 };
 
 // ── Retry configuration: every job queue must have retries ────────────────
 const queue = new Queue('ocr-jobs', {
-  defaultJobOptions: {
-    attempts: 3,
-    backoff: { type: 'exponential', delay: 2000 },
-    removeOnComplete: { count: 100 },
-    removeOnFail: { count: 50 },
-  },
+	defaultJobOptions: {
+		attempts: 3,
+		backoff: { type: 'exponential', delay: 2000 },
+		removeOnComplete: { count: 100 },
+		removeOnFail: { count: 50 },
+	},
 });
 ```
 
@@ -942,13 +930,13 @@ import { broadcaster } from '@execora/infrastructure';
 
 // In route or service (after successful DB write):
 broadcaster.toTenant(tenantId, {
-  type: 'draft:created',       // always: entity:action
-  payload: {
-    draftId: draft.id,
-    type: draft.type,
-    title: draft.title,
-    count: pendingCount,       // include counts for badge updates
-  },
+	type: 'draft:created', // always: entity:action
+	payload: {
+		draftId: draft.id,
+		type: draft.type,
+		title: draft.title,
+		count: pendingCount, // include counts for badge updates
+	},
 });
 ```
 
@@ -975,10 +963,10 @@ Current events (WSContext.tsx):
 // apps/web/src/hooks/useWsInvalidation.ts
 // Every new WS event type must be added to this map:
 const EVENT_TO_QUERY_KEY: Record<string, string[]> = {
-  'draft:created':   ['drafts'],
-  'draft:confirmed': ['drafts', 'products'],
-  'draft:discarded': ['drafts'],
-  // ... add new events here
+	'draft:created': ['drafts'],
+	'draft:confirmed': ['drafts', 'products'],
+	'draft:discarded': ['drafts'],
+	// ... add new events here
 };
 ```
 
@@ -1042,6 +1030,7 @@ LOG_LEVEL=trace docker compose up app
 Before submitting any PR that touches production code, verify ALL items:
 
 ### Code Quality
+
 - [ ] No `any` types — use `unknown` + type guard or a proper type
 - [ ] No `console.log` — use `logger.*` with an event key
 - [ ] No raw `new Error('string')` — use typed `AppError` subclasses
@@ -1050,6 +1039,7 @@ Before submitting any PR that touches production code, verify ALL items:
 - [ ] `tenantId` included in every Prisma query `where` clause
 
 ### Error Handling
+
 - [ ] All async functions have try/catch (or error middleware)
 - [ ] All catch blocks log with context (tenantId, correlationId, err)
 - [ ] Workers rethrow errors after logging (BullMQ retry requires this)
@@ -1057,22 +1047,26 @@ Before submitting any PR that touches production code, verify ALL items:
 - [ ] 5xx errors log `err` object in full, return generic message to client
 
 ### Observability
+
 - [ ] New feature has a `_total` counter metric
 - [ ] DB / LLM / external calls are timed and duration is logged
 - [ ] New WS event added to `useWsInvalidation.ts` map if applicable
 
 ### Data Safety
+
 - [ ] Multi-step DB operations use `prisma.$transaction`
 - [ ] `isActive: true` filter on soft-deletable models (products, customers)
 - [ ] No raw SQL unless reviewed and justified
 
 ### React / Frontend
+
 - [ ] All data fetches handle loading / error / empty states
 - [ ] Mutations show loading spinner, disable button during inflight
 - [ ] Error from mutation shown in toast with `variant: 'destructive'`
 - [ ] React Query cache invalidated after successful mutation
 
 ### Documentation
+
 - [ ] `docs/PRODUCT_REQUIREMENTS.md` §13 (Built section) updated if feature ships
 - [ ] Event key added to §13 WS event list if new WS event added
 - [ ] Sprint section updated if sprint milestone reached
