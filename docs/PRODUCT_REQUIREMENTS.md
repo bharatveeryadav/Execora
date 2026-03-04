@@ -5,7 +5,7 @@
 > It covers **what we are building, why, for whom, and exactly how** — grounded in real Indian SME use cases.
 >
 > **Maintained by**: Update this document whenever a feature ships, a use case is validated, or competitive landscape shifts.
-> **Version**: 2.1 — 2026-03-03
+> **Version**: 2.3 — 2026-03-04
 
 ---
 
@@ -1817,6 +1817,12 @@ This removes the app install barrier entirely. Growth = viral WhatsApp sharing.
 - **[Sprint 6] DayBook real-time data** — replaced localStorage expense/cashbook reads with `useExpenses` + `useCashbook` API hooks
 - **[Sprint 6] InvoiceDetail UPI QR fix** — replaced `localStorage.getItem('execora:bizprofile')` with `useMe` hook (UPI VPA + business name now from API)
 - **[Sprint 6] Split payment UI** — `Payment.tsx` supports single-method and split-mode (cash + UPI + card) with receipt dialog
+- **[Sprint 7] Overdue page** — `/overdue` route with live table: all customers with positive balance, overdue days, last payment, per-row actions (record payment, add credit, remind, cancel reminder)
+- **[Sprint 7] Bulk remind from Overdue page** — "Remind All" button bulk-schedules WhatsApp + email reminders for all overdue customers in one click
+- **[Sprint 7] ScheduleReminderDialog** — channel toggles (WhatsApp / Email), amount pre-fill, "when" picker (Now / Today 6 PM / Tomorrow / 2d / 3d / 7d), optional custom message; uses `useCreateReminder` REST hook
+- **[Sprint 7] Reminder WS real-time** — `reminder:created` and `reminder:cancelled` events added to WS broadcaster (reminder routes) and `useWsInvalidation` map; overdue page updates live
+- **[Sprint 7] Phone-optional reminders** — removed hard phone-required check from `scheduleReminder()`; channels now computed from customer contact data (whatsapp if phone exists, email if email exists); bulk scheduling uses `Promise.allSettled` so one missing-phone customer never blocks the rest
+- **[Sprint 7] Customers list WS sync** — `customer:created`, `customer:updated` events broadcast from customer routes; all voice + REST mutations invalidate React Query cache in real time
 
 ### Pending / Critical Gaps 🔴
 
@@ -1837,13 +1843,13 @@ This removes the app install barrier entirely. Growth = viral WhatsApp sharing.
 
 #### Delivery Channels (Email + WhatsApp)
 
-| Feature                                            | Priority | Notes                                                         |
-| -------------------------------------------------- | -------- | ------------------------------------------------------------- |
-| WhatsApp auto-send PDF on invoice confirm          | P0       | Currently only email auto-sends. WhatsApp needs voice trigger |
-| Email reminders                                    | P1       | Currently reminders only go via WhatsApp. Add email channel   |
-| Customer email on profile (prompted at onboarding) | P0       | Needed for email delivery to work reliably                    |
-| Delivery preference per customer                   | P1       | Choose: WhatsApp only / Email only / Both                     |
-| Fallback: WhatsApp fail → try email                | P1       | After 3 WhatsApp retries, fallback to email                   |
+| Feature                                            | Priority | Notes                                                                                                                                           |
+| -------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| WhatsApp auto-send PDF on invoice confirm          | P0       | Currently only email auto-sends. WhatsApp needs voice trigger                                                                                   |
+| ~~Email reminders~~                                | ~~P1~~   | ✅ Built — channels auto-detected: `email` channel included when customer has email; `whatsapp` when phone exists; both if absent (future data) |
+| Customer email on profile (prompted at onboarding) | P0       | Needed for email delivery to work reliably                                                                                                      |
+| Delivery preference per customer                   | P1       | Per-reminder channel toggle in ScheduleReminderDialog; per-customer persistent preference still TODO                                            |
+| Fallback: WhatsApp fail → try email                | P1       | After 3 WhatsApp retries, fallback to email                                                                                                     |
 
 #### Voice & Agent Mode
 
@@ -1957,5 +1963,5 @@ Mode 3 — True Agent (planned): STT → LLM with tool definitions → tool call
 
 ---
 
-_Document maintained by the Execora engineering team. Last updated: 2026-03-04 (v2.2 — Sprint 5: Expenses/Purchases/CashBook REST API; Sprint 6: full real-time WS wiring, DayBook + InvoiceDetail localStorage → API, split payment UI)._
+_Document maintained by the Execora engineering team. Last updated: 2026-03-04 (v2.3 — Sprint 7: Overdue page with full real-time ops, bulk + individual reminder scheduling, phone-optional reminder path, Promise.allSettled bulk scheduling, reminder WS events)._
 _Next review: when any P0 gap is closed, or a new competitor feature is identified._
