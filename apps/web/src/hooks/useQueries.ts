@@ -9,6 +9,9 @@ import {
 	reportApi,
 	authApi,
 	usersApi,
+	expenseApi,
+	purchaseApi,
+	cashbookApi,
 	type Customer,
 	type Invoice,
 	type Product,
@@ -21,6 +24,8 @@ import {
 	type PnlReport,
 	type ReportParams,
 	type AppUser,
+	type Expense,
+	type CashEntry,
 } from '@/lib/api';
 
 // ── Query keys ────────────────────────────────────────────────────────────────
@@ -497,5 +502,77 @@ export function useRemoveUser() {
 	return useMutation({
 		mutationFn: (id: string) => usersApi.remove(id),
 		onSuccess: () => qc.invalidateQueries({ queryKey: QK.users }),
+	});
+}
+
+// ── Expenses ──────────────────────────────────────────────────────────────────
+
+const EXP_KEY = ['expenses'] as const;
+const PUR_KEY = ['purchases'] as const;
+const CB_KEY  = ['cashbook']  as const;
+
+export function useExpenses(params: { from?: string; to?: string; category?: string } = {}) {
+	return useQuery<{ expenses: Expense[]; total: number; count: number }>({
+		queryKey: [...EXP_KEY, params.from, params.to, params.category],
+		queryFn:  () => expenseApi.list(params),
+		staleTime: 60_000,
+	});
+}
+
+export function useCreateExpense() {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (data: { category: string; amount: number; note?: string; vendor?: string; date?: string }) =>
+			expenseApi.create(data),
+		onSuccess: () => qc.invalidateQueries({ queryKey: EXP_KEY }),
+	});
+}
+
+export function useDeleteExpense() {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (id: string) => expenseApi.remove(id),
+		onSuccess: () => qc.invalidateQueries({ queryKey: EXP_KEY }),
+	});
+}
+
+// ── Purchases ─────────────────────────────────────────────────────────────────
+
+export function usePurchases(params: { from?: string; to?: string } = {}) {
+	return useQuery<{ purchases: Expense[]; total: number; count: number }>({
+		queryKey: [...PUR_KEY, params.from, params.to],
+		queryFn:  () => purchaseApi.list(params),
+		staleTime: 60_000,
+	});
+}
+
+export function useCreatePurchase() {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (data: {
+			category: string; amount: number; itemName: string;
+			vendor?: string; quantity?: number; unit?: string;
+			ratePerUnit?: number; note?: string; date?: string;
+		}) => purchaseApi.create(data),
+		onSuccess: () => qc.invalidateQueries({ queryKey: PUR_KEY }),
+	});
+}
+
+export function useDeletePurchase() {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (id: string) => purchaseApi.remove(id),
+		onSuccess: () => qc.invalidateQueries({ queryKey: PUR_KEY }),
+	});
+}
+
+// ── CashBook ──────────────────────────────────────────────────────────────────
+
+export function useCashbook(params: { from?: string; to?: string } = {}) {
+	return useQuery<{ entries: CashEntry[]; totalIn: number; totalOut: number; balance: number }>({
+		queryKey: [...CB_KEY, params.from, params.to],
+		queryFn:  () => cashbookApi.get(params),
+		staleTime: 30_000,
+		refetchOnWindowFocus: true,
 	});
 }

@@ -219,6 +219,7 @@ model Tenant {
   customerContextCaches  CustomerContextCache[]
   conversationFlows      ConversationFlow[]
   voiceRecordings        VoiceRecording[]
+  expenses               Expense[]
 
   @@index([status, plan])
   @@index([createdAt])
@@ -1378,4 +1379,30 @@ model InvoiceCounter {
   lastSeq Int    @default(0) @map("last_seq")
 
   @@map("invoice_counters")
+}
+// =====================================================
+// MODEL: EXPENSE (operating expenses + stock purchases per tenant)
+// =====================================================
+model Expense {
+  id           String    @id @default(uuid())
+  tenantId     String    @map("tenant_id")
+  type         String    @default("expense")  // "expense" | "purchase"
+  category     String    @default("Miscellaneous")
+  amount       Decimal
+  note         String?
+  vendor       String?   // supplier for purchases, vendor for expenses
+  itemName     String?   @map("item_name")
+  quantity     Decimal?
+  unit         String?
+  ratePerUnit  Decimal?  @map("rate_per_unit")
+  date         DateTime  @default(now())
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt      @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, date(sort: Desc)])
+  @@index([tenantId, type])
+  @@index([tenantId, category])
+  @@map("expenses")
 }

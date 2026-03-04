@@ -600,3 +600,81 @@ export const reportApi = {
 			body: JSON.stringify(data),
 		}),
 };
+// ── Expense & Purchase types ──────────────────────────────────────────────────
+
+export interface Expense {
+        id:         string;
+        type:       'expense' | 'purchase';
+        category:   string;
+        amount:     number;
+        note?:      string;
+        vendor?:    string;
+        itemName?:  string;
+        quantity?:  number;
+        unit?:      string;
+        ratePerUnit?: number;
+        date:       string;
+        createdAt:  string;
+}
+
+export interface CashEntry {
+        id:        string;
+        type:      'in' | 'out';
+        amount:    number;
+        category:  string;
+        note:      string;
+        date:      string;
+        createdAt: number;
+}
+
+// ── Expense API ───────────────────────────────────────────────────────────────
+
+export const expenseApi = {
+        list: (params: { from?: string; to?: string; category?: string } = {}) => {
+                const q = new URLSearchParams();
+                if (params.from)     q.set('from',     params.from);
+                if (params.to)       q.set('to',       params.to);
+                if (params.category) q.set('category', params.category);
+                const s = q.toString();
+                return request<{ expenses: Expense[]; total: number; count: number }>(`/api/v1/expenses${s ? `?${s}` : ''}`);
+        },
+        create: (data: { category: string; amount: number; note?: string; vendor?: string; date?: string }) =>
+                request<{ expense: Expense }>('/api/v1/expenses', { method: 'POST', body: JSON.stringify(data) }),
+        remove: (id: string) =>
+                request<{ ok: boolean }>(`/api/v1/expenses/${id}`, { method: 'DELETE' }),
+        summary: (params: { from?: string; to?: string } = {}) => {
+                const q = new URLSearchParams();
+                if (params.from) q.set('from', params.from);
+                if (params.to)   q.set('to',   params.to);
+                const s = q.toString();
+                return request<{ total: number; byCategory: Record<string, number>; count: number }>(`/api/v1/expenses/summary${s ? `?${s}` : ''}`);
+        },
+};
+
+// ── Purchases API ─────────────────────────────────────────────────────────────
+
+export const purchaseApi = {
+        list: (params: { from?: string; to?: string } = {}) => {
+                const q = new URLSearchParams();
+                if (params.from) q.set('from', params.from);
+                if (params.to)   q.set('to',   params.to);
+                const s = q.toString();
+                return request<{ purchases: Expense[]; total: number; count: number }>(`/api/v1/purchases${s ? `?${s}` : ''}`);
+        },
+        create: (data: { category: string; amount: number; itemName: string; vendor?: string; quantity?: number; unit?: string; ratePerUnit?: number; note?: string; date?: string }) =>
+                request<{ purchase: Expense }>('/api/v1/purchases', { method: 'POST', body: JSON.stringify(data) }),
+        remove: (id: string) =>
+                request<{ ok: boolean }>(`/api/v1/purchases/${id}`, { method: 'DELETE' }),
+};
+
+// ── CashBook API ──────────────────────────────────────────────────────────────
+
+export const cashbookApi = {
+        get: (params: { from?: string; to?: string } = {}) => {
+                const q = new URLSearchParams();
+                if (params.from) q.set('from', params.from);
+                if (params.to)   q.set('to',   params.to);
+                const s = q.toString();
+                return request<{ entries: CashEntry[]; totalIn: number; totalOut: number; balance: number }>(`/api/v1/cashbook${s ? `?${s}` : ''}`);
+        },
+};

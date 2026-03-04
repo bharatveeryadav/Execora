@@ -1,7 +1,7 @@
 /**
- * Expenses & Purchases — Vyapar feature parity.
+ * Expenses — Vyapar feature parity.
  * Tracks business expenses (rent, salary, stock purchase, travel, etc.)
- * Stores in localStorage. Voice commands supported.
+ * Data persisted via REST API → PostgreSQL.
  */
 import { useState, useMemo } from "react";
 import { ArrowLeft, Plus, Trash2, ShoppingCart, TrendingDown } from "lucide-react";
@@ -18,8 +18,9 @@ import {
 } from "@/components/ui/select";
 import VoiceBar from "@/components/VoiceBar";
 import { useToast } from "@/hooks/use-toast";
+import { useExpenses, useCreateExpense, useDeleteExpense } from "@/hooks/useQueries";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Config ────────────────────────────────────────────────────────────────────
 const EXPENSE_CATEGORIES = [
   "Stock Purchase", "Rent", "Salary & Wages", "Electricity & Utilities",
   "Transport & Fuel", "Repairs & Maintenance", "Marketing", "Packaging",
@@ -28,35 +29,7 @@ const EXPENSE_CATEGORIES = [
 
 type ExpenseCategory = typeof EXPENSE_CATEGORIES[number];
 
-interface Expense {
-  id: string;
-  category: ExpenseCategory;
-  amount: number;
-  note: string;
-  vendor?: string;
-  date: string; // YYYY-MM-DD
-  createdAt: number;
-}
-
-// ── Persistence ───────────────────────────────────────────────────────────────
-const LS_KEY = "execora:expenses";
-
-function loadExpenses(): Expense[] {
-  try {
-    return JSON.parse(localStorage.getItem(LS_KEY) ?? "[]");
-  } catch {
-    return [];
-  }
-}
-
-function saveExpenses(list: Expense[]) {
-  localStorage.setItem(LS_KEY, JSON.stringify(list));
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-const fmt = (n: number) => `₹${n.toLocaleString("en-IN")}`;
-const today = () => new Date().toISOString().slice(0, 10);
-const catIcon: Record<ExpenseCategory, string> = {
+const catIcon: Record<string, string> = {
   "Stock Purchase": "📦", "Rent": "🏠", "Salary & Wages": "👷", "Electricity & Utilities": "⚡",
   "Transport & Fuel": "🚗", "Repairs & Maintenance": "🔧", "Marketing": "📢",
   "Packaging": "📫", "Bank Charges": "🏦", "Miscellaneous": "🗂️",
@@ -65,20 +38,24 @@ const catIcon: Record<ExpenseCategory, string> = {
 const TABS = ["All", "This Week", "This Month"] as const;
 type Tab = typeof TABS[number];
 
-function filterByTab(list: Expense[], tab: Tab): Expense[] {
-  if (tab === "All") return list;
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const fmt = (n: number) => `₹${n.toLocaleString("en-IN")}`;
+const today = () => new Date().toISOString().slice(0, 10);
+
+function tabDateRange(tab: Tab): { from?: string; to?: string } {
+  if (tab === "All") return {};
   const now = new Date();
-  const cutoff = new Date(now);
-  if (tab === "This Week") cutoff.setDate(now.getDate() - 7);
-  else cutoff.setDate(1); // month start
-  return list.filter((e) => new Date(e.date) >= cutoff);
+  const from = new Date(now);
+  if (tab === "This Week") from.setDate(now.getDate() - 7);
+  else from.setDate(1);
+  return { from: from.toISOString().slice(0, 10), to: now.toISOString().slice(0, 10) };
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function Expenses() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [expenses, setExpenses] = useState<Expense[]>(loadExpenses);
+
   const [filterTab, setFilterTab] = useState<Tab>("This Month");
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
@@ -90,54 +67,54 @@ export default function Expenses() {
   const [vendor, setVendor] = useState("");
   const [date, setDate] = useState(today());
 
-  function handleAdd(e: React.FormEvent) {
+  // API hooks
+  const { data: expData } = useExpenses(tabDateRange(filterTab));
+  const { data: monthData } = useExpenses(tabDateRange("This Month"));
+  const createExpense = useCreateExpense();
+  const deleteExpense = useDeleteExpense();
+
+  const expenses = expData?.expenses ?? [];
+  const monthExpenses = monthData?.expenses ?? [];
+
+  async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) return;
-    const newExp: Expense = {
-      id: `exp-${Date.now()}`,
-      category,
-      amount: amt,
-      note: note.trim(),
-      vendor: vendor.trim() || undefined,
-      date,
-      createdAt: Date.now(),
-    };
-    const updated = [newExp, ...expenses];
-    setExpenses(updated);
-    saveExpenses(updated);
-    toast({ title: "Expense added", description: `${category} · ${fmt(amt)}` });
-    setAmount(""); setNote(""); setVendor(""); setDate(today()); setOpen(false);
+    try {
+      await createExpense.mutateAsync({ category, amount: amt, note: note.trim(), vendor: vendor.trim() || undefined, date });
+      toast({ title: "Expense added", description: `${category} · ${fmt(amt)}` });
+      setAmount(""); setNote(""); setVendor(""); setDate(today()); setOpen(false);
+    } catch {
+      toast({ title: "Failed to add expense", variant: "destructive" });
+    }
   }
 
-  function handleDelete(id: string) {
-    const updated = expenses.filter((e) => e.id !== id);
-    setExpenses(updated);
-    saveExpenses(updated);
-    toast({ title: "Deleted" });
+  async function handleDelete(id: string) {
+    try {
+      await deleteExpense.mutateAsync(id);
+      toast({ title: "Deleted" });
+    } catch {
+      toast({ title: "Failed to delete", variant: "destructive" });
+    }
   }
 
   const filtered = useMemo(() => {
-    let list = filterByTab(expenses, filterTab);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(
-        (e) =>
-          e.category.toLowerCase().includes(q) ||
-          e.note.toLowerCase().includes(q) ||
-          (e.vendor ?? "").toLowerCase().includes(q),
-      );
-    }
-    return list;
-  }, [expenses, filterTab, search]);
+    if (!search.trim()) return expenses;
+    const q = search.toLowerCase();
+    return expenses.filter(
+      (e) =>
+        e.category.toLowerCase().includes(q) ||
+        (e.note ?? "").toLowerCase().includes(q) ||
+        (e.vendor ?? "").toLowerCase().includes(q),
+    );
+  }, [expenses, search]);
 
-  const totalFiltered = filtered.reduce((s, e) => s + e.amount, 0);
-  const totalMonth = filterByTab(expenses, "This Month").reduce((s, e) => s + e.amount, 0);
+  const totalFiltered = filtered.reduce((s, e) => s + Number(e.amount), 0);
+  const totalMonth = monthExpenses.reduce((s, e) => s + Number(e.amount), 0);
 
-  // Group by category for summary
   const categoryTotals = useMemo(() => {
     const map: Record<string, number> = {};
-    filtered.forEach((e) => { map[e.category] = (map[e.category] ?? 0) + e.amount; });
+    filtered.forEach((e) => { map[e.category] = (map[e.category] ?? 0) + Number(e.amount); });
     return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 5);
   }, [filtered]);
 
@@ -174,7 +151,7 @@ export default function Expenses() {
           <Card className="border-none shadow-sm">
             <CardContent className="p-3 text-center">
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Entries</p>
-              <p className="text-lg font-bold">{filterByTab(expenses, "This Month").length}</p>
+              <p className="text-lg font-bold">{monthExpenses.length}</p>
             </CardContent>
           </Card>
           <Card className="border-none shadow-sm">
@@ -198,7 +175,7 @@ export default function Expenses() {
                   return (
                     <div key={cat} className="space-y-0.5">
                       <div className="flex justify-between text-xs">
-                        <span>{catIcon[cat as ExpenseCategory] ?? "🗂️"} {cat}</span>
+                        <span>{catIcon[cat] ?? "🗂️"} {cat}</span>
                         <span className="font-semibold">{fmt(total)} ({pct}%)</span>
                       </div>
                       <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
@@ -252,10 +229,10 @@ export default function Expenses() {
                 key={exp.id}
                 className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3 transition-colors hover:bg-muted/30"
               >
-                <span className="text-2xl">{catIcon[exp.category]}</span>
+                <span className="text-2xl">{catIcon[exp.category] ?? "🗂️"}</span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-2">
-                    <p className="font-semibold">{fmt(exp.amount)}</p>
+                    <p className="font-semibold">{fmt(Number(exp.amount))}</p>
                     <p className="text-xs text-muted-foreground">{exp.category}</p>
                   </div>
                   {(exp.note || exp.vendor) && (
@@ -263,7 +240,7 @@ export default function Expenses() {
                       {[exp.vendor, exp.note].filter(Boolean).join(" · ")}
                     </p>
                   )}
-                  <p className="text-[10px] text-muted-foreground">{exp.date}</p>
+                  <p className="text-[10px] text-muted-foreground">{exp.date?.slice(0, 10)}</p>
                 </div>
                 <button
                   onClick={() => handleDelete(exp.id)}
@@ -328,7 +305,9 @@ export default function Expenses() {
             </div>
             <DialogFooter className="pt-2">
               <Button variant="outline" type="button" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={!amount}>Add Expense</Button>
+              <Button type="submit" disabled={!amount || createExpense.isPending}>
+                {createExpense.isPending ? "Saving…" : "Add Expense"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

@@ -1,99 +1,45 @@
 /**
- * CashBook — Simple cash & bank register.
- * Vyapar feature parity: track cash in hand, cash out, running balance.
- * Data stored in localStorage. Voice commands supported.
+ * CashBook — Real-time cash register.
+ * Read-only view combining:
+ *   • Cash IN  → customer payment records
+ *   • Cash OUT → expense records
+ * Data is server-persisted; no localStorage.
  */
-import { useState, useMemo } from "react";
-import { ArrowLeft, Plus, ArrowUpRight, ArrowDownLeft, Banknote } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, ArrowUpRight, ArrowDownLeft, Banknote, Plus, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from "@/components/ui/dialog";
 import VoiceBar from "@/components/VoiceBar";
-import { useToast } from "@/hooks/use-toast";
+import { useCashbook } from "@/hooks/useQueries";
+import type { CashEntry } from "@/lib/api";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-type TxnType = "in" | "out";
-
-interface CashTxn {
-  id: string;
-  type: TxnType;
-  amount: number;
-  category: string;
-  note: string;
-  date: string;
-  createdAt: number;
-}
-
-const IN_CATEGORIES = ["Sales Collection", "Cash Deposit", "Loan Received", "Capital Intro", "Other Income"];
-const OUT_CATEGORIES = ["Cash Payment", "Bank Deposit", "Expense", "Supplier Payment", "Owner Withdraw", "Other"];
-
-const LS_KEY = "execora:cashbook";
-
-function load(): CashTxn[] {
-  try { return JSON.parse(localStorage.getItem(LS_KEY) ?? "[]"); }
-  catch { return []; }
-}
-function save(list: CashTxn[]) { localStorage.setItem(LS_KEY, JSON.stringify(list)); }
-
+// ── Helpers ───────────────────────────────────────────────────────────────────
 const fmt = (n: number) => `₹${Math.abs(n).toLocaleString("en-IN")}`;
 const today = () => new Date().toISOString().slice(0, 10);
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function CashBook() {
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const [txns, setTxns] = useState<CashTxn[]>(load);
-  const [open, setOpen] = useState(false);
-  const [txnType, setTxnType] = useState<TxnType>("in");
-  const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("Sales Collection");
-  const [note, setNote] = useState("");
-  const [date, setDate] = useState(today());
+  const [from, setFrom] = useState(() => {
+    const d = new Date();
+    d.setDate(1);
+    return d.toISOString().slice(0, 10);
+  });
+  const [to, setTo] = useState(today());
 
-  function openForm(type: TxnType) {
-    setTxnType(type);
-    setCategory(type === "in" ? "Sales Collection" : "Cash Payment");
-    setAmount(""); setNote(""); setDate(today());
-    setOpen(true);
-  }
+  const { data, isLoading, refetch } = useCashbook({ from, to });
 
-  function handleAdd(e: React.FormEvent) {
-    e.preventDefault();
-    const amt = parseFloat(amount);
-    if (!amt || amt <= 0) return;
-    const txn: CashTxn = {
-      id: `ct-${Date.now()}`,
-      type: txnType,
-      amount: amt,
-      category,
-      note: note.trim(),
-      date,
-      createdAt: Date.now(),
-    };
-    const updated = [txn, ...txns];
-    setTxns(updated);
-    save(updated);
-    toast({ title: txnType === "in" ? "Cash In added ✅" : "Cash Out added", description: `${category} · ${fmt(amt)}` });
-    setOpen(false);
-  }
+  const entries: CashEntry[] = data?.entries ?? [];
+  const totalIn   = data?.totalIn ?? 0;
+  const totalOut  = data?.totalOut ?? 0;
+  const balance   = data?.balance ?? 0;
 
-  const balance = useMemo(() =>
-    txns.reduce((s, t) => s + (t.type === "in" ? t.amount : -t.amount), 0), [txns]);
-
-  const todayTxns = useMemo(() => {
-    const t = today();
-    return txns.filter((tx) => tx.date === t);
-  }, [txns]);
-
-  const todayIn = todayTxns.filter((t) => t.type === "in").reduce((s, t) => s + t.amount, 0);
-  const todayOut = todayTxns.filter((t) => t.type === "out").reduce((s, t) => s + t.amount, 0);
-
-  const cats = txnType === "in" ? IN_CATEGORIES : OUT_CATEGORIES;
+  const todayStr = today();
+  const todayEntries = entries.filter((e) => e.date?.slice(0, 10) === todayStr);
+  const todayIn  = todayEntries.filter((e) => e.type === "in").reduce((s, e)  => s + e.amount, 0);
+  const todayOut = todayEntries.filter((e) => e.type === "out").reduce((s, e) => s + e.amount, 0);
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -106,20 +52,20 @@ export default function CashBook() {
             </Button>
             <div>
               <h1 className="text-lg font-bold">Cash Book</h1>
-              <p className="text-xs text-muted-foreground">Real-time cash register</p>
+              <p className="text-xs text-muted-foreground">Live view · payments + expenses</p>
             </div>
           </div>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" className="text-destructive border-destructive/30" onClick={() => openForm("out")}>
-              <ArrowDownLeft className="mr-1 h-4 w-4" /> Out
+            <Button size="sm" variant="ghost" onClick={() => refetch()}>
+              <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
             </Button>
-            <Button size="sm" onClick={() => openForm("in")}>
-              <ArrowUpRight className="mr-1 h-4 w-4" /> In
+            <Button size="sm" variant="outline" onClick={() => navigate("/expenses")}>
+              <Plus className="mr-1 h-4 w-4" /> Expense
             </Button>
           </div>
         </div>
         <VoiceBar idleHint={
-          <><span className="font-medium">"Cash mein 2000 aaya"</span> · <span>"1500 supplier ko diya"</span></>
+          <><span className="font-medium">"Aaj ka cash dikhao"</span> · <span>"Is mahine ka balance?"</span></>
         } />
       </header>
 
@@ -129,13 +75,13 @@ export default function CashBook() {
           <CardContent className="p-5 text-center">
             <div className="flex items-center justify-center gap-2 mb-1">
               <Banknote className="h-5 w-5 text-muted-foreground" />
-              <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Cash in Hand</p>
+              <p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Net Cash Flow</p>
             </div>
             <p className={`text-4xl font-extrabold tabular-nums ${balance >= 0 ? "text-green-700 dark:text-green-400" : "text-destructive"}`}>
               {balance >= 0 ? "+" : "-"}{fmt(balance)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              All time · {txns.length} transactions
+              {from} → {to} · {entries.length} transactions
             </p>
           </CardContent>
         </Card>
@@ -162,25 +108,52 @@ export default function CashBook() {
           </Card>
         </div>
 
-        {/* Transaction list */}
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">All Transactions</p>
-          <span className="text-xs text-muted-foreground">{txns.length} entries</span>
+        {/* Period totals */}
+        <div className="grid grid-cols-2 gap-3">
+          <Card className="border-none shadow-sm bg-green-50/50 dark:bg-green-950/10">
+            <CardContent className="p-3 text-center">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total In (period)</p>
+              <p className="text-lg font-bold text-green-700">{fmt(totalIn)}</p>
+            </CardContent>
+          </Card>
+          <Card className="border-none shadow-sm bg-red-50/50 dark:bg-red-950/10">
+            <CardContent className="p-3 text-center">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total Out (period)</p>
+              <p className="text-lg font-bold text-destructive">{fmt(totalOut)}</p>
+            </CardContent>
+          </Card>
         </div>
 
-        {txns.length === 0 ? (
+        {/* Date range filter */}
+        <div className="flex gap-2 items-center">
+          <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="bg-card text-sm" />
+          <span className="text-muted-foreground text-sm shrink-0">to</span>
+          <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="bg-card text-sm" />
+        </div>
+
+        {/* Transaction list */}
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Transactions</p>
+          <span className="text-xs text-muted-foreground">{entries.length} entries</span>
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : entries.length === 0 ? (
           <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed py-12 text-center">
             <Banknote className="h-10 w-10 text-muted-foreground/40" />
-            <p className="text-sm font-medium">No transactions yet</p>
-            <p className="text-xs text-muted-foreground">Tap Cash In / Out or say "2000 cash aaya"</p>
+            <p className="text-sm font-medium">No transactions</p>
+            <p className="text-xs text-muted-foreground">Collect payments or add expenses to see entries here</p>
             <div className="mt-2 flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => openForm("in")}>+ Cash In</Button>
-              <Button size="sm" variant="outline" onClick={() => openForm("out")}>+ Cash Out</Button>
+              <Button size="sm" variant="outline" onClick={() => navigate("/customers")}>Record Payment</Button>
+              <Button size="sm" variant="outline" onClick={() => navigate("/expenses")}>Add Expense</Button>
             </div>
           </div>
         ) : (
           <div className="space-y-2">
-            {txns.map((txn) => (
+            {entries.map((txn) => (
               <div
                 key={txn.id}
                 className="flex items-center gap-3 rounded-xl border bg-card px-4 py-3"
@@ -196,7 +169,7 @@ export default function CashBook() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium">{txn.category}</p>
                   {txn.note && <p className="truncate text-xs text-muted-foreground">{txn.note}</p>}
-                  <p className="text-[10px] text-muted-foreground">{txn.date}</p>
+                  <p className="text-[10px] text-muted-foreground">{txn.date?.slice(0, 10)}</p>
                 </div>
                 <p className={`shrink-0 font-bold tabular-nums ${txn.type === "in" ? "text-green-700 dark:text-green-400" : "text-destructive"}`}>
                   {txn.type === "in" ? "+" : "-"}{fmt(txn.amount)}
@@ -206,60 +179,6 @@ export default function CashBook() {
           </div>
         )}
       </main>
-
-      {/* Add Transaction Dialog */}
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{txnType === "in" ? "💚 Cash In" : "🔴 Cash Out"}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleAdd} className="space-y-3 pt-2">
-            {/* Type toggle */}
-            <div className="flex rounded-lg border overflow-hidden">
-              {(["in", "out"] as TxnType[]).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => { setTxnType(t); setCategory(t === "in" ? "Sales Collection" : "Cash Payment"); }}
-                  className={`flex-1 py-2 text-sm font-medium transition-colors ${
-                    t === txnType
-                      ? t === "in" ? "bg-green-500 text-white" : "bg-destructive text-white"
-                      : "bg-muted text-muted-foreground"
-                  }`}
-                >
-                  {t === "in" ? "↑ Cash In" : "↓ Cash Out"}
-                </button>
-              ))}
-            </div>
-            <div className="space-y-1.5">
-              <Label>Amount (₹) *</Label>
-              <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 2000" required min={1} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Category</Label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-              >
-                {cats.map((c) => <option key={c}>{c}</option>)}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Note</Label>
-              <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Brief description" />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Date</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-            </div>
-            <DialogFooter className="pt-2">
-              <Button variant="outline" type="button" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={!amount}>Save</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
