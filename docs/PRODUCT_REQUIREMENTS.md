@@ -5,7 +5,7 @@
 > It covers **what we are building, why, for whom, and exactly how** — grounded in real Indian SME use cases.
 >
 > **Maintained by**: Update this document whenever a feature ships, a use case is validated, or competitive landscape shifts.
-> **Version**: 2.5 — 2026-03-05
+> **Version**: 2.6 — 2026-03-05
 
 ---
 
@@ -24,6 +24,8 @@
 11. [Feature Priority Matrix](#11-feature-priority-matrix)
 12. [Growth Strategy](#12-growth-strategy)
 13. [What Is Built vs What Is Pending](#13-what-is-built-vs-what-is-pending)
+14. [User Research Findings](#14-user-research-findings--review-backed-priority-updates-v24)
+15. [Sprint 9 — Plan](#15-sprint-9--plan-2026-03-05-onwards)
 
 ---
 
@@ -1827,6 +1829,10 @@ This removes the app install barrier entirely. Growth = viral WhatsApp sharing.
 - **[Sprint 8] NotificationCenter live draft alert** — bell icon queries `GET /api/v1/drafts?status=pending` every 15 s; shows "Pending Drafts" notification with count badge; "Review →" action dispatches `open-draft-panel` custom event to open DraftManagerPanel from anywhere in the app
 - **[Sprint 8] DraftManagerPanel — Standard Mode** — `apps/web/src/components/DraftManagerPanel.tsx`; slide-over panel listing all pending drafts grouped by type (Purchase / New Product / Stock Adj.); per-card Confirm / Discard / Detail-Edit buttons; red count badge on trigger; "Confirm All" bulk action; WS-invalidated via `useWsInvalidation(['drafts'])`
 - **[Sprint 8] DraftManagerPanel — Fast Mode (Excel spreadsheet)** — ⚡ toggle in panel header; switches to an Excel-like table showing all product drafts with inline-editable columns (Name · Category · Price ₹ · Stock · Unit · Notes); auto-saves on Tab/Enter via `draftApi.update()`; per-row status indicator (amber=unsaved, blue spinner=saving, green ✓=saved, red=error); Confirm button disabled until row is saved; panel widens to 860 px; preference persisted in localStorage; non-product drafts shown as compact rows below table; OCR-scanned bill items flow directly into this view for bulk review
+- **[Sprint 8] Fast Mode 12-column table** — expanded from 6→12 fields per product row: `name, category, subCategory, price, mrp, stock, unit, sku, barcode, hsn, minStock, notes`; Core (6 cols) / Full (12 cols) toggle with localStorage persistence; 20 Indian SME category dropdown; 17-unit dropdown; 5-state row colour system (idle/dirty/saving/saved/error); sticky thead; focus-within ring; empty-state when no drafts
+- **[Sprint 8] OCR prompt 9-field extraction** — `packages/infrastructure/src/workers.ts` product_catalog OCR prompt now extracts: `name, price, mrp, unit, category, sku, barcode, hsnCode, minStock` (was 4 fields); draft data object maps all 9 with null fallbacks
+- **[Sprint 8] Auto-open Draft panel after OCR** — `apps/web/src/pages/Inventory.tsx` dispatches `window.dispatchEvent(new CustomEvent('open-draft-panel'))` immediately after OCR job completes, so the Fast Mode table opens automatically without any user navigation
+- **[Sprint 8] Core/Full toggle always visible** — toolbar split into two rows; column-group toggle never clipped by panel edge; dashed empty-state shown when no product drafts exist pointing to "Import from Photo"
 
 ### Pending / Critical Gaps 🔴
 
@@ -1888,10 +1894,35 @@ This removes the app install barrier entirely. Growth = viral WhatsApp sharing.
 | Mobile-responsive layout                | P0       | Counter use = mobile. Current UI is desktop-first                                              |
 | Single-screen classic billing UI        | P0       | Top UX complaint across 193+ reviews — no page flips during bill creation                      |
 | Offline mode (PWA + IndexedDB queue)    | P0       | 22% of users cite offline as reason to switch tools; elevated from P2                          |
-| OCR purchase bill ingestion (AI)        | P0       | Photo → OpenAI Vision → stock update. Zero competitors have this. Users call it "game changer" |
+| ~~OCR purchase bill ingestion (AI)~~    | ~~P0~~   | ✅ Partially built — photo → OpenAI Vision → `drafts` table → DraftManagerPanel Fast Mode (12-col review) → confirm to inventory. Full pipeline live since Sprint 8. Remaining: supplier cost capture on purchase side, auto-PO creation |
 | UPI payment QR code embedded in invoice | P0       | Frequently requested; trivial to add via QR generation library                                 |
 | WhatsApp chatbot interface              | P2       | Send voice note to WhatsApp → AI processes → reply                                             |
 | Tally/Vyapar data import                | P2       | Migration path for existing users                                                              |
+
+---
+
+## 15. Sprint 9 — Plan (2026-03-05 onwards)
+
+### Goal
+Close the top P0 gaps that directly impact daily counter sales: frictionless walk-in billing, WhatsApp PDF delivery on confirm, and UPI QR on invoices. These three together eliminate the most common reasons a kirana owner prefers Vyapar over Execora.
+
+### Sprint 9 Stories
+
+| # | Story | Priority | Est. | Notes |
+| - | ----- | -------- | ---- | ----- |
+| S9-01 | **WhatsApp auto-send PDF on invoice confirm** | P0 | 4 h | `invoice:confirmed` event → WhatsApp API with PDF URL. Mirrors current email auto-send. Add toggle in Settings per customer. |
+| S9-02 | **Walk-in 1-tap button** | P0 | 2 h | Dashboard/header "New Sale ▶" pre-selects Walk-in customer + opens invoice form in one tap. No customer search step. |
+| S9-03 | **UPI QR code on invoice PDF** | P0 | 3 h | `qrcode` npm → embed UPI deep-link QR in PDF footer. Uses `upiVpa` from business profile. Scanned by customer to pay on the spot. |
+| S9-04 | **Item-level discount** | P0 | 3 h | Each invoice item line gets `discountPct` / `discountAmt` field. Voice: "aata pe 5% discount do". Updates taxable value correctly. |
+| S9-05 | **Single-screen classic billing UI** | P0 | 1 d | Customer search + item addition + totals on one page, no navigation. Mobile-responsive. Addresses #1 UX complaint from 193+ reviews. |
+| S9-06 | **Batch / expiry entry** | P1 | 1 d | Pharma vertical: batch number + expiry date on purchase; alert 30 days before expiry; FIFO deduction. |
+| S9-07 | **Customer email prompt at creation** | P1 | 2 h | Email field highlighted (not required) in Customer form; tooltip explains it enables PDF delivery. |
+
+### Sprint 9 Success Criteria
+- Invoice confirm → WhatsApp PDF received within 5 s (S9-01)
+- Walk-in bill completed in < 10 s from dashboard (S9-02)
+- Any invoice PDF download shows UPI QR in footer (S9-03)
+- Voice "item pe 5% discount" round-trips and reduces taxable value (S9-04)
 
 ---
 
@@ -2022,4 +2053,5 @@ _Document maintained by the Execora engineering team._
 _v2.3: Sprint 7 — Overdue page, bulk reminders, phone-optional reminder path._
 _v2.4: Priority matrix updated based on 193+ real user reviews. New P0: OCR purchase bill ingestion, single-screen billing, offline queue, UPI QR. Full research: docs/audit/USER_RESEARCH_IMPROVEMENT_ANALYSIS.md._
 _v2.5: Sprint 8 — Barcode scanning (ZXing, EAN/QR, invoice + inventory), DraftManagerPanel Standard Mode + Fast Mode Excel spreadsheet (inline edit + auto-save), NotificationCenter live draft notifications._
-_Next review: when any P0 gap is closed, or a new competitor feature is identified._
+_v2.6: Sprint 8 enhancements closed — Fast Mode 12-col table (Core/Full toggle), 9-field OCR extraction, auto-open draft panel after OCR, always-visible column toggle. OCR purchase bill ingestion marked ✅ Partially Built. Sprint 9 plan added (Section 15): WhatsApp PDF on confirm, walk-in 1-tap, UPI QR, item discount, single-screen billing._
+_Next review: when any Sprint 9 P0 story ships._
