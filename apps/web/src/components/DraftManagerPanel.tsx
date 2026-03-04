@@ -137,18 +137,27 @@ function DraftCard({
 	);
 }
 
-// ─── Fast Mode Excel table ────────────────────────────────────────────────────
+// ─── Fast Mode data model ────────────────────────────────────────────────────
 
 type RowStatus = 'idle' | 'dirty' | 'saving' | 'saved' | 'error';
+type ColGroup = 'core' | 'full';
 
 interface ProductRow {
 	id: string;
 	title: string;
+	// ── core ──
 	name: string;
 	category: string;
 	price: string;
+	mrp: string;
 	stock: string;
 	unit: string;
+	// ── extended ──
+	subCategory: string;
+	sku: string;
+	barcode: string;
+	hsn: string;
+	minStock: string;
 	notes: string;
 	_original: Draft;
 	_status: RowStatus;
@@ -162,8 +171,14 @@ function toProductRow(d: Draft): ProductRow {
 		name: String(data.name ?? ''),
 		category: String(data.category ?? 'General'),
 		price: String(data.price ?? ''),
+		mrp: String(data.mrp ?? ''),
 		stock: String(data.stock ?? '0'),
 		unit: String(data.unit ?? 'piece'),
+		subCategory: String(data.subCategory ?? data.sub_category ?? ''),
+		sku: String(data.sku ?? ''),
+		barcode: String(data.barcode ?? ''),
+		hsn: String(data.hsnCode ?? data.hsn_code ?? data.hsn ?? ''),
+		minStock: String(data.minStock ?? data.min_stock ?? '5'),
 		notes: d.notes ?? '',
 		_original: d,
 		_status: 'idle',
@@ -172,67 +187,174 @@ function toProductRow(d: Draft): ProductRow {
 
 type ColKey = keyof Omit<ProductRow, 'id' | '_original' | '_status'>;
 
-const PRODUCT_COLS: { key: ColKey; label: string; width: string; type?: string }[] = [
-	{ key: 'name', label: 'Name', width: 'min-w-[150px]' },
-	{ key: 'category', label: 'Category', width: 'min-w-[100px]' },
-	{ key: 'price', label: 'Price ₹', width: 'min-w-[75px]', type: 'number' },
-	{ key: 'stock', label: 'Stock', width: 'min-w-[65px]', type: 'number' },
-	{ key: 'unit', label: 'Unit', width: 'min-w-[80px]' },
-	{ key: 'notes', label: 'Notes', width: 'min-w-[120px]' },
+interface ColDef {
+	key: ColKey;
+	label: string;
+	width: string;
+	type?: string;
+	group: 'core' | 'extended';
+	isUnit?: boolean;
+	isCategory?: boolean;
+	maxLength?: number;
+	placeholder?: string;
+}
+
+const ALL_COLS: ColDef[] = [
+	{ key: 'name', label: 'Product Name', width: 'min-w-[180px]', group: 'core', placeholder: 'e.g. Aata 5kg' },
+	{ key: 'category', label: 'Category', width: 'min-w-[130px]', group: 'core', isCategory: true },
+	{ key: 'price', label: 'Price ₹', width: 'min-w-[78px]', group: 'core', type: 'number' },
+	{ key: 'mrp', label: 'MRP ₹', width: 'min-w-[72px]', group: 'core', type: 'number', placeholder: 'retail' },
+	{ key: 'stock', label: 'Qty', width: 'min-w-[62px]', group: 'core', type: 'number' },
+	{ key: 'unit', label: 'Unit', width: 'min-w-[88px]', group: 'core', isUnit: true },
+	{ key: 'subCategory', label: 'Sub-cat', width: 'min-w-[100px]', group: 'extended', placeholder: 'e.g. Flour' },
+	{ key: 'sku', label: 'SKU', width: 'min-w-[88px]', group: 'extended', placeholder: 'Internal code' },
+	{ key: 'barcode', label: 'Barcode', width: 'min-w-[110px]', group: 'extended', placeholder: 'EAN-13 / QR' },
+	{ key: 'hsn', label: 'HSN/SAC', width: 'min-w-[80px]', group: 'extended', maxLength: 8, placeholder: '1902' },
+	{ key: 'minStock', label: 'Min Qty', width: 'min-w-[68px]', group: 'extended', type: 'number' },
+	{ key: 'notes', label: 'Notes', width: 'min-w-[130px]', group: 'extended', placeholder: 'Any note' },
 ];
 
-const UNIT_OPTIONS = ['piece', 'kg', 'g', 'litre', 'ml', 'box', 'packet', 'dozen', 'pair', 'set', 'metre', 'bundle'];
+const UNIT_OPTIONS = [
+	'piece',
+	'kg',
+	'g',
+	'litre',
+	'ml',
+	'box',
+	'packet',
+	'dozen',
+	'pair',
+	'set',
+	'metre',
+	'bundle',
+	'bag',
+	'can',
+	'strip',
+	'vial',
+	'tube',
+];
+
+const CATEGORY_OPTIONS = [
+	'General',
+	'Food & Grocery',
+	'Beverages',
+	'Dairy',
+	'Bakery',
+	'Snacks',
+	'Personal Care',
+	'Household',
+	'Cleaning',
+	'Electronics',
+	'Clothing',
+	'Stationery',
+	'Medicines',
+	'Pharma',
+	'FMCG',
+	'Hardware',
+	'Auto Parts',
+	'Toys',
+	'Sports',
+	'Other',
+];
+
+// ── Status icon ───────────────────────────────────────────────────────────────
 
 function StatusIcon({ status }: { status: RowStatus }) {
 	if (status === 'saving') return <Loader2 className="h-3 w-3 animate-spin text-blue-500" />;
-	if (status === 'saved') return <Check className="h-3 w-3 text-green-500" />;
+	if (status === 'saved') return <Check className="h-3 w-3 text-green-600" />;
 	if (status === 'error') return <AlertCircle className="h-3 w-3 text-red-500" />;
 	if (status === 'dirty') return <Save className="h-3 w-3 text-amber-500" />;
 	return null;
 }
 
+// ── Row status → visual ───────────────────────────────────────────────────────
+
+const STATUS_ROW_BG: Record<RowStatus, string> = {
+	idle: '',
+	dirty: 'bg-amber-50/60 dark:bg-amber-900/15',
+	saving: 'bg-blue-50/40  dark:bg-blue-900/10',
+	saved: 'bg-green-50/40 dark:bg-green-900/10',
+	error: 'bg-red-50/60   dark:bg-red-900/15',
+};
+
+// ── Editable cell ─────────────────────────────────────────────────────────────
+
 function EditableCell({
 	value,
 	type = 'text',
 	isUnit = false,
+	isCategory = false,
+	maxLength,
+	placeholder = '',
 	onChange,
 	onBlur,
 }: {
 	value: string;
 	type?: string;
 	isUnit?: boolean;
+	isCategory?: boolean;
+	maxLength?: number;
+	placeholder?: string;
 	onChange: (v: string) => void;
 	onBlur: () => void;
 }) {
+	const base =
+		'block w-full bg-transparent text-xs border-0 outline-none ' +
+		'focus:bg-background rounded px-1.5 py-1 min-w-0 placeholder:text-muted-foreground/40';
+
 	if (isUnit) {
 		return (
-			<select
-				value={value}
-				onChange={(e) => onChange(e.target.value)}
-				onBlur={onBlur}
-				className="w-full bg-transparent text-xs border-0 outline-none focus:bg-background focus:ring-1 focus:ring-primary/40 rounded px-1 py-0.5 cursor-pointer"
-			>
-				{UNIT_OPTIONS.map((u) => (
-					<option key={u} value={u}>
-						{u}
-					</option>
-				))}
-			</select>
+			<div className="focus-within:ring-1 focus-within:ring-primary/60 focus-within:rounded">
+				<select
+					value={value}
+					onChange={(e) => onChange(e.target.value)}
+					onBlur={onBlur}
+					className={base + ' cursor-pointer'}
+				>
+					{UNIT_OPTIONS.map((u) => (
+						<option key={u} value={u}>
+							{u}
+						</option>
+					))}
+				</select>
+			</div>
+		);
+	}
+	if (isCategory) {
+		return (
+			<div className="focus-within:ring-1 focus-within:ring-primary/60 focus-within:rounded">
+				<select
+					value={value}
+					onChange={(e) => onChange(e.target.value)}
+					onBlur={onBlur}
+					className={base + ' cursor-pointer'}
+				>
+					{CATEGORY_OPTIONS.map((c) => (
+						<option key={c} value={c}>
+							{c}
+						</option>
+					))}
+				</select>
+			</div>
 		);
 	}
 	return (
-		<input
-			type={type}
-			value={value}
-			onChange={(e) => onChange(e.target.value)}
-			onBlur={onBlur}
-			onKeyDown={(e) => {
-				if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-			}}
-			className="w-full bg-transparent text-xs border-0 outline-none focus:bg-background focus:ring-1 focus:ring-primary/40 rounded px-1 py-0.5 min-w-0"
-			step={type === 'number' ? '0.01' : undefined}
-			min={type === 'number' ? '0' : undefined}
-		/>
+		<div className="focus-within:ring-1 focus-within:ring-primary/60 focus-within:rounded">
+			<input
+				type={type}
+				value={value}
+				placeholder={placeholder}
+				maxLength={maxLength}
+				onChange={(e) => onChange(e.target.value)}
+				onBlur={onBlur}
+				onKeyDown={(e) => {
+					if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+				}}
+				className={base}
+				step={type === 'number' ? '0.01' : undefined}
+				min={type === 'number' ? '0' : undefined}
+			/>
+		</div>
 	);
 }
 
@@ -242,18 +364,22 @@ function FastModeTable({
 	onConfirm,
 	onDiscard,
 	busy,
+	colGroup,
+	onColGroupChange,
 }: {
 	drafts: Draft[];
 	onEdit: (d: Draft) => void;
 	onConfirm: (id: string) => void;
 	onDiscard: (id: string) => void;
 	busy: string | null;
+	colGroup: ColGroup;
+	onColGroupChange: (g: ColGroup) => void;
 }) {
 	const [rows, setRows] = useState<ProductRow[]>(() => drafts.map(toProductRow));
 	const { toast } = useToast();
 	const qc = useQueryClient();
 
-	// Sync rows when draft list changes (new drafts added / old ones confirmed/discarded)
+	// Sync rows when draft list changes
 	useEffect(() => {
 		setRows((prev) => {
 			const draftIds = new Set(drafts.map((d) => d.id));
@@ -271,24 +397,27 @@ function FastModeTable({
 	const saveRow = useCallback(
 		async (id: string) => {
 			let rowToSave: ProductRow | undefined;
-
 			setRows((prev) => {
 				const row = prev.find((r) => r.id === id);
 				if (!row || row._status !== 'dirty') return prev;
 				rowToSave = row;
 				return prev.map((r) => (r.id === id ? { ...r, _status: 'saving' as RowStatus } : r));
 			});
-
 			if (!rowToSave) return;
 			const row = rowToSave;
-
 			try {
 				const updatedData = {
 					name: row.name.trim(),
 					category: row.category.trim() || 'General',
+					subCategory: row.subCategory.trim() || undefined,
 					price: parseFloat(row.price) || 0,
+					mrp: parseFloat(row.mrp) || undefined,
 					stock: parseFloat(row.stock) || 0,
 					unit: row.unit || 'piece',
+					sku: row.sku.trim() || undefined,
+					barcode: row.barcode.trim() || undefined,
+					hsnCode: row.hsn.trim() || undefined,
+					minStock: parseInt(row.minStock) || 5,
 				};
 				const updatedTitle = row.name.trim() ? `OCR: ${row.name.trim()}` : (row._original.title ?? '');
 
@@ -297,13 +426,10 @@ function FastModeTable({
 					title: updatedTitle || undefined,
 					notes: row.notes.trim() || undefined,
 				});
-
 				setRows((prev) =>
 					prev.map((r) => (r.id === id ? { ...r, title: updatedTitle, _status: 'saved' as RowStatus } : r))
 				);
 				qc.invalidateQueries({ queryKey: ['drafts'] });
-
-				// Auto-reset "saved" indicator after 2 s
 				setTimeout(() => {
 					setRows((prev) =>
 						prev.map((r) =>
@@ -323,200 +449,303 @@ function FastModeTable({
 		[qc, toast]
 	);
 
+	const visibleCols = colGroup === 'full' ? ALL_COLS : ALL_COLS.filter((c) => c.group === 'core');
+
 	const productRows = rows.filter((r) => r._original.type === 'product');
 	const otherDrafts = drafts.filter((d) => d.type !== 'product');
+	const dirtyCount = productRows.filter((r) => r._status === 'dirty').length;
 
 	return (
 		<div className="flex flex-col flex-1 min-h-0">
 			<ScrollArea className="flex-1">
-				<div className="p-3">
+				<div className="p-3 space-y-4">
 					{/* ── Product Excel table ── */}
-					{productRows.length > 0 && (
-						<>
-							<p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-								New Products · {productRows.length}
-							</p>
-
-							<div className="overflow-x-auto rounded-md border text-xs">
-								<table className="w-full border-collapse">
-									<thead>
-										<tr className="bg-muted/60">
-											<th className="px-2 py-1.5 text-center font-semibold text-muted-foreground border-b w-8">
-												#
-											</th>
-											{PRODUCT_COLS.map((col) => (
-												<th
-													key={col.key}
-													className={`px-2 py-1.5 text-left font-semibold text-muted-foreground border-b ${col.width}`}
-												>
-													{col.label}
-												</th>
-											))}
-											<th className="px-2 py-1.5 text-center font-semibold text-muted-foreground border-b w-24">
-												Actions
-											</th>
-										</tr>
-									</thead>
-									<tbody>
-										{productRows.map((row, idx) => {
-											const isBusy = busy === row.id;
-											let rowBg = '';
-											if (row._status === 'dirty') rowBg = 'bg-amber-50/50 dark:bg-amber-900/10';
-											if (row._status === 'error') rowBg = 'bg-red-50/50 dark:bg-red-900/10';
-
-											return (
-												<tr
-													key={row.id}
-													className={`group transition-colors hover:bg-accent/20 ${isBusy ? 'opacity-60' : ''} ${rowBg}`}
-												>
-													{/* Row # + status icon */}
-													<td className="px-1 py-0.5 border-b text-center text-muted-foreground">
-														<div className="flex items-center justify-center gap-0.5">
-															<span className="text-[10px]">{idx + 1}</span>
-															<StatusIcon status={row._status} />
-														</div>
-													</td>
-
-													{/* Editable data cells */}
-													{PRODUCT_COLS.map((col) => (
-														<td key={col.key} className={`px-1 py-0 border-b ${col.width}`}>
-															<EditableCell
-																value={row[col.key] as string}
-																type={col.type}
-																isUnit={col.key === 'unit'}
-																onChange={(v) => updateCell(row.id, col.key, v)}
-																onBlur={() => saveRow(row.id)}
-															/>
-														</td>
-													))}
-
-													{/* Action buttons */}
-													<td className="px-1 py-0.5 border-b">
-														<TooltipProvider>
-															<div className="flex items-center gap-0.5 justify-center">
-																{/* Detail edit */}
-																<Tooltip>
-																	<TooltipTrigger asChild>
-																		<button
-																			className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-																			onClick={() => onEdit(row._original)}
-																			disabled={isBusy}
-																		>
-																			<ExternalLink className="h-3 w-3" />
-																		</button>
-																	</TooltipTrigger>
-																	<TooltipContent side="top" className="text-xs">
-																		Full detail edit
-																	</TooltipContent>
-																</Tooltip>
-
-																{/* Confirm */}
-																<Tooltip>
-																	<TooltipTrigger asChild>
-																		<button
-																			className="p-1 rounded hover:bg-green-100 dark:hover:bg-green-900/40 text-green-700 disabled:opacity-40"
-																			onClick={() => onConfirm(row.id)}
-																			disabled={
-																				isBusy ||
-																				row._status === 'dirty' ||
-																				row._status === 'saving'
-																			}
-																		>
-																			{isBusy ? (
-																				<Loader2 className="h-3 w-3 animate-spin" />
-																			) : (
-																				<CheckCircle2 className="h-3 w-3" />
-																			)}
-																		</button>
-																	</TooltipTrigger>
-																	<TooltipContent side="top" className="text-xs">
-																		{row._status === 'dirty'
-																			? 'Save first (Tab or Enter)'
-																			: 'Confirm → add to inventory'}
-																	</TooltipContent>
-																</Tooltip>
-
-																{/* Discard */}
-																<Tooltip>
-																	<TooltipTrigger asChild>
-																		<button
-																			className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 disabled:opacity-40"
-																			onClick={() => onDiscard(row.id)}
-																			disabled={isBusy}
-																		>
-																			<Trash2 className="h-3 w-3" />
-																		</button>
-																	</TooltipTrigger>
-																	<TooltipContent side="top" className="text-xs">
-																		Discard
-																	</TooltipContent>
-																</Tooltip>
-															</div>
-														</TooltipProvider>
-													</td>
-												</tr>
-											);
-										})}
-									</tbody>
-								</table>
+					<div>
+						{/* Table toolbar — always visible */}
+						<div className="flex items-center justify-between mb-2 gap-2">
+							<div className="flex items-center gap-1.5">
+								<span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+									New Products
+								</span>
+								{productRows.length > 0 && (
+									<Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+										{productRows.length}
+									</Badge>
+								)}
+								{dirtyCount > 0 && (
+									<Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-700 border-amber-200">
+										{dirtyCount} unsaved
+									</Badge>
+								)}
 							</div>
+							{/* Column-group toggle — always visible */}
+							<div className="flex items-center rounded-md border overflow-hidden text-[10px] font-medium shrink-0">
+								<button
+									onClick={() => onColGroupChange('core')}
+									className={`px-2 py-1 transition-colors ${
+										colGroup === 'core'
+											? 'bg-primary text-primary-foreground'
+											: 'hover:bg-muted text-muted-foreground'
+									}`}
+								>
+									Core (6)
+								</button>
+								<button
+									onClick={() => onColGroupChange('full')}
+									className={`px-2 py-1 transition-colors border-l ${
+										colGroup === 'full'
+											? 'bg-primary text-primary-foreground'
+											: 'hover:bg-muted text-muted-foreground'
+									}`}
+								>
+									Full (12)
+								</button>
+							</div>
+						</div>
 
-							<p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed">
-								💡 Click any cell to edit · Tab or Enter to save ·{' '}
-								<span className="text-amber-600 font-medium">amber = unsaved</span> ·{' '}
-								<span className="text-green-600 font-medium">✓ = saved</span> · detail icon opens full
-								form
-							</p>
-						</>
-					)}
+						{productRows.length === 0 ? (
+							/* Empty state */
+							<div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-10 text-center gap-2 text-muted-foreground">
+								<ClipboardList className="h-8 w-8 opacity-30" />
+								<p className="text-sm font-medium">No product drafts yet</p>
+								<p className="text-xs opacity-70 max-w-[220px]">
+									Use <span className="font-semibold">Import from Photo</span> on the Inventory page,
+									or say <span className="font-semibold">"add new product"</span> by voice.
+								</p>
+							</div>
+						) : (
+							<>
+								{/* Spreadsheet */}
+								<div className="overflow-x-auto rounded-lg border shadow-sm text-xs">
+									<table className="w-full border-collapse">
+										<thead className="sticky top-0 z-10">
+											<tr className="bg-muted border-b-2 border-border">
+												<th className="px-2 py-2 text-center font-semibold text-muted-foreground w-10 select-none">
+													#
+												</th>
+												{visibleCols.map((col) => (
+													<th
+														key={col.key}
+														className={`px-2 py-2 text-left font-semibold text-muted-foreground select-none ${
+															col.group === 'extended' ? 'bg-muted/80' : ''
+														} ${col.width}`}
+													>
+														{col.label}
+														{col.group === 'extended' && (
+															<span className="ml-1 text-[8px] text-muted-foreground/60 font-normal">
+																ext
+															</span>
+														)}
+													</th>
+												))}
+												<th className="px-2 py-2 text-center font-semibold text-muted-foreground w-[88px] select-none">
+													Actions
+												</th>
+											</tr>
+										</thead>
+										<tbody>
+											{productRows.map((row, idx) => {
+												const isBusy = busy === row.id;
+												const rowBg = STATUS_ROW_BG[row._status];
+												return (
+													<tr
+														key={row.id}
+														className={`group border-b transition-colors last:border-0 hover:bg-accent/10 ${
+															isBusy ? 'opacity-60 pointer-events-none' : ''
+														} ${rowBg}`}
+													>
+														{/* # + status */}
+														<td className="px-2 py-1 text-center text-muted-foreground select-none">
+															<div className="flex flex-col items-center gap-0.5">
+																<span className="text-[10px] leading-none">
+																	{idx + 1}
+																</span>
+																<StatusIcon status={row._status} />
+															</div>
+														</td>
 
-					{/* ── Other draft types (non-product) ── */}
+														{/* Data cells */}
+														{visibleCols.map((col) => (
+															<td
+																key={col.key}
+																className={`px-0.5 py-0.5 ${col.width} ${
+																	col.group === 'extended' ? 'bg-muted/20' : ''
+																}`}
+															>
+																<EditableCell
+																	value={row[col.key] as string}
+																	type={col.type}
+																	isUnit={col.isUnit}
+																	isCategory={col.isCategory}
+																	maxLength={col.maxLength}
+																	placeholder={col.placeholder}
+																	onChange={(v) => updateCell(row.id, col.key, v)}
+																	onBlur={() => saveRow(row.id)}
+																/>
+															</td>
+														))}
+
+														{/* Actions */}
+														<td className="px-1 py-1">
+															<TooltipProvider>
+																<div className="flex items-center gap-0.5 justify-center">
+																	<Tooltip>
+																		<TooltipTrigger asChild>
+																			<button
+																				className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+																				onClick={() => onEdit(row._original)}
+																			>
+																				<ExternalLink className="h-3.5 w-3.5" />
+																			</button>
+																		</TooltipTrigger>
+																		<TooltipContent side="top" className="text-xs">
+																			Full detail edit
+																		</TooltipContent>
+																	</Tooltip>
+																	<Tooltip>
+																		<TooltipTrigger asChild>
+																			<button
+																				className="p-1.5 rounded hover:bg-green-100 dark:hover:bg-green-900/40 text-green-700 disabled:opacity-30 transition-colors"
+																				onClick={() => onConfirm(row.id)}
+																				disabled={
+																					isBusy ||
+																					row._status === 'dirty' ||
+																					row._status === 'saving'
+																				}
+																			>
+																				{isBusy ? (
+																					<Loader2 className="h-3.5 w-3.5 animate-spin" />
+																				) : (
+																					<CheckCircle2 className="h-3.5 w-3.5" />
+																				)}
+																			</button>
+																		</TooltipTrigger>
+																		<TooltipContent side="top" className="text-xs">
+																			{row._status === 'dirty'
+																				? 'Save first (Tab or Enter)'
+																				: 'Confirm → add to inventory'}
+																		</TooltipContent>
+																	</Tooltip>
+																	<Tooltip>
+																		<TooltipTrigger asChild>
+																			<button
+																				className="p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 disabled:opacity-30 transition-colors"
+																				onClick={() => onDiscard(row.id)}
+																				disabled={isBusy}
+																			>
+																				<Trash2 className="h-3.5 w-3.5" />
+																			</button>
+																		</TooltipTrigger>
+																		<TooltipContent side="top" className="text-xs">
+																			Discard draft
+																		</TooltipContent>
+																	</Tooltip>
+																</div>
+															</TooltipProvider>
+														</td>
+													</tr>
+												);
+											})}
+										</tbody>
+									</table>
+								</div>
+
+								{/* Legend */}
+								<div className="flex flex-wrap items-center gap-3 mt-2 text-[10px] text-muted-foreground">
+									<span>⌨️ Click to edit · Tab/Enter saves</span>
+									<span className="flex items-center gap-1">
+										<span className="inline-block w-2.5 h-2.5 rounded-sm bg-amber-200 border border-amber-300" />{' '}
+										unsaved
+									</span>
+									<span className="flex items-center gap-1">
+										<span className="inline-block w-2.5 h-2.5 rounded-sm bg-blue-100 border border-blue-200" />{' '}
+										saving
+									</span>
+									<span className="flex items-center gap-1">
+										<span className="inline-block w-2.5 h-2.5 rounded-sm bg-green-100 border border-green-200" />{' '}
+										saved
+									</span>
+									<span className="flex items-center gap-1">
+										<span className="inline-block w-2.5 h-2.5 rounded-sm bg-red-100 border border-red-200" />{' '}
+										error
+									</span>
+									<span className="ml-auto opacity-60">ext = extended fields</span>
+								</div>
+							</>
+						)}
+					</div>
+
+					{/* ── Other draft types ── */}
 					{otherDrafts.length > 0 && (
-						<div className="mt-4 space-y-2">
+						<div>
 							<p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
 								Other Drafts · {otherDrafts.length}
 							</p>
-							{otherDrafts.map((d) => (
-								<div
-									key={d.id}
-									className="flex items-center justify-between rounded border bg-card px-3 py-2 gap-2"
-								>
-									<div className="flex-1 min-w-0">
-										<p className="text-xs font-medium truncate">
-											{d.title ?? TYPE_LABEL[d.type as Draft['type']]}
-										</p>
-										<p className="text-[10px] text-muted-foreground">
-											{TYPE_LABEL[d.type as Draft['type']]} · {relTime(d.createdAt)}
-										</p>
+							<div className="space-y-1.5">
+								{otherDrafts.map((d) => (
+									<div
+										key={d.id}
+										className="flex items-center justify-between rounded-lg border bg-card px-3 py-2 gap-2 hover:bg-accent/10 transition-colors"
+									>
+										<div className="flex-1 min-w-0">
+											<p className="text-xs font-medium truncate">
+												{d.title ?? TYPE_LABEL[d.type as Draft['type']]}
+											</p>
+											<p className="text-[10px] text-muted-foreground">
+												<span
+													className={`inline-block px-1.5 rounded-full text-[9px] font-medium mr-1 ${TYPE_COLOR[d.type as Draft['type']]}`}
+												>
+													{TYPE_LABEL[d.type as Draft['type']]}
+												</span>
+												{relTime(d.createdAt)}
+											</p>
+										</div>
+										<div className="flex items-center gap-1 shrink-0">
+											<TooltipProvider>
+												<Tooltip>
+													<TooltipTrigger asChild>
+														<button
+															className="p-1.5 rounded hover:bg-muted text-muted-foreground"
+															onClick={() => onEdit(d)}
+														>
+															<ExternalLink className="h-3.5 w-3.5" />
+														</button>
+													</TooltipTrigger>
+													<TooltipContent className="text-xs">Edit</TooltipContent>
+												</Tooltip>
+												<Tooltip>
+													<TooltipTrigger asChild>
+														<button
+															className="p-1.5 rounded hover:bg-green-100 text-green-700 disabled:opacity-30"
+															onClick={() => onConfirm(d.id)}
+															disabled={busy === d.id}
+														>
+															{busy === d.id ? (
+																<Loader2 className="h-3.5 w-3.5 animate-spin" />
+															) : (
+																<CheckCircle2 className="h-3.5 w-3.5" />
+															)}
+														</button>
+													</TooltipTrigger>
+													<TooltipContent className="text-xs">Confirm</TooltipContent>
+												</Tooltip>
+												<Tooltip>
+													<TooltipTrigger asChild>
+														<button
+															className="p-1.5 rounded hover:bg-red-100 text-red-600 disabled:opacity-30"
+															onClick={() => onDiscard(d.id)}
+															disabled={busy === d.id}
+														>
+															<Trash2 className="h-3.5 w-3.5" />
+														</button>
+													</TooltipTrigger>
+													<TooltipContent className="text-xs">Discard</TooltipContent>
+												</Tooltip>
+											</TooltipProvider>
+										</div>
 									</div>
-									<div className="flex items-center gap-1 shrink-0">
-										<button
-											className="p-1 rounded hover:bg-muted text-muted-foreground"
-											onClick={() => onEdit(d)}
-										>
-											<ExternalLink className="h-3 w-3" />
-										</button>
-										<button
-											className="p-1 rounded hover:bg-green-100 text-green-700 disabled:opacity-40"
-											onClick={() => onConfirm(d.id)}
-											disabled={busy === d.id}
-										>
-											{busy === d.id ? (
-												<Loader2 className="h-3 w-3 animate-spin" />
-											) : (
-												<CheckCircle2 className="h-3 w-3" />
-											)}
-										</button>
-										<button
-											className="p-1 rounded hover:bg-red-100 text-red-600 disabled:opacity-40"
-											onClick={() => onDiscard(d.id)}
-											disabled={busy === d.id}
-										>
-											<Trash2 className="h-3 w-3" />
-										</button>
-									</div>
-								</div>
-							))}
+								))}
+							</div>
 						</div>
 					)}
 				</div>
@@ -542,11 +771,26 @@ export function DraftManagerPanel() {
 			return false;
 		}
 	});
+	const [colGroup, setColGroup] = useState<ColGroup>(() => {
+		try {
+			return (localStorage.getItem('draft-col-group') as ColGroup) || 'core';
+		} catch {
+			return 'core';
+		}
+	});
 
 	const toggleFastMode = (v: boolean) => {
 		setFastMode(v);
 		try {
 			localStorage.setItem('draft-fast-mode', String(v));
+		} catch {
+			/* noop */
+		}
+	};
+	const handleColGroupChange = (g: ColGroup) => {
+		setColGroup(g);
+		try {
+			localStorage.setItem('draft-col-group', g);
 		} catch {
 			/* noop */
 		}
@@ -634,8 +878,12 @@ export function DraftManagerPanel() {
 
 	const pendingCount = drafts.length;
 
-	// Widen the panel in Fast Mode to accommodate the table
-	const sheetWidth = fastMode ? 'w-[95vw] sm:w-[860px]' : 'w-[360px] sm:w-[420px]';
+	// Panel width: wider in fast mode; even wider when full columns visible
+	const sheetWidth = !fastMode
+		? 'w-[360px] sm:w-[420px]'
+		: colGroup === 'full'
+			? 'w-[95vw] sm:w-[1100px]'
+			: 'w-[95vw] sm:w-[780px]';
 
 	return (
 		<>
@@ -722,6 +970,8 @@ export function DraftManagerPanel() {
 								onConfirm={(id) => confirmMutation.mutate(id)}
 								onDiscard={(id) => discardMutation.mutate(id)}
 								busy={busyId}
+								colGroup={colGroup}
+								onColGroupChange={handleColGroupChange}
 							/>
 							<Separator />
 							<div className="px-4 py-3 shrink-0">
