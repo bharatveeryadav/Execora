@@ -14,6 +14,8 @@ import {
 	Tag,
 	Building2,
 	Wallet,
+	Users,
+	Keyboard,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -45,7 +47,7 @@ type SpeechWindow = Window & {
 	};
 };
 
-type Step = 'start' | 'listening' | 'processing' | 'confirmation' | 'customer' | 'final' | 'whatsapp';
+type Step = 'start' | 'listening' | 'processing' | 'confirmation' | 'manual' | 'customer' | 'final' | 'whatsapp';
 type SupplyType = 'INTRASTATE' | 'INTERSTATE';
 
 interface InvoiceItem {
@@ -807,9 +809,9 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 							</div>
 						)}
 
-						{/* Mic button */}
+						{/* Input options */}
 						<div className="flex flex-col items-center gap-3 pt-2">
-							<p className="text-sm text-muted-foreground">
+							<p className="text-sm text-muted-foreground text-center">
 								Tap mic or say{' '}
 								<span className="font-medium text-foreground">"Hey Execora, naya bill banao"</span>
 							</p>
@@ -820,6 +822,21 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 								<Mic className="h-9 w-9" />
 							</button>
 							<span className="text-xs text-muted-foreground">Tap to start voice input</span>
+							<div className="flex w-full items-center gap-2">
+								<div className="flex-1 border-t border-border" />
+								<span className="text-xs text-muted-foreground">or</span>
+								<div className="flex-1 border-t border-border" />
+							</div>
+							<Button
+								variant="outline"
+								className="w-full gap-2"
+								onClick={() => {
+									setItems([{ name: '', qty: '1', price: 0, discount: 0, total: 0 }]);
+									setStep('manual');
+								}}
+							>
+								<Keyboard className="h-4 w-4" /> Type Items Manually
+							</Button>
 						</div>
 					</div>
 				)}
@@ -944,6 +961,65 @@ const InvoiceCreation = ({ open, onOpenChange }: InvoiceCreationProps) => {
 				)}
 
 				{/* ── STEP 5: CUSTOMER SEARCH ───────────────────────────────────── */}
+				{/* ── STEP: MANUAL BILLING */}
+				{step === 'manual' && (
+					<div className="space-y-4">
+						<p className="text-xs text-muted-foreground">
+							Type item name, price &amp; qty. Tap <strong>+ Add row</strong> for more.
+						</p>
+						<EditableItemTable
+							items={items}
+							setItems={setItems}
+							withGst={withGst}
+							discountAmt={discountAmt}
+							discountPct={discountPct}
+							discountFlat={discountFlat}
+							partialAmount={partialAmount}
+							showPriceEdit
+						/>
+						<div className="flex items-center gap-2">
+							<Tag className="h-3.5 w-3.5 text-muted-foreground" />
+							<input
+								type="number" min={0} max={100} placeholder="Discount %"
+								value={discountPct || ''}
+								onChange={(e) => { setDiscountPct(Number(e.target.value)); setDiscountFlat(0); }}
+								className="w-20 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+							/>
+							<span className="text-xs text-muted-foreground">or</span>
+							<input
+								type="number" min={0} placeholder="₹ flat"
+								value={discountFlat || ''}
+								onChange={(e) => { setDiscountFlat(Number(e.target.value)); setDiscountPct(0); }}
+								className="w-24 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+							/>
+						</div>
+						<div className="grid grid-cols-2 gap-2 pt-1">
+							<Button
+								className="gap-1.5"
+								onClick={() => void handleWalkInCustomer()}
+								disabled={items.every((i) => !i.name.trim()) || createCustomer.isPending || createInvoice.isPending}
+							>
+								<Wallet className="h-4 w-4" />
+								{createCustomer.isPending ? 'Saving…' : 'Cash Sale'}
+							</Button>
+							<Button
+								variant="outline"
+								className="gap-1.5"
+								onClick={handleConfirm}
+								disabled={items.every((i) => !i.name.trim())}
+							>
+								<Users className="h-4 w-4" /> Select Customer
+							</Button>
+						</div>
+						<Button
+							variant="ghost" size="sm" className="w-full text-xs"
+							onClick={() => setStep('start')}
+						>
+							← Back to options
+						</Button>
+					</div>
+				)}
+
 				{step === 'customer' && (
 					<div className="space-y-4">
 						<Button
@@ -1157,6 +1233,7 @@ function EditableItemTable({
 	discountPct,
 	discountFlat,
 	partialAmount,
+	showPriceEdit = false,
 }: {
 	items: { name: string; qty: string; price: number; discount: number; total: number }[];
 	setItems: React.Dispatch<React.SetStateAction<{ name: string; qty: string; price: number; discount: number; total: number }[]>>;
@@ -1165,11 +1242,27 @@ function EditableItemTable({
 	discountPct: number;
 	discountFlat: number;
 	partialAmount: number;
+	showPriceEdit?: boolean;
 }) {
 	const subtotal = items.reduce((s, i) => s + i.total, 0);
 	const gstAmt = withGst ? Math.round(subtotal * 0.05) : 0;
 	const total = Math.max(0, subtotal + gstAmt - discountAmt);
 	const balanceDue = Math.max(0, total - partialAmount);
+
+	const updateName = (idx: number, name: string) => {
+		setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, name } : it)));
+	};
+
+	const updatePrice = (idx: number, price: number) => {
+		setItems((prev) =>
+			prev.map((it, i) => {
+				if (i !== idx) return it;
+				const qty = parseInt(it.qty) || 1;
+				const effective = price * (1 - (it.discount || 0) / 100);
+				return { ...it, price, total: Math.round(effective * qty * 100) / 100 };
+			})
+		);
+	};
 
 	const updateQty = (idx: number, val: string) => {
 		setItems((prev) =>
@@ -1198,12 +1291,14 @@ function EditableItemTable({
 
 	const addItem = () => setItems((prev) => [...prev, { name: '', qty: '1', price: 0, discount: 0, total: 0 }]);
 
+	const colCount = showPriceEdit ? 5 : 4;
 	return (
 		<div className="overflow-hidden rounded-lg border text-sm">
 			<table className="w-full">
 				<thead className="bg-muted/50">
 					<tr>
 						<th className="px-3 py-2 text-left font-medium">Item</th>
+						{showPriceEdit && <th className="px-1 py-2 text-right font-medium w-20">Price</th>}
 						<th className="px-2 py-2 text-center font-medium w-20">Qty</th>
 						<th className="px-1 py-2 text-center font-medium w-14">Disc%</th>
 						<th className="px-3 py-2 text-right font-medium">Total</th>
@@ -1214,8 +1309,30 @@ function EditableItemTable({
 					{items.map((item, idx) => (
 						<tr key={idx} className="border-t">
 							<td className="px-3 py-1.5">
-								{item.name || <em className="text-muted-foreground">unnamed</em>}
+								{showPriceEdit ? (
+									<input
+										type="text"
+										value={item.name}
+										onChange={(e) => updateName(idx, e.target.value)}
+										placeholder="Item name…"
+										className="w-full rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+									/>
+								) : (
+									item.name || <em className="text-muted-foreground">unnamed</em>
+								)}
 							</td>
+							{showPriceEdit && (
+								<td className="px-1 py-1.5 text-right">
+									<input
+										type="number"
+										min={0}
+										value={item.price || ''}
+										onChange={(e) => updatePrice(idx, Number(e.target.value))}
+										placeholder="0"
+										className="w-16 rounded border px-1 py-0.5 text-xs text-right focus:outline-none focus:ring-1 focus:ring-primary"
+									/>
+								</td>
+							)}
 							<td className="px-2 py-1.5 text-center">
 								<div className="flex items-center justify-center gap-1">
 									<button
@@ -1263,67 +1380,67 @@ function EditableItemTable({
 				</tbody>
 				<tfoot>
 					<tr className="border-t bg-muted/20">
-						<td colSpan={4} className="px-3 py-1">
+						<td colSpan={colCount} className="px-3 py-1">
 							<button
 								onClick={addItem}
 								className="flex items-center gap-1 text-xs text-primary hover:underline"
 							>
-								<Plus className="h-3 w-3" /> Add item
+								<Plus className="h-3 w-3" /> Add row
 							</button>
 						</td>
 					</tr>
 					<tr className="bg-muted/30">
-						<td colSpan={2} className="px-3 py-1.5 text-right text-xs text-muted-foreground">
+						<td colSpan={colCount - 1} className="px-3 py-1.5 text-right text-xs text-muted-foreground">
 							Subtotal
 						</td>
-						<td colSpan={2} className="px-3 py-1.5 text-right text-xs">
+						<td colSpan={1} className="px-3 py-1.5 text-right text-xs">
 							₹{subtotal}
 						</td>
 					</tr>
 					{withGst && (
 						<tr className="bg-muted/30">
-							<td colSpan={2} className="px-3 py-1 text-right text-xs text-muted-foreground">
+							<td colSpan={colCount - 1} className="px-3 py-1 text-right text-xs text-muted-foreground">
 								GST (5%)
 							</td>
-							<td colSpan={2} className="px-3 py-1 text-right text-xs">
+							<td colSpan={1} className="px-3 py-1 text-right text-xs">
 								₹{gstAmt}
 							</td>
 						</tr>
 					)}
 					{discountAmt > 0 && (
 						<tr className="bg-muted/30">
-							<td colSpan={2} className="px-3 py-1 text-right text-xs text-green-600">
+							<td colSpan={colCount - 1} className="px-3 py-1 text-right text-xs text-green-600">
 								Discount {discountPct > 0 ? `(${discountPct}%)` : discountFlat > 0 ? '(flat)' : ''}
 							</td>
-							<td colSpan={2} className="px-3 py-1 text-right text-xs text-green-600">
+							<td colSpan={1} className="px-3 py-1 text-right text-xs text-green-600">
 								-₹{discountAmt}
 							</td>
 						</tr>
 					)}
 					<tr className="border-t bg-muted/50 font-semibold">
-						<td colSpan={2} className="px-3 py-2 text-right">
+						<td colSpan={colCount - 1} className="px-3 py-2 text-right">
 							Total
 						</td>
-						<td colSpan={2} className="px-3 py-2 text-right">
+						<td colSpan={1} className="px-3 py-2 text-right">
 							₹{total}
 						</td>
 					</tr>
 					{partialAmount > 0 && (
 						<tr className="bg-green-50/50 dark:bg-green-950/20">
-							<td colSpan={2} className="px-3 py-1 text-right text-xs text-muted-foreground">
+							<td colSpan={colCount - 1} className="px-3 py-1 text-right text-xs text-muted-foreground">
 								Paid now
 							</td>
-							<td colSpan={2} className="px-3 py-1 text-right text-xs text-green-600">
+							<td colSpan={1} className="px-3 py-1 text-right text-xs text-green-600">
 								₹{partialAmount}
 							</td>
 						</tr>
 					)}
 					{partialAmount > 0 && (
 						<tr className="bg-muted/30">
-							<td colSpan={2} className="px-3 py-1.5 text-right text-xs font-medium">
+							<td colSpan={colCount - 1} className="px-3 py-1.5 text-right text-xs font-medium">
 								Balance Due
 							</td>
-							<td colSpan={2} className="px-3 py-1.5 text-right text-xs font-medium text-destructive">
+							<td colSpan={1} className="px-3 py-1.5 text-right text-xs font-medium text-destructive">
 								₹{balanceDue}
 							</td>
 						</tr>
@@ -1331,7 +1448,7 @@ function EditableItemTable({
 				</tfoot>
 			</table>
 		</div>
-	);
+		);
 }
 
 function InvoiceSummaryTable({
