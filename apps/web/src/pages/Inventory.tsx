@@ -112,6 +112,8 @@ const Inventory = () => {
 						clearInterval(timer);
 						if (job.status === 'completed') {
 							await queryClient.invalidateQueries({ queryKey: ['drafts'] });
+							// Auto-open the Draft panel so the user can review immediately
+							window.dispatchEvent(new CustomEvent('open-draft-panel'));
 							toast({
 								title: '✅ Drafts ready for review',
 								description: `${job.productsCreated ?? 0} product draft${(job.productsCreated ?? 0) === 1 ? '' : 's'} created — review in the Draft panel.`,
@@ -1297,8 +1299,14 @@ const Inventory = () => {
 								<div>
 									<p className="font-medium">Drafts created for review!</p>
 									<p className="text-sm text-muted-foreground">
-										{bulkOcrJob.productsCreated || (bulkOcrJob as any).parsedItems?.length || 0} product draft
-										{(bulkOcrJob.productsCreated || (bulkOcrJob as any).parsedItems?.length || 0) === 1 ? '' : 's'} waiting for your approval
+										{bulkOcrJob.productsCreated || (bulkOcrJob as any).parsedItems?.length || 0}{' '}
+										product draft
+										{(bulkOcrJob.productsCreated ||
+											(bulkOcrJob as any).parsedItems?.length ||
+											0) === 1
+											? ''
+											: 's'}{' '}
+										waiting for your approval
 									</p>
 								</div>
 							</div>

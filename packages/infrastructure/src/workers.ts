@@ -417,11 +417,27 @@ Extract ALL line items visible. Use Indian currency (INR). Omit unclear fields.`
 				return { purchaseOrderId: po.id, itemCount: items.length };
 			} else if (jobType === 'product_catalog') {
 				// ── 3b. Catalog seed: extract products from photo ──────────────────
-				const prompt = `You are an AI assistant for an Indian inventory management app. Analyze this shelf/product image and list all visible products. Return ONLY valid JSON array (no markdown):
+				const prompt = `You are an OCR assistant for an Indian store management app. Analyze this shelf, catalog, pricelist, or product image and extract every visible product. Return ONLY a valid JSON array (no markdown, no extra text):
 [
-  { "name": "product name", "price": number, "unit": "unit", "category": "category" }
+  {
+    "name": "exact product name as shown",
+    "price": number_or_null,
+    "mrp": number_or_null,
+    "unit": "piece|kg|g|litre|ml|box|packet|dozen|pair|set|metre|strip",
+    "category": "Food & Grocery|Beverages|Dairy|Personal Care|Household|Electronics|Clothing|Medicines|FMCG|Hardware|General",
+    "sku": "sku_or_null",
+    "barcode": "barcode_number_or_null",
+    "hsnCode": "4-8_digit_hsn_or_null",
+    "minStock": integer_or_null
+  }
 ]
-If price is not visible, estimate based on typical Indian retail prices. Be specific about product names.`;
+Rules:
+- Extract ALL line items / products visible.
+- If a field is not visible or unclear, use null.
+- If price is missing, estimate based on typical Indian retail price.
+- Prefer exact product names including brand, variant, and weight (e.g. "Aashirvaad Atta 5kg").
+- Use Indian HSN codes where recognisable.
+- Do NOT include markdown, comments, or explanation — pure JSON only.`;
 
 				const resp = await _openai.chat.completions.create({
 					model: 'gpt-4o',
@@ -442,7 +458,17 @@ If price is not visible, estimate based on typical Indian retail prices. Be spec
 				});
 
 				const rawText = resp.choices[0]?.message?.content ?? '[]';
-				let products: Array<{ name: string; price: number; unit?: string; category?: string }> = [];
+				let products: Array<{
+					name: string;
+					price: number | null;
+					mrp?: number | null;
+					unit?: string;
+					category?: string;
+					sku?: string | null;
+					barcode?: string | null;
+					hsnCode?: string | null;
+					minStock?: number | null;
+				}> = [];
 				try {
 					products = JSON.parse(rawText.replace(/```json|```/g, '').trim());
 					if (!Array.isArray(products)) products = [];
@@ -471,9 +497,14 @@ If price is not visible, estimate based on typical Indian retail prices. Be spec
 							data: {
 								name: p.name.trim(),
 								category: p.category ?? 'General',
-								price: p.price,
+								price: p.price ?? 0,
+								mrp: p.mrp ?? undefined,
 								stock: 0,
 								unit: p.unit ?? 'piece',
+								sku: p.sku ?? undefined,
+								barcode: p.barcode ?? undefined,
+								hsnCode: p.hsnCode ?? undefined,
+								minStock: p.minStock ?? 5,
 							} as any,
 							notes: 'Imported via photo scan',
 						},

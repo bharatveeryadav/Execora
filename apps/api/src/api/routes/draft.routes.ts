@@ -58,6 +58,7 @@ async function executeDraft(draft: { id: string; type: string; data: unknown; te
 					tenantId: tid,
 					name: data.name,
 					category: data.category ?? 'General',
+					subCategory: data.subCategory ?? null,
 					price: new Decimal(data.price ?? 0),
 					mrp: data.mrp != null ? new Decimal(data.mrp) : null,
 					cost: data.cost != null ? new Decimal(data.cost) : null,
