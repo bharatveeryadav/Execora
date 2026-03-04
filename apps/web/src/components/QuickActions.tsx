@@ -44,18 +44,15 @@ const QuickActions = () => {
 
   return (
     <div>
-      <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-        ⚡ Quick Actions — <span className="normal-case font-normal text-muted-foreground/70">UI fallback if voice unavailable</span>
-      </h2>
-      <div className="grid grid-cols-3 gap-2 md:grid-cols-6 md:gap-3">
+      <div className="grid grid-cols-3 gap-3 md:grid-cols-6">
         {actions.map((action) => (
           <Button
             key={action.label}
             variant={action.variant}
-            className="h-auto flex-col gap-1.5 py-4 text-xs font-medium shadow-sm"
+            className="h-auto flex-col gap-2 py-5 text-xs font-semibold shadow-sm active:scale-95 transition-transform"
             onClick={action.onClick}
           >
-            <action.icon className="h-5 w-5" />
+            <action.icon className="h-6 w-6" />
             {action.label}
           </Button>
         ))}

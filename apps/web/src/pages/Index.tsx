@@ -50,32 +50,32 @@ const Index = () => {
       <DashboardHeader />
       <main className="mx-auto max-w-3xl space-y-4 p-4 md:p-6">
 
-        {/* ── Greeting + quick CTAs ─────────────────────────────── */}
+        {/* ── Greeting ─────────────────────────────────────────── */}
         <DashboardGreeting />
 
-        {/* ── AI Agent Feed — voice commands + real-time execution log ── */}
+        {/* ── AI Voice feed — rotating hints + live activity ───── */}
         <AiAgentFeed />
 
-        {/* ── Today's numbers ───────────────────────────────────── */}
+        {/* ── Today's numbers (2×2 on mobile) ──────────────────── */}
         <KPICards />
 
-        {/* ── Business health overview ──────────────────────────── */}
-        <BusinessHealthScore />
-
-        {/* ── Quick UI Actions ──────────────────────────────────── */}
+        {/* ── Quick actions ─────────────────────────────────────── */}
         <QuickActions />
 
-        {/* ── Collections: overdue + upcoming side-by-side ──────── */}
-        <div className="grid gap-4 lg:grid-cols-2">
+        {/* ── Collections: overdue + upcoming ──────────────────── */}
+        <div className="grid gap-4 md:grid-cols-2">
           <OverduePayments />
           <UpcomingPayments />
         </div>
 
+        {/* ── Inventory alert strip ─────────────────────────────── */}
+        <DashboardLowStock />
+
         {/* ── Live activity feed ────────────────────────────────── */}
         <RecentActivity />
 
-        {/* ── Inventory alert strip ─────────────────────────────── */}
-        <DashboardLowStock />
+        {/* ── Business health (analytics, below the fold) ───────── */}
+        <BusinessHealthScore />
 
       </main>
       <BottomNav />

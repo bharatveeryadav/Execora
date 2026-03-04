@@ -254,21 +254,25 @@ const AiAgentFeed = () => {
 				</div>
 			) : (
 				/* Empty state — prompt the user to try voice */
-				<div className="flex flex-col items-center gap-2 rounded-xl border border-dashed bg-card py-6 text-center">
-					<span className="text-3xl">🤖</span>
-					<p className="text-sm font-medium text-foreground">AI Agent is watching your business</p>
-					<p className="text-xs text-muted-foreground max-w-xs">
-						Tap the mic in the top bar and say anything — create invoices, check stock, record payments and
-						more in real time.
-					</p>
-					<div className="mt-2 flex gap-2 flex-wrap justify-center">
-						{['New Invoice', 'Payment In', 'Stock Check'].map((cmd) => (
+				<div className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-primary/20 bg-primary/5 py-8 text-center">
+					<button
+						onClick={() => window.dispatchEvent(new CustomEvent('shortcut:voice'))}
+						className="flex h-16 w-16 items-center justify-center rounded-full bg-primary shadow-lg ring-4 ring-primary/20 active:scale-95 transition-transform"
+					>
+						<Mic className="h-8 w-8 text-primary-foreground" />
+					</button>
+					<div>
+						<p className="text-base font-bold text-foreground">बोलो — AI सुन रहा है</p>
+						<p className="mt-0.5 text-sm text-muted-foreground">Tap mic and say anything in Hindi or English</p>
+					</div>
+					<div className="flex flex-wrap justify-center gap-2 px-4">
+						{['नया बिल बनाओ', 'Payment record karo', 'Stock check karo'].map((cmd) => (
 							<button
 								key={cmd}
 								onClick={() => wsClient.send('voice:final', { text: cmd })}
-								className="rounded-full border border-primary/30 bg-primary/5 px-3 py-1 text-xs text-primary hover:bg-primary/10 transition-colors"
+								className="rounded-full border border-primary/30 bg-background px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
 							>
-								{cmd}
+								"{cmd}"
 							</button>
 						))}
 					</div>

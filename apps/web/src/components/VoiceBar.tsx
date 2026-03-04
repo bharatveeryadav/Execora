@@ -652,16 +652,28 @@ const VoiceBar = ({ idleHint = DEFAULT_HINT }: VoiceBarProps) => {
 	// ── Dot / mic click ───────────────────────────────────────────────────────
 	const handleClick = () => {
 		if (voiceState === 'listening') {
-			// Stop recording — onstop will fire and send voice:stop
 			stopAll();
 		} else if (voiceState === 'processing') {
 			// Cannot interrupt while processing
 		} else {
 			void ensurePlaybackReady();
-			// Start fresh session
 			void startVoice();
 		}
 	};
+
+	// ── Global voice shortcut (BottomNav center "Bolo" button) ───────────────
+	useEffect(() => {
+		const handler = () => {
+			if (voiceState === 'listening') {
+				stopAll();
+			} else if (voiceState !== 'processing') {
+				void ensurePlaybackReady();
+				void startVoice();
+			}
+		};
+		window.addEventListener('shortcut:voice', handler);
+		return () => window.removeEventListener('shortcut:voice', handler);
+	}, [voiceState, ensurePlaybackReady, startVoice, stopAll]);
 
 	// ── Visual state ─────────────────────────────────────────────────────────
 	const isListening = voiceState === 'listening';

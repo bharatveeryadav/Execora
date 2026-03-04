@@ -1,17 +1,17 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import {
-  Home, Users, FileText, Plus, MoreHorizontal,
-  BarChart3, Package, Wallet, BookOpen, Settings, ShoppingCart, X, Search,
+  Home, Users, FileText, MoreHorizontal,
+  BarChart3, Package, Wallet, BookOpen, Settings, ShoppingCart, X, Mic,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import InvoiceCreation from "@/components/InvoiceCreation";
 import GlobalSearch from "@/components/GlobalSearch";
 
-// ── More drawer items (Vyapar feature-parity links) ───────────────────────────
+// ── More drawer items ─────────────────────────────────────────────────────────
 const MORE_ITEMS = [
+  { emoji: "🧾", label: "New Bill",  path: "__invoice__", icon: FileText },
   { emoji: "📊", label: "Reports",   path: "/reports",   icon: BarChart3 },
   { emoji: "📦", label: "Inventory", path: "/inventory", icon: Package },
-  { emoji: "🧾", label: "Invoices",  path: "/invoices",  icon: FileText },
   { emoji: "📒", label: "Day Book",  path: "/daybook",   icon: BookOpen },
   { emoji: "💵", label: "Cash Book", path: "/cashbook",  icon: BookOpen },
   { emoji: "💸", label: "Expenses",  path: "/expenses",  icon: ShoppingCart },
@@ -23,8 +23,8 @@ const MORE_ITEMS = [
 const NAV_ITEMS = [
   { label: "Home",      icon: Home,          path: "/" },
   { label: "Customers", icon: Users,         path: "/customers" },
-  { label: "__FAB__",   icon: Plus,          path: "" },
-  { label: "Search",   icon: Search,        path: "__search__" },
+  { label: "__FAB__",   icon: Mic,           path: "" },
+  { label: "Invoices",  icon: FileText,      path: "/invoices" },
   { label: "More",      icon: MoreHorizontal,path: "__more__" },
 ];
 
@@ -55,13 +55,13 @@ const BottomNav = () => {
               return (
                 <button
                   key="fab"
-                  onClick={() => setInvoiceOpen(true)}
+                  onClick={() => window.dispatchEvent(new CustomEvent("shortcut:voice"))}
                   className="flex flex-col items-center justify-center py-1"
                 >
-                  <div className="flex h-12 w-12 -mt-5 items-center justify-center rounded-full bg-primary shadow-lg ring-4 ring-background">
-                    <Plus className="h-6 w-6 text-primary-foreground" />
+                  <div className="flex h-14 w-14 -mt-6 items-center justify-center rounded-full bg-primary shadow-xl ring-4 ring-background">
+                    <Mic className="h-7 w-7 text-primary-foreground" />
                   </div>
-                  <span className="mt-0.5 text-[10px] text-primary font-semibold">Invoice</span>
+                  <span className="mt-0.5 text-[10px] text-primary font-bold">बोलो</span>
                 </button>
               );
             }
@@ -78,20 +78,6 @@ const BottomNav = () => {
                 >
                   <MoreHorizontal className="h-5 w-5" />
                   <span>More</span>
-                </button>
-              );
-            }
-
-            // Search icon button
-            if (item.path === "__search__") {
-              return (
-                <button
-                  key="search"
-                  onClick={() => setSearchOpen(true)}
-                  className="flex flex-col items-center gap-0.5 py-2 text-[10px] transition-colors text-muted-foreground hover:text-primary"
-                >
-                  <Search className="h-5 w-5" />
-                  <span>Search</span>
                 </button>
               );
             }
@@ -134,7 +120,11 @@ const BottomNav = () => {
               {MORE_ITEMS.map((item) => (
                 <button
                   key={item.path}
-                  onClick={() => navigate(item.path)}
+                  onClick={() => {
+                    setMoreOpen(false);
+                    if (item.path === "__invoice__") { setInvoiceOpen(true); }
+                    else { navigate(item.path); }
+                  }}
                   className={`flex flex-col items-center gap-2 rounded-xl border bg-muted/30 py-4 text-center transition-colors hover:bg-muted active:scale-95 ${
                     location.pathname === item.path ? "border-primary/40 bg-primary/5" : "border-border"
                   }`}
