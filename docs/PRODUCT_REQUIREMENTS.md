@@ -1761,6 +1761,15 @@ This removes the app install barrier entirely. Growth = viral WhatsApp sharing.
 - **[NEW] P&L date-range report** — month-wise revenue/tax/discount/collections + period comparison; PDF + CSV + email
 - **[NEW] 7 report API endpoints** — `/api/v1/reports/gstr1`, `/gstr1/pdf`, `/gstr1/csv`, `/pnl`, `/pnl/pdf`, `/pnl/csv`, `/email`
 - **[NEW] Reports page** — 3-tab UI (Overview, GSTR-1, P&L) with live data, charts, download, email
+- **[Sprint 5] Expenses REST API** — `Expense` DB model, `/api/v1/expenses` CRUD, Expenses page fully migrated from localStorage
+- **[Sprint 5] Purchases REST API** — `Purchase` DB model, `/api/v1/purchases` CRUD, Purchases page fully migrated from localStorage
+- **[Sprint 5] CashBook REST API** — `/api/v1/cashbook` endpoint (entries + totals), CashBook page fully migrated from localStorage
+- **[Sprint 6] WS broadcaster** — `apps/api/src/ws/broadcaster.ts` per-tenant fan-out singleton; registers connections in `enhanced-handler.ts`
+- **[Sprint 6] Route-level WS broadcasts** — invoice (created/confirmed/updated/cancelled/payment), product (updated/stock), ledger (payment:recorded), expense/purchase (created/deleted)
+- **[Sprint 6] `useWsInvalidation` hook** — `apps/web/src/hooks/useWsInvalidation.ts`; maps 12 WS events to React Query keys; wired to all 11 UI pages
+- **[Sprint 6] DayBook real-time data** — replaced localStorage expense/cashbook reads with `useExpenses` + `useCashbook` API hooks
+- **[Sprint 6] InvoiceDetail UPI QR fix** — replaced `localStorage.getItem('execora:bizprofile')` with `useMe` hook (UPI VPA + business name now from API)
+- **[Sprint 6] Split payment UI** — `Payment.tsx` supports single-method and split-mode (cash + UPI + card) with receipt dialog
 
 ### Pending / Critical Gaps 🔴
 
@@ -1774,9 +1783,9 @@ This removes the app install barrier entirely. Growth = viral WhatsApp sharing.
 | ~~B2B invoice with buyer GSTIN~~ | ~~P0~~ | ✅ Built — GSTIN field in invoice form + voice capture |
 | ~~IGST for inter-state supply~~ | ~~P0~~ | ✅ Built — auto-switch via voice ("interstate bill") + form toggle |
 | ~~Mixed payment (cash + UPI split)~~ | ~~P1~~ | ✅ Built via RECORD_MIXED_PAYMENT voice intent |
-| Mixed payment UI in Payment page | P1 | Form-mode split payment not exposed on Payment.tsx yet |
+| ~~Mixed payment UI in Payment page~~ | ~~P1~~ | ✅ Built — `Payment.tsx` has split-mode toggle with per-method amount inputs |
 | ~~Proforma invoice / quotation~~ | ~~P1~~ | ✅ Built — create proforma + convert to invoice with initial payment |
-| Invoice editing after creation | P1 | PENDING invoices editable, PAID invoices admin-only — still TODO |
+| Invoice editing after creation | P1 | Edit items/notes on PENDING; change customer or add discount to existing — still TODO |
 
 #### Delivery Channels (Email + WhatsApp)
 | Feature | Priority | Notes |
@@ -1895,5 +1904,5 @@ Mode 3 — True Agent (planned): STT → LLM with tool definitions → tool call
 
 ---
 
-*Document maintained by the Execora engineering team. Last updated: 2026-03-03 (v2.1 — Sprint 2 report/compliance features marked built).*
+*Document maintained by the Execora engineering team. Last updated: 2026-03-04 (v2.2 — Sprint 5: Expenses/Purchases/CashBook REST API; Sprint 6: full real-time WS wiring, DayBook + InvoiceDetail localStorage → API, split payment UI).*
 *Next review: when any P0 gap is closed, or a new competitor feature is identified.*
