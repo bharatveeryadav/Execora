@@ -1881,10 +1881,13 @@ This removes the app install barrier entirely. Growth = viral WhatsApp sharing.
 
 | Feature                          | Priority | Notes                                              |
 | -------------------------------- | -------- | -------------------------------------------------- |
-| Mobile-responsive layout         | P0       | Counter use = mobile. Current UI is desktop-first  |
-| Offline mode (PWA + local queue) | P2       | Major Vyapar advantage — sync when online          |
-| WhatsApp chatbot interface       | P2       | Send voice note to WhatsApp → AI processes → reply |
-| Tally/Vyapar data import         | P2       | Migration path for existing users                  |
+| Mobile-responsive layout               | P0       | Counter use = mobile. Current UI is desktop-first  |
+| Single-screen classic billing UI       | P0       | Top UX complaint across 193+ reviews — no page flips during bill creation |
+| Offline mode (PWA + IndexedDB queue)   | P0       | 22% of users cite offline as reason to switch tools; elevated from P2 |
+| OCR purchase bill ingestion (AI)       | P0       | Photo → OpenAI Vision → stock update. Zero competitors have this. Users call it "game changer" |
+| UPI payment QR code embedded in invoice| P0       | Frequently requested; trivial to add via QR generation library |
+| WhatsApp chatbot interface             | P2       | Send voice note to WhatsApp → AI processes → reply |
+| Tally/Vyapar data import               | P2       | Migration path for existing users                  |
 
 ---
 
@@ -1963,5 +1966,54 @@ Mode 3 — True Agent (planned): STT → LLM with tool definitions → tool call
 
 ---
 
-_Document maintained by the Execora engineering team. Last updated: 2026-03-04 (v2.3 — Sprint 7: Overdue page with full real-time ops, bulk + individual reminder scheduling, phone-optional reminder path, Promise.allSettled bulk scheduling, reminder WS events)._
+---
+
+## 14. User Research Findings — Review-Backed Priority Updates (v2.4)
+
+### Research Basis
+193+ verified user reviews analysed from SoftwareSuggest (Vyapar 125, myBillBook 68),
+Trustpilot, GetApp (181 ratings), and Play Store. Full analysis in
+`docs/audit/USER_RESEARCH_IMPROVEMENT_ANALYSIS.md`.
+
+### Top 5 User Insights
+
+1. **Speed is the only retention metric for counter users.** 34% of 5-star reviews
+   across all platforms cite "invoice in under a minute" as the primary reason for
+   their rating. Every screen transition adds friction.
+
+2. **OCR purchase bill scanning is the next viral AI feature.** Verified users
+   are actively calling it "game changer" where it exists. Execora already has
+   OpenAI infrastructure — this is one new tool definition + one new route.
+
+3. **Single-screen billing** is the #1 UX complaint. Page navigation between customer
+   selection and item-addition is mentioned in ~19% of 3-star reviews. This is a
+   CSS/React restructure only — zero backend change required.
+
+4. **Purchase/AP side is the market's weakest point.** GetApp gives Vyapar 3.0/5
+   for purchase order management — the lowest-rated feature across all tools.
+   Being first to solve AP with voice is a defensible moat.
+
+5. **Pharmacy vertical pays premium and has zero coverage.** 1-star reviews from
+   pharmacy owners cite complete absence of batch/expiry/compliance features.
+   Adding this vertical requires one sprint and unlocks ₹3,000+/month per user.
+
+### Priority Upgrades (backed by review data)
+
+| Feature                              | Old Priority | New Priority | Reason                                    |
+| ------------------------------------ | ------------ | ------------ | ----------------------------------------- |
+| Offline mode (PWA + IndexedDB queue) | P2           | P0           | 22% of users cite offline as dealbreaker  |
+| Single-screen classic billing UI     | Not listed   | P0           | #1 UX complaint, zero backend work needed |
+| OCR purchase bill ingestion          | Not listed   | P0           | Highest-impact AI differentiator found    |
+| UPI QR code on invoice               | Not listed   | P0           | Low effort, very high request frequency   |
+| Recurring/automatic billing          | P2           | P1           | Mentioned in 18% of positive reviews      |
+| Batch/expiry tracking (pharma)       | P1           | P1 fast-track | Pharmacy segment has zero alternatives   |
+| Multiple price tiers per product     | Not listed   | P1           | Core pain for wholesale + retail split    |
+| Customer portal (read-only link)     | Not listed   | P1           | New trust + retention mechanism           |
+| Invoice template customization       | P1           | P1 fast-track | Requested in 15%+ of reviews             |
+
+---
+
+_Document maintained by the Execora engineering team._
+_v2.3: Sprint 7 — Overdue page, bulk reminders, phone-optional reminder path._
+_v2.4: Priority matrix updated based on 193+ real user reviews. New P0: OCR purchase bill ingestion, single-screen billing, offline queue, UPI QR. Full research: docs/audit/USER_RESEARCH_IMPROVEMENT_ANALYSIS.md._
 _Next review: when any P0 gap is closed, or a new competitor feature is identified._
