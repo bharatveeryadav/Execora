@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { wsClient } from "@/lib/ws";
+import { QK } from "@/hooks/useQueries";
 
 interface WSContextValue {
   isConnected: boolean;
@@ -122,6 +123,13 @@ export function WSProvider({ children }: { children: ReactNode }) {
         qc.invalidateQueries({ queryKey: ["products"] });
         // Also refresh low-stock panel so resolved alerts disappear immediately
         qc.invalidateQueries({ queryKey: ["products", "low-stock"] });
+      }),
+      wsClient.on("product:created", () => {
+        qc.invalidateQueries({ queryKey: QK.products });
+        qc.invalidateQueries({ queryKey: QK.lowStock });
+      }),
+      wsClient.on("user:created", () => {
+        qc.invalidateQueries({ queryKey: QK.users });
       }),
       wsClient.on("payment:recorded", () => {
         qc.invalidateQueries({ queryKey: ["customers"] });

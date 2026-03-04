@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { ArrowLeft, Plus, Search, Package, AlertTriangle, TrendingUp, TrendingDown, ShoppingCart, Edit, Eye } from "lucide-react";
 import VoiceBar from "@/components/VoiceBar";
 import { wsClient } from "@/lib/ws";
@@ -40,6 +40,19 @@ const Inventory = () => {
   const [adjustingProduct, setAdjustingProduct] = useState<Product | null>(null);
   const [adjustQty, setAdjustQty]         = useState("1");
   const [adjustOp, setAdjustOp]           = useState<"add" | "subtract">("add");
+
+  // ── Add product state ──────────────────────────────────────────────────────
+  const [addProductOpen, setAddProductOpen] = useState(false);
+  const [addName, setAddName]         = useState("");
+  const [addPrice, setAddPrice]       = useState("");
+  const [addStock, setAddStock]       = useState("0");
+  const [addUnit, setAddUnit]         = useState("Piece");
+  const [addCategory, setAddCategory] = useState("");
+
+  const resetAddProduct = () => {
+    setAddName(""); setAddPrice(""); setAddStock("0");
+    setAddUnit("Piece"); setAddCategory("");
+  };
 
   // ── Inline stock quick-edit ─────────────────────────────────────────────────
   const [inlineEditId, setInlineEditId] = useState<string | null>(null);
@@ -176,17 +189,29 @@ const Inventory = () => {
     )
     .slice(0, 8);
 
-  const handleAddProduct = async () => {
-    // Opens browser prompt as a lightweight flow; full form can be added later
-    const name = window.prompt("Product name:");
-    if (!name?.trim()) return;
-    const priceStr = window.prompt("Selling price (₹):");
-    const price = parseFloat(priceStr ?? "0");
-    const stockStr = window.prompt("Opening stock (units):");
-    const stock = parseInt(stockStr ?? "0", 10);
-    if (isNaN(price) || isNaN(stock)) { toast({ title: "⚠️ Invalid input", variant: "destructive" }); return; }
-    await createProduct.mutateAsync({ name: name.trim(), price, stock });
-    toast({ title: `✅ "${name}" added` });
+  const handleAddProduct = () => setAddProductOpen(true);
+
+  const handleSubmitAddProduct = async (e: FormEvent) => {
+    e.preventDefault();
+    const price = parseFloat(addPrice);
+    const stock = parseInt(addStock, 10);
+    if (!addName.trim()) { toast({ title: "⚠️ Product name is required", variant: "destructive" }); return; }
+    if (isNaN(price) || price <= 0) { toast({ title: "⚠️ Enter a valid price", variant: "destructive" }); return; }
+    try {
+      await createProduct.mutateAsync({
+        name: addName.trim(),
+        price,
+        stock: isNaN(stock) ? 0 : stock,
+        unit: addUnit || undefined,
+        category: addCategory.trim() || undefined,
+      });
+      toast({ title: `✅ "${addName.trim()}" added to inventory` });
+      resetAddProduct();
+      setAddProductOpen(false);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to add product";
+      toast({ title: "❌ Could not add product", description: msg, variant: "destructive" });
+    }
   };
 
   return (
@@ -689,6 +714,90 @@ const Inventory = () => {
                 {adjustStock.isPending ? "Saving…" : (adjustOp === "add" ? `+ Add ${adjustQty}` : `- Remove ${adjustQty}`)}
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add Product Modal ──────────────────────────────────────────── */}
+      {addProductOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center" onClick={() => { setAddProductOpen(false); resetAddProduct(); }}>
+          <div className="w-full max-w-md rounded-t-2xl bg-card p-5 shadow-xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="mb-4 text-base font-bold">➕ Add New Product</h2>
+            <form onSubmit={handleSubmitAddProduct} className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">Product Name *</label>
+                <input
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  placeholder="e.g. Basmati Rice 1kg"
+                  value={addName}
+                  onChange={(e) => setAddName(e.target.value)}
+                  required
+                  autoFocus
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">Selling Price (₹) *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    placeholder="0.00"
+                    value={addPrice}
+                    onChange={(e) => setAddPrice(e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">Opening Stock</label>
+                  <input
+                    type="number"
+                    min="0"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    placeholder="0"
+                    value={addStock}
+                    onChange={(e) => setAddStock(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">Unit</label>
+                  <select
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={addUnit}
+                    onChange={(e) => setAddUnit(e.target.value)}
+                  >
+                    <option>Piece</option>
+                    <option>Kg</option>
+                    <option>Gram</option>
+                    <option>Litre</option>
+                    <option>ML</option>
+                    <option>Box</option>
+                    <option>Dozen</option>
+                    <option>Bag</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">Category</label>
+                  <input
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    placeholder="e.g. Grains"
+                    value={addCategory}
+                    onChange={(e) => setAddCategory(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <Button type="button" variant="outline" className="flex-1" onClick={() => { setAddProductOpen(false); resetAddProduct(); }}>
+                  Cancel
+                </Button>
+                <Button type="submit" className="flex-1" disabled={createProduct.isPending}>
+                  {createProduct.isPending ? "Adding…" : "Add Product"}
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}
