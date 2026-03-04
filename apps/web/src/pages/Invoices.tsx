@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, Plus } from "lucide-react";
+import { ArrowLeft, Search, Plus, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useInvoices } from "@/hooks/useQueries";
@@ -153,7 +153,7 @@ const Invoices = () => {
                   <div
                     key={inv.id}
                     className="group flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/30"
-                    onClick={() => navigate(`/customers/${inv.customerId}`)}
+                    onClick={() => navigate(`/invoices/${inv.id}`)}
                   >
                     {/* Invoice icon */}
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-xs font-bold">
@@ -177,6 +177,7 @@ const Invoices = () => {
                     <p className={`shrink-0 text-sm font-bold ${amtColor}`}>
                       {formatCurrency(parseFloat(String(inv.total ?? 0)))}
                     </p>
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50 group-hover:text-muted-foreground" />
                   </div>
                 );
               })}

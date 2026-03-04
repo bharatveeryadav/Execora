@@ -17,11 +17,12 @@ import {
   useGstr1Report, usePnlReport, useEmailReport,
 } from "@/hooks/useQueries";
 import { formatCurrency, reportApi, getToken } from "@/lib/api";
+import { Badge } from "@/components/ui/badge";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const periods = ["Today", "This Week", "This Month", "Custom"] as const;
-const TABS    = ["Overview", "GSTR-1", "P&L"] as const;
+const TABS    = ["Overview", "GSTR-1", "P&L", "Aging"] as const;
 
 function getPeriodRange(period: string): { from: string; to: string } {
   const now = new Date();
@@ -641,6 +642,120 @@ function PnlTab() {
   );
 }
 
+// ── Aging / Outstanding Report ───────────────────────────────────────────────
+
+const AGING_BUCKETS = [
+  { label: "0–30 days",  max: 30,  cls: "bg-green-500/10  text-green-700  dark:text-green-400"  },
+  { label: "31–60 days", max: 60,  cls: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400" },
+  { label: "61–90 days", max: 90,  cls: "bg-orange-500/10 text-orange-700 dark:text-orange-400" },
+  { label: "90+ days",   max: Infinity, cls: "bg-destructive/10 text-destructive" },
+];
+
+function AgingTab() {
+  const { data: invoices = [], isLoading } = useInvoices(500);
+
+  const unpaid = invoices.filter(
+    (inv) => inv.status === "pending" || inv.status === "partial"
+  );
+
+  const now = Date.now();
+
+  function ageDays(inv: (typeof unpaid)[0]) {
+    return Math.floor((now - new Date(inv.createdAt).getTime()) / 86_400_000);
+  }
+
+  function bucket(age: number) {
+    if (age <= 30)  return 0;
+    if (age <= 60)  return 1;
+    if (age <= 90)  return 2;
+    return 3;
+  }
+
+  const buckets: { total: number; count: number; invoices: typeof unpaid }[] = AGING_BUCKETS.map(() => ({
+    total: 0, count: 0, invoices: [],
+  }));
+
+  for (const inv of unpaid) {
+    const b = bucket(ageDays(inv));
+    const pending = parseFloat(String(inv.total ?? 0)) - parseFloat(String(inv.paidAmount ?? 0));
+    buckets[b].total += pending;
+    buckets[b].count += 1;
+    buckets[b].invoices.push(inv);
+  }
+
+  const grandTotal = buckets.reduce((s, b) => s + b.total, 0);
+  const [open, setOpen] = useState<number | null>(null);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-48 items-center justify-center">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Summary */}
+      <Card className="border-none shadow-sm">
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Total Outstanding</CardTitle></CardHeader>
+        <CardContent>
+          <p className="text-3xl font-extrabold tabular-nums">{formatCurrency(grandTotal)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{unpaid.length} unpaid / partial invoices</p>
+        </CardContent>
+      </Card>
+
+      {/* Buckets */}
+      {AGING_BUCKETS.map((def, idx) => (
+        <div key={def.label}>
+          <button
+            className={`w-full rounded-xl border p-4 text-left transition-all hover:shadow-md ${open === idx ? "border-primary/40 shadow-md" : "bg-card"}`}
+            onClick={() => setOpen(open === idx ? null : idx)}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className={`inline-flex items-center rounded-lg px-3 py-1 text-xs font-semibold ${def.cls}`}>{def.label}</span>
+                <span className="text-xs text-muted-foreground">{buckets[idx].count} invoices</span>
+              </div>
+              <p className="text-base font-bold tabular-nums">{formatCurrency(buckets[idx].total)}</p>
+            </div>
+            {grandTotal > 0 && (
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-all"
+                  style={{ width: `${(buckets[idx].total / grandTotal) * 100}%` }}
+                />
+              </div>
+            )}
+          </button>
+
+          {/* Expanded invoice list */}
+          {open === idx && buckets[idx].invoices.length > 0 && (
+            <div className="mt-1 overflow-hidden rounded-xl border bg-card">
+              <div className="divide-y">
+                {buckets[idx].invoices.map((inv) => {
+                  const due = parseFloat(String(inv.total ?? 0)) - parseFloat(String(inv.paidAmount ?? 0));
+                  return (
+                    <div key={inv.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                      <div>
+                        <p className="font-medium">{inv.invoiceNo}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {inv.customer?.name ?? ""} · {ageDays(inv)}d old
+                        </p>
+                      </div>
+                      <p className="font-semibold tabular-nums text-destructive">{formatCurrency(due)}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Main Reports page ─────────────────────────────────────────────────────────
 
 const Reports = () => {
@@ -673,7 +788,7 @@ const Reports = () => {
                   : "border-transparent text-muted-foreground hover:text-foreground",
               ].join(" ")}
             >
-              {tab === "GSTR-1" ? "🏛️ GSTR-1" : tab === "P&L" ? "📈 P&L" : "📊 Overview"}
+              {tab === "GSTR-1" ? "🏛️ GSTR-1" : tab === "P&L" ? "📈 P&L" : tab === "Aging" ? "⏰ Aging" : "📊 Overview"}
             </button>
           ))}
         </div>
@@ -712,6 +827,7 @@ const Reports = () => {
         {activeTab === "Overview" && <OverviewTab period={activePeriod} />}
         {activeTab === "GSTR-1"   && <Gstr1Tab />}
         {activeTab === "P&L"      && <PnlTab />}
+        {activeTab === "Aging"    && <AgingTab />}
       </main>
     </div>
   );

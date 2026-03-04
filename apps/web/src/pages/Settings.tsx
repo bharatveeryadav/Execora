@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ArrowLeft, Mic, Save, UserPlus, Users, HardDrive, Download, RefreshCw, Volume2, Moon, Sun } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowLeft, Mic, Save, UserPlus, Users, HardDrive, Download, RefreshCw, Volume2, Moon, Sun, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useMe, useUpdateProfile } from "@/hooks/useQueries";
 
 const TTS_STORAGE_KEY = "execora:ttsProvider";
+const BIZ_STORAGE_KEY = "execora:bizprofile";
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -40,7 +41,33 @@ const Settings = () => {
   const [profileName, setProfileName] = useState(user?.name ?? "");
   const [profileEmail, setProfileEmail] = useState(user?.email ?? "");
 
+  // Business profile — persisted to localStorage
+  const [bizGstin, setBizGstin]         = useState(() => {
+    try { return JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}").gstin ?? me?.tenant?.gstin ?? ""; } catch { return ""; }
+  });
+  const [bizLegalName, setBizLegalName] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}").legalName ?? me?.tenant?.legalName ?? me?.tenant?.name ?? ""; } catch { return ""; }
+  });
+  const [bizPhone, setBizPhone]         = useState(() => {
+    try { return JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}").phone ?? ""; } catch { return ""; }
+  });
+  const [bizAddress, setBizAddress]     = useState(() => {
+    try { return JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}").address ?? ""; } catch { return ""; }
+  });
+
+  // Sync with me?.tenant once loaded
+  useEffect(() => {
+    if (me?.tenant) {
+      const stored = JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}");
+      if (!stored.gstin && me.tenant.gstin) setBizGstin(me.tenant.gstin);
+      if (!stored.legalName && (me.tenant.legalName || me.tenant.name)) setBizLegalName(me.tenant.legalName ?? me.tenant.name ?? "");
+    }
+  }, [me?.tenant]);
+
   const handleSave = async () => {
+    // Save business profile to localStorage
+    localStorage.setItem(BIZ_STORAGE_KEY, JSON.stringify({ gstin: bizGstin, legalName: bizLegalName, phone: bizPhone, address: bizAddress }));
+
     if (profileName && (profileName !== user?.name || profileEmail !== user?.email)) {
       try {
         await updateProfile.mutateAsync({ name: profileName });
@@ -83,7 +110,12 @@ const Settings = () => {
       <main className="mx-auto max-w-3xl space-y-5 p-4 md:p-6">
         {/* Business Profile */}
         <Card className="border-none shadow-sm">
-          <CardHeader className="pb-3"><CardTitle className="text-base">Business Profile</CardTitle></CardHeader>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-base">Business Profile</CardTitle>
+            </div>
+          </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
@@ -112,14 +144,43 @@ const Settings = () => {
                 <Input readOnly value={user?.tenantId ?? "—"} className="bg-muted/50 font-mono text-xs text-muted-foreground" />
               </div>
             </div>
+            <Separator />
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">GST & Legal Details</p>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
                 <Label className="text-xs">GSTIN</Label>
-                <Input defaultValue={me?.tenant?.gstin ?? ""} placeholder="07ABCDE1234F1Z5" />
+                <Input
+                  value={bizGstin}
+                  onChange={(e) => setBizGstin(e.target.value.toUpperCase())}
+                  placeholder="07ABCDE1234F1Z5"
+                  maxLength={15}
+                  className="font-mono text-xs"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Business Legal Name</Label>
-                <Input defaultValue={me?.tenant?.legalName ?? me?.tenant?.name ?? ""} placeholder="Your Business Pvt Ltd" />
+                <Input
+                  value={bizLegalName}
+                  onChange={(e) => setBizLegalName(e.target.value)}
+                  placeholder="Your Business Pvt Ltd"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Business Phone</Label>
+                <Input
+                  value={bizPhone}
+                  onChange={(e) => setBizPhone(e.target.value)}
+                  placeholder="Business contact number"
+                  type="tel"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Business Address</Label>
+                <Input
+                  value={bizAddress}
+                  onChange={(e) => setBizAddress(e.target.value)}
+                  placeholder="Street, City, State, PIN"
+                />
               </div>
             </div>
           </CardContent>

@@ -101,6 +101,18 @@ export function useCreateCustomer() {
 	});
 }
 
+export function useUpdateCustomer() {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: ({ id, ...data }: { id: string; name?: string; phone?: string; email?: string; nickname?: string; landmark?: string }) =>
+			customerApi.update(id, data),
+		onSuccess: (_d, vars) => {
+			qc.invalidateQueries({ queryKey: QK.customer(vars.id) });
+			qc.invalidateQueries({ queryKey: ['customers'] });
+		},
+	});
+}
+
 export function useCustomerInvoices(customerId: string, limit = 50) {
 	return useQuery<Invoice[]>({
 		queryKey: QK.customerInvoices(customerId, limit),

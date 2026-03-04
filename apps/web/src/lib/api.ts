@@ -287,6 +287,8 @@ export const customerApi = {
 		request<{ customer: Customer }>('/api/v1/customers', { method: 'POST', body: JSON.stringify(data) }),
 	invoices: (customerId: string, limit = 50) =>
 		request<{ invoices: Invoice[] }>(`/api/v1/customers/${customerId}/invoices?limit=${limit}`),
+	update: (id: string, data: { name?: string; phone?: string; email?: string; nickname?: string; landmark?: string }) =>
+		request<{ customer: Customer }>(`/api/v1/customers/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 };
 
 export interface InvoiceCreateOptions {

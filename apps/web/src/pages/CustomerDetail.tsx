@@ -1,12 +1,18 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  ArrowLeft, Phone, MessageCircle, Clock, FileText, CreditCard, TrendingUp,
+  ArrowLeft, Phone, MessageCircle, Clock, FileText, CreditCard, TrendingUp, PencilLine,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useCustomer, useCustomerInvoices, useCustomerLedger, useReminders } from "@/hooks/useQueries";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import { useCustomer, useCustomerInvoices, useCustomerLedger, useReminders, useUpdateCustomer } from "@/hooks/useQueries";
 import { LedgerEntry } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/api";
+import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -24,12 +30,40 @@ type Tab = typeof TABS[number];
 const CustomerDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [tab, setTab] = useState<Tab>("Overview");
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editNickname, setEditNickname] = useState("");
+  const [editLandmark, setEditLandmark] = useState("");
 
   const { data: customer, isLoading } = useCustomer(id!);
   const { data: invoices = [] } = useCustomerInvoices(id!);
   const { data: ledger = [] } = useCustomerLedger(id!) as { data: LedgerEntry[] };
   const { data: allReminders = [] } = useReminders(id);
+  const updateCustomer = useUpdateCustomer();
+
+  function openEdit() {
+    if (!customer) return;
+    setEditName(customer.name ?? "");
+    setEditPhone(customer.phone ?? "");
+    setEditEmail(customer.email ?? "");
+    setEditNickname((customer as any).nickname ?? "");
+    setEditLandmark((customer as any).landmark ?? "");
+    setEditOpen(true);
+  }
+
+  function handleSave() {
+    updateCustomer.mutate(
+      { id: id!, name: editName, phone: editPhone, email: editEmail, nickname: editNickname, landmark: editLandmark },
+      {
+        onSuccess: () => { toast({ title: "Customer updated" }); setEditOpen(false); },
+        onError: () => toast({ title: "Update failed", variant: "destructive" }),
+      }
+    );
+  }
 
   const balance = parseFloat(String(customer?.balance ?? 0));
   const totalBilled = invoices.reduce((s, inv) => s + parseFloat(String(inv.total ?? 0)), 0);
@@ -91,6 +125,9 @@ const CustomerDetail = () => {
                   </a>
                 </Button>
               )}
+              <Button variant="ghost" size="icon" title="Edit customer" onClick={openEdit}>
+                <PencilLine className="h-5 w-5" />
+              </Button>
             </div>
           </div>
 
@@ -178,7 +215,11 @@ const CustomerDetail = () => {
             ) : (
               <div className="divide-y">
                 {invoices.map((inv) => (
-                  <div key={inv.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30">
+                  <div
+                    key={inv.id}
+                    className="flex cursor-pointer items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors"
+                    onClick={() => navigate(`/invoices/${inv.id}`)}
+                  >
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium">{inv.invoiceNo}</p>
                       <p className="text-xs text-muted-foreground">{formatDate(inv.createdAt)}</p>
@@ -248,6 +289,44 @@ const CustomerDetail = () => {
           </div>
         )}
       </main>
+
+      {/* Edit Customer Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Customer</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Name *</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Customer name" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Phone</Label>
+              <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="10-digit mobile" type="tel" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Email</Label>
+              <Input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="email@example.com" type="email" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Nickname / Short Name</Label>
+              <Input value={editNickname} onChange={(e) => setEditNickname(e.target.value)} placeholder="e.g. Ramesh bhai" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Landmark / Area</Label>
+              <Input value={editLandmark} onChange={(e) => setEditLandmark(e.target.value)} placeholder="e.g. near Rajiv Chowk" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button onClick={handleSave} disabled={!editName.trim() || updateCustomer.isPending}>
+              {updateCustomer.isPending ? "Saving…" : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <BottomNav />
     </div>
   );
