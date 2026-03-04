@@ -16,6 +16,7 @@ import { useMe, useUpdateProfile } from "@/hooks/useQueries";
 
 const TTS_STORAGE_KEY = "execora:ttsProvider";
 const BIZ_STORAGE_KEY = "execora:bizprofile";
+const LANG_STORAGE_KEY = "execora:lang";
 
 const Settings = () => {
   const navigate = useNavigate();
@@ -54,6 +55,10 @@ const Settings = () => {
   const [bizAddress, setBizAddress]     = useState(() => {
     try { return JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}").address ?? ""; } catch { return ""; }
   });
+  const [bizUpiVpa, setBizUpiVpa]       = useState(() => {
+    try { return JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}").upiVpa ?? ""; } catch { return ""; }
+  });
+  const [lang, setLang] = useState(() => localStorage.getItem(LANG_STORAGE_KEY) ?? "english");
 
   // Sync with me?.tenant once loaded
   useEffect(() => {
@@ -66,7 +71,8 @@ const Settings = () => {
 
   const handleSave = async () => {
     // Save business profile to localStorage
-    localStorage.setItem(BIZ_STORAGE_KEY, JSON.stringify({ gstin: bizGstin, legalName: bizLegalName, phone: bizPhone, address: bizAddress }));
+    localStorage.setItem(BIZ_STORAGE_KEY, JSON.stringify({ gstin: bizGstin, legalName: bizLegalName, phone: bizPhone, address: bizAddress, upiVpa: bizUpiVpa }));
+    localStorage.setItem(LANG_STORAGE_KEY, lang);
 
     if (profileName && (profileName !== user?.name || profileEmail !== user?.email)) {
       try {
@@ -182,6 +188,16 @@ const Settings = () => {
                   placeholder="Street, City, State, PIN"
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">UPI ID (for QR on invoices)</Label>
+                <Input
+                  value={bizUpiVpa}
+                  onChange={(e) => setBizUpiVpa(e.target.value.trim())}
+                  placeholder="yourbusiness@upi"
+                  className="font-mono text-sm"
+                />
+                <p className="text-[11px] text-muted-foreground">Customers can scan this QR to pay directly on the invoice.</p>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -193,7 +209,7 @@ const Settings = () => {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-1.5">
                 <Label className="text-xs">Language</Label>
-                <Select defaultValue="english">
+                <Select value={lang} onValueChange={(v) => { setLang(v); localStorage.setItem(LANG_STORAGE_KEY, v); }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="english">English</SelectItem>

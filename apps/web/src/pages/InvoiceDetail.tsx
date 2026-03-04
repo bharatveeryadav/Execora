@@ -339,6 +339,27 @@ export default function InvoiceDetail() {
           </Card>
         )}
 
+        {/* UPI QR — shown when there is a pending balance and a UPI VPA is configured */}
+        {(() => {
+          const upiVpa = (() => { try { return JSON.parse(localStorage.getItem("execora:bizprofile") ?? "{}").upiVpa ?? ""; } catch { return ""; } })();
+          if (!upiVpa || pending <= 0) return null;
+          const bizName = (() => { try { return JSON.parse(localStorage.getItem("execora:bizprofile") ?? "{}").legalName ?? "Store"; } catch { return "Store"; } })();
+          const upiUri = `upi://pay?pa=${encodeURIComponent(upiVpa)}&pn=${encodeURIComponent(bizName)}&am=${pending.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Invoice ${invoice.invoiceNo}`)}`;
+          const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=8&data=${encodeURIComponent(upiUri)}`;
+          return (
+            <Card className="border-none shadow-sm">
+              <CardContent className="flex flex-col items-center gap-3 p-4 text-center">
+                <p className="text-sm font-semibold">Pay via UPI</p>
+                <img src={qrUrl} alt="UPI QR code" className="h-40 w-40 rounded-lg border" loading="lazy" />
+                <div>
+                  <p className="font-mono text-sm font-medium">{upiVpa}</p>
+                  <p className="text-xs text-muted-foreground">Scan with any UPI app · Amount: {formatCurrency(pending)}</p>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
+
         {/* Action buttons */}
         <div className="grid grid-cols-2 gap-3">
           {waLink && (

@@ -6,7 +6,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { wsClient } from '@/lib/ws';
 import { useWS } from '@/contexts/WSContext';
-import { useNavigate } from 'react-router-dom';
 import { Mic } from 'lucide-react';
 
 interface FeedItem {
@@ -75,7 +74,6 @@ let _counter = 1;
 
 const AiAgentFeed = () => {
 	const { isConnected } = useWS();
-	const navigate = useNavigate();
 	const [feed, setFeed] = useState<FeedItem[]>([]);
 	const [cmdSetIdx, setCmdSetIdx] = useState(0);
 	const [cmdItemIdx, setCmdItemIdx] = useState(0);
@@ -279,24 +277,7 @@ const AiAgentFeed = () => {
 				</div>
 			)}
 
-			{/* ── Quick links below feed ────────────────────────────── */}
-			<div className="grid grid-cols-4 gap-2">
-				{[
-					{ emoji: '🧾', label: 'Invoices', path: '/invoices' },
-					{ emoji: '👥', label: 'Customers', path: '/customers' },
-					{ emoji: '💸', label: 'Expenses', path: '/expenses' },
-					{ emoji: '📊', label: 'Reports', path: '/reports' },
-				].map((link) => (
-					<button
-						key={link.path}
-						onClick={() => navigate(link.path)}
-						className="flex flex-col items-center gap-1 rounded-xl border bg-card py-3 text-center transition-colors hover:bg-muted/50 active:scale-95"
-					>
-						<span className="text-xl">{link.emoji}</span>
-						<span className="text-[11px] font-medium text-muted-foreground">{link.label}</span>
-					</button>
-				))}
-			</div>
+
 		</div>
 	);
 };

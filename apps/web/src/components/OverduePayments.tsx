@@ -107,12 +107,13 @@ const OverduePayments = () => {
             })
           )}
         </div>
-        <div className="flex flex-wrap gap-2 p-4">
-          <Button size="sm" variant="default" className="h-8 text-xs" onClick={() => navigate("/payment")}>💰 Record Payment</Button>
+        <div className="flex flex-col gap-2 p-4">
+          <Button size="sm" variant="default" className="h-9 w-full text-sm" onClick={() => navigate("/payment")}>💰 Record Payment</Button>
+          <div className="flex gap-2">
           <Button
             size="sm"
             variant="outline"
-            className="h-8 text-xs"
+            className="h-8 flex-1 text-xs"
             disabled={bulkReminders.isPending || overdueData.length === 0}
             onClick={async () => {
               try {
@@ -131,7 +132,7 @@ const OverduePayments = () => {
           <Button
             size="sm"
             variant="outline"
-            className="h-8 text-xs"
+            className="h-8 flex-1 text-xs"
             disabled={overdueData.length === 0}
             onClick={() => {
               const header = ["#", "Customer", "Amount Due (₹)", "Phone"];
@@ -154,6 +155,7 @@ const OverduePayments = () => {
           >
             📊 Export List
           </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

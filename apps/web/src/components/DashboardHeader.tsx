@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWS } from "@/contexts/WSContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useNavigate } from "react-router-dom";
 import VoiceBar from "@/components/VoiceBar";
 import NotificationCenter from "@/components/NotificationCenter";
 
@@ -12,6 +13,7 @@ const DashboardHeader = () => {
   const { user } = useAuth();
   const { isConnected, reconnect } = useWS();
   const { theme, toggle } = useTheme();
+  const navigate = useNavigate();
   const storeName = user?.name ? `${user.name}'s Store` : "Execora Store";
   const openSearch = () => window.dispatchEvent(new CustomEvent("execora:search"));
 
@@ -49,7 +51,7 @@ const DashboardHeader = () => {
           <Button variant="ghost" size="icon" onClick={toggle} title="Toggle theme">
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/settings")} title="Settings">
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
               {user?.name ? user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) : <User className="h-4 w-4" />}
             </span>

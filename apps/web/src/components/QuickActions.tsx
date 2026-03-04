@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, Wallet, Package, UserPlus, BookOpen, ShoppingCart } from "lucide-react";
+import { FileText, Wallet, Package, UserPlus, ShoppingCart, Users, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,27 +34,32 @@ const QuickActions = () => {
   }
 
   const actions = [
-    { label: "New Invoice",  icon: FileText,    variant: "default" as const, onClick: () => setInvoiceOpen(true) },
-    { label: "Payment In",   icon: Wallet,      variant: "outline" as const, onClick: () => navigate("/payment") },
-    { label: "Expense",      icon: ShoppingCart,variant: "outline" as const, onClick: () => navigate("/expenses") },
-    { label: "Cash Book",    icon: BookOpen,    variant: "outline" as const, onClick: () => navigate("/cashbook") },
-    { label: "Add Customer", icon: UserPlus,    variant: "outline" as const, onClick: () => setCustomerOpen(true) },
-    { label: "Stock Check",  icon: Package,     variant: "outline" as const, onClick: () => navigate("/inventory") },
+    { label: "New Invoice",  icon: FileText,    primary: true,  onClick: () => setInvoiceOpen(true) },
+    { label: "Payment In",   icon: Wallet,      primary: false, onClick: () => navigate("/payment") },
+    { label: "Add Customer", icon: UserPlus,    primary: false, onClick: () => setCustomerOpen(true) },
+    { label: "Stock Check",  icon: Package,     primary: false, onClick: () => navigate("/inventory") },
+    { label: "Invoices",     icon: FileText,    primary: false, onClick: () => navigate("/invoices") },
+    { label: "Customers",    icon: Users,       primary: false, onClick: () => navigate("/customers") },
+    { label: "Expenses",     icon: ShoppingCart,primary: false, onClick: () => navigate("/expenses") },
+    { label: "Reports",      icon: BarChart3,   primary: false, onClick: () => navigate("/reports") },
   ];
 
   return (
     <div>
-      <div className="grid grid-cols-3 gap-3 md:grid-cols-6">
+      <div className="grid grid-cols-4 gap-2.5">
         {actions.map((action) => (
-          <Button
+          <button
             key={action.label}
-            variant={action.variant}
-            className="h-auto flex-col gap-2 py-5 text-xs font-semibold shadow-sm active:scale-95 transition-transform"
             onClick={action.onClick}
+            className={`flex flex-col items-center gap-1.5 rounded-xl border py-4 text-center transition-all active:scale-95 ${
+              action.primary
+                ? "border-primary bg-primary text-primary-foreground shadow-md"
+                : "border-border bg-card text-foreground hover:bg-muted/60"
+            }`}
           >
-            <action.icon className="h-6 w-6" />
-            {action.label}
-          </Button>
+            <action.icon className={`h-5 w-5 ${action.primary ? "text-primary-foreground" : "text-muted-foreground"}`} />
+            <span className="text-[11px] font-semibold leading-tight">{action.label}</span>
+          </button>
         ))}
       </div>
 

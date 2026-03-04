@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useReminders } from "@/hooks/useQueries";
 import { formatCurrency } from "@/lib/api";
+import EmptyState from "@/components/EmptyState";
 
 const UpcomingPayments = () => {
   const navigate = useNavigate();
@@ -18,6 +19,10 @@ const UpcomingPayments = () => {
     return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
   };
 
+  const formatDate = (scheduledTime: string) => {
+    return new Date(scheduledTime).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  };
+
   const getDaysBadge = (days: number) => {
     const color =
       days <= 3
@@ -28,7 +33,7 @@ const UpcomingPayments = () => {
     const icon = days <= 3 ? "🔴" : days <= 5 ? "🟡" : "🟢";
     return (
       <span className={`inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[10px] font-medium ${color}`}>
-        {icon} {days}d
+        {icon} {days === 0 ? "Today" : `${days}d`}
       </span>
     );
   };
@@ -48,37 +53,48 @@ const UpcomingPayments = () => {
           {isLoading ? (
             <div className="px-4 py-6 text-center text-sm text-muted-foreground">Loading…</div>
           ) : upcoming.length === 0 ? (
-            <div className="px-4 py-6 text-center text-sm text-muted-foreground">
-              ✅ No upcoming payments scheduled
-            </div>
+            <EmptyState
+              icon="✅"
+              title="Nothing due soon"
+              description="Schedule a reminder from the Payments page."
+              compact
+            />
           ) : (
             upcoming.map((item) => {
               const days = getDaysLeft(item.scheduledTime);
               return (
-                <div key={item.id} className="group flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-muted/30">
+                <div key={item.id} className="flex items-center gap-3 px-4 py-3">
+                  {/* Avatar initial */}
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-bold uppercase text-muted-foreground">
+                    {(item.customer?.name ?? "?")[0]}
+                  </div>
+                  {/* Name + meta */}
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{item.customer?.name ?? "—"}</p>
                     <div className="mt-0.5 flex items-center gap-1.5">
                       {getDaysBadge(days)}
-                      {item.customer?.phone && (
-                        <span className="text-[10px] text-muted-foreground">{item.customer.phone}</span>
-                      )}
+                      <span className="text-[10px] text-muted-foreground">{formatDate(item.scheduledTime)}</span>
                     </div>
                   </div>
+                  {/* Amount */}
                   <span className="shrink-0 text-sm font-semibold">
                     {formatCurrency(parseFloat(String(item.amount)))}
                   </span>
-                  <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                    {item.customer?.phone && (
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-xs" asChild>
-                        <a href={`https://wa.me/91${item.customer.phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer">📱</a>
-                      </Button>
-                    )}
-                  </div>
+                  {/* WhatsApp — always visible on mobile */}
+                  {item.customer?.phone && (
+                    <Button variant="ghost" size="sm" className="h-8 w-8 shrink-0 p-0 text-base" asChild>
+                      <a href={`https://wa.me/91${item.customer.phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer">📱</a>
+                    </Button>
+                  )}
                 </div>
               );
             })
           )}
+        </div>
+        <div className="flex flex-col gap-2 p-4">
+          <Button size="sm" variant="default" className="h-9 w-full text-sm" onClick={() => navigate("/payment")}>
+            📅 Schedule Reminder
+          </Button>
         </div>
       </CardContent>
     </Card>
