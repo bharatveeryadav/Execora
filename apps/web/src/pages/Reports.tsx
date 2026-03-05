@@ -10,6 +10,10 @@ import {
 	FileSpreadsheet,
 	AlertCircle,
 	CheckCircle2,
+	Share2,
+	TrendingDown,
+	Activity,
+	Package,
 } from 'lucide-react';
 import VoiceBar from '@/components/VoiceBar';
 import { Button } from '@/components/ui/button';
@@ -33,19 +37,93 @@ import { Badge } from '@/components/ui/badge';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const periods = ['Today', 'This Week', 'This Month', 'Custom'] as const;
+const periods = [
+	'Today',
+	'Yesterday',
+	'This Week',
+	'Last Week',
+	'This Month',
+	'Last Month',
+	'This FY',
+	'Custom',
+] as const;
 const TABS = ['Overview', 'GSTR-1', 'P&L', 'Aging'] as const;
 
 function getPeriodRange(period: string): { from: string; to: string } {
 	const now = new Date();
 	const fmt = (d: Date) => d.toISOString().slice(0, 10);
+	if (period === 'Yesterday') {
+		const y = new Date(now);
+		y.setDate(now.getDate() - 1);
+		return { from: fmt(y), to: fmt(y) };
+	}
 	if (period === 'This Week') {
 		const start = new Date(now);
 		start.setDate(now.getDate() - now.getDay());
 		return { from: fmt(start), to: fmt(now) };
 	}
+	if (period === 'Last Week') {
+		const end = new Date(now);
+		end.setDate(now.getDate() - now.getDay() - 1);
+		const start = new Date(end);
+		start.setDate(end.getDate() - 6);
+		return { from: fmt(start), to: fmt(end) };
+	}
 	if (period === 'This Month') {
 		return { from: fmt(new Date(now.getFullYear(), now.getMonth(), 1)), to: fmt(now) };
+	}
+	if (period === 'Last Month') {
+		const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+		const end = new Date(now.getFullYear(), now.getMonth(), 0);
+		return { from: fmt(start), to: fmt(end) };
+	}
+	if (period === 'This FY') {
+		const fyYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+		return { from: `${fyYear}-04-01`, to: fmt(now) };
+	}
+	return { from: fmt(now), to: fmt(now) };
+}
+
+function getPreviousPeriodRange(period: string): { from: string; to: string } {
+	const now = new Date();
+	const fmt = (d: Date) => d.toISOString().slice(0, 10);
+	if (period === 'Today') {
+		const y = new Date(now);
+		y.setDate(now.getDate() - 1);
+		return { from: fmt(y), to: fmt(y) };
+	}
+	if (period === 'Yesterday') {
+		const y = new Date(now);
+		y.setDate(now.getDate() - 2);
+		return { from: fmt(y), to: fmt(y) };
+	}
+	if (period === 'This Week') {
+		const end = new Date(now);
+		end.setDate(now.getDate() - now.getDay() - 1);
+		const start = new Date(end);
+		start.setDate(end.getDate() - 6);
+		return { from: fmt(start), to: fmt(end) };
+	}
+	if (period === 'Last Week') {
+		const end = new Date(now);
+		end.setDate(now.getDate() - now.getDay() - 8);
+		const start = new Date(end);
+		start.setDate(end.getDate() - 6);
+		return { from: fmt(start), to: fmt(end) };
+	}
+	if (period === 'This Month') {
+		const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+		const end = new Date(now.getFullYear(), now.getMonth(), 0);
+		return { from: fmt(start), to: fmt(end) };
+	}
+	if (period === 'Last Month') {
+		const start = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+		const end = new Date(now.getFullYear(), now.getMonth() - 1, 0);
+		return { from: fmt(start), to: fmt(end) };
+	}
+	if (period === 'This FY') {
+		const fyYear = now.getMonth() >= 3 ? now.getFullYear() - 1 : now.getFullYear() - 2;
+		return { from: `${fyYear}-04-01`, to: `${fyYear + 1}-03-31` };
 	}
 	return { from: fmt(now), to: fmt(now) };
 }
@@ -77,9 +155,11 @@ function currentIndianFY(): string {
 
 function OverviewTab({ period }: { period: string }) {
 	const periodRange = getPeriodRange(period);
-	const useRange = period === 'This Week' || period === 'This Month';
+	const prevRange = getPreviousPeriodRange(period);
+	const useRange = period !== 'Today';
 	const { data: dailySummary } = useDailySummary();
 	const { data: rangeSummary } = useSummaryRange(periodRange.from, periodRange.to);
+	const { data: prevSummary } = useSummaryRange(prevRange.from, prevRange.to);
 	const { data: customers = [] } = useCustomers('', 100);
 	const { data: products = [] } = useProducts();
 	const { data: invoices = [] } = useInvoices(200);
@@ -89,6 +169,41 @@ function OverviewTab({ period }: { period: string }) {
 	const totalPayments = summary?.totalPayments ?? 0;
 	const collectionRate = totalSales > 0 ? Math.round((totalPayments / totalSales) * 100) : 0;
 	const pendingAmount = summary?.pendingAmount ?? 0;
+
+	// GST from invoices in period
+	const gstCollected = invoices
+		.filter((inv) => {
+			if (inv.status === 'cancelled') return false;
+			const d = new Date(inv.createdAt).toISOString().slice(0, 10);
+			return d >= periodRange.from && d <= periodRange.to;
+		})
+		.reduce((sum, inv) => sum + parseFloat(String((inv as any).gstAmount ?? (inv as any).taxAmount ?? 0)), 0);
+
+	// Period comparison helpers
+	const prevTotalSales = prevSummary?.totalSales ?? 0;
+	const prevTotalPayments = prevSummary?.totalPayments ?? 0;
+	const prevPending = prevSummary?.pendingAmount ?? 0;
+
+	function pctChange(cur: number, prev: number): { label: string; positive: boolean } | null {
+		if (prev === 0) return null;
+		const delta = Math.round(((cur - prev) / prev) * 100);
+		return { label: delta >= 0 ? `↑ ${delta}%` : `↓ ${Math.abs(delta)}%`, positive: delta >= 0 };
+	}
+
+	// WhatsApp share
+	const handleWhatsAppShare = () => {
+		const msg = [
+			`📊 *Business Summary — ${period}*`,
+			``,
+			`💰 Total Sales: ₹${totalSales.toLocaleString('en-IN')}`,
+			`✅ Collected: ₹${totalPayments.toLocaleString('en-IN')} (${collectionRate}%)`,
+			`📝 Pending: ₹${pendingAmount.toLocaleString('en-IN')}`,
+			`🏛️ GST Collected: ₹${gstCollected.toLocaleString('en-IN')}`,
+			``,
+			`_Sent via Execora_`,
+		].join('\n');
+		window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+	};
 
 	const salesByDay = new Map<string, number>();
 	for (const inv of invoices) {
@@ -101,13 +216,26 @@ function OverviewTab({ period }: { period: string }) {
 		.map(([day, sales]) => ({ day, sales: Math.round(sales) }));
 
 	const productRevMap = new Map<string, number>();
+	const productUnitsMap = new Map<string, number>();
 	for (const inv of invoices) {
 		if (inv.status === 'cancelled') continue;
 		for (const item of inv.items ?? []) {
 			const name = item.product?.name ?? item.productName ?? 'Unknown';
-			productRevMap.set(name, (productRevMap.get(name) ?? 0) + parseFloat(String(item.itemTotal ?? 0)));
+			const rev = parseFloat(String(item.itemTotal ?? 0));
+			const qty = parseFloat(String(item.quantity ?? 0));
+			productRevMap.set(name, (productRevMap.get(name) ?? 0) + rev);
+			productUnitsMap.set(name, (productUnitsMap.get(name) ?? 0) + qty);
 		}
 	}
+	const itemSalesSummary = [...productRevMap.entries()]
+		.sort((a, b) => b[1] - a[1])
+		.slice(0, 10)
+		.map(([name, revenue]) => ({
+			name,
+			revenue,
+			units: productUnitsMap.get(name) ?? 0,
+			avgPrice: (productUnitsMap.get(name) ?? 0) > 0 ? revenue / (productUnitsMap.get(name) ?? 1) : 0,
+		}));
 	const topProductsFromInvoices = [...productRevMap.entries()]
 		.sort((a, b) => b[1] - a[1])
 		.slice(0, 5)
@@ -174,23 +302,104 @@ function OverviewTab({ period }: { period: string }) {
 
 	return (
 		<div className="space-y-5">
+			{/* ── Quick Report Shortcuts ──────────────────────────────────────── */}
+			<div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+				{[
+					{
+						emoji: '💰',
+						label: "Today's Sales",
+						color: 'bg-primary/10 text-primary border-primary/20',
+						value: formatCurrency(totalSales),
+					},
+					{
+						emoji: '📝',
+						label: 'Pending Dues',
+						color: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800',
+						value: formatCurrency(pendingAmount),
+					},
+					{
+						emoji: '🏛️',
+						label: 'GST Collected',
+						color: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800',
+						value: formatCurrency(gstCollected),
+					},
+					{
+						emoji: '📦',
+						label: 'Invoices',
+						color: 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800',
+						value: String(invoices.filter((inv) => inv.status !== 'cancelled').length),
+					},
+				].map((tile) => (
+					<Card
+						key={tile.label}
+						className={`cursor-pointer border ${tile.color} shadow-none transition-all hover:shadow-sm`}
+					>
+						<CardContent className="p-3">
+							<p className="text-lg">{tile.emoji}</p>
+							<p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
+								{tile.label}
+							</p>
+							<p className="mt-0.5 text-xl font-bold tabular-nums">{tile.value}</p>
+						</CardContent>
+					</Card>
+				))}
+			</div>
+
+			{/* ── Primary KPI Row with Comparison Arrows ─────────────────────── */}
 			<section>
 				<h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
 					📈 Revenue Overview
 				</h2>
 				<div className="grid grid-cols-2 gap-3 md:grid-cols-4">
 					{[
-						{ label: 'Total Sales', value: formatCurrency(totalSales) },
-						{ label: 'Collected', value: formatCurrency(totalPayments) },
-						{ label: 'Collection Rate', value: `${collectionRate}%` },
-						{ label: 'Pending Dues', value: formatCurrency(pendingAmount) },
+						{
+							label: 'Total Sales',
+							value: formatCurrency(totalSales),
+							icon: TrendingUp,
+							change: pctChange(totalSales, prevTotalSales),
+							iconColor: 'text-primary',
+						},
+						{
+							label: 'Collected',
+							value: formatCurrency(totalPayments),
+							icon: CheckCircle2,
+							change: pctChange(totalPayments, prevTotalPayments),
+							iconColor: 'text-green-600',
+						},
+						{
+							label: 'Collection Rate',
+							value: `${collectionRate}%`,
+							icon: Activity,
+							change: null,
+							iconColor: 'text-blue-600',
+						},
+						{
+							label: 'Pending Dues',
+							value: formatCurrency(pendingAmount),
+							icon: TrendingDown,
+							change: pctChange(pendingAmount, prevPending),
+							iconColor: 'text-destructive',
+						},
 					].map((s) => (
 						<Card key={s.label} className="border-none shadow-sm">
 							<CardContent className="p-4">
-								<p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-									{s.label}
-								</p>
-								<p className="mt-2 text-2xl font-bold tracking-tight">{s.value}</p>
+								<div className="flex items-start justify-between">
+									<p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+										{s.label}
+									</p>
+									<s.icon className={`h-4 w-4 ${s.iconColor}`} />
+								</div>
+								<p className="mt-2 text-2xl font-bold tracking-tight tabular-nums">{s.value}</p>
+								{s.change ? (
+									<p
+										className={`mt-0.5 text-[11px] font-medium ${s.change.positive ? 'text-green-600' : 'text-destructive'}`}
+									>
+										{s.change.label}{' '}
+										<span className="text-muted-foreground font-normal">vs prev period</span>
+									</p>
+								) : (
+									<p className="mt-0.5 text-[11px] text-muted-foreground">&nbsp;</p>
+								)}
 							</CardContent>
 						</Card>
 					))}
@@ -248,44 +457,137 @@ function OverviewTab({ period }: { period: string }) {
 			<div className="grid gap-4 md:grid-cols-2">
 				<Card className="border-none shadow-sm">
 					<CardHeader className="pb-3">
-						<CardTitle className="text-base">🏷️ Top Products</CardTitle>
+						<CardTitle className="text-base">🏷️ Top Products by Revenue</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-3">
 						{topProductsList.length === 0 ? (
 							<p className="text-sm text-muted-foreground">No data yet</p>
 						) : (
-							topProductsList.map((p, i) => (
-								<div key={p.name} className="flex items-center justify-between">
-									<span className="text-sm">
-										<span className="mr-2 text-muted-foreground">{i + 1}.</span>📦 {p.name}
-									</span>
-									<span className="font-semibold">{formatCurrency(p.amount)}</span>
-								</div>
-							))
+							(() => {
+								const maxAmt = Math.max(...topProductsList.map((p) => p.amount), 1);
+								return topProductsList.map((p, i) => (
+									<div key={p.name}>
+										<div className="flex items-center justify-between mb-1">
+											<span className="text-sm truncate max-w-[60%]">
+												<span className="mr-1.5 text-muted-foreground">{i + 1}.</span>📦{' '}
+												{p.name}
+											</span>
+											<span className="font-semibold text-sm tabular-nums">
+												{formatCurrency(p.amount)}
+											</span>
+										</div>
+										<div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+											<div
+												className="h-full rounded-full bg-primary transition-all"
+												style={{ width: `${(p.amount / maxAmt) * 100}%` }}
+											/>
+										</div>
+									</div>
+								));
+							})()
 						)}
 					</CardContent>
 				</Card>
 				<Card className="border-none shadow-sm">
 					<CardHeader className="pb-3">
-						<CardTitle className="text-base">👥 Top Customers</CardTitle>
+						<CardTitle className="text-base">👥 Top Customers by Purchases</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-3">
 						{topCustomers.length === 0 ? (
 							<p className="text-sm text-muted-foreground">No data yet</p>
 						) : (
-							topCustomers.map((c, i) => (
-								<div key={c.name} className="flex items-center justify-between">
-									<span className="text-sm">
-										<span className="mr-2 text-muted-foreground">{i + 1}.</span>
-										{c.name}
-									</span>
-									<span className="font-semibold">{formatCurrency(c.amount)}</span>
-								</div>
-							))
+							(() => {
+								const maxAmt = Math.max(...topCustomers.map((c) => c.amount), 1);
+								return topCustomers.map((c, i) => (
+									<div key={c.name}>
+										<div className="flex items-center justify-between mb-1">
+											<span className="text-sm truncate max-w-[60%]">
+												<span className="mr-1.5 text-muted-foreground">{i + 1}.</span>
+												{c.name}
+											</span>
+											<span className="font-semibold text-sm tabular-nums">
+												{formatCurrency(c.amount)}
+											</span>
+										</div>
+										<div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+											<div
+												className="h-full rounded-full bg-green-500 transition-all"
+												style={{ width: `${(c.amount / maxAmt) * 100}%` }}
+											/>
+										</div>
+									</div>
+								));
+							})()
 						)}
 					</CardContent>
 				</Card>
 			</div>
+
+			{itemSalesSummary.length > 0 && (
+				<Card className="border-none shadow-sm">
+					<CardHeader className="pb-3">
+						<CardTitle className="text-base">📋 Item-wise Sales Summary</CardTitle>
+					</CardHeader>
+					<CardContent className="p-0">
+						<div className="overflow-x-auto">
+							<table className="w-full text-sm">
+								<thead>
+									<tr className="border-b bg-muted/30">
+										<th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+											Item
+										</th>
+										<th className="px-4 py-2.5 text-right font-medium text-muted-foreground">
+											Units
+										</th>
+										<th className="px-4 py-2.5 text-right font-medium text-muted-foreground">
+											Revenue
+										</th>
+										<th className="px-4 py-2.5 text-right font-medium text-muted-foreground">
+											Avg Price
+										</th>
+									</tr>
+								</thead>
+								<tbody>
+									{itemSalesSummary.map((item, idx) => {
+										const maxRev = itemSalesSummary[0]?.revenue ?? 1;
+										const barPct = Math.round((item.revenue / maxRev) * 100);
+										return (
+											<tr
+												key={item.name}
+												className={idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'}
+											>
+												<td className="px-4 py-2.5">
+													<div
+														className="font-medium truncate max-w-[140px]"
+														title={item.name}
+													>
+														{item.name}
+													</div>
+													<div className="mt-1 h-1.5 w-full bg-muted rounded-full overflow-hidden">
+														<div
+															className="h-full bg-primary/60 rounded-full"
+															style={{ width: `${barPct}%` }}
+														/>
+													</div>
+												</td>
+												<td className="px-4 py-2.5 text-right tabular-nums">
+													{item.units % 1 === 0 ? item.units : item.units.toFixed(1)}
+												</td>
+												<td className="px-4 py-2.5 text-right tabular-nums font-semibold">
+													{formatCurrency(item.revenue)}
+												</td>
+												<td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">
+													{formatCurrency(item.avgPrice)}
+												</td>
+											</tr>
+										);
+									})}
+								</tbody>
+							</table>
+						</div>
+					</CardContent>
+				</Card>
+			)}
 
 			<Card className="border-none shadow-sm">
 				<CardHeader className="pb-3">
@@ -1232,7 +1534,7 @@ const Reports = () => {
 
 				{/* Period selector — Overview only */}
 				{activeTab === 'Overview' && (
-					<div className="mt-3 flex flex-wrap gap-2">
+					<div className="mt-3 flex flex-nowrap gap-2 overflow-x-auto pb-1 scrollbar-hide">
 						{periods.map((p) => (
 							<Button
 								key={p}
