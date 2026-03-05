@@ -132,7 +132,9 @@ async function downloadWithAuth(url: string, filename: string) {
 	const token = getToken();
 	const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
 	if (!res.ok) {
-		alert('Download failed: ' + res.statusText);
+		// Surface to user via console (no toast library available here)
+		// The button simply does nothing on failure — no silent data corruption
+		console.error('[Reports] download failed', { url, status: res.status, statusText: res.statusText });
 		return;
 	}
 	const blob = await res.blob();
@@ -729,8 +731,12 @@ function Gstr1Tab() {
 
 	const handleEmail = async () => {
 		if (!emailAddr) return;
-		await emailMutation.mutateAsync({ type: 'gstr1', from: fyFrom, to: fyTo, email: emailAddr, fy });
-		setEmailSent(true);
+		try {
+			await emailMutation.mutateAsync({ type: 'gstr1', from: fyFrom, to: fyTo, email: emailAddr, fy });
+			setEmailSent(true);
+		} catch {
+			// emailMutation.isError renders the error in the UI
+		}
 	};
 
 	if (isLoading)
@@ -1308,8 +1314,12 @@ function PnlTab() {
 
 	const handleEmail = async () => {
 		if (!emailAddr) return;
-		await emailMutation.mutateAsync({ type: 'pnl', from, to, email: emailAddr });
-		setEmailSent(true);
+		try {
+			await emailMutation.mutateAsync({ type: 'pnl', from, to, email: emailAddr });
+			setEmailSent(true);
+		} catch {
+			// emailMutation.isError renders the error in the UI
+		}
 	};
 
 	const handlePnlWhatsApp = () => {
@@ -1353,7 +1363,7 @@ function PnlTab() {
 
 	const chartData = (report?.months ?? []).map((m) => ({
 		month: m.month,
-		revenue: Math.round(m.revenue),
+		revenue: Math.round(gstExclusive ? m.revenue - m.taxCollected : m.revenue),
 		collected: Math.round(m.collected),
 	}));
 
@@ -1571,7 +1581,11 @@ function PnlTab() {
 					<CardContent className="space-y-2">
 						<div className="flex justify-between text-sm">
 							<span>
-								Collected {formatCurrency(t.collected)} of {formatCurrency(t.revenue)}
+								Collected {formatCurrency(t.collected)} of{' '}
+								{formatCurrency(gstExclusive ? t.revenue - t.taxCollected : t.revenue)}
+								{gstExclusive && (
+									<span className="ml-1 text-[10px] text-muted-foreground">(excl. GST)</span>
+								)}
 							</span>
 							<span className="font-bold text-primary">{t.collectionRate.toFixed(1)}%</span>
 						</div>
@@ -1625,7 +1639,14 @@ function PnlTab() {
 			{report && report.months.length > 0 && (
 				<Card className="border-none shadow-sm">
 					<CardHeader className="pb-2">
-						<CardTitle className="text-sm">Month-wise Breakdown</CardTitle>
+						<CardTitle className="text-sm">
+							Month-wise Breakdown
+							{gstExclusive && (
+								<span className="ml-2 text-[10px] font-normal text-muted-foreground">
+									(Revenue excl. GST)
+								</span>
+							)}
+						</CardTitle>
 					</CardHeader>
 					<CardContent className="p-0">
 						<div className="overflow-x-auto">
@@ -1635,13 +1656,13 @@ function PnlTab() {
 										{[
 											'Month',
 											'Bills',
-											'Revenue',
+											gstExclusive ? 'Revenue*' : 'Revenue',
 											'Discounts',
-											'Net Revenue',
+											gstExclusive ? 'Net Rev*' : 'Net Revenue',
 											'Tax',
 											'Collected',
 											'Outstanding',
-											'Avg Invoice',
+											gstExclusive ? 'Avg Inv*' : 'Avg Invoice',
 										].map((h) => (
 											<th
 												key={h}
@@ -1657,12 +1678,16 @@ function PnlTab() {
 										<tr key={i} className={i % 2 === 0 ? 'bg-muted/10' : ''}>
 											<td className="px-3 py-1.5 font-medium">{m.month}</td>
 											<td className="px-3 py-1.5 text-center">{m.invoiceCount}</td>
-											<td className="px-3 py-1.5 text-right">{formatCurrency(m.revenue)}</td>
+											<td className="px-3 py-1.5 text-right">
+												{formatCurrency(gstExclusive ? m.revenue - m.taxCollected : m.revenue)}
+											</td>
 											<td className="px-3 py-1.5 text-right text-orange-600">
 												{formatCurrency(m.discounts)}
 											</td>
 											<td className="px-3 py-1.5 text-right font-medium">
-												{formatCurrency(m.netRevenue)}
+												{formatCurrency(
+													gstExclusive ? m.netRevenue - m.taxCollected : m.netRevenue
+												)}
 											</td>
 											<td className="px-3 py-1.5 text-right text-blue-600">
 												{formatCurrency(m.taxCollected)}
@@ -1674,7 +1699,12 @@ function PnlTab() {
 												{formatCurrency(m.outstanding)}
 											</td>
 											<td className="px-3 py-1.5 text-right text-purple-600">
-												{m.invoiceCount > 0 ? formatCurrency(m.revenue / m.invoiceCount) : '—'}
+												{m.invoiceCount > 0
+													? formatCurrency(
+															(gstExclusive ? m.revenue - m.taxCollected : m.revenue) /
+																m.invoiceCount
+														)
+													: '—'}
 											</td>
 										</tr>
 									))}
@@ -1684,11 +1714,17 @@ function PnlTab() {
 										<tr className="border-t-2 bg-muted/20 font-bold">
 											<td className="px-3 py-2">TOTAL</td>
 											<td className="px-3 py-2 text-center">{t.invoiceCount}</td>
-											<td className="px-3 py-2 text-right">{formatCurrency(t.revenue)}</td>
+											<td className="px-3 py-2 text-right">
+												{formatCurrency(gstExclusive ? t.revenue - t.taxCollected : t.revenue)}
+											</td>
 											<td className="px-3 py-2 text-right text-orange-600">
 												{formatCurrency(t.discounts)}
 											</td>
-											<td className="px-3 py-2 text-right">{formatCurrency(t.netRevenue)}</td>
+											<td className="px-3 py-2 text-right">
+												{formatCurrency(
+													gstExclusive ? t.netRevenue - t.taxCollected : t.netRevenue
+												)}
+											</td>
 											<td className="px-3 py-2 text-right text-blue-600">
 												{formatCurrency(t.taxCollected)}
 											</td>
@@ -1699,7 +1735,12 @@ function PnlTab() {
 												{formatCurrency(t.outstanding)}
 											</td>
 											<td className="px-3 py-2 text-right text-purple-600">
-												{t.invoiceCount > 0 ? formatCurrency(t.revenue / t.invoiceCount) : '—'}
+												{t.invoiceCount > 0
+													? formatCurrency(
+															(gstExclusive ? t.revenue - t.taxCollected : t.revenue) /
+																t.invoiceCount
+														)
+													: '—'}
 											</td>
 										</tr>
 									</tfoot>
@@ -1760,29 +1801,57 @@ function PnlTab() {
 // ── Aging / Outstanding Report ───────────────────────────────────────────────
 
 const AGING_BUCKETS = [
-	{ label: '0–30 days', max: 30, cls: 'bg-green-500/10  text-green-700  dark:text-green-400' },
-	{ label: '31–60 days', max: 60, cls: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400' },
-	{ label: '61–90 days', max: 90, cls: 'bg-orange-500/10 text-orange-700 dark:text-orange-400' },
-	{ label: '90+ days', max: Infinity, cls: 'bg-destructive/10 text-destructive' },
+	{
+		label: '0–30 days',
+		max: 30,
+		cls: 'bg-green-500/10  text-green-700  dark:text-green-400',
+		barCls: 'bg-green-500',
+	},
+	{
+		label: '31–60 days',
+		max: 60,
+		cls: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
+		barCls: 'bg-yellow-500',
+	},
+	{
+		label: '61–90 days',
+		max: 90,
+		cls: 'bg-orange-500/10 text-orange-700 dark:text-orange-400',
+		barCls: 'bg-orange-500',
+	},
+	{ label: '90+ days', max: Infinity, cls: 'bg-destructive/10 text-destructive', barCls: 'bg-destructive' },
 ];
+
+type AgingView = 'bucket' | 'customer';
+type AgingSort = 'amount' | 'oldest' | 'newest';
 
 function AgingTab() {
 	const { data: invoices = [], isLoading } = useInvoices(500);
+	const [search, setSearch] = useState('');
+	const [view, setView] = useState<AgingView>('bucket');
+	const [sort, setSort] = useState<AgingSort>('amount');
+	const [open, setOpen] = useState<number | null>(null);
 
-	const unpaid = invoices.filter((inv) => inv.status === 'pending' || inv.status === 'partial');
+	const nowMs = Date.now();
 
-	const now = Date.now();
-
-	function ageDays(inv: (typeof unpaid)[0]) {
-		return Math.floor((now - new Date(inv.createdAt).getTime()) / 86_400_000);
+	function ageDays(inv: (typeof invoices)[0]) {
+		return Math.floor((nowMs - new Date(inv.createdAt).getTime()) / 86_400_000);
 	}
 
-	function bucket(age: number) {
+	function bucketIdx(age: number) {
 		if (age <= 30) return 0;
 		if (age <= 60) return 1;
 		if (age <= 90) return 2;
 		return 3;
 	}
+
+	const unpaid = invoices.filter(
+		(inv) =>
+			(inv.status === 'pending' || inv.status === 'partial') &&
+			(search.trim() === '' ||
+				inv.invoiceNo?.toLowerCase().includes(search.toLowerCase()) ||
+				(inv.customer?.name ?? '').toLowerCase().includes(search.toLowerCase()))
+	);
 
 	const buckets: { total: number; count: number; invoices: typeof unpaid }[] = AGING_BUCKETS.map(() => ({
 		total: 0,
@@ -1791,15 +1860,84 @@ function AgingTab() {
 	}));
 
 	for (const inv of unpaid) {
-		const b = bucket(ageDays(inv));
+		const b = bucketIdx(ageDays(inv));
 		const pending = parseFloat(String(inv.total ?? 0)) - parseFloat(String(inv.paidAmount ?? 0));
 		buckets[b].total += pending;
 		buckets[b].count += 1;
 		buckets[b].invoices.push(inv);
 	}
 
+	// Sort each bucket
+	for (const b of buckets) {
+		b.invoices.sort((a, z) => {
+			if (sort === 'oldest') return ageDays(z) - ageDays(a);
+			if (sort === 'newest') return ageDays(a) - ageDays(z);
+			// amount desc
+			const dueA = parseFloat(String(a.total ?? 0)) - parseFloat(String(a.paidAmount ?? 0));
+			const dueZ = parseFloat(String(z.total ?? 0)) - parseFloat(String(z.paidAmount ?? 0));
+			return dueZ - dueA;
+		});
+	}
+
 	const grandTotal = buckets.reduce((s, b) => s + b.total, 0);
-	const [open, setOpen] = useState<number | null>(null);
+	const atRisk = buckets[2].total + buckets[3].total; // 60+ days
+	const avgAge = unpaid.length > 0 ? Math.round(unpaid.reduce((s, inv) => s + ageDays(inv), 0) / unpaid.length) : 0;
+
+	// Customer-grouped view
+	type CustRow = { name: string; total: number; invoices: typeof unpaid; maxAge: number };
+	const custMap = new Map<string, CustRow>();
+	for (const inv of unpaid) {
+		const name = inv.customer?.name ?? '(Unknown)';
+		const due = parseFloat(String(inv.total ?? 0)) - parseFloat(String(inv.paidAmount ?? 0));
+		const age = ageDays(inv);
+		const existing = custMap.get(name);
+		if (existing) {
+			existing.total += due;
+			existing.invoices.push(inv);
+			existing.maxAge = Math.max(existing.maxAge, age);
+		} else {
+			custMap.set(name, { name, total: due, invoices: [inv], maxAge: age });
+		}
+	}
+	const custRows = [...custMap.values()].sort((a, b) => b.total - a.total);
+
+	// WhatsApp reminder for a single invoice
+	function sendWhatsAppReminder(inv: (typeof unpaid)[0], due: number) {
+		const customerName = inv.customer?.name ?? 'Sir/Madam';
+		const phone = (inv.customer as any)?.phone ?? '';
+		const msg = [
+			`Dear ${customerName},`,
+			``,
+			`This is a gentle reminder that invoice *${inv.invoiceNo}* for *₹${due.toLocaleString('en-IN')}* is pending.`,
+			`Invoice date: ${new Date(inv.createdAt).toLocaleDateString('en-IN')}`,
+			`Outstanding since: ${ageDays(inv)} days`,
+			``,
+			`Kindly clear the dues at your earliest convenience.`,
+			``,
+			`Thank you,\n_Sent via Execora_`,
+		].join('\n');
+		const url = phone
+			? `https://wa.me/91${phone.replace(/\D/g, '').slice(-10)}?text=${encodeURIComponent(msg)}`
+			: `https://wa.me/?text=${encodeURIComponent(msg)}`;
+		window.open(url, '_blank');
+	}
+
+	// Bulk WhatsApp — one message listing all overdue customers
+	function sendBulkReminder() {
+		if (custRows.length === 0) return;
+		const lines = custRows
+			.slice(0, 10)
+			.map((c) => `• ${c.name}: ₹${c.total.toLocaleString('en-IN')} (${c.maxAge}d)`);
+		const msg = [
+			`📋 *Outstanding Dues Summary*`,
+			``,
+			...lines,
+			``,
+			`Total: ₹${grandTotal.toLocaleString('en-IN')}`,
+			`_Generated via Execora_`,
+		].join('\n');
+		window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+	}
 
 	if (isLoading) {
 		return (
@@ -1811,74 +1949,272 @@ function AgingTab() {
 
 	return (
 		<div className="space-y-4">
-			{/* Summary */}
-			<Card className="border-none shadow-sm">
-				<CardHeader className="pb-2">
-					<CardTitle className="text-sm">Total Outstanding</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<p className="text-3xl font-extrabold tabular-nums">{formatCurrency(grandTotal)}</p>
-					<p className="mt-1 text-xs text-muted-foreground">{unpaid.length} unpaid / partial invoices</p>
-				</CardContent>
-			</Card>
+			{/* ── KPI summary row ─────────────────────────────────────────── */}
+			<div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+				{[
+					{
+						label: 'Total Outstanding',
+						value: formatCurrency(grandTotal),
+						sub: `${unpaid.length} invoices`,
+						cls: 'text-destructive',
+					},
+					{
+						label: 'At-Risk (60+ days)',
+						value: formatCurrency(atRisk),
+						sub: `${buckets[2].count + buckets[3].count} invoices`,
+						cls: 'text-orange-600',
+					},
+					{ label: 'Avg Age', value: `${avgAge}d`, sub: 'average overdue days', cls: 'text-yellow-600' },
+					{
+						label: '90+ Days',
+						value: formatCurrency(buckets[3].total),
+						sub: `${buckets[3].count} invoices`,
+						cls: 'text-destructive font-bold',
+					},
+				].map((k) => (
+					<Card key={k.label} className="border-none shadow-sm">
+						<CardContent className="p-4">
+							<p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+								{k.label}
+							</p>
+							<p className={`mt-1.5 text-xl font-bold tabular-nums ${k.cls}`}>{k.value}</p>
+							<p className="mt-0.5 text-[10px] text-muted-foreground">{k.sub}</p>
+						</CardContent>
+					</Card>
+				))}
+			</div>
 
-			{/* Buckets */}
-			{AGING_BUCKETS.map((def, idx) => (
-				<div key={def.label}>
-					<button
-						className={`w-full rounded-xl border p-4 text-left transition-all hover:shadow-md ${open === idx ? 'border-primary/40 shadow-md' : 'bg-card'}`}
-						onClick={() => setOpen(open === idx ? null : idx)}
+			{/* ── Toolbar: search + view toggle + sort + bulk WA ─────────── */}
+			<div className="flex flex-wrap items-center gap-2">
+				<input
+					type="search"
+					placeholder="Search customer or invoice…"
+					value={search}
+					onChange={(e) => setSearch(e.target.value)}
+					className="h-8 flex-1 rounded-md border bg-background px-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary min-w-[180px]"
+				/>
+				<div className="flex rounded-lg border overflow-hidden text-xs font-semibold">
+					{(['bucket', 'customer'] as AgingView[]).map((v) => (
+						<button
+							key={v}
+							onClick={() => setView(v)}
+							className={`px-3 py-1.5 transition-colors ${view === v ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+						>
+							{v === 'bucket' ? '📂 Bucket' : '👤 Customer'}
+						</button>
+					))}
+				</div>
+				<select
+					value={sort}
+					onChange={(e) => setSort(e.target.value as AgingSort)}
+					className="h-8 rounded-md border bg-background px-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+				>
+					<option value="amount">Sort: Highest Amount</option>
+					<option value="oldest">Sort: Oldest First</option>
+					<option value="newest">Sort: Newest First</option>
+				</select>
+				{unpaid.length > 0 && (
+					<Button
+						size="sm"
+						onClick={sendBulkReminder}
+						className="bg-green-500 hover:bg-green-600 text-white border-green-500 h-8 text-xs"
 					>
-						<div className="flex items-center justify-between">
-							<div className="flex items-center gap-3">
-								<span
-									className={`inline-flex items-center rounded-lg px-3 py-1 text-xs font-semibold ${def.cls}`}
-								>
-									{def.label}
-								</span>
-								<span className="text-xs text-muted-foreground">{buckets[idx].count} invoices</span>
-							</div>
-							<p className="text-base font-bold tabular-nums">{formatCurrency(buckets[idx].total)}</p>
-						</div>
-						{grandTotal > 0 && (
-							<div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-								<div
-									className="h-full rounded-full bg-primary transition-all"
-									style={{ width: `${(buckets[idx].total / grandTotal) * 100}%` }}
-								/>
-							</div>
-						)}
-					</button>
+						<Share2 className="mr-1.5 h-3.5 w-3.5" /> Bulk Remind
+					</Button>
+				)}
+			</div>
 
-					{/* Expanded invoice list */}
-					{open === idx && buckets[idx].invoices.length > 0 && (
-						<div className="mt-1 overflow-hidden rounded-xl border bg-card">
-							<div className="divide-y">
-								{buckets[idx].invoices.map((inv) => {
-									const due =
-										parseFloat(String(inv.total ?? 0)) - parseFloat(String(inv.paidAmount ?? 0));
-									return (
-										<div
-											key={inv.id}
-											className="flex items-center justify-between px-4 py-2.5 text-sm"
+			{/* ── BUCKET VIEW ─────────────────────────────────────────────── */}
+			{view === 'bucket' && (
+				<div className="space-y-3">
+					{AGING_BUCKETS.map((def, idx) => (
+						<div key={def.label}>
+							<button
+								className={`w-full rounded-xl border p-4 text-left transition-all hover:shadow-md ${open === idx ? 'border-primary/40 shadow-md' : 'bg-card'}`}
+								onClick={() => setOpen(open === idx ? null : idx)}
+							>
+								<div className="flex items-center justify-between">
+									<div className="flex items-center gap-3">
+										<span
+											className={`inline-flex items-center rounded-lg px-3 py-1 text-xs font-semibold ${def.cls}`}
 										>
-											<div>
-												<p className="font-medium">{inv.invoiceNo}</p>
-												<p className="text-xs text-muted-foreground">
-													{inv.customer?.name ?? ''} · {ageDays(inv)}d old
-												</p>
+											{def.label}
+										</span>
+										<span className="text-xs text-muted-foreground">
+											{buckets[idx].count} invoices
+										</span>
+									</div>
+									<div className="flex items-center gap-3">
+										<p className="text-base font-bold tabular-nums">
+											{formatCurrency(buckets[idx].total)}
+										</p>
+										<span className="text-xs text-muted-foreground">
+											{open === idx ? '▲' : '▼'}
+										</span>
+									</div>
+								</div>
+								{grandTotal > 0 && (
+									<div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+										<div
+											className={`h-full rounded-full transition-all ${def.barCls}`}
+											style={{ width: `${(buckets[idx].total / grandTotal) * 100}%` }}
+										/>
+									</div>
+								)}
+							</button>
+
+							{open === idx && buckets[idx].invoices.length > 0 && (
+								<div className="mt-1 overflow-hidden rounded-xl border bg-card">
+									<div className="divide-y">
+										{buckets[idx].invoices.map((inv) => {
+											const due =
+												parseFloat(String(inv.total ?? 0)) -
+												parseFloat(String(inv.paidAmount ?? 0));
+											const age = ageDays(inv);
+											return (
+												<div
+													key={inv.id}
+													className="flex items-center justify-between px-4 py-2.5 gap-3"
+												>
+													<div className="min-w-0 flex-1">
+														<p className="truncate font-medium text-sm">{inv.invoiceNo}</p>
+														<p className="text-xs text-muted-foreground">
+															{inv.customer?.name ?? '—'} ·{' '}
+															{new Date(inv.createdAt).toLocaleDateString('en-IN')} ·{' '}
+															<span
+																className={
+																	age > 90
+																		? 'text-destructive font-semibold'
+																		: age > 60
+																			? 'text-orange-600'
+																			: ''
+																}
+															>
+																{age}d old
+															</span>
+														</p>
+													</div>
+													<div className="flex items-center gap-2 shrink-0">
+														<p className="font-semibold tabular-nums text-destructive text-sm">
+															{formatCurrency(due)}
+														</p>
+														<button
+															onClick={(e) => {
+																e.stopPropagation();
+																sendWhatsAppReminder(inv, due);
+															}}
+															title="Send WhatsApp reminder"
+															className="rounded-full p-1.5 bg-green-500/10 text-green-700 hover:bg-green-500/20 transition-colors"
+														>
+															<Share2 className="h-3.5 w-3.5" />
+														</button>
+													</div>
+												</div>
+											);
+										})}
+									</div>
+								</div>
+							)}
+						</div>
+					))}
+				</div>
+			)}
+
+			{/* ── CUSTOMER VIEW ───────────────────────────────────────────── */}
+			{view === 'customer' && (
+				<div className="space-y-2">
+					{custRows.length === 0 ? (
+						<div className="rounded-lg border-2 border-dashed p-8 text-center text-muted-foreground">
+							<p className="text-sm">No outstanding dues</p>
+						</div>
+					) : (
+						custRows.map((cust) => {
+							const worstBucket = bucketIdx(cust.maxAge);
+							const worstDef = AGING_BUCKETS[worstBucket];
+							return (
+								<div key={cust.name} className="rounded-xl border bg-card p-4">
+									<div className="flex items-start justify-between gap-3">
+										<div className="min-w-0 flex-1">
+											<div className="flex items-center gap-2 flex-wrap">
+												<p className="font-semibold text-sm truncate">{cust.name}</p>
+												<span
+													className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${worstDef.cls}`}
+												>
+													up to {cust.maxAge}d
+												</span>
 											</div>
-											<p className="font-semibold tabular-nums text-destructive">
-												{formatCurrency(due)}
+											<p className="mt-0.5 text-xs text-muted-foreground">
+												{cust.invoices.length} invoice{cust.invoices.length > 1 ? 's' : ''}
 											</p>
 										</div>
-									);
-								})}
-							</div>
-						</div>
+										<div className="flex items-center gap-2 shrink-0">
+											<p className="font-bold tabular-nums text-destructive">
+												{formatCurrency(cust.total)}
+											</p>
+											<button
+												onClick={() => {
+													// Send reminder for most overdue invoice of this customer
+													const oldest = cust.invoices.reduce((a, b) =>
+														ageDays(a) > ageDays(b) ? a : b
+													);
+													const due =
+														parseFloat(String(oldest.total ?? 0)) -
+														parseFloat(String(oldest.paidAmount ?? 0));
+													sendWhatsAppReminder(oldest, cust.total);
+												}}
+												title="Send WhatsApp reminder"
+												className="rounded-full p-1.5 bg-green-500/10 text-green-700 hover:bg-green-500/20 transition-colors"
+											>
+												<Share2 className="h-3.5 w-3.5" />
+											</button>
+										</div>
+									</div>
+									{/* Invoice breakdown */}
+									<div className="mt-3 space-y-1">
+										{cust.invoices.map((inv) => {
+											const due =
+												parseFloat(String(inv.total ?? 0)) -
+												parseFloat(String(inv.paidAmount ?? 0));
+											const age = ageDays(inv);
+											const bIdx = bucketIdx(age);
+											return (
+												<div
+													key={inv.id}
+													className="flex items-center justify-between text-xs text-muted-foreground"
+												>
+													<span className="truncate">
+														{inv.invoiceNo} ·{' '}
+														{new Date(inv.createdAt).toLocaleDateString('en-IN')}
+													</span>
+													<div className="flex items-center gap-2 shrink-0 ml-2">
+														<span
+															className={`font-semibold ${AGING_BUCKETS[bIdx].cls.split(' ')[1]}`}
+														>
+															{age}d
+														</span>
+														<span className="tabular-nums font-semibold text-foreground">
+															{formatCurrency(due)}
+														</span>
+													</div>
+												</div>
+											);
+										})}
+									</div>
+								</div>
+							);
+						})
 					)}
 				</div>
-			))}
+			)}
+
+			{/* ── Empty state ─────────────────────────────────────────────── */}
+			{unpaid.length === 0 && (
+				<div className="rounded-lg border-2 border-dashed p-10 text-center text-muted-foreground">
+					<CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-green-500 opacity-60" />
+					<p className="text-sm font-medium">All clear! No outstanding dues</p>
+					<p className="mt-1 text-xs">{search ? 'No matches for your search' : 'All invoices are paid'}</p>
+				</div>
+			)}
 		</div>
 	);
 }
