@@ -421,8 +421,14 @@ export function useCustomerLedger(customerId: string, limit = 30) {
 export function useRecordPayment() {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: (data: { customerId: string; amount: number; paymentMode: string; notes?: string }) =>
-			ledgerApi.recordPayment(data),
+		mutationFn: (data: {
+			customerId: string;
+			amount: number;
+			paymentMode: string;
+			notes?: string;
+			reference?: string;
+			paymentDate?: string;
+		}) => ledgerApi.recordPayment(data),
 		onSuccess: (_d, vars) => {
 			qc.invalidateQueries({ queryKey: ['ledger', vars.customerId] });
 			qc.invalidateQueries({ queryKey: ['customer', vars.customerId] });

@@ -20,6 +20,8 @@ export async function ledgerRoutes(fastify: FastifyInstance) {
 						amount: { type: 'number', exclusiveMinimum: 0 },
 						paymentMode: { type: 'string', enum: ['cash', 'upi', 'card', 'other'] },
 						notes: { type: 'string', maxLength: 500 },
+						reference: { type: 'string', maxLength: 200 },
+						paymentDate: { type: 'string' },
 					},
 					additionalProperties: false,
 				},
@@ -32,6 +34,8 @@ export async function ledgerRoutes(fastify: FastifyInstance) {
 					amount: number;
 					paymentMode: 'cash' | 'upi' | 'card' | 'other';
 					notes?: string;
+					reference?: string;
+					paymentDate?: string;
 				};
 			}>
 		) => {
@@ -39,7 +43,9 @@ export async function ledgerRoutes(fastify: FastifyInstance) {
 				request.body.customerId,
 				request.body.amount,
 				request.body.paymentMode,
-				request.body.notes
+				request.body.notes,
+				request.body.reference,
+				request.body.paymentDate ? new Date(request.body.paymentDate) : undefined
 			);
 			const tid = (request as any).user?.tenantId;
 			if (tid)

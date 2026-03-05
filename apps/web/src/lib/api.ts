@@ -484,7 +484,14 @@ export const productApi = {
 export const ledgerApi = {
 	getByCustomer: (customerId: string, limit = 30) =>
 		request<{ entries: LedgerEntry[] }>(`/api/v1/ledger/${customerId}?limit=${limit}`),
-	recordPayment: (data: { customerId: string; amount: number; paymentMode: string; notes?: string }) => {
+	recordPayment: (data: {
+		customerId: string;
+		amount: number;
+		paymentMode: string;
+		notes?: string;
+		reference?: string;
+		paymentDate?: string;
+	}) => {
 		// Backend enum: cash | upi | card | other — map 'bank' to 'other'
 		const mode = data.paymentMode === 'bank' ? 'other' : data.paymentMode;
 		return request<{ entry: LedgerEntry }>('/api/v1/ledger/payment', {

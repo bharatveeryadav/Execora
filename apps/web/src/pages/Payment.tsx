@@ -26,7 +26,8 @@ const paymentMethods = [
 const Payment = () => {
 	const navigate = useNavigate();
 	const [method, setMethod] = useState('cash');
-	const [amount, setAmount] = useState('500');
+	const [amount, setAmount] = useState('');
+	const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().slice(0, 10));
 	const [applyTo, setApplyTo] = useState('specific');
 	const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([]);
 	const [reference, setReference] = useState('');
@@ -99,6 +100,8 @@ const Payment = () => {
 						amount: parseFloat(sp.amount),
 						paymentMode: sp.method,
 						notes: notes || undefined,
+						reference: reference || undefined,
+						paymentDate,
 					});
 				}
 				toast({
@@ -111,6 +114,8 @@ const Payment = () => {
 					amount: paymentAmount,
 					paymentMode: method,
 					notes: notes || undefined,
+					reference: reference || undefined,
+					paymentDate,
 				});
 				toast({
 					title: '✅ Payment Recorded',
@@ -285,7 +290,7 @@ const Payment = () => {
 							</div>
 							{/* Quick amount presets */}
 							<div className="flex flex-wrap gap-1.5 pt-0.5">
-								{['100', '500', '1000', '2000', '5000'].map((p) => (
+								{['50', '100', '200', '500', '1000', '2000', '5000', '10000'].map((p) => (
 									<button
 										key={p}
 										type="button"
@@ -429,6 +434,27 @@ const Payment = () => {
 							/>
 						</div>
 
+						{/* Payment Date */}
+						<div className="space-y-1.5">
+							<Label className="text-xs">Payment Date</Label>
+							<Input
+								type="date"
+								value={paymentDate}
+								max={new Date().toISOString().slice(0, 10)}
+								onChange={(e) => setPaymentDate(e.target.value)}
+							/>
+							{paymentDate !== new Date().toISOString().slice(0, 10) && (
+								<p className="text-[11px] text-amber-600 dark:text-amber-400">
+									📅 Backdated entry — saved as{' '}
+									{new Date(paymentDate + 'T00:00:00').toLocaleDateString('en-IN', {
+										day: '2-digit',
+										month: 'short',
+										year: 'numeric',
+									})}
+								</p>
+							)}
+						</div>
+
 						{/* Apply To */}
 						<div className="space-y-3">
 							<Label className="text-xs">Apply To</Label>
@@ -453,7 +479,6 @@ const Payment = () => {
 								</div>
 							</RadioGroup>
 						</div>
-
 						{/* Select Invoices */}
 						{applyTo === 'specific' && (
 							<div className="space-y-2">
@@ -464,26 +489,32 @@ const Payment = () => {
 											{selectedCustomer ? 'No outstanding invoices' : 'Select a customer first'}
 										</p>
 									) : (
-										customerInvoices.map((inv) => (
-											<div key={inv.id} className="flex items-start gap-2">
-												<Checkbox
-													checked={selectedInvoiceIds.includes(inv.id)}
-													onCheckedChange={() => toggleInvoice(inv.id)}
-													className="mt-0.5"
-												/>
-												<span
-													className={`text-sm ${inv.status === 'pending' || inv.status === 'partial' ? 'text-destructive' : 'text-foreground'}`}
-												>
-													{inv.invoiceNo} ·{' '}
-													{new Date(inv.createdAt).toLocaleDateString('en-IN', {
-														day: '2-digit',
-														month: 'short',
-														year: 'numeric',
-													})}{' '}
-													· {formatCurrency(parseFloat(String(inv.total)))} · {inv.status}
-												</span>
-											</div>
-										))
+										<>
+											<p className="text-[11px] text-amber-600 dark:text-amber-400 pb-1">
+												⚠️ Selection applies oldest-first by default; specific-invoice
+												allocation coming soon
+											</p>
+											{customerInvoices.map((inv) => (
+												<div key={inv.id} className="flex items-start gap-2">
+													<Checkbox
+														checked={selectedInvoiceIds.includes(inv.id)}
+														onCheckedChange={() => toggleInvoice(inv.id)}
+														className="mt-0.5"
+													/>
+													<span
+														className={`text-sm ${inv.status === 'pending' || inv.status === 'partial' ? 'text-destructive' : 'text-foreground'}`}
+													>
+														{inv.invoiceNo} ·{' '}
+														{new Date(inv.createdAt).toLocaleDateString('en-IN', {
+															day: '2-digit',
+															month: 'short',
+															year: 'numeric',
+														})}{' '}
+														· {formatCurrency(parseFloat(String(inv.total)))} · {inv.status}
+													</span>
+												</div>
+											))}
+										</>
 									)}
 								</div>
 							</div>
@@ -566,7 +597,16 @@ const Payment = () => {
 							{receiptDialog.customer.phone && (
 								<a
 									href={`https://wa.me/91${receiptDialog.customer.phone.replace(/\D/g, '')}?text=${encodeURIComponent(
-										`Hi ${receiptDialog.customer.name}, we received your payment of ₹${receiptDialog.amount.toLocaleString('en-IN')}. Thank you! 🙏`
+										[
+											`Hi ${receiptDialog.customer.name}, we received your payment of *₹${receiptDialog.amount.toLocaleString('en-IN')}* via ${method.toUpperCase()}.`,
+											reference ? `Reference: ${reference}` : '',
+											newBalance <= 0
+												? 'Your account is now *fully cleared* ✅'
+												: `Remaining balance: *₹${Math.max(0, newBalance).toLocaleString('en-IN')}*`,
+											'Thank you! 🙏 — Execora',
+										]
+											.filter(Boolean)
+											.join('\n')
 									)}`}
 									target="_blank"
 									rel="noreferrer"
