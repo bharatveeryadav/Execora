@@ -1845,13 +1845,17 @@ function AgingTab() {
 		return 3;
 	}
 
-	const unpaid = invoices.filter(
-		(inv) =>
-			(inv.status === 'pending' || inv.status === 'partial') &&
-			(search.trim() === '' ||
-				inv.invoiceNo?.toLowerCase().includes(search.toLowerCase()) ||
-				(inv.customer?.name ?? '').toLowerCase().includes(search.toLowerCase()))
-	);
+	const unpaid = invoices.filter((inv) => {
+		if (inv.status !== 'pending' && inv.status !== 'partial') return false;
+		// Guard: exclude invoices where outstanding balance is zero or negative
+		const balance = parseFloat(String(inv.total ?? 0)) - parseFloat(String(inv.paidAmount ?? 0));
+		if (balance <= 0) return false;
+		if (search.trim() === '') return true;
+		return (
+			inv.invoiceNo?.toLowerCase().includes(search.toLowerCase()) ||
+			(inv.customer?.name ?? '').toLowerCase().includes(search.toLowerCase())
+		);
+	});
 
 	const buckets: { total: number; count: number; invoices: typeof unpaid }[] = AGING_BUCKETS.map(() => ({
 		total: 0,
@@ -1861,7 +1865,7 @@ function AgingTab() {
 
 	for (const inv of unpaid) {
 		const b = bucketIdx(ageDays(inv));
-		const pending = parseFloat(String(inv.total ?? 0)) - parseFloat(String(inv.paidAmount ?? 0));
+		const pending = Math.max(0, parseFloat(String(inv.total ?? 0)) - parseFloat(String(inv.paidAmount ?? 0)));
 		buckets[b].total += pending;
 		buckets[b].count += 1;
 		buckets[b].invoices.push(inv);
