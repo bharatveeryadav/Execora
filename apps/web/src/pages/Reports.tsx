@@ -652,10 +652,80 @@ function Gstr1Tab() {
 	const emailMutation = useEmailReport();
 	const [emailAddr, setEmailAddr] = useState('');
 	const [emailSent, setEmailSent] = useState(false);
+	const [gstrMonth, setGstrMonth] = useState<string>('all');
+	const [showGstr3b, setShowGstr3b] = useState(false);
 
 	const fyStart = parseInt(fy.split('-')[0]);
 	const fyFrom = `${fyStart}-04-01`;
 	const fyTo = `${fyStart + 1}-03-31`;
+
+	// FY month list: Apr(fyStart)…Dec(fyStart), Jan…Mar(fyStart+1)
+	const FY_MONTHS: { value: string; label: string }[] = [
+		...Array.from({ length: 9 }, (_, i) => {
+			const m = i + 4;
+			return {
+				value: `${fyStart}-${String(m).padStart(2, '0')}`,
+				label: new Date(fyStart, m - 1, 1).toLocaleString('en-IN', { month: 'short' }),
+			};
+		}),
+		...Array.from({ length: 3 }, (_, i) => {
+			const m = i + 1;
+			return {
+				value: `${fyStart + 1}-${String(m).padStart(2, '0')}`,
+				label: new Date(fyStart + 1, m - 1, 1).toLocaleString('en-IN', { month: 'short' }),
+			};
+		}),
+	];
+
+	// Parse date string robustly (ISO or DD/MM/YYYY)
+	function parseInvDate(ds: string): string {
+		if (!ds) return '';
+		if (/^\d{4}-\d{2}-\d{2}/.test(ds)) return ds.slice(0, 7); // ISO → YYYY-MM
+		const parts = ds.split('/');
+		if (parts.length === 3) return `${parts[2]}-${parts[1].padStart(2, '0')}`; // DD/MM/YYYY
+		return '';
+	}
+
+	const filteredB2b =
+		gstrMonth === 'all'
+			? (report?.b2b ?? [])
+			: (report?.b2b ?? []).filter((r) => parseInvDate(r.invoiceDate) === gstrMonth);
+	const filteredB2cs =
+		gstrMonth === 'all'
+			? (report?.b2cs ?? [])
+			: (report?.b2cs ?? []).filter((r) => parseInvDate((r as any).invoiceDate ?? '') === gstrMonth);
+
+	// GSTIN validation
+	const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+	const isValidGstin = (g: string) => GSTIN_RE.test((g ?? '').toUpperCase());
+
+	// Pre-flight issues
+	const supplierStateCode = report?.gstin?.slice(0, 2) ?? '';
+	const invalidGstinRows = filteredB2b.filter((r) => r.receiverGstin && !isValidGstin(r.receiverGstin));
+	const missingHsnRows = (report?.hsn ?? []).filter((r) => !r.hsnCode || r.hsnCode.trim() === '');
+	const b2clCandidates = filteredB2cs.filter((r) => {
+		const posState = (r.placeOfSupply ?? '').slice(0, 2);
+		return supplierStateCode && posState && posState !== supplierStateCode && r.taxableValue > 250000;
+	});
+	const preflight = invalidGstinRows.length + missingHsnRows.length + b2clCandidates.length;
+
+	// Filing due date for selected month
+	const nowDate = new Date();
+	const dueDateStr = (() => {
+		let dueMonth: number, dueYear: number;
+		if (gstrMonth === 'all') {
+			dueMonth = 4;
+			dueYear = fyStart + 1; // Apr-11 after FY end (March)
+		} else {
+			const [y, m] = gstrMonth.split('-').map(Number);
+			dueMonth = m === 12 ? 1 : m + 1;
+			dueYear = m === 12 ? y + 1 : y;
+		}
+		return new Date(dueYear, dueMonth - 1, 11);
+	})();
+	const daysUntilDue = Math.ceil((dueDateStr.getTime() - nowDate.getTime()) / 86_400_000);
+	const dueFmt = dueDateStr.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+	const lateFeePerDay = 50; // ₹50/day (₹25 CGST + ₹25 SGST)
 
 	const handleEmail = async () => {
 		if (!emailAddr) return;
@@ -727,6 +797,73 @@ function Gstr1Tab() {
 				</div>
 			</div>
 
+			{/* Month selector tabs */}
+			<div className="flex flex-nowrap gap-1 overflow-x-auto pb-1">
+				<button
+					onClick={() => setGstrMonth('all')}
+					className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${gstrMonth === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/70'}`}
+				>
+					Full FY
+				</button>
+				{FY_MONTHS.map((m) => (
+					<button
+						key={m.value}
+						onClick={() => setGstrMonth(m.value)}
+						className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${gstrMonth === m.value ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/70'}`}
+					>
+						{m.label}
+					</button>
+				))}
+			</div>
+
+			{/* Filing due date banner */}
+			<div
+				className={`flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-3 text-sm ${daysUntilDue < 0 ? 'bg-destructive/10 text-destructive' : daysUntilDue <= 5 ? 'bg-orange-50 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400' : 'bg-primary/5 text-primary'}`}
+			>
+				<span className="font-medium">
+					{daysUntilDue < 0
+						? `⚠️ GSTR-1 filing overdue since ${dueFmt}`
+						: daysUntilDue === 0
+							? `🔴 GSTR-1 due TODAY (${dueFmt})`
+							: `📅 GSTR-1 due: ${dueFmt} (${daysUntilDue} days away)`}
+				</span>
+				{daysUntilDue < 0 && (
+					<span className="font-semibold">
+						Approx late fee: ₹{(Math.abs(daysUntilDue) * lateFeePerDay).toLocaleString('en-IN')} (₹
+						{lateFeePerDay}/day)
+					</span>
+				)}
+			</div>
+
+			{/* Pre-flight check */}
+			{preflight > 0 && (
+				<div className="rounded-xl border border-orange-300 bg-orange-50 p-4 dark:border-orange-800 dark:bg-orange-950/30">
+					<p className="mb-2 text-sm font-semibold text-orange-800 dark:text-orange-300">
+						⚠️ Pre-filing Issues ({preflight} found) — fix before uploading to GST portal
+					</p>
+					<ul className="space-y-1 text-xs text-orange-700 dark:text-orange-400">
+						{invalidGstinRows.length > 0 && (
+							<li>
+								• {invalidGstinRows.length} B2B invoice{invalidGstinRows.length > 1 ? 's' : ''} with
+								invalid/missing GSTIN (highlighted in red below)
+							</li>
+						)}
+						{missingHsnRows.length > 0 && (
+							<li>
+								• {missingHsnRows.length} HSN summary entr{missingHsnRows.length > 1 ? 'ies' : 'y'} with
+								blank HSN code — portal error CTB-AT001
+							</li>
+						)}
+						{b2clCandidates.length > 0 && (
+							<li>
+								• {b2clCandidates.length} B2CS entr{b2clCandidates.length > 1 ? 'ies' : 'y'} should be
+								B2CL (inter-state &gt; ₹2.5L) — portal will reject
+							</li>
+						)}
+					</ul>
+				</div>
+			)}
+
 			{/* Summary cards */}
 			{t && (
 				<div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -773,10 +910,13 @@ function Gstr1Tab() {
 			)}
 
 			{/* B2B table */}
-			{report && report.b2b.length > 0 && (
+			{report && filteredB2b.length > 0 && (
 				<Card className="border-none shadow-sm">
 					<CardHeader className="pb-2">
-						<CardTitle className="text-sm">4A — B2B Invoices ({report.b2b.length})</CardTitle>
+						<CardTitle className="text-sm">
+							4A — B2B Invoices ({filteredB2b.length}
+							{gstrMonth !== 'all' && ` in ${FY_MONTHS.find((m) => m.value === gstrMonth)?.label}`})
+						</CardTitle>
 					</CardHeader>
 					<CardContent className="p-0">
 						<div className="overflow-x-auto">
@@ -803,9 +943,18 @@ function Gstr1Tab() {
 									</tr>
 								</thead>
 								<tbody>
-									{report.b2b.map((row, i) => (
+									{filteredB2b.map((row, i) => (
 										<tr key={i} className={i % 2 === 0 ? 'bg-muted/10' : ''}>
-											<td className="px-3 py-1.5 font-mono">{row.receiverGstin}</td>
+											<td
+												className={`px-3 py-1.5 font-mono ${!isValidGstin(row.receiverGstin) ? 'text-destructive font-semibold' : ''}`}
+												title={
+													!isValidGstin(row.receiverGstin)
+														? 'Invalid GSTIN format'
+														: undefined
+												}
+											>
+												{row.receiverGstin || '—'}
+											</td>
 											<td className="px-3 py-1.5">{row.receiverName}</td>
 											<td className="px-3 py-1.5">{row.invoiceNo}</td>
 											<td className="px-3 py-1.5">{row.invoiceDate}</td>
@@ -881,10 +1030,13 @@ function Gstr1Tab() {
 			)}
 
 			{/* B2CS table */}
-			{report && (report.b2cs?.length ?? 0) > 0 && (
+			{report && filteredB2cs.length > 0 && (
 				<Card className="border-none shadow-sm">
 					<CardHeader className="pb-2">
-						<CardTitle className="text-sm">7 — B2C Small ({report.b2cs!.length} entries)</CardTitle>
+						<CardTitle className="text-sm">
+							7 — B2CS ({filteredB2cs.length} entries
+							{b2clCandidates.length > 0 ? ` · ${b2clCandidates.length} B2CL ⚠️` : ''})
+						</CardTitle>
 					</CardHeader>
 					<CardContent className="p-0">
 						<div className="overflow-x-auto">
@@ -911,9 +1063,22 @@ function Gstr1Tab() {
 									</tr>
 								</thead>
 								<tbody>
-									{report.b2cs!.map((row, i) => (
-										<tr key={i} className={i % 2 === 0 ? 'bg-muted/10' : ''}>
-											<td className="px-3 py-1.5">{row.supplyType}</td>
+									{filteredB2cs.map((row, i) => (
+										<tr
+											key={i}
+											className={`${i % 2 === 0 ? 'bg-muted/10' : ''} ${b2clCandidates.includes(row) ? 'border-l-2 border-orange-400' : ''}`}
+										>
+											<td className="px-3 py-1.5">
+												{row.supplyType}
+												{b2clCandidates.includes(row) && (
+													<span
+														className="ml-1 font-bold text-orange-600"
+														title="Should be B2CL (inter-state >₹2.5L)"
+													>
+														⚠️ B2CL
+													</span>
+												)}
+											</td>
 											<td className="px-3 py-1.5">{row.placeOfSupply}</td>
 											<td className="px-3 py-1.5 text-right">{row.gstRate}%</td>
 											<td className="px-3 py-1.5 text-right">
@@ -929,6 +1094,106 @@ function Gstr1Tab() {
 							</table>
 						</div>
 					</CardContent>
+				</Card>
+			)}
+
+			{/* GSTR-3B estimated liability (collapsible) */}
+			{report && t && (
+				<Card className="border-none shadow-sm">
+					<CardHeader className="pb-2">
+						<button
+							className="flex w-full items-center justify-between text-left"
+							onClick={() => setShowGstr3b((v) => !v)}
+						>
+							<CardTitle className="text-sm">🧾 Estimated GSTR-3B Liability</CardTitle>
+							<span className="text-xs text-muted-foreground">{showGstr3b ? '▲ Hide' : '▼ Show'}</span>
+						</button>
+					</CardHeader>
+					{showGstr3b && (
+						<CardContent className="space-y-3">
+							<p className="text-[11px] text-muted-foreground">
+								Auto-computed from invoices. Verify EXP / NIL / RCM amounts on GST portal before filing
+								GSTR-3B.
+							</p>
+							<div className="overflow-x-auto rounded-lg border">
+								<table className="w-full text-xs">
+									<thead>
+										<tr className="border-b bg-muted/30">
+											{['Section', 'Taxable Value', 'IGST', 'CGST', 'SGST', 'CESS'].map((h) => (
+												<th
+													key={h}
+													className="px-3 py-2 text-left font-semibold text-muted-foreground"
+												>
+													{h}
+												</th>
+											))}
+										</tr>
+									</thead>
+									<tbody>
+										<tr className="bg-muted/10">
+											<td className="px-3 py-2 font-medium">3.1(a) Outward taxable</td>
+											<td className="px-3 py-2 text-right">
+												{formatCurrency(t.totalTaxableValue)}
+											</td>
+											<td className="px-3 py-2 text-right text-orange-600">
+												{formatCurrency(t.totalIgst)}
+											</td>
+											<td className="px-3 py-2 text-right text-blue-600">
+												{formatCurrency(t.totalCgst)}
+											</td>
+											<td className="px-3 py-2 text-right text-purple-600">
+												{formatCurrency(t.totalSgst)}
+											</td>
+											<td className="px-3 py-2 text-right text-gray-500">
+												{formatCurrency(t.totalCess)}
+											</td>
+										</tr>
+										<tr>
+											<td className="px-3 py-2 font-medium text-muted-foreground">
+												3.1(b) Zero-rated / EXP
+											</td>
+											<td className="px-3 py-2 text-right text-muted-foreground">—</td>
+											<td className="px-3 py-2 text-right text-muted-foreground" colSpan={4}>
+												Verify on portal
+											</td>
+										</tr>
+										<tr className="bg-muted/10">
+											<td className="px-3 py-2 font-medium text-muted-foreground">
+												3.1(c) NIL / Exempt
+											</td>
+											<td className="px-3 py-2 text-right text-muted-foreground">—</td>
+											<td className="px-3 py-2 text-right text-muted-foreground" colSpan={4}>
+												Verify on portal
+											</td>
+										</tr>
+									</tbody>
+									<tfoot>
+										<tr className="border-t-2 font-bold">
+											<td className="px-3 py-2">Net Tax Payable</td>
+											<td className="px-3 py-2 text-right">
+												{formatCurrency(t.totalInvoiceValue)}
+											</td>
+											<td className="px-3 py-2 text-right text-orange-600">
+												{formatCurrency(t.totalIgst)}
+											</td>
+											<td className="px-3 py-2 text-right text-blue-600">
+												{formatCurrency(t.totalCgst)}
+											</td>
+											<td className="px-3 py-2 text-right text-purple-600">
+												{formatCurrency(t.totalSgst)}
+											</td>
+											<td className="px-3 py-2 text-right text-gray-500">
+												{formatCurrency(t.totalCess)}
+											</td>
+										</tr>
+									</tfoot>
+								</table>
+							</div>
+							<p className="text-[11px] text-muted-foreground">
+								💡 Less: ITC available from GSTR-2B (check GST portal — not computed here)
+							</p>
+						</CardContent>
+					)}
 				</Card>
 			)}
 
@@ -991,6 +1256,7 @@ function PnlTab() {
 
 	// Comparison period defaults to same period of previous month
 	const [showCompare, setShowCompare] = useState(false);
+	const [gstExclusive, setGstExclusive] = useState(false);
 	const [compareFrom, setCompareFrom] = useState(() => {
 		const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 		return d.toISOString().slice(0, 10);
@@ -999,6 +1265,31 @@ function PnlTab() {
 		const d = new Date(now.getFullYear(), now.getMonth(), 0);
 		return d.toISOString().slice(0, 10);
 	});
+
+	// Indian FY quick presets
+	const pnlFmt = (d: Date) => d.toISOString().slice(0, 10);
+	const fyYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+	const PL_PRESETS = [
+		{ label: 'This Month', from: pnlFmt(new Date(now.getFullYear(), now.getMonth(), 1)), to: pnlFmt(now) },
+		{
+			label: 'Last Month',
+			from: pnlFmt(new Date(now.getFullYear(), now.getMonth() - 1, 1)),
+			to: pnlFmt(new Date(now.getFullYear(), now.getMonth(), 0)),
+		},
+		{ label: 'This FY', from: `${fyYear}-04-01`, to: pnlFmt(now) },
+		{ label: 'Last FY', from: `${fyYear - 1}-04-01`, to: `${fyYear}-03-31` },
+		{
+			label: 'Last 3M',
+			from: pnlFmt(new Date(now.getFullYear(), now.getMonth() - 3, now.getDate())),
+			to: pnlFmt(now),
+		},
+		{
+			label: 'Last 6M',
+			from: pnlFmt(new Date(now.getFullYear(), now.getMonth() - 6, now.getDate())),
+			to: pnlFmt(now),
+		},
+	];
+	const activePreset = PL_PRESETS.find((p) => p.from === from && p.to === to)?.label ?? 'Custom';
 
 	const {
 		data: report,
@@ -1019,6 +1310,25 @@ function PnlTab() {
 		if (!emailAddr) return;
 		await emailMutation.mutateAsync({ type: 'pnl', from, to, email: emailAddr });
 		setEmailSent(true);
+	};
+
+	const handlePnlWhatsApp = () => {
+		if (!t) return;
+		const revDisplay = gstExclusive
+			? (t.revenue - t.taxCollected).toLocaleString('en-IN')
+			: t.revenue.toLocaleString('en-IN');
+		const msg = [
+			`📊 *P&L Report — ${from} → ${to}*`,
+			``,
+			`💰 Revenue: ₹${revDisplay}${gstExclusive ? ' (excl. GST)' : ''}`,
+			`✅ Collected: ₹${t.collected.toLocaleString('en-IN')} (${t.collectionRate.toFixed(1)}%)`,
+			`📝 Outstanding: ₹${t.outstanding.toLocaleString('en-IN')}`,
+			`🧾 GST Collected: ₹${t.taxCollected.toLocaleString('en-IN')}`,
+			`📄 Invoices: ${t.invoiceCount}`,
+			``,
+			`_Generated via Execora_`,
+		].join('\n');
+		window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
 	};
 
 	if (isLoading)
@@ -1049,6 +1359,35 @@ function PnlTab() {
 
 	return (
 		<div className="space-y-5">
+			{/* Indian FY Period Presets */}
+			<div className="flex flex-nowrap gap-1.5 overflow-x-auto pb-1">
+				{PL_PRESETS.map((p) => (
+					<button
+						key={p.label}
+						onClick={() => {
+							setFrom(p.from);
+							setTo(p.to);
+						}}
+						className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+							activePreset === p.label
+								? 'bg-primary text-primary-foreground'
+								: 'bg-muted text-muted-foreground hover:bg-muted/70'
+						}`}
+					>
+						{p.label}
+					</button>
+				))}
+				<button
+					className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+						activePreset === 'Custom'
+							? 'bg-primary text-primary-foreground'
+							: 'bg-muted text-muted-foreground hover:bg-muted/70'
+					}`}
+				>
+					Custom
+				</button>
+			</div>
+
 			{/* Date range + actions */}
 			<div className="flex flex-wrap items-center justify-between gap-3">
 				<div className="flex flex-wrap items-center gap-2">
@@ -1089,6 +1428,22 @@ function PnlTab() {
 					>
 						<FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" /> CSV
 					</Button>
+					<Button
+						variant={gstExclusive ? 'default' : 'outline'}
+						size="sm"
+						onClick={() => setGstExclusive((v) => !v)}
+						title="Toggle between GST-inclusive and GST-exclusive revenue"
+					>
+						{gstExclusive ? '🧾 Excl. GST' : '🧾 Incl. GST'}
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={handlePnlWhatsApp}
+						className="bg-green-500 text-white hover:bg-green-600 border-green-500"
+					>
+						<Share2 className="mr-1.5 h-3.5 w-3.5" /> WhatsApp
+					</Button>
 				</div>
 			</div>
 
@@ -1127,8 +1482,16 @@ function PnlTab() {
 			{t && (
 				<div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
 					{[
-						{ label: 'Revenue', value: formatCurrency(t.revenue), sub: `${t.invoiceCount} invoices` },
-						{ label: 'Net Revenue', value: formatCurrency(t.netRevenue), sub: 'After discounts' },
+						{
+							label: gstExclusive ? 'Revenue (excl. GST)' : 'Revenue',
+							value: formatCurrency(gstExclusive ? t.revenue - t.taxCollected : t.revenue),
+							sub: `${t.invoiceCount} invoices`,
+						},
+						{
+							label: gstExclusive ? 'Net Rev (excl. GST)' : 'Net Revenue',
+							value: formatCurrency(gstExclusive ? t.netRevenue - t.taxCollected : t.netRevenue),
+							sub: 'After discounts',
+						},
 						{
 							label: 'Collected',
 							value: formatCurrency(t.collected),
@@ -1251,6 +1614,9 @@ function PnlTab() {
 								/>
 							</BarChart>
 						</ResponsiveContainer>
+						<p className="mt-2 text-center text-[10px] text-muted-foreground">
+							Q1 Apr–Jun&nbsp;·&nbsp;Q2 Jul–Sep&nbsp;·&nbsp;Q3 Oct–Dec&nbsp;·&nbsp;Q4 Jan–Mar
+						</p>
 					</CardContent>
 				</Card>
 			)}
@@ -1275,6 +1641,7 @@ function PnlTab() {
 											'Tax',
 											'Collected',
 											'Outstanding',
+											'Avg Invoice',
 										].map((h) => (
 											<th
 												key={h}
@@ -1306,6 +1673,9 @@ function PnlTab() {
 											<td className="px-3 py-1.5 text-right text-red-600">
 												{formatCurrency(m.outstanding)}
 											</td>
+											<td className="px-3 py-1.5 text-right text-purple-600">
+												{m.invoiceCount > 0 ? formatCurrency(m.revenue / m.invoiceCount) : '—'}
+											</td>
 										</tr>
 									))}
 								</tbody>
@@ -1327,6 +1697,9 @@ function PnlTab() {
 											</td>
 											<td className="px-3 py-2 text-right text-red-600">
 												{formatCurrency(t.outstanding)}
+											</td>
+											<td className="px-3 py-2 text-right text-purple-600">
+												{t.invoiceCount > 0 ? formatCurrency(t.revenue / t.invoiceCount) : '—'}
 											</td>
 										</tr>
 									</tfoot>
