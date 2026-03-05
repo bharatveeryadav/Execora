@@ -170,14 +170,18 @@ function OverviewTab({ period }: { period: string }) {
 	const collectionRate = totalSales > 0 ? Math.round((totalPayments / totalSales) * 100) : 0;
 	const pendingAmount = summary?.pendingAmount ?? 0;
 
+	// Pre-filter invoices to selected period (reused throughout)
+	const periodInvoices = invoices.filter((inv) => {
+		if (inv.status === 'cancelled') return false;
+		const d = new Date(inv.createdAt).toISOString().slice(0, 10);
+		return d >= periodRange.from && d <= periodRange.to;
+	});
+
 	// GST from invoices in period
-	const gstCollected = invoices
-		.filter((inv) => {
-			if (inv.status === 'cancelled') return false;
-			const d = new Date(inv.createdAt).toISOString().slice(0, 10);
-			return d >= periodRange.from && d <= periodRange.to;
-		})
-		.reduce((sum, inv) => sum + parseFloat(String((inv as any).gstAmount ?? (inv as any).taxAmount ?? 0)), 0);
+	const gstCollected = periodInvoices.reduce(
+		(sum, inv) => sum + parseFloat(String((inv as any).gstAmount ?? (inv as any).taxAmount ?? 0)),
+		0
+	);
 
 	// Period comparison helpers
 	const prevTotalSales = prevSummary?.totalSales ?? 0;
@@ -205,20 +209,38 @@ function OverviewTab({ period }: { period: string }) {
 		window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
 	};
 
-	const salesByDay = new Map<string, number>();
-	for (const inv of invoices) {
-		if (inv.status === 'cancelled') continue;
-		const day = String(new Date(inv.createdAt).getDate());
-		salesByDay.set(day, (salesByDay.get(day) ?? 0) + parseFloat(String(inv.total)));
+	// Sales trend — adaptive granularity per period
+	const salesTrendMap = new Map<string, number>();
+	const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+	const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+	const isFY = period === 'This FY';
+	const isWeek = period === 'This Week' || period === 'Last Week';
+	const isDay = period === 'Today' || period === 'Yesterday';
+	for (const inv of periodInvoices) {
+		const d = new Date(inv.createdAt);
+		let key: string;
+		if (isFY) {
+			key = MONTH_NAMES[d.getMonth()];
+		} else if (isWeek) {
+			key = DAY_NAMES[d.getDay()];
+		} else if (isDay) {
+			key = String(d.getHours()).padStart(2, '0') + 'h';
+		} else {
+			key = String(d.getDate());
+		}
+		salesTrendMap.set(key, (salesTrendMap.get(key) ?? 0) + parseFloat(String(inv.total)));
 	}
-	const salesTrendData = Array.from(salesByDay.entries())
-		.sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
-		.map(([day, sales]) => ({ day, sales: Math.round(sales) }));
+	// Sort trend data in chronological order
+	const salesTrendData = (() => {
+		const entries = Array.from(salesTrendMap.entries()).map(([day, sales]) => ({ day, sales: Math.round(sales) }));
+		if (isFY) return entries.sort((a, b) => MONTH_NAMES.indexOf(a.day) - MONTH_NAMES.indexOf(b.day));
+		if (isWeek) return entries.sort((a, b) => DAY_NAMES.indexOf(a.day) - DAY_NAMES.indexOf(b.day));
+		return entries.sort((a, b) => parseInt(a.day) - parseInt(b.day));
+	})();
 
 	const productRevMap = new Map<string, number>();
 	const productUnitsMap = new Map<string, number>();
-	for (const inv of invoices) {
-		if (inv.status === 'cancelled') continue;
+	for (const inv of periodInvoices) {
 		for (const item of inv.items ?? []) {
 			const name = item.product?.name ?? item.productName ?? 'Unknown';
 			const rev = parseFloat(String(item.itemTotal ?? 0));
@@ -327,7 +349,7 @@ function OverviewTab({ period }: { period: string }) {
 						emoji: '📦',
 						label: 'Invoices',
 						color: 'bg-green-50 text-green-700 border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800',
-						value: String(invoices.filter((inv) => inv.status !== 'cancelled').length),
+						value: String(periodInvoices.length),
 					},
 				].map((tile) => (
 					<Card
@@ -1491,7 +1513,7 @@ function AgingTab() {
 // ── Main Reports page ─────────────────────────────────────────────────────────
 
 const Reports = () => {
-	const [activePeriod, setActivePeriod] = useState<string>('Today');
+	const [activePeriod, setActivePeriod] = useState<string>('This Month');
 	const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>('Overview');
 	const navigate = useNavigate();
 	useWsInvalidation(['summary', 'invoices', 'customers', 'products']);
