@@ -668,6 +668,8 @@ const InvoiceCreation = ({
 				setCreatedInvoiceNo(res.invoice?.invoiceNo ?? 'INV-NEW');
 			}
 			void qc.invalidateQueries({ queryKey: ['invoices'] });
+			void qc.invalidateQueries({ queryKey: ['customers'] });
+			void qc.invalidateQueries({ queryKey: ['summary'] });
 		} catch (err: unknown) {
 			const e = err as {
 				body?: {

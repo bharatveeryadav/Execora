@@ -17,12 +17,12 @@ import { wsClient } from '@/lib/ws';
 // Each WS event type maps to the list of query-key prefixes to invalidate.
 // Extend this map as new real-time events are added to the API.
 export const WS_EVENT_QUERIES: Record<string, string[][]> = {
-	'invoice:created': [['invoices'], ['summary']],
+	'invoice:created': [['invoices'], ['summary'], ['customers']],
 	'invoice:confirmed': [['invoices'], ['summary'], ['customers']],
 	'invoice:updated': [['invoices']],
 	'invoice:cancelled': [['invoices'], ['summary'], ['customers']],
 	'invoice:draft': [['invoices']],
-	'payment:recorded': [['customers'], ['summary'], ['ledger'], ['cashbook']],
+	'payment:recorded': [['customers'], ['summary'], ['ledger'], ['cashbook'], ['invoices']],
 	'customer:created': [['customers'], ['summary']],
 	'customer:deleted': [['customers'], ['summary']],
 	'customer:updated': [['customers']],

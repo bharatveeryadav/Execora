@@ -227,6 +227,7 @@ export function useCreateInvoice() {
 		}) => invoiceApi.create(data),
 		onSuccess: () => {
 			qc.invalidateQueries({ queryKey: ['invoices'] });
+			qc.invalidateQueries({ queryKey: ['customers'] });
 			qc.invalidateQueries({ queryKey: QK.summary });
 		},
 	});
@@ -433,6 +434,7 @@ export function useRecordPayment() {
 			qc.invalidateQueries({ queryKey: ['ledger', vars.customerId] });
 			qc.invalidateQueries({ queryKey: ['customer', vars.customerId] });
 			qc.invalidateQueries({ queryKey: ['customers'] });
+			qc.invalidateQueries({ queryKey: ['invoices'] });
 			qc.invalidateQueries({ queryKey: QK.summary });
 		},
 	});
