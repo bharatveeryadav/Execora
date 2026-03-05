@@ -141,6 +141,7 @@ export async function customerRoutes(fastify: FastifyInstance) {
 			landmark?: string;
 			notes?: string;
 			openingBalance?: number;
+			creditLimit?: number;
 			tags?: string[];
 		};
 	}>(
@@ -158,6 +159,7 @@ export async function customerRoutes(fastify: FastifyInstance) {
 						landmark: { type: 'string', maxLength: 255 },
 						notes: { type: 'string', maxLength: 1000 },
 						openingBalance: { type: 'number' },
+						creditLimit: { type: 'number', minimum: 0 },
 						tags: { type: 'array', items: { type: 'string' } },
 					},
 					additionalProperties: false,
@@ -165,13 +167,14 @@ export async function customerRoutes(fastify: FastifyInstance) {
 			},
 		},
 		async (request, reply) => {
-			const { openingBalance, email, tags, ...rest } = request.body;
+			const { openingBalance, creditLimit, email, tags, ...rest } = request.body;
 			const customer = await customerService.createCustomer(rest);
 
 			// Apply extra fields that createCustomer doesn't handle
 			const extras: any = {};
 			if (email) extras.email = email;
 			if (tags?.length) extras.tags = tags;
+			if (creditLimit !== undefined && creditLimit > 0) extras.creditLimit = creditLimit;
 			if (Object.keys(extras).length) await customerService.updateProfile(customer.id, extras);
 
 			if (openingBalance && openingBalance > 0) await customerService.updateBalance(customer.id, openingBalance);
