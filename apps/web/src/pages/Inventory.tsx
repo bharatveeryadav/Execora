@@ -15,6 +15,9 @@ import {
 	CheckCircle,
 	XCircle,
 	Loader2,
+	ArrowUpDown,
+	Share2,
+	Clock,
 } from 'lucide-react';
 import VoiceBar from '@/components/VoiceBar';
 import BarcodeScanner from '@/components/BarcodeScanner';
@@ -80,6 +83,13 @@ const Inventory = () => {
 	const [adjustingProduct, setAdjustingProduct] = useState<Product | null>(null);
 	const [adjustQty, setAdjustQty] = useState('1');
 	const [adjustOp, setAdjustOp] = useState<'add' | 'subtract'>('add');
+	const [adjustReason, setAdjustReason] = useState('Manual Correction');
+
+	// ── Inventory filter / sort state ─────────────────────────────────────────
+	const [stockFilter, setStockFilter] = useState<'all' | 'low' | 'out' | 'dead'>('all');
+	const [sortBy, setSortBy] = useState<'name' | 'stock' | 'value' | 'price'>('name');
+	const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+	const [deadStockDays, setDeadStockDays] = useState<30 | 60 | 90>(30);
 
 	// ── Add product state ──────────────────────────────────────────────────────
 	const [addProductOpen, setAddProductOpen] = useState(false);
@@ -265,13 +275,31 @@ const Inventory = () => {
 	const totalValue = products.reduce((sum, p) => sum + parseFloat(String(p.price)) * p.stock, 0);
 
 	// Filtered products for the main table
-	const filteredProducts = products.filter((p) => {
-		const matchesSearch =
-			p.name.toLowerCase().includes(search.toLowerCase()) ||
-			(p.category ?? '').toLowerCase().includes(search.toLowerCase());
-		const matchesCategory = category === 'All' || p.category === category;
-		return matchesSearch && matchesCategory;
-	});
+	const filteredProducts = products
+		.filter((p) => {
+			const matchesSearch =
+				p.name.toLowerCase().includes(search.toLowerCase()) ||
+				(p.category ?? '').toLowerCase().includes(search.toLowerCase());
+			const matchesCategory = category === 'All' || p.category === category;
+
+			// Stock filter tabs
+			const sold = salesMap.get(p.name)?.units ?? 0;
+			let matchesStockFilter = true;
+			if (stockFilter === 'low') matchesStockFilter = lowStockIds.has(p.id) && p.stock > 0;
+			if (stockFilter === 'out') matchesStockFilter = p.stock === 0;
+			if (stockFilter === 'dead') matchesStockFilter = sold === 0 && p.stock > 0;
+
+			return matchesSearch && matchesCategory && matchesStockFilter;
+		})
+		.sort((a, b) => {
+			let cmp = 0;
+			if (sortBy === 'name') cmp = a.name.localeCompare(b.name);
+			else if (sortBy === 'stock') cmp = a.stock - b.stock;
+			else if (sortBy === 'value')
+				cmp = parseFloat(String(a.price)) * a.stock - parseFloat(String(b.price)) * b.stock;
+			else if (sortBy === 'price') cmp = parseFloat(String(a.price)) - parseFloat(String(b.price));
+			return sortDir === 'asc' ? cmp : -cmp;
+		});
 
 	// Top selling: sorted by revenue from invoices (fallback: lowest stock first)
 	const topSelling = [...products]
@@ -543,14 +571,33 @@ const Inventory = () => {
 							<CardTitle className="text-base">
 								⚠️ Low Stock Alerts ({lowStockLoading ? '…' : lowStock.length})
 							</CardTitle>
-							<Button
-								size="sm"
-								variant="outline"
-								className="h-7 text-xs"
-								onClick={() => toast({ title: 'All items ordered!' })}
-							>
-								Order All
-							</Button>
+							<div className="flex items-center gap-2">
+								<Button
+									size="sm"
+									variant="outline"
+									className="h-7 text-xs"
+									onClick={() => {
+										const lines = lowStock
+											.filter((p) => (p.stock > 0 ? lowStockIds.has(p.id) : true))
+											.map((p) => `• ${p.name}: ${p.stock} ${p.unit}`)
+											.join('\n');
+										const msg = encodeURIComponent(
+											`⚠️ Low Stock Alert\n\n${lines}\n\nPlease arrange supply ASAP.`
+										);
+										window.open(`https://wa.me/?text=${msg}`, '_blank');
+									}}
+								>
+									<Share2 className="mr-1 h-3 w-3 text-green-600" /> WhatsApp
+								</Button>
+								<Button
+									size="sm"
+									variant="outline"
+									className="h-7 text-xs"
+									onClick={() => toast({ title: 'All items ordered!' })}
+								>
+									Order All
+								</Button>
+							</div>
 						</div>
 					</CardHeader>
 					<CardContent className="pt-0">
@@ -700,14 +747,27 @@ const Inventory = () => {
 					</CardContent>
 				</Card>
 
-				{/* Slow Moving Products */}
+				{/* Slow Moving / Dead Stock Products */}
 				<Card className="border-none shadow-sm">
 					<CardHeader className="pb-3">
-						<div className="flex items-center justify-between">
-							<CardTitle className="text-base">🐢 Slow Moving Products (Risk of Dead Stock)</CardTitle>
-							<Button size="sm" variant="ghost" className="h-7 text-xs">
-								View All
-							</Button>
+						<div className="flex items-center justify-between flex-wrap gap-2">
+							<CardTitle className="text-base">💤 Dead Stock / Slow Moving Products</CardTitle>
+							<div className="flex items-center gap-1.5">
+								<Clock className="h-3.5 w-3.5 text-muted-foreground" />
+								<span className="text-xs text-muted-foreground">No sales in</span>
+								{([30, 60, 90] as const).map((d) => (
+									<button
+										key={d}
+										onClick={() => setDeadStockDays(d)}
+										className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${deadStockDays === d ? 'bg-slate-600 text-white' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+									>
+										{d}d
+									</button>
+								))}
+								<Button size="sm" variant="ghost" className="h-7 text-xs">
+									View All
+								</Button>
+							</div>
 						</div>
 					</CardHeader>
 					<CardContent className="pt-0">
@@ -771,10 +831,102 @@ const Inventory = () => {
 					</CardContent>
 				</Card>
 
+				{/* All Products — Status Filter Tabs */}
+				<div className="flex flex-wrap gap-2">
+					{(
+						[
+							{
+								key: 'all',
+								label: 'All Items',
+								count: products.length,
+								color: 'bg-primary text-primary-foreground',
+							},
+							{
+								key: 'low',
+								label: '⚠️ Low Stock',
+								count: lowStock.filter((p) => p.stock > 0).length,
+								color: 'bg-amber-500 text-white',
+							},
+							{
+								key: 'out',
+								label: '🔴 Out of Stock',
+								count: products.filter((p) => p.stock === 0).length,
+								color: 'bg-red-500 text-white',
+							},
+							{
+								key: 'dead',
+								label: '💤 Dead Stock',
+								count: products.filter((p) => (salesMap.get(p.name)?.units ?? 0) === 0 && p.stock > 0)
+									.length,
+								color: 'bg-slate-500 text-white',
+							},
+						] as const
+					).map((t) => (
+						<button
+							key={t.key}
+							onClick={() => setStockFilter(t.key)}
+							className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all ${
+								stockFilter === t.key ? t.color : 'bg-muted text-muted-foreground hover:bg-muted/80'
+							}`}
+						>
+							{t.label}
+							<span
+								className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${stockFilter === t.key ? 'bg-white/25' : 'bg-muted-foreground/20'}`}
+							>
+								{t.count}
+							</span>
+						</button>
+					))}
+				</div>
+
 				{/* All Products */}
 				<Card className="border-none shadow-sm">
 					<CardHeader className="pb-3">
-						<CardTitle className="text-base">📋 All Products ({filteredProducts.length})</CardTitle>
+						<div className="flex items-center justify-between gap-2 flex-wrap">
+							<CardTitle className="text-base">
+								{stockFilter === 'all' && '📋 All Products'}
+								{stockFilter === 'low' && '⚠️ Low Stock Items'}
+								{stockFilter === 'out' && '🔴 Out of Stock Items'}
+								{stockFilter === 'dead' && '💤 Dead / Non-Moving Stock'}{' '}
+								<span className="text-muted-foreground font-normal">({filteredProducts.length})</span>
+							</CardTitle>
+							{/* Sort control */}
+							<div className="flex items-center gap-2">
+								<ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+								<select
+									className="rounded-md border border-input bg-background px-2 py-1 text-xs"
+									value={sortBy}
+									onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+								>
+									<option value="name">Name A→Z</option>
+									<option value="stock">Stock Qty</option>
+									<option value="value">Stock Value</option>
+									<option value="price">Price</option>
+								</select>
+								<button
+									onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}
+									className="rounded border border-input bg-background px-2 py-1 text-xs hover:bg-muted"
+									title={sortDir === 'asc' ? 'Sort ascending' : 'Sort descending'}
+								>
+									{sortDir === 'asc' ? '↑' : '↓'}
+								</button>
+							</div>
+						</div>
+						{stockFilter === 'dead' && (
+							<div className="flex items-center gap-2 mt-1">
+								<Clock className="h-3.5 w-3.5 text-muted-foreground" />
+								<span className="text-xs text-muted-foreground">No sales in</span>
+								{([30, 60, 90] as const).map((d) => (
+									<button
+										key={d}
+										onClick={() => setDeadStockDays(d)}
+										className={`rounded-full px-2 py-0.5 text-xs font-medium ${deadStockDays === d ? 'bg-slate-600 text-white' : 'bg-muted text-muted-foreground'}`}
+									>
+										{d}d
+									</button>
+								))}
+							</div>
+						)}
 					</CardHeader>
 					<CardContent className="pt-0">
 						<div className="overflow-x-auto">
@@ -785,31 +937,70 @@ const Inventory = () => {
 										<TableHead>Product</TableHead>
 										<TableHead>Stock</TableHead>
 										<TableHead>Price</TableHead>
+										<TableHead>Value</TableHead>
 										<TableHead>Category</TableHead>
-										<TableHead>Reorder?</TableHead>
+										<TableHead>Status</TableHead>
 										<TableHead className="text-right">Actions</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
 									{productsLoading ? (
 										<TableRow>
-											<TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+											<TableCell colSpan={8} className="text-center py-6 text-muted-foreground">
 												Loading…
 											</TableCell>
 										</TableRow>
 									) : filteredProducts.length === 0 ? (
 										<TableRow>
-											<TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
-												No products found
+											<TableCell colSpan={8} className="text-center py-6 text-muted-foreground">
+												{stockFilter === 'dead'
+													? `✅ No dead stock — all items have sales in the last ${deadStockDays} days`
+													: 'No products found'}
 											</TableCell>
 										</TableRow>
 									) : (
 										filteredProducts.map((p) => {
-											const isLow = lowStockIds.has(p.id) || p.stock === 0;
+											const isOut = p.stock === 0;
+											const isLow = !isOut && lowStockIds.has(p.id);
+											const isDead = !isOut && (salesMap.get(p.name)?.units ?? 0) === 0;
+											const stockValue = parseFloat(String(p.price)) * p.stock;
 											const isEditing = inlineEditId === p.id;
+
+											// RAG status badge
+											const statusBadge = isOut
+												? { label: 'Out of Stock', cls: 'bg-red-500 text-white' }
+												: isLow
+													? { label: 'Low Stock', cls: 'bg-amber-500 text-white' }
+													: isDead
+														? { label: 'Dead Stock', cls: 'bg-slate-500 text-white' }
+														: { label: 'In Stock', cls: 'bg-green-500 text-white' };
+
 											return (
-												<TableRow key={p.id}>
-													<TableCell className="text-lg">📦</TableCell>
+												<TableRow
+													key={p.id}
+													className={
+														isOut
+															? 'bg-red-50/40 dark:bg-red-950/20'
+															: isLow
+																? 'bg-amber-50/40 dark:bg-amber-950/20'
+																: isDead
+																	? 'bg-slate-50/40 dark:bg-slate-900/20'
+																	: ''
+													}
+												>
+													<TableCell>
+														<span
+															className={`inline-block w-1 h-8 rounded-full ${
+																isOut
+																	? 'bg-red-500'
+																	: isLow
+																		? 'bg-amber-500'
+																		: isDead
+																			? 'bg-slate-400'
+																			: 'bg-green-500'
+															}`}
+														/>
+													</TableCell>
 													<TableCell className="font-medium">{p.name}</TableCell>
 													<TableCell>
 														{isEditing ? (
@@ -853,16 +1044,15 @@ const Inventory = () => {
 															>
 																<span
 																	className={
-																		isLow ? 'text-destructive font-semibold' : ''
+																		isOut
+																			? 'text-red-600 font-semibold'
+																			: isLow
+																				? 'text-amber-600 font-semibold'
+																				: ''
 																	}
 																>
 																	{p.stock} {p.unit}
 																</span>
-																{isLow ? (
-																	<span className="text-destructive">🔴</span>
-																) : (
-																	<span>✅</span>
-																)}
 																<span className="invisible text-[10px] text-muted-foreground group-hover:visible">
 																	✎
 																</span>
@@ -872,15 +1062,22 @@ const Inventory = () => {
 													<TableCell>
 														{formatCurrency(parseFloat(String(p.price)))}/{p.unit}
 													</TableCell>
-													<TableCell>{p.category}</TableCell>
+													<TableCell className="font-medium text-primary">
+														{formatCurrency(stockValue)}
+													</TableCell>
 													<TableCell>
-														{isLow ? (
-															<Badge variant="destructive" className="text-[10px]">
-																YES - URGENT
-															</Badge>
-														) : (
-															'No'
+														{p.category && (
+															<span className="rounded-full bg-muted px-2 py-0.5 text-xs">
+																{p.category}
+															</span>
 														)}
+													</TableCell>
+													<TableCell>
+														<span
+															className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusBadge.cls}`}
+														>
+															{statusBadge.label}
+														</span>
 													</TableCell>
 													<TableCell className="text-right">
 														<div className="flex justify-end gap-1">
@@ -1092,6 +1289,32 @@ const Inventory = () => {
 									value={adjustQty}
 									onChange={(e) => setAdjustQty(e.target.value)}
 								/>
+							</div>
+							<div>
+								<label className="mb-1 block text-xs text-muted-foreground">Reason</label>
+								<select
+									className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+									value={adjustReason}
+									onChange={(e) => setAdjustReason(e.target.value)}
+								>
+									{adjustOp === 'add' ? (
+										<>
+											<option>Purchase Received</option>
+											<option>Return from Customer</option>
+											<option>Opening Stock Entry</option>
+											<option>Stock Transfer In</option>
+											<option>Manual Correction</option>
+										</>
+									) : (
+										<>
+											<option>Sold / Billed</option>
+											<option>Damaged / Expired</option>
+											<option>Theft / Loss</option>
+											<option>Return to Supplier</option>
+											<option>Manual Correction</option>
+										</>
+									)}
+								</select>
 							</div>
 						</div>
 						<div className="mt-4 flex gap-2">
