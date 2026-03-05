@@ -46,7 +46,8 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 								required: ['productName', 'quantity'],
 								properties: {
 									productName: { type: 'string', minLength: 1, maxLength: 255 },
-									quantity: { type: 'integer', minimum: 1 },
+									quantity:    { type: 'integer', minimum: 1 },
+									unitPrice:   { type: 'number', minimum: 0 },
 								},
 								additionalProperties: false,
 							},
@@ -80,7 +81,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 			request: FastifyRequest<{
 				Body: {
 					customerId: string;
-					items: Array<{ productName: string; quantity: number }>;
+					items: Array<{ productName: string; quantity: number; unitPrice?: number }>;
 					notes?: string;
 					discountPercent?: number;
 					discountAmount?: number;
@@ -153,7 +154,8 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 								required: ['productName', 'quantity'],
 								properties: {
 									productName: { type: 'string', minLength: 1, maxLength: 255 },
-									quantity: { type: 'integer', minimum: 1 },
+									quantity:    { type: 'integer', minimum: 1 },
+									unitPrice:   { type: 'number', minimum: 0 },
 								},
 								additionalProperties: false,
 							},
@@ -232,7 +234,8 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 								required: ['productName', 'quantity'],
 								properties: {
 									productName: { type: 'string', minLength: 1, maxLength: 255 },
-									quantity: { type: 'integer', minimum: 1 },
+									quantity:    { type: 'integer', minimum: 1 },
+									unitPrice:   { type: 'number', minimum: 0 },
 								},
 								additionalProperties: false,
 							},
@@ -253,7 +256,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 			request: FastifyRequest<{
 				Params: { id: string };
 				Body: {
-					items?: Array<{ productName: string; quantity: number }>;
+					items?: Array<{ productName: string; quantity: number; unitPrice?: number }>;
 					notes?: string;
 					discountPercent?: number;
 					discountAmount?: number;

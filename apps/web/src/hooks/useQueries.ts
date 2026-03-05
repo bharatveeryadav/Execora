@@ -214,7 +214,7 @@ export function useCreateInvoice() {
 	return useMutation({
 		mutationFn: (data: {
 			customerId: string;
-			items: { productName: string; quantity: number }[];
+			items: { productName: string; quantity: number; unitPrice?: number }[];
 			notes?: string;
 			discountPercent?: number;
 			discountAmount?: number;

@@ -516,7 +516,11 @@ class InvoiceService {
 					const { product, autoCreated } = await this.findOrCreateProduct(tx, item.productName);
 					if (autoCreated) autoCreatedProducts.push(product.name);
 
-					const unitPrice = parseFloat(product.price.toString());
+					// Use caller-supplied price (from UI) over DB price; fallback to DB catalog price
+					const unitPrice =
+						item.unitPrice != null && item.unitPrice > 0
+							? item.unitPrice
+							: parseFloat(product.price.toString());
 					const itemSubtotal = Math.round(unitPrice * item.quantity * 100) / 100;
 
 					let cgst = 0,

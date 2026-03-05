@@ -384,8 +384,9 @@ export const invoiceApi = {
 	create: (
 		data: {
 			customerId: string;
-			items: { productName: string; quantity: number }[];
+			items: { productName: string; quantity: number; unitPrice?: number }[];
 			notes?: string;
+			overrideCreditLimit?: boolean;
 		} & InvoiceCreateOptions
 	) =>
 		request<{ invoice: Invoice; autoCreatedProducts?: string[] }>('/api/v1/invoices', {
@@ -393,14 +394,18 @@ export const invoiceApi = {
 			body: JSON.stringify(data),
 		}),
 	proforma: (
-		data: { customerId: string; items: { productName: string; quantity: number }[]; notes?: string } & Omit<
-			InvoiceCreateOptions,
-			'initialPayment'
-		>
+		data: {
+			customerId: string;
+			items: { productName: string; quantity: number; unitPrice?: number }[];
+			notes?: string;
+		} & Omit<InvoiceCreateOptions, 'initialPayment'>
 	) => request<{ invoice: Invoice }>('/api/v1/invoices/proforma', { method: 'POST', body: JSON.stringify(data) }),
 	update: (
 		id: string,
-		data: { items?: { productName: string; quantity: number }[]; notes?: string } & InvoiceCreateOptions
+		data: {
+			items?: { productName: string; quantity: number; unitPrice?: number }[];
+			notes?: string;
+		} & InvoiceCreateOptions
 	) => request<{ invoice: Invoice }>(`/api/v1/invoices/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 	convertProforma: (id: string, payment?: { amount: number; method: string }) =>
 		request<{ invoice: Invoice }>(`/api/v1/invoices/${id}/convert`, {

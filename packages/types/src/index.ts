@@ -67,6 +67,8 @@ export interface CustomerSearchResult {
 export interface InvoiceItemInput {
 	productName: string;
 	quantity: number;
+	/** Override product catalog price (₹). When provided, used instead of product.price in DB. */
+	unitPrice?: number;
 }
 
 // Business execution result

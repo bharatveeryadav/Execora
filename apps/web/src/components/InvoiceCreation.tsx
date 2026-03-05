@@ -641,7 +641,11 @@ const InvoiceCreation = ({
 
 		const invItems =
 			items.length > 0
-				? items.map((it) => ({ productName: it.name, quantity: parseInt(it.qty) || 1 }))
+				? items.map((it) => ({
+						productName: it.name,
+						quantity: parseInt(it.qty) || 1,
+						unitPrice: it.price > 0 ? it.price : undefined,
+					}))
 				: [{ productName: 'General Items', quantity: 1 }];
 
 		const opts = {
@@ -842,7 +846,11 @@ const InvoiceCreation = ({
 			items.filter((it) => it.name.trim()).length > 0
 				? items
 						.filter((it) => it.name.trim())
-						.map((it) => ({ productName: it.name, quantity: parseInt(it.qty) || 1 }))
+						.map((it) => ({
+							productName: it.name,
+							quantity: parseInt(it.qty) || 1,
+							unitPrice: it.price > 0 ? it.price : undefined,
+						}))
 				: [{ productName: 'General Items', quantity: 1 }];
 		const opts = {
 			withGst: withGst || undefined,
