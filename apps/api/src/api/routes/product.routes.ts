@@ -15,6 +15,40 @@ export async function productRoutes(fastify: FastifyInstance) {
 		return { products };
 	});
 
+	// ── GET /api/v1/products/expiring?days=30 ────────────────────────────────────
+	fastify.get('/api/v1/products/expiring', async (request: FastifyRequest<{ Querystring: { days?: string } }>) => {
+		const days = Math.min(parseInt(String(request.query.days ?? 30), 10) || 30, 365);
+		const batches = await productService.getExpiringBatches(days);
+		return { batches };
+	});
+
+	// ── GET /api/v1/products/expiry-page?filter=30d ──────────────────────────────
+	fastify.get(
+		'/api/v1/products/expiry-page',
+		async (
+			request: FastifyRequest<{
+				Querystring: { filter?: string };
+			}>
+		) => {
+			const filter = (
+				['expired', '7d', '30d', '90d', 'all'].includes(request.query.filter ?? '')
+					? request.query.filter
+					: '30d'
+			) as 'expired' | '7d' | '30d' | '90d' | 'all';
+			return productService.getExpiryPage(filter);
+		}
+	);
+
+	// ── PATCH /api/v1/products/batches/:id/write-off ─────────────────────────────
+	fastify.patch<{ Params: { id: string } }>('/api/v1/products/batches/:id/write-off', async (request, reply) => {
+		try {
+			const result = await productService.writeOffBatch(request.params.id);
+			return result;
+		} catch (err: any) {
+			return reply.code(404).send({ error: err.message });
+		}
+	});
+
 	// ── GET /api/v1/products/barcode/:barcode — look up product by barcode/EAN ──
 	fastify.get<{ Params: { barcode: string } }>('/api/v1/products/barcode/:barcode', async (request, reply) => {
 		const { barcode } = request.params;

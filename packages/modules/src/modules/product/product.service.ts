@@ -224,6 +224,114 @@ class ProductService {
 
 		return product?.stock || 0;
 	}
+
+	/**
+	 * Returns products with batches expiring within `days` days.
+	 * Used for expiry alert widget on the dashboard.
+	 */
+	async getExpiringBatches(days = 30) {
+		const now = new Date();
+		const future = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+		return prisma.productBatch.findMany({
+			where: {
+				tenantId: tenantContext.get().tenantId,
+				expiryDate: { gte: now, lte: future },
+				quantity: { gt: 0 },
+			},
+			include: { product: { select: { name: true, unit: true } } },
+			orderBy: { expiryDate: 'asc' },
+			take: 20,
+		});
+	}
+
+	/**
+	 * Full expiry management page data.
+	 * filter: 'expired' | '7d' | '30d' | '90d' | 'all'
+	 */
+	async getExpiryPage(filter: 'expired' | '7d' | '30d' | '90d' | 'all' = '30d') {
+		const { tenantId } = tenantContext.get();
+		const now = new Date();
+		const days = (n: number) => new Date(now.getTime() + n * 24 * 60 * 60 * 1000);
+
+		let where: Record<string, unknown> = { tenantId };
+
+		if (filter === 'expired') {
+			where.expiryDate = { lt: now };
+		} else if (filter === '7d') {
+			where.expiryDate = { gte: now, lte: days(7) };
+			where.quantity = { gt: 0 };
+		} else if (filter === '30d') {
+			where.expiryDate = { gte: now, lte: days(30) };
+			where.quantity = { gt: 0 };
+		} else if (filter === '90d') {
+			where.expiryDate = { gte: now, lte: days(90) };
+			where.quantity = { gt: 0 };
+		} else {
+			// all — still only show batches with stock
+			where.quantity = { gt: 0 };
+		}
+
+		const batches = await prisma.productBatch.findMany({
+			where,
+			include: {
+				product: { select: { name: true, unit: true, category: true } },
+			},
+			orderBy: { expiryDate: 'asc' },
+		});
+
+		// Summary stats (always computed across all batches)
+		const all = await prisma.productBatch.findMany({
+			where: { tenantId },
+			select: { expiryDate: true, quantity: true, purchasePrice: true },
+		});
+		const expiredCount = all.filter((b) => b.expiryDate < now && b.quantity > 0).length;
+		const critical7 = all.filter((b) => b.expiryDate >= now && b.expiryDate <= days(7) && b.quantity > 0).length;
+		const warning30 = all.filter((b) => b.expiryDate >= now && b.expiryDate <= days(30) && b.quantity > 0).length;
+		const valueAtRisk = all
+			.filter((b) => b.expiryDate <= days(30) && b.quantity > 0)
+			.reduce((sum, b) => sum + b.quantity * Number(b.purchasePrice ?? 0), 0);
+
+		return {
+			batches,
+			summary: { expiredCount, critical7, warning30, valueAtRisk },
+		};
+	}
+
+	/**
+	 * Write off a batch (mark qty = 0, status = written_off).
+	 */
+	async writeOffBatch(batchId: string) {
+		const { tenantId } = tenantContext.get();
+		const batch = await prisma.productBatch.findFirst({ where: { id: batchId, tenantId } });
+		if (!batch) throw new Error('Batch not found');
+		await prisma.productBatch.update({
+			where: { id: batchId },
+			data: { quantity: 0, status: 'written_off' },
+		});
+		// Log stock movement
+		const productData = await prisma.product.findUnique({
+			where: { id: batch.productId },
+			select: { stock: true },
+		});
+		const prevStock = productData?.stock ?? 0;
+		await prisma.stockMovement
+			.create({
+				data: {
+					tenantId,
+					productId: batch.productId,
+					batchId: batch.id,
+					type: 'expired',
+					quantity: -batch.quantity,
+					previousStock: prevStock,
+					newStock: Math.max(0, prevStock - batch.quantity),
+					notes: `Write-off: batch ${batch.batchNo} (expiry ${batch.expiryDate.toISOString().split('T')[0]})`,
+				},
+			})
+			.catch(() => {
+				/* stockMovement table may not exist yet */
+			});
+		return { ok: true, batchNo: batch.batchNo, qtyWrittenOff: batch.quantity };
+	}
 }
 
 export const productService = new ProductService();

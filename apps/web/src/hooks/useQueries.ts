@@ -97,6 +97,27 @@ export function useCustomer(id: string) {
 	});
 }
 
+export function useLastOrder(customerId: string) {
+	return useQuery<{
+		id: string;
+		invoiceNo: string;
+		total: string;
+		items: Array<{ productName: string; quantity: string }>;
+	} | null>({
+		queryKey: ['lastOrder', customerId],
+		queryFn: async () => {
+			try {
+				const data = await customerApi.lastOrder(customerId);
+				return data.invoice ?? null;
+			} catch {
+				return null;
+			}
+		},
+		enabled: Boolean(customerId),
+		staleTime: 30_000,
+	});
+}
+
 export function useCreateCustomer() {
 	const qc = useQueryClient();
 	return useMutation({
@@ -108,6 +129,7 @@ export function useCreateCustomer() {
 			landmark?: string;
 			notes?: string;
 			openingBalance?: number;
+			creditLimit?: number;
 			tags?: string[];
 		}) => customerApi.create(data),
 		onSuccess: () => qc.invalidateQueries({ queryKey: ['customers'] }),
@@ -194,6 +216,14 @@ export function useCreateInvoice() {
 			customerId: string;
 			items: { productName: string; quantity: number }[];
 			notes?: string;
+			discountPercent?: number;
+			discountAmount?: number;
+			withGst?: boolean;
+			supplyType?: string;
+			buyerGstin?: string;
+			placeOfSupply?: string;
+			initialPayment?: { amount: number; method: string };
+			overrideCreditLimit?: boolean;
 		}) => invoiceApi.create(data),
 		onSuccess: () => {
 			qc.invalidateQueries({ queryKey: ['invoices'] });
@@ -274,6 +304,35 @@ export function useTopSellingProducts(limit = 5, days = 30) {
 		},
 		refetchInterval: 120_000,
 		staleTime: 60_000,
+	});
+}
+
+export function useExpiringBatches(days = 30) {
+	return useQuery<
+		Array<{
+			id: string;
+			batchNo: string;
+			expiryDate: string;
+			quantity: number;
+			product: { name: string; unit: string };
+		}>
+	>({
+		queryKey: ['expiringBatches', days],
+		queryFn: async () => {
+			const data = await productApi.expiringBatches(days);
+			return data.batches ?? [];
+		},
+		staleTime: 300_000,
+		refetchInterval: 300_000,
+	});
+}
+
+export function useExpiryPage(filter: 'expired' | '7d' | '30d' | '90d' | 'all' = '30d') {
+	return useQuery({
+		queryKey: ['expiryPage', filter],
+		queryFn: () => productApi.expiryPage(filter),
+		staleTime: 60_000,
+		refetchInterval: 120_000,
 	});
 }
 

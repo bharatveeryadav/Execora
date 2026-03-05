@@ -43,6 +43,7 @@ const Customers = () => {
 	const [newLandmark, setNewLandmark] = useState('');
 	const [newNotes, setNewNotes] = useState('');
 	const [newOpeningBal, setNewOpeningBal] = useState('');
+	const [newCreditLimit, setNewCreditLimit] = useState('');
 	const [newTags, setNewTags] = useState<string[]>([]);
 
 	const { data: customers = [], isLoading } = useCustomers(search, 200);
@@ -73,6 +74,7 @@ const Customers = () => {
 		setNewLandmark('');
 		setNewNotes('');
 		setNewOpeningBal('');
+		setNewCreditLimit('');
 		setNewTags([]);
 		setAddOpen(true);
 	}
@@ -88,6 +90,7 @@ const Customers = () => {
 				landmark: newLandmark || undefined,
 				notes: newNotes || undefined,
 				openingBalance: newOpeningBal ? parseFloat(newOpeningBal) : undefined,
+				creditLimit: newCreditLimit ? parseFloat(newCreditLimit) : undefined,
 				tags: newTags.length ? newTags : undefined,
 			},
 			{
@@ -453,6 +456,26 @@ const Customers = () => {
 									Customer starts with ₹{formatCurrency(parseFloat(newOpeningBal))} outstanding
 								</p>
 							)}
+						</div>
+
+						{/* Credit Limit */}
+						<div className="space-y-1.5">
+							<Label className="text-xs">Credit Limit (max outstanding allowed)</Label>
+							<div className="relative">
+								<span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+									₹
+								</span>
+								<Input
+									className="pl-7"
+									type="number"
+									min={0}
+									step="any"
+									value={newCreditLimit}
+									onChange={(e) => setNewCreditLimit(e.target.value)}
+									placeholder="Leave blank for no limit"
+									inputMode="decimal"
+								/>
+							</div>
 						</div>
 
 						{/* Notes */}

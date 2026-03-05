@@ -17,6 +17,7 @@ import Purchases from './pages/Purchases';
 import CashBook from './pages/CashBook';
 import DayBook from './pages/DayBook';
 import OverduePage from './pages/OverduePage';
+import ExpiryPage from './pages/Expiry';
 import NotFound from './pages/NotFound';
 import LoginPage from './pages/LoginPage';
 import ClassicBilling from './pages/ClassicBilling';
@@ -164,7 +165,15 @@ function AppRoutes() {
 						<ClassicBilling />
 					</ProtectedRoute>
 				}
-			/>
+			/>{' '}
+			<Route
+				path="/expiry"
+				element={
+					<ProtectedRoute>
+						<ExpiryPage />
+					</ProtectedRoute>
+				}
+			/>{' '}
 			<Route path="*" element={<NotFound />} />
 		</Routes>
 	);

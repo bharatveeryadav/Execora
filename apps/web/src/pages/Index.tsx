@@ -9,6 +9,7 @@ import AiAgentFeed from '@/components/AiAgentFeed';
 import OverduePayments from '@/components/OverduePayments';
 import UpcomingPayments from '@/components/UpcomingPayments';
 import DashboardLowStock from '@/components/DashboardLowStock';
+import DashboardExpiryAlert from '@/components/DashboardExpiryAlert';
 import RecentActivity from '@/components/RecentActivity';
 import BottomNav from '@/components/BottomNav';
 import { wsClient } from '@/lib/ws';
@@ -77,6 +78,9 @@ const Index = () => {
 
 				{/* 9 ── Low stock alerts ───────────────────────────────── */}
 				<DashboardLowStock />
+
+				{/* 10 ── Expiry alerts ─────────────────────────────────── */}
+				<DashboardExpiryAlert />
 			</main>
 			<BottomNav />
 		</div>

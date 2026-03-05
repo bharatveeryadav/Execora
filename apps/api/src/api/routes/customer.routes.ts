@@ -183,6 +183,13 @@ export async function customerRoutes(fastify: FastifyInstance) {
 		}
 	);
 
+	// ── GET /api/v1/customers/:id/last-order — for Repeat Last Bill ────────────
+	fastify.get<{ Params: { id: string } }>('/api/v1/customers/:id/last-order', async (request, reply) => {
+		const invoice = await invoiceService.getLastOrder(request.params.id);
+		if (!invoice) return reply.code(404).send({ error: 'No previous order found' });
+		return { invoice };
+	});
+
 	// ── DELETE /api/v1/customers/:id ────────────────────────────────────────────
 	fastify.delete<{ Params: { id: string } }>('/api/v1/customers/:id', async (request, reply) => {
 		const result = await customerService.deleteCustomerAndAllData(request.params.id);

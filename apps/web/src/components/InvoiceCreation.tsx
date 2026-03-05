@@ -20,6 +20,16 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
 import { wsClient } from '@/lib/ws';
@@ -123,6 +133,15 @@ const InvoiceCreation = ({
 	const [isListening, setIsListening] = useState(false);
 	const [customerSearch, setCustomerSearch] = useState('');
 	const [error, setError] = useState('');
+	const [creditLimitCtx, setCreditLimitCtx] = useState<null | {
+		customerId: string;
+		items: Array<{ productName: string; quantity: number }>;
+		opts: Record<string, unknown>;
+		customerName: string;
+		limit: number;
+		balance: number;
+		invoiceAmount: number;
+	}>(null);
 
 	// ── billing options ──────────────────────────────────────────────────────
 	const [withGst, setWithGst] = useState(false);
@@ -645,8 +664,30 @@ const InvoiceCreation = ({
 				setCreatedInvoiceNo(res.invoice?.invoiceNo ?? 'INV-NEW');
 			}
 			void qc.invalidateQueries({ queryKey: ['invoices'] });
-		} catch {
-			setError('Invoice saved locally. Sync may be pending.');
+		} catch (err: unknown) {
+			const e = err as {
+				body?: {
+					error?: string;
+					customerName?: string;
+					limit?: number;
+					currentBalance?: number;
+					invoiceAmount?: number;
+				};
+			};
+			if (e?.body?.error === 'CREDIT_LIMIT_EXCEEDED') {
+				setStep('customer'); // go back so user can see
+				setCreditLimitCtx({
+					customerId: c.id,
+					items: invItems,
+					opts,
+					customerName: e.body.customerName ?? c.name,
+					limit: e.body.limit ?? 0,
+					balance: e.body.currentBalance ?? 0,
+					invoiceAmount: e.body.invoiceAmount ?? 0,
+				});
+			} else {
+				setError('Invoice saved locally. Sync may be pending.');
+			}
 		}
 	};
 
@@ -861,9 +902,31 @@ const InvoiceCreation = ({
 			void qc.invalidateQueries({ queryKey: ['invoices'] });
 			void qc.invalidateQueries({ queryKey: ['customers'] });
 			void qc.invalidateQueries({ queryKey: ['summary'] });
-		} catch {
-			setError('Invoice save failed. Please try again.');
-			setStep('manual');
+		} catch (err: unknown) {
+			const e = err as {
+				body?: {
+					error?: string;
+					customerName?: string;
+					limit?: number;
+					currentBalance?: number;
+					invoiceAmount?: number;
+				};
+			};
+			if (e?.body?.error === 'CREDIT_LIMIT_EXCEEDED') {
+				setStep('manual');
+				setCreditLimitCtx({
+					customerId: c.id,
+					items: invItems,
+					opts,
+					customerName: e.body.customerName ?? c.name,
+					limit: e.body.limit ?? 0,
+					balance: e.body.currentBalance ?? 0,
+					invoiceAmount: e.body.invoiceAmount ?? 0,
+				});
+			} else {
+				setError('Invoice save failed. Please try again.');
+				setStep('manual');
+			}
 		}
 	};
 
@@ -1598,11 +1661,77 @@ const InvoiceCreation = ({
 					onClose={() => setInvoiceScannerOpen(false)}
 				/>
 			)}
+
+			{/* Credit Limit Override Dialog */}
+			<AlertDialog
+				open={!!creditLimitCtx}
+				onOpenChange={(o) => {
+					if (!o) setCreditLimitCtx(null);
+				}}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>⚠️ Credit Limit Exceeded</AlertDialogTitle>
+						<AlertDialogDescription>
+							<strong>{creditLimitCtx?.customerName}</strong> has a credit limit of{' '}
+							<strong>₹{(creditLimitCtx?.limit ?? 0).toLocaleString('en-IN')}</strong>.<br />
+							Current balance: <strong>₹{(creditLimitCtx?.balance ?? 0).toLocaleString('en-IN')}</strong>
+							<br />
+							This invoice:{' '}
+							<strong>₹{(creditLimitCtx?.invoiceAmount ?? 0).toLocaleString('en-IN')}</strong>
+							<br />
+							New balance would be{' '}
+							<strong className="text-destructive">
+								₹
+								{((creditLimitCtx?.balance ?? 0) + (creditLimitCtx?.invoiceAmount ?? 0)).toLocaleString(
+									'en-IN'
+								)}
+							</strong>{' '}
+							(over limit by ₹
+							{Math.round(
+								(creditLimitCtx?.balance ?? 0) +
+									(creditLimitCtx?.invoiceAmount ?? 0) -
+									(creditLimitCtx?.limit ?? 0)
+							).toLocaleString('en-IN')}
+							).
+							<br />
+							<br />
+							Do you want to proceed anyway?
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel onClick={() => setCreditLimitCtx(null)}>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							onClick={async () => {
+								if (!creditLimitCtx) return;
+								const ctx = creditLimitCtx;
+								setCreditLimitCtx(null);
+								try {
+									const res = await createInvoice.mutateAsync({
+										customerId: ctx.customerId,
+										items: ctx.items,
+										...ctx.opts,
+										overrideCreditLimit: true,
+									} as Parameters<typeof createInvoice.mutateAsync>[0]);
+									setCreatedInvoiceNo(res.invoice?.invoiceNo ?? 'INV-NEW');
+									setStep('final');
+									void qc.invalidateQueries({ queryKey: ['invoices'] });
+									void qc.invalidateQueries({ queryKey: ['customers'] });
+									void qc.invalidateQueries({ queryKey: ['summary'] });
+								} catch {
+									setError('Invoice save failed. Please try again.');
+								}
+							}}
+						>
+							Proceed Anyway
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</>
 	);
 };
-
-// ── Sub-components ────────────────────────────────────────────────────────────
 
 function ToggleChip({
 	active,

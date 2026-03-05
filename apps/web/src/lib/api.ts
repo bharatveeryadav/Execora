@@ -108,7 +108,10 @@ async function request<T>(path: string, options: RequestInit = {}, retried = fal
 					: body?.message
 						? JSON.stringify(body.message)
 						: `Request failed: ${res.status}`;
-		throw new Error(msg);
+		const err = new Error(msg);
+		// Attach full response body for structured error handling (e.g. CREDIT_LIMIT_EXCEEDED)
+		(err as any).body = body;
+		throw err;
 	}
 
 	const text = await res.text();
@@ -318,6 +321,7 @@ export const customerApi = {
 		landmark?: string;
 		notes?: string;
 		openingBalance?: number;
+		creditLimit?: number;
 		tags?: string[];
 	}) => request<{ customer: Customer }>('/api/v1/customers', { method: 'POST', body: JSON.stringify(data) }),
 	delete: (id: string) => request<{ ok: boolean }>(`/api/v1/customers/${id}`, { method: 'DELETE' }),
@@ -338,6 +342,15 @@ export const customerApi = {
 	) => request<{ customer: Customer }>(`/api/v1/customers/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 	getCommPrefs: (customerId: string) =>
 		request<{ prefs: CommPrefs | null }>(`/api/v1/customers/${customerId}/communication-prefs`),
+	lastOrder: (customerId: string) =>
+		request<{
+			invoice: {
+				id: string;
+				invoiceNo: string;
+				total: string;
+				items: Array<{ productName: string; quantity: string }>;
+			};
+		}>(`/api/v1/customers/${customerId}/last-order`),
 	updateCommPrefs: (
 		customerId: string,
 		data: {
@@ -404,6 +417,40 @@ export const productApi = {
 	lowStock: () => request<{ products: Product[] }>('/api/v1/products/low-stock'),
 	topSelling: (limit = 5, days = 30) =>
 		request<{ products: TopSellingProduct[] }>(`/api/v1/products/top-selling?limit=${limit}&days=${days}`),
+	expiringBatches: (days = 30) =>
+		request<{
+			batches: Array<{
+				id: string;
+				batchNo: string;
+				expiryDate: string;
+				quantity: number;
+				product: { name: string; unit: string };
+			}>;
+		}>(`/api/v1/products/expiring?days=${days}`),
+	expiryPage: (filter: 'expired' | '7d' | '30d' | '90d' | 'all' = '30d') =>
+		request<{
+			batches: Array<{
+				id: string;
+				batchNo: string;
+				expiryDate: string;
+				manufacturingDate: string | null;
+				quantity: number;
+				purchasePrice: string | null;
+				status: string;
+				product: { name: string; unit: string; category: string | null };
+			}>;
+			summary: {
+				expiredCount: number;
+				critical7: number;
+				warning30: number;
+				valueAtRisk: number;
+			};
+		}>(`/api/v1/products/expiry-page?filter=${filter}`),
+	writeOffBatch: (batchId: string) =>
+		request<{ ok: boolean; batchNo: string; qtyWrittenOff: number }>(
+			`/api/v1/products/batches/${batchId}/write-off`,
+			{ method: 'PATCH' }
+		),
 	byBarcode: (barcode: string) =>
 		request<{ product: Product }>(`/api/v1/products/barcode/${encodeURIComponent(barcode)}`),
 	create: (data: {

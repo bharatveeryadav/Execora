@@ -54,6 +54,8 @@ export interface InvoiceOptions {
 	placeOfSupply?: string;
 	/** If provided, immediately records a payment against this invoice (partial payment at billing). */
 	initialPayment?: { amount: number; method: 'cash' | 'upi' | 'card' | 'other' };
+	/** Skip credit limit enforcement (use after user confirms override). */
+	overrideCreditLimit?: boolean;
 }
 
 class InvoiceService {
@@ -570,6 +572,25 @@ class InvoiceService {
 				const grandTotal = Math.round((subtotal + totalTax - discountAmt) * 100) / 100;
 
 				const isProforma = opts.isProforma ?? false;
+
+				// Credit limit enforcement — check before creating invoice
+				if (!isProforma && !opts.overrideCreditLimit) {
+					const cust = await tx.customer.findUnique({
+						where: { id: customerId },
+						select: { creditLimit: true, balance: true, name: true },
+					});
+					if (cust?.creditLimit) {
+						const currentBalance = parseFloat(cust.balance?.toString() ?? '0');
+						const limit = parseFloat(cust.creditLimit.toString());
+						if (currentBalance + grandTotal > limit) {
+							const err = new Error(
+								`CREDIT_LIMIT_EXCEEDED:${cust.name}|limit=${limit}|balance=${currentBalance}|invoice=${grandTotal}`
+							);
+							(err as any).code = 'CREDIT_LIMIT_EXCEEDED';
+							throw err;
+						}
+					}
+				}
 
 				const invoice = await tx.invoice.create({
 					data: {
@@ -1391,6 +1412,31 @@ class InvoiceService {
 			pendingAmount: Math.max(0, totalSales - totalPayments),
 			extraPayments: Math.max(0, totalPayments - totalSales),
 		};
+	}
+
+	/**
+	 * Returns the most recent non-cancelled invoice for a customer with its items.
+	 * Used for "Repeat Last Bill" functionality.
+	 */
+	async getLastOrder(customerId: string) {
+		const invoice = await prisma.invoice.findFirst({
+			where: {
+				tenantId: tenantContext.get().tenantId,
+				customerId,
+				status: { notIn: ['cancelled'] },
+			},
+			orderBy: { invoiceDate: 'desc' },
+			include: {
+				items: {
+					select: {
+						productName: true,
+						quantity: true,
+						unitPrice: true,
+					},
+				},
+			},
+		});
+		return invoice;
 	}
 }
 

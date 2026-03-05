@@ -89,25 +89,49 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 					buyerGstin?: string;
 					placeOfSupply?: string;
 					initialPayment?: { amount: number; method: 'cash' | 'upi' | 'card' | 'other' };
+					overrideCreditLimit?: boolean;
 				};
 			}>,
 			reply
 		) => {
 			const { customerId, items, notes, ...opts } = request.body;
-			const result = await invoiceService.createInvoice(customerId, items, notes, opts);
-			const tid = (request as any).user?.tenantId;
-			if (tid)
-				broadcaster.send(tid, 'invoice:created', {
-					invoiceId: result.invoice.id,
-					invoiceNo: result.invoice.invoiceNo,
-				});
-			// Fire-and-forget: generate PDF (with UPI QR) + send email to customer
-			invoiceService
-				.dispatchInvoicePdfEmail(result.invoice.id)
-				.catch((err) =>
-					fastify.log.error({ err, invoiceId: result.invoice.id }, 'invoice pdf/email dispatch failed')
-				);
-			return reply.code(201).send({ invoice: result.invoice, autoCreatedProducts: result.autoCreatedProducts });
+			try {
+				const result = await invoiceService.createInvoice(customerId, items, notes, opts);
+				const tid = (request as any).user?.tenantId;
+				if (tid)
+					broadcaster.send(tid, 'invoice:created', {
+						invoiceId: result.invoice.id,
+						invoiceNo: result.invoice.invoiceNo,
+					});
+				// Fire-and-forget: generate PDF (with UPI QR) + send email to customer
+				invoiceService
+					.dispatchInvoicePdfEmail(result.invoice.id)
+					.catch((err) =>
+						fastify.log.error({ err, invoiceId: result.invoice.id }, 'invoice pdf/email dispatch failed')
+					);
+				return reply
+					.code(201)
+					.send({ invoice: result.invoice, autoCreatedProducts: result.autoCreatedProducts });
+			} catch (err: any) {
+				if (err?.message?.startsWith('CREDIT_LIMIT_EXCEEDED:')) {
+					const [, rest] = err.message.split(':');
+					const parts: Record<string, string> = {};
+					const [name, ...kvs] = rest.split('|');
+					for (const kv of kvs) {
+						const [k, v] = kv.split('=');
+						parts[k] = v;
+					}
+					return reply.code(422).send({
+						error: 'CREDIT_LIMIT_EXCEEDED',
+						message: `Credit limit exceeded for ${name}`,
+						customerName: name,
+						limit: parseFloat(parts.limit ?? '0'),
+						currentBalance: parseFloat(parts.balance ?? '0'),
+						invoiceAmount: parseFloat(parts.invoice ?? '0'),
+					});
+				}
+				throw err;
+			}
 		}
 	);
 

@@ -79,6 +79,8 @@ export default function Purchases() {
 	const [category, setCategory] = useState<PurchaseCategory>('Stock Purchase');
 	const [date, setDate] = useState(today());
 	const [notes, setNotes] = useState('');
+	const [batchNo, setBatchNo] = useState('');
+	const [expiryDate, setExpiryDate] = useState('');
 
 	// API hooks
 	const { data: purData } = usePurchases(tabDateRange(filterTab));
@@ -172,6 +174,8 @@ export default function Purchases() {
 		setCategory('Stock Purchase');
 		setDate(today());
 		setNotes('');
+		setBatchNo('');
+		setExpiryDate('');
 	}
 
 	async function handleAdd(e: React.FormEvent) {
@@ -201,6 +205,8 @@ export default function Purchases() {
 					ratePerUnit: r,
 					note: notes.trim() || undefined,
 					date,
+					batchNo: batchNo.trim() || undefined,
+					expiryDate: expiryDate || undefined,
 				},
 				`${itemName.trim()} — ${fmt(total)}`
 			);
@@ -531,16 +537,28 @@ export default function Purchases() {
 						<div className="space-y-1">
 							<Label>Notes (optional)</Label>
 							<Input
-								placeholder="Invoice no., batch no., remarks…"
+								placeholder="Invoice no., remarks…"
 								value={notes}
 								onChange={(e) => setNotes(e.target.value)}
 							/>
 						</div>
 
-						<DialogFooter className="pt-1">
-							<Button type="button" variant="outline" onClick={() => setOpen(false)}>
-								Cancel
-							</Button>
+						<div className="grid grid-cols-2 gap-2">
+							<div className="space-y-1">
+								<Label>Batch No. (optional)</Label>
+								<Input
+									placeholder="e.g. B2024-01"
+									value={batchNo}
+									onChange={(e) => setBatchNo(e.target.value)}
+								/>
+							</div>
+							<div className="space-y-1">
+								<Label>Expiry Date</Label>
+								<Input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} />
+							</div>
+						</div>
+
+						<DialogFooter>
 							<Button
 								type="submit"
 								disabled={!itemName.trim() || !rate || !qty || createPurchase.isPending}
