@@ -681,14 +681,21 @@ const InvoiceCreation = ({
 				};
 			};
 			if (e?.body?.error === 'CREDIT_LIMIT_EXCEEDED') {
+				const lim = e.body.limit ?? 0;
+				const bal = e.body.currentBalance ?? 0;
+				toast({
+					title: '⚠️ Credit Limit Exceeded',
+					description: `${e.body.customerName ?? c.name} has a ₹${lim.toLocaleString('en-IN')} limit. Current balance: ₹${bal.toLocaleString('en-IN')}. New invoice: ₹${(e.body.invoiceAmount ?? 0).toLocaleString('en-IN')}.`,
+					variant: 'destructive',
+				});
 				setStep('customer'); // go back so user can see
 				setCreditLimitCtx({
 					customerId: c.id,
 					items: invItems,
 					opts,
 					customerName: e.body.customerName ?? c.name,
-					limit: e.body.limit ?? 0,
-					balance: e.body.currentBalance ?? 0,
+					limit: lim,
+					balance: bal,
 					invoiceAmount: e.body.invoiceAmount ?? 0,
 				});
 			} else {
@@ -923,14 +930,21 @@ const InvoiceCreation = ({
 				};
 			};
 			if (e?.body?.error === 'CREDIT_LIMIT_EXCEEDED') {
+				const lim = e.body.limit ?? 0;
+				const bal = e.body.currentBalance ?? 0;
+				toast({
+					title: '⚠️ Credit Limit Exceeded',
+					description: `${e.body.customerName ?? c.name} has a ₹${lim.toLocaleString('en-IN')} limit. Current balance: ₹${bal.toLocaleString('en-IN')}. New invoice: ₹${(e.body.invoiceAmount ?? 0).toLocaleString('en-IN')}.`,
+					variant: 'destructive',
+				});
 				setStep('manual');
 				setCreditLimitCtx({
 					customerId: c.id,
 					items: invItems,
 					opts,
 					customerName: e.body.customerName ?? c.name,
-					limit: e.body.limit ?? 0,
-					balance: e.body.currentBalance ?? 0,
+					limit: lim,
+					balance: bal,
 					invoiceAmount: e.body.invoiceAmount ?? 0,
 				});
 			} else {

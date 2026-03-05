@@ -583,9 +583,10 @@ class InvoiceService {
 						where: { id: customerId },
 						select: { creditLimit: true, balance: true, name: true },
 					});
-					if (cust?.creditLimit) {
+					const limitVal = cust?.creditLimit ? parseFloat(cust.creditLimit.toString()) : 0;
+					if (cust && limitVal > 0) {
 						const currentBalance = parseFloat(cust.balance?.toString() ?? '0');
-						const limit = parseFloat(cust.creditLimit.toString());
+						const limit = limitVal;
 						if (currentBalance + grandTotal > limit) {
 							const err = new Error(
 								`CREDIT_LIMIT_EXCEEDED:${cust.name}|limit=${limit}|balance=${currentBalance}|invoice=${grandTotal}`
