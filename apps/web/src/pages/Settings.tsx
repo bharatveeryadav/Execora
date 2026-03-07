@@ -39,6 +39,11 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import {
+  TemplateThumbnail,
+  TEMPLATES,
+  type TemplateId,
+} from "@/components/InvoiceTemplatePreview";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -211,6 +216,9 @@ const Settings = () => {
   });
   const [lang, setLang] = useState(
     () => localStorage.getItem(LANG_STORAGE_KEY) ?? "english",
+  );
+  const [invoiceTemplate, setInvoiceTemplate] = useState<TemplateId>(
+    () => (localStorage.getItem("inv_template") as TemplateId) ?? "classic",
   );
 
   // Sync with me?.tenant once loaded — seeds from API if localStorage is empty
@@ -682,6 +690,31 @@ const Settings = () => {
                 to deliver manually.
               </p>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Invoice Template */}
+        <Card className="border-none shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Invoice Template</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Choose how your printed and PDF invoices look. You can also switch templates inside Classic Billing.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-4 gap-3">
+              {TEMPLATES.map((t) => (
+                <TemplateThumbnail
+                  key={t.id}
+                  template={t}
+                  selected={invoiceTemplate === t.id}
+                  onClick={() => {
+                    setInvoiceTemplate(t.id);
+                    localStorage.setItem("inv_template", t.id);
+                  }}
+                />
+              ))}
+            </div>
           </CardContent>
         </Card>
 
