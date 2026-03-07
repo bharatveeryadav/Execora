@@ -27,6 +27,9 @@ import {
   IndianRupee,
   FileText,
   X,
+  Calendar,
+  MessageCircle,
+  UserPlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -175,20 +178,53 @@ const inr = (n: number) =>
     maximumFractionDigits: 2,
   });
 
-// ── Product filter ────────────────────────────────────────────────────────────
-function filterProducts(products: Product[], query: string): Product[] {
+const DEFAULT_GST_RATE = 18;
+
+// ── Fuzzy product search ─────────────────────────────────────────────────────
+function fuzzyScore(text: string, q: string): number {
+  const t = text.toLowerCase();
+  const query = q.toLowerCase();
+  if (t.startsWith(query)) return 100;
+  if (t.includes(query)) return 50;
+  // character subsequence (handles typos like "mlk" → "milk")
+  let ti = 0,
+    qi = 0;
+  while (ti < t.length && qi < query.length) {
+    if (t[ti] === query[qi]) qi++;
+    ti++;
+  }
+  return qi === query.length ? 20 : 0;
+}
+
+function fuzzyFilter(products: Product[], query: string): Product[] {
   if (!query.trim()) return [];
-  const q = query.toLowerCase();
+  const q = query.trim();
   return products
-    .filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        (p.sku ?? "").toLowerCase().includes(q),
-    )
+    .map((p) => ({
+      p,
+      score: Math.max(fuzzyScore(p.name, q), fuzzyScore(p.sku ?? "", q)),
+    }))
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .map((x) => x.p)
     .slice(0, 8);
 }
 
-const DEFAULT_GST_RATE = 18;
+// ── Recently-used products (localStorage) ────────────────────────────────────
+const RECENT_KEY = "cb_recent_products";
+function getRecentIds(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]") as string[];
+  } catch {
+    return [];
+  }
+}
+function saveRecentId(id: string) {
+  const ids = [id, ...getRecentIds().filter((x) => x !== id)].slice(0, 10);
+  localStorage.setItem(RECENT_KEY, JSON.stringify(ids));
+}
+
+const DRAFT_KEY = "cb_billing_draft_v1";
 
 // ── Main component ───────────────────────────────────────────────────────────
 
@@ -197,9 +233,9 @@ export default function ClassicBilling() {
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  // ── Product catalog (cached for autocomplete) ──────────────────────────
+  // ── Product catalog — preloaded once so ItemRow gets instant client results ──
   const { data: catalogData } = useQuery({
-    queryKey: ["products"],
+    queryKey: ["products-preload"],
     queryFn: () => productApi.list(),
     staleTime: 5 * 60_000,
   });
@@ -284,6 +320,18 @@ export default function ClassicBilling() {
   const [splits, setSplits] = useState<PaymentSplit[]>([newSplit("cash")]);
   const [notes, setNotes] = useState("");
   const [buyerGstin, setBuyerGstin] = useState("");
+  // ── New features ─────────────────────────────────────────────────────────────
+  const [dueDate, setDueDate] = useState("");
+  const [roundOffEnabled, setRoundOffEnabled] = useState(false);
+  const [showNewCustDialog, setShowNewCustDialog] = useState(false);
+  const [newCustName, setNewCustName] = useState("");
+  const [newCustPhone, setNewCustPhone] = useState("");
+  const [savedInvoice, setSavedInvoice] = useState<{
+    id: string;
+    no: string;
+    total: number;
+  } | null>(null);
+  const [draftBanner, setDraftBanner] = useState(false);
 
   // Split helpers
   const splitTotal = useMemo(
@@ -336,7 +384,11 @@ export default function ClassicBilling() {
   const cgst = withGst ? Math.round((gstAmt / 2) * 100) / 100 : 0;
   const sgst = cgst;
   const grandTotal = Math.round((taxableAmt + gstAmt) * 100) / 100;
-  const grandTotalWords = amountInWords(grandTotal);
+  const roundOff = roundOffEnabled ? Math.round(grandTotal) - grandTotal : 0;
+  const finalTotal = Math.round((grandTotal + roundOff) * 100) / 100;
+  const grandTotalWords = amountInWords(finalTotal);
+  const outstandingBalance =
+    parseFloat(String(selectedCustomer?.balance ?? 0)) || 0;
 
   const validItemCount = items.filter((it) => it.name.trim()).length;
 
@@ -380,12 +432,39 @@ export default function ClassicBilling() {
     },
   });
 
+  const createCustomerInline = useMutation({
+    mutationFn: async () =>
+      customerApi.create({
+        name: newCustName.trim(),
+        phone: newCustPhone.trim() || undefined,
+      }),
+    onSuccess: (data) => {
+      const c = (data as { customer: Customer }).customer;
+      setSelectedCustomer(c);
+      setCustomerQuery("");
+      setShowNewCustDialog(false);
+      setNewCustName("");
+      setNewCustPhone("");
+      void qc.invalidateQueries({ queryKey: ["customers"] });
+    },
+    onError: (err: Error) =>
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      }),
+  });
+
   const createInvoice = useMutation({
-    mutationFn: async (customerId: string) => {
+    mutationFn: async (vars: {
+      customerId: string;
+      displayTotal: number;
+      notesWithDue: string;
+    }) => {
       const validItems = items.filter((it) => it.name.trim());
       if (!validItems.length) throw new Error("Koi item nahi dala");
       return invoiceApi.create({
-        customerId,
+        customerId: vars.customerId,
         items: validItems.map((it) => ({
           productName: it.name.trim(),
           quantity: Math.max(1, parseFloat(it.qty) || 1),
@@ -393,7 +472,7 @@ export default function ClassicBilling() {
           lineDiscountPercent:
             parseFloat(it.discount) > 0 ? parseFloat(it.discount) : undefined,
         })),
-        notes: notes.trim() || undefined,
+        notes: vars.notesWithDue || undefined,
         withGst: withGst || undefined,
         discountPercent:
           parseFloat(discountPct) > 0 ? parseFloat(discountPct) : undefined,
@@ -419,14 +498,17 @@ export default function ClassicBilling() {
         })(),
       });
     },
-    onSuccess: (data) => {
+    onSuccess: (data, vars) => {
       void qc.invalidateQueries({ queryKey: ["invoices"] });
       void qc.invalidateQueries({ queryKey: ["customers"] });
-      toast({
-        title: "✅ Invoice created!",
-        description: `#${(data.invoice as any).invoiceNo ?? data.invoice.id.slice(-8).toUpperCase()}`,
+      localStorage.removeItem(DRAFT_KEY);
+      setSavedInvoice({
+        id: data.invoice.id,
+        no:
+          (data.invoice as any).invoiceNo ??
+          data.invoice.id.slice(-8).toUpperCase(),
+        total: vars.displayTotal,
       });
-      navigate(`/invoices/${data.invoice.id}`);
     },
     onError: (err: Error) =>
       toast({
@@ -443,7 +525,19 @@ export default function ClassicBilling() {
       const walkIn = await createWalkIn.mutateAsync();
       customerId = walkIn.id;
     }
-    await createInvoice.mutateAsync(customerId);
+    const notesWithDue = [
+      notes.trim(),
+      dueDate
+        ? `Due: ${new Date(dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    await createInvoice.mutateAsync({
+      customerId,
+      displayTotal: finalTotal,
+      notesWithDue,
+    });
   };
 
   const isSubmitting = createWalkIn.isPending || createInvoice.isPending;
@@ -474,6 +568,93 @@ export default function ClassicBilling() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  // ── Draft auto-save (1.5 s debounce) ────────────────────────────────
+  useEffect(() => {
+    if (validItemCount === 0 && !selectedCustomer) return;
+    const t = setTimeout(() => {
+      localStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({
+          items: items.filter((it) => it.name.trim()),
+          customerId: selectedCustomer?.id,
+          customerName: selectedCustomer?.name,
+          customerPhone: selectedCustomer?.phone,
+          withGst,
+          discountPct,
+          discountFlat,
+          paymentMode,
+          paymentAmount,
+          splitEnabled,
+          notes,
+          buyerGstin,
+          dueDate,
+          savedAt: Date.now(),
+        }),
+      );
+    }, 1500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    items,
+    selectedCustomer,
+    withGst,
+    discountPct,
+    discountFlat,
+    paymentMode,
+    paymentAmount,
+    splitEnabled,
+    notes,
+    buyerGstin,
+    dueDate,
+    validItemCount,
+  ]);
+
+  // ── Draft restore on mount (auto-populates form) ────────────────────
+  useEffect(() => {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return;
+    try {
+      const d = JSON.parse(raw) as Record<string, unknown>;
+      if (!Array.isArray(d.items) || !d.items.length || !d.savedAt) return;
+      const ageMin = (Date.now() - Number(d.savedAt)) / 60_000;
+      if (ageMin > 480) {
+        localStorage.removeItem(DRAFT_KEY);
+        return;
+      }
+      const restored = (d.items as BillingItem[]).map((it) => ({
+        ...it,
+        id: _id++,
+      }));
+      setItems(restored);
+      if (d.withGst !== undefined) setWithGst(Boolean(d.withGst));
+      if (d.discountPct) setDiscountPct(String(d.discountPct));
+      if (d.discountFlat) setDiscountFlat(String(d.discountFlat));
+      if (d.paymentMode) setPaymentMode(d.paymentMode as PaymentMode);
+      if (d.paymentAmount) setPaymentAmount(String(d.paymentAmount));
+      if (d.splitEnabled !== undefined)
+        setSplitEnabled(Boolean(d.splitEnabled));
+      if (d.notes) setNotes(String(d.notes));
+      if (d.buyerGstin) setBuyerGstin(String(d.buyerGstin));
+      if (d.dueDate) setDueDate(String(d.dueDate));
+      if (d.customerName) {
+        setSelectedCustomer({
+          id: String(d.customerId ?? ""),
+          tenantId: "",
+          name: String(d.customerName),
+          phone: d.customerPhone ? String(d.customerPhone) : undefined,
+          balance: 0,
+          totalPurchases: 0,
+          totalPayments: 0,
+          createdAt: "",
+          updatedAt: "",
+        });
+      }
+      setDraftBanner(true);
+    } catch {
+      localStorage.removeItem(DRAFT_KEY);
+    }
+  }, []); // only on mount
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
@@ -511,6 +692,29 @@ export default function ClassicBilling() {
       </div>
 
       <div className="flex-1 px-4 py-4 space-y-5 pb-36">
+        {/* ── Draft restored banner ──────────────────────────────────── */}
+        {draftBanner && (
+          <div className="flex items-center justify-between rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs">
+            <span className="text-amber-700 font-medium">↺ Draft restored from last session</span>
+            <button
+              onClick={() => {
+                setDraftBanner(false);
+                setItems([newItem()]);
+                setSelectedCustomer(null);
+                setCustomerQuery("");
+                setWithGst(false);
+                setDiscountPct(""); setDiscountFlat("");
+                setPaymentMode("cash"); setPaymentAmount("");
+                setSplitEnabled(false); setSplits([newSplit("cash")]);
+                setNotes(""); setBuyerGstin(""); setDueDate("");
+                localStorage.removeItem(DRAFT_KEY);
+              }}
+              className="text-amber-600 hover:text-red-600 font-semibold underline transition-colors"
+            >
+              Discard
+            </button>
+          </div>
+        )}
         {/* ── Invoice Template Selector ────────────────────────────── */}
         <div className="space-y-2">
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
@@ -547,6 +751,16 @@ export default function ClassicBilling() {
                     {selectedCustomer.phone}
                   </p>
                 )}
+                {outstandingBalance > 0 && (
+                  <p className="text-[10px] font-semibold text-amber-600">
+                    ⚠ ₹{inr(outstandingBalance)} outstanding
+                  </p>
+                )}
+                {outstandingBalance < 0 && (
+                  <p className="text-[10px] font-semibold text-green-600">
+                    ✓ ₹{inr(Math.abs(outstandingBalance))} advance credit
+                  </p>
+                )}
               </div>
               <button
                 onClick={() => {
@@ -575,7 +789,8 @@ export default function ClassicBilling() {
               {searchingCustomers && (
                 <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
               )}
-              {showCustomerSuggest && customerSuggestions.length > 0 && (
+              {showCustomerSuggest &&
+                (customerSuggestions.length > 0 || customerQuery.length >= 1) && (
                 <div className="absolute z-30 w-full mt-1 rounded-xl border bg-popover shadow-lg overflow-hidden">
                   {customerSuggestions.map((c) => (
                     <button
@@ -599,6 +814,20 @@ export default function ClassicBilling() {
                       </div>
                     </button>
                   ))}
+                  {customerQuery.length >= 1 && (
+                    <button
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setNewCustName(customerQuery.trim());
+                        setShowNewCustDialog(true);
+                        setShowCustomerSuggest(false);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-primary hover:bg-primary/5 border-t transition-colors"
+                    >
+                      <UserPlus className="h-4 w-4" />
+                      Add "{customerQuery}" as new customer
+                    </button>
+                  )}
                 </div>
               )}
               {customerQuery.length === 0 && (
@@ -757,15 +986,32 @@ export default function ClassicBilling() {
                 />
               </>
             )}
-            <div className="border-t pt-2 mt-1 flex justify-between items-baseline">
-              <span className="font-bold text-sm">Grand Total</span>
-              <span className="font-black text-lg text-primary">
-                ₹{inr(grandTotal)}
-              </span>
+            <div className="border-t pt-2 mt-1">
+              <div className="flex justify-between items-baseline">
+                <span className="font-bold text-sm">Grand Total</span>
+                <span className="font-black text-lg text-primary">
+                  ₹{inr(finalTotal)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between mt-1.5">
+                <p className="text-[10px] text-muted-foreground italic flex-1">
+                  {grandTotalWords}
+                </p>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-[10px] text-muted-foreground">Round off</span>
+                  <Switch
+                    checked={roundOffEnabled}
+                    onCheckedChange={setRoundOffEnabled}
+                    className="scale-75 origin-right"
+                  />
+                </div>
+              </div>
+              {roundOffEnabled && roundOff !== 0 && (
+                <p className="text-[10px] text-blue-600">
+                  {roundOff > 0 ? "+" : ""}{inr(roundOff)} rounded
+                </p>
+              )}
             </div>
-            <p className="text-[10px] text-muted-foreground italic">
-              {grandTotalWords}
-            </p>
           </div>
         )}
 
@@ -817,7 +1063,7 @@ export default function ClassicBilling() {
                       min={0}
                       value={paymentAmount}
                       onChange={(e) => setPaymentAmount(e.target.value)}
-                      placeholder={`Amount paid (₹${inr(grandTotal)})`}
+                      placeholder={`Amount paid (₹${inr(finalTotal)})`}
                       className="pl-7"
                     />
                   </div>
@@ -825,8 +1071,7 @@ export default function ClassicBilling() {
                     variant="outline"
                     size="sm"
                     className="h-9 text-xs"
-                    onClick={() => setPaymentAmount(String(grandTotal))}
-                  >
+                    onClick={() => setPaymentAmount(String(finalTotal))}>
                     Full
                   </Button>
                 </div>
@@ -844,18 +1089,18 @@ export default function ClassicBilling() {
               {/* Summary bar */}
               <div className="flex items-center justify-between bg-muted/40 px-3 py-2 text-xs border-b">
                 <span className="text-muted-foreground">
-                  Total ₹{inr(grandTotal)}
+                  Total ₹{inr(finalTotal)}
                 </span>
                 <div className="flex items-center gap-3">
                   <span className="text-green-700 font-semibold">
                     Paid ₹{inr(splitTotal)}
                   </span>
-                  {grandTotal - splitTotal > 0.001 && (
+                  {finalTotal - splitTotal > 0.001 && (
                     <span className="text-amber-600 font-semibold">
-                      Remaining ₹{inr(grandTotal - splitTotal)}
+                      Remaining ₹{inr(finalTotal - splitTotal)}
                     </span>
                   )}
-                  {Math.abs(grandTotal - splitTotal) < 0.01 && (
+                  {Math.abs(finalTotal - splitTotal) < 0.01 && (
                     <span className="text-green-700 font-bold">✓ Settled</span>
                   )}
                 </div>
@@ -908,7 +1153,7 @@ export default function ClassicBilling() {
                         className="h-9 text-xs shrink-0"
                         onClick={() => {
                           const rest =
-                            grandTotal -
+                            finalTotal -
                             splits
                               .filter((s) => s.id !== sp.id)
                               .reduce(
@@ -984,7 +1229,7 @@ export default function ClassicBilling() {
             <>
               <CheckCircle2 className="h-5 w-5" />
               {validItemCount > 0
-                ? `Create Invoice — ₹${inr(grandTotal)}`
+                ? `Create Invoice — ₹${inr(finalTotal)}`
                 : "Create Invoice"}
               {selectedCustomer ? ` · ${selectedCustomer.name}` : " (Walk-in)"}
             </>
@@ -1029,6 +1274,130 @@ export default function ClassicBilling() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ── Success Modal ─────────────────────────────────────────── */}
+      {savedInvoice && (
+        <Dialog open onOpenChange={() => undefined}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-green-700">
+                <CheckCircle2 className="h-5 w-5" />
+                Invoice Created!
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-1">
+              <div className="rounded-xl bg-muted/50 px-4 py-3 text-sm space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Invoice #</span>
+                  <span className="font-bold">{savedInvoice.no}</span>
+                </div>
+                {selectedCustomer && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Customer</span>
+                    <span className="font-medium">{selectedCustomer.name}</span>
+                  </div>
+                )}
+                {dueDate && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Due</span>
+                    <span className="font-medium">
+                      {new Date(dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between border-t pt-1.5">
+                  <span className="text-muted-foreground">Amount</span>
+                  <span className="font-black text-base text-primary">₹{inr(savedInvoice.total)}</span>
+                </div>
+              </div>
+              {selectedCustomer?.phone && (
+                <a
+                  href={`https://wa.me/91${selectedCustomer.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Invoice #${savedInvoice.no}\nAmount: ₹${inr(savedInvoice.total)}\nFrom: My Shop${dueDate ? `\nDue: ${new Date(dueDate).toLocaleDateString("en-IN")}` : ""}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-green-500 hover:bg-green-600 text-white font-semibold py-2.5 text-sm transition-colors"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Share on WhatsApp
+                </a>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSavedInvoice(null);
+                    navigate(`/invoices/${savedInvoice.id}`);
+                  }}
+                >
+                  View Invoice
+                </Button>
+                <Button
+                  onClick={() => {
+                    setSavedInvoice(null);
+                    setItems([newItem()]);
+                    setSelectedCustomer(null); setCustomerQuery("");
+                    setWithGst(false);
+                    setDiscountPct(""); setDiscountFlat("");
+                    setPaymentMode("cash"); setPaymentAmount("");
+                    setSplitEnabled(false); setSplits([newSplit("cash")]);
+                    setNotes(""); setBuyerGstin(""); setDueDate("");
+                    setRoundOffEnabled(false);
+                  }}
+                >
+                  New Invoice
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* ── New Customer Dialog ────────────────────────────────────── */}
+      <Dialog open={showNewCustDialog} onOpenChange={setShowNewCustDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5" />
+              New Customer
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name *</label>
+              <Input
+                value={newCustName}
+                onChange={(e) => setNewCustName(e.target.value)}
+                placeholder="Customer name"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Phone (optional)</label>
+              <Input
+                value={newCustPhone}
+                onChange={(e) => setNewCustPhone(e.target.value)}
+                placeholder="10-digit mobile"
+                type="tel"
+                maxLength={15}
+              />
+            </div>
+            <div className="flex gap-2 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => setShowNewCustDialog(false)}>
+                Cancel
+              </Button>
+              <Button
+                className="flex-1"
+                disabled={!newCustName.trim() || createCustomerInline.isPending}
+                onClick={() => void createCustomerInline.mutateAsync()}
+              >
+                {createCustomerInline.isPending
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : "Save & Use"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1056,13 +1425,93 @@ function ItemRow({
   onRemove: () => void;
   isLast: boolean;
 }) {
-  const suggestions = useMemo(
-    () => filterProducts(catalog, item.name),
+  // ── Recently-used products ────────────────────────────────────────────────
+  const [recentIds, setRecentIds] = useState<string[]>(() => getRecentIds());
+  const recentProducts = useMemo(
+    () =>
+      recentIds
+        .map((id) => catalog.find((p) => String(p.id) === id))
+        .filter(Boolean) as Product[],
+    [recentIds, catalog],
+  );
+
+  // ── Instant client-side fuzzy results (0 ms) ─────────────────────────────
+  const instantHits = useMemo(
+    () => fuzzyFilter(catalog, item.name),
     [catalog, item.name],
   );
 
+  // ── Debounced server search — refines / adds fresher results ─────────────
+  const [debouncedQ, setDebouncedQ] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(item.name.trim()), 80);
+    return () => clearTimeout(t);
+  }, [item.name]);
+
+  const { data: searchData, isFetching: searchLoading } = useQuery({
+    queryKey: ["product-search", debouncedQ],
+    queryFn: () => productApi.search(debouncedQ),
+    enabled: debouncedQ.length >= 1,
+    staleTime: 30_000,
+    placeholderData: (prev) => prev,
+  });
+
+  // Empty box → recently used  |  typing → server results or fuzzy fallback
+  const isEmpty = item.name.trim() === "";
+  const suggestions: Product[] = isEmpty
+    ? recentProducts.slice(0, 5)
+    : searchData?.products?.length
+      ? searchData.products
+      : instantHits;
+
+  const showRecent = isEmpty && recentProducts.length > 0;
+
   const showSuggest =
-    isActive && suggestions.length > 0 && item.name.length >= 1;
+    isActive &&
+    (showRecent ||
+      (item.name.length >= 1 && (suggestions.length > 0 || searchLoading)));
+
+  // ── Keyboard navigation + barcode scan ───────────────────────────────────
+  const [activeIdx, setActiveIdx] = useState(-1);
+  useEffect(() => setActiveIdx(-1), [suggestions]);
+
+  const handleSelect = useCallback(
+    (p: Product) => {
+      saveRecentId(String(p.id));
+      setRecentIds(getRecentIds());
+      onApplyProduct(p);
+    },
+    [onApplyProduct],
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "ArrowDown") {
+        if (!showSuggest) return;
+        e.preventDefault();
+        setActiveIdx((i) => Math.min(i + 1, suggestions.length - 1));
+      } else if (e.key === "ArrowUp") {
+        if (!showSuggest) return;
+        e.preventDefault();
+        setActiveIdx((i) => Math.max(i - 1, 0));
+      } else if (e.key === "Enter") {
+        if (showSuggest && activeIdx >= 0 && suggestions[activeIdx]) {
+          e.preventDefault();
+          handleSelect(suggestions[activeIdx]);
+        } else if (/^\d{6,}$/.test(item.name.trim())) {
+          // 6+ digits with no suggestions → barcode scan
+          e.preventDefault();
+          productApi
+            .byBarcode(item.name.trim())
+            .then(({ product }) => handleSelect(product))
+            .catch(() => {});
+        }
+      } else if (e.key === "Escape") {
+        onDismiss();
+      }
+    },
+    [showSuggest, suggestions, activeIdx, handleSelect, onDismiss, item.name],
+  );
 
   return (
     <div className="border-t" data-prod-row="">
@@ -1073,14 +1522,18 @@ function ItemRow({
             value={item.name}
             onChange={(e) => onUpdate({ name: e.target.value })}
             onFocus={onFocus}
+            onKeyDown={handleKeyDown}
             placeholder="Product name…"
             className="h-9 text-sm"
           />
           {showSuggest && (
             <ProductDropdown
               suggestions={suggestions}
-              onSelect={onApplyProduct}
+              onSelect={handleSelect}
               onDismiss={onDismiss}
+              loading={searchLoading}
+              activeIdx={activeIdx}
+              showRecent={showRecent}
             />
           )}
         </div>
@@ -1157,6 +1610,7 @@ function ItemRow({
             value={item.name}
             onChange={(e) => onUpdate({ name: e.target.value })}
             onFocus={onFocus}
+            onKeyDown={handleKeyDown}
             placeholder="Product name…"
             className="h-8 text-sm border-0 bg-transparent focus-visible:ring-1 px-1"
             autoFocus={isLast && item.name === ""}
@@ -1164,8 +1618,11 @@ function ItemRow({
           {showSuggest && (
             <ProductDropdown
               suggestions={suggestions}
-              onSelect={onApplyProduct}
+              onSelect={handleSelect}
               onDismiss={onDismiss}
+              loading={searchLoading}
+              activeIdx={activeIdx}
+              showRecent={showRecent}
             />
           )}
           {item.productId && (
@@ -1232,38 +1689,72 @@ function ProductDropdown({
   suggestions,
   onSelect,
   onDismiss,
+  loading = false,
+  activeIdx = -1,
+  showRecent = false,
 }: {
   suggestions: Product[];
   onSelect: (p: Product) => void;
   onDismiss: () => void;
+  loading?: boolean;
+  activeIdx?: number;
+  showRecent?: boolean;
 }) {
   return (
-    <div className="absolute z-40 left-0 right-0 top-full mt-0.5 rounded-xl border bg-popover shadow-xl overflow-hidden">
-      {suggestions.map((p) => (
-        <button
-          key={p.id}
-          onMouseDown={(e) => {
-            e.preventDefault();
-            onSelect(p);
-          }}
-          className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-muted transition-colors"
-        >
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{p.name}</p>
-            <p className="text-[10px] text-muted-foreground">
-              {p.unit} · Stock: {p.stock}
-            </p>
-          </div>
-          <div className="text-right shrink-0">
-            <p className="text-sm font-bold text-primary">
-              ₹{parseFloat(p.price?.toString() ?? "0").toLocaleString("en-IN")}
-            </p>
-            {p.category && (
-              <p className="text-[9px] text-muted-foreground">{p.category}</p>
-            )}
-          </div>
-        </button>
-      ))}
+    <div className="absolute z-40 left-0 right-0 top-full mt-0.5 rounded-xl border bg-popover shadow-xl max-h-72 overflow-y-auto">
+      {showRecent && (
+        <p className="px-3 pt-2 pb-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Recently used
+        </p>
+      )}
+      {loading && suggestions.length === 0 && (
+        <div className="flex items-center gap-2 px-3 py-2.5 text-sm text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Searching…
+        </div>
+      )}
+      {suggestions.map((p, i) => {
+        const outOfStock = Number(p.stock) <= 0;
+        const lowStock = !outOfStock && Number(p.stock) < 5;
+        const stockClass = outOfStock
+          ? "text-destructive font-medium"
+          : lowStock
+            ? "text-orange-500"
+            : "text-muted-foreground";
+        const stockLabel = outOfStock ? "Out of stock" : `Stock: ${p.stock}`;
+        return (
+          <button
+            key={p.id}
+            ref={(el) => {
+              if (el && i === activeIdx)
+                el.scrollIntoView({ block: "nearest" });
+            }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onSelect(p);
+            }}
+            className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left transition-colors ${
+              i === activeIdx ? "bg-primary/10" : "hover:bg-muted"
+            }`}
+          >
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{p.name}</p>
+              <p className={`text-[10px] ${stockClass}`}>
+                {p.unit} · {stockLabel}
+              </p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-sm font-bold text-primary">
+                ₹
+                {parseFloat(p.price?.toString() ?? "0").toLocaleString("en-IN")}
+              </p>
+              {p.category && (
+                <p className="text-[9px] text-muted-foreground">{p.category}</p>
+              )}
+            </div>
+          </button>
+        );
+      })}
       <button
         onMouseDown={(e) => {
           e.preventDefault();
@@ -1271,7 +1762,7 @@ function ProductDropdown({
         }}
         className="w-full text-center text-[11px] text-muted-foreground py-1.5 hover:bg-muted/50 border-t transition-colors"
       >
-        Dismiss suggestions
+        {suggestions.length > 0 ? "Dismiss" : "Close"}
       </button>
     </div>
   );
