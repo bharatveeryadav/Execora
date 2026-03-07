@@ -8,6 +8,7 @@ import { conversationMemory } from '../conversation';
 import { customerService } from '../../customer/customer.service';
 import { invoiceService } from '../../invoice/invoice.service';
 import { emailService } from '@execora/infrastructure';
+import { whatsappService } from '@execora/infrastructure';
 import { generateInvoicePdf } from '@execora/infrastructure';
 import { minioClient } from '@execora/infrastructure';
 import type { CustomerSearchResult, ExecutionResult } from '@execora/types';
@@ -172,7 +173,8 @@ export async function buildAndStoreInvoicePdf(
 }
 
 /**
- * Fire invoice email (if customer has email) or park it for the next PROVIDE_EMAIL turn.
+ * Fire invoice email and/or WhatsApp (gated by per-tenant autoSendEmail / autoSendWhatsApp flags).
+ * Respects the same Settings toggles as the manual billing flow.
  * Called from both CREATE_INVOICE (autoSend) and CONFIRM_INVOICE paths.
  */
 export async function sendConfirmedInvoiceEmail(
@@ -187,22 +189,33 @@ export async function sendConfirmedInvoiceEmail(
 	const invoiceRef = (invoice as any).invoiceNo || invoice.id.slice(-6);
 	const shopName = process.env.SHOP_NAME || 'Execora Shop';
 
-	// Resolve UPI VPA from tenant settings (non-fatal if lookup fails)
+	// Resolve tenant settings: upiVpa + delivery toggles (default true = backward compat)
 	let upiVpa: string | undefined;
+	let autoSendEmail = true;
+	let autoSendWhatsApp = true;
 	if (invoice.tenantId) {
 		try {
 			const tenant = await prisma.tenant.findFirst({
 				where: { id: invoice.tenantId },
-				select: { settings: true },
+				select: { settings: true, name: true },
 			});
-			upiVpa = (tenant?.settings as Record<string, string> | null)?.upiVpa || undefined;
+			const s = (tenant?.settings as Record<string, string> | null) ?? {};
+			upiVpa = s.upiVpa || undefined;
+			autoSendEmail = s.autoSendEmail !== 'false';
+			autoSendWhatsApp = s.autoSendWhatsApp !== 'false';
+			if (s.shopName) {
+				// prefer tenant shopName over env var when present
+				Object.assign({ shopName: s.shopName || tenant?.name || shopName });
+			}
 		} catch (err) {
 			logger.warn(
 				{ err, tenantId: invoice.tenantId },
-				'Failed to read tenant upiVpa — PDF will render without QR'
+				'Failed to read tenant settings — using defaults (autoSend=true)'
 			);
 		}
 	}
+
+	const customerPhone = invoice.customer?.phone as string | undefined;
 
 	const { pdfBuffer, pdfUrl, pdfObjectKey } = await buildAndStoreInvoicePdf(
 		invoice,
@@ -218,7 +231,10 @@ export async function sendConfirmedInvoiceEmail(
 		total: i.total,
 	}));
 
-	if (customerEmail) {
+	const deliveryChannels: string[] = [];
+
+	// ── Email ────────────────────────────────────────────────────────────────
+	if (customerEmail && autoSendEmail) {
 		emailService
 			.sendInvoiceEmail(
 				customerEmail,
@@ -231,34 +247,64 @@ export async function sendConfirmedInvoiceEmail(
 				pdfUrl,
 				invoiceRef
 			)
-			.catch((err) => logger.error({ err, invoiceId: invoice.id }, 'Failed to send invoice email'));
+			.catch((err) => logger.error({ err, invoiceId: invoice.id }, 'voice: invoice email send failed'));
+		deliveryChannels.push(`email (${customerEmail})`);
+		logger.info({ invoiceId: invoice.id, customerEmail }, 'voice: invoice.pdf.email.queued');
+	} else if (customerEmail && !autoSendEmail) {
+		logger.info({ invoiceId: invoice.id }, 'voice: invoice email skipped — autoSendEmail disabled');
+	}
 
+	// ── WhatsApp ─────────────────────────────────────────────────────────────
+	if (customerPhone && autoSendWhatsApp && pdfUrl && whatsappService.isConfigured()) {
+		const caption = `${shopName} — Invoice ${invoiceRef}\n₹${total.toFixed(2)} | ${customerName} ka bill.`;
+		whatsappService
+			.sendDocumentMessage(customerPhone, pdfUrl, caption, `invoice-${invoiceRef}.pdf`)
+			.then((r) => logger.info({ invoiceId: invoice.id, customerPhone, success: r.success }, 'voice: invoice.pdf.whatsapp.sent'))
+			.catch((err) => logger.error({ err, invoiceId: invoice.id, customerPhone }, 'voice: invoice whatsapp send failed'));
+		deliveryChannels.push('WhatsApp');
+	} else if (customerPhone && autoSendWhatsApp && !pdfUrl) {
+		logger.warn({ invoiceId: invoice.id }, 'voice: WhatsApp skipped — no pdfUrl (MinIO upload failed)');
+	} else if (customerPhone && !autoSendWhatsApp) {
+		logger.info({ invoiceId: invoice.id }, 'voice: WhatsApp skipped — autoSendWhatsApp disabled');
+	}
+
+	// ── Build voice response message ─────────────────────────────────────────
+	if (deliveryChannels.length > 0) {
+		const sentVia = deliveryChannels.join(' aur ');
 		return {
 			success: true,
-			message: `✅ ${customerName} ka bill confirm ho gaya! Invoice #${invoiceRef}. Total ₹${total}. Email ${customerEmail} par bhej diya.`,
+			message: `✅ ${customerName} ka bill confirm ho gaya! Invoice #${invoiceRef}. Total ₹${total}. ${sentVia} par bhej diya.`,
 			data: { invoiceId: invoice.id, invoiceNo: invoiceRef, total, customerName },
 		};
 	}
 
-	// Park for PROVIDE_EMAIL turn
-	const pendingEmailPayload = {
-		customerId,
-		customerName,
-		invoiceId: invoice.id,
-		invoiceNo: invoiceRef,
-		items: emailItems,
-		total,
-		pdfUrl: pdfUrl || null,
-		pdfObjectKey: pdfObjectKey || null,
-	};
-	if (conversationId) {
-		await conversationMemory.setContext(conversationId, 'pendingInvoiceEmail', pendingEmailPayload);
+	// No auto-delivery — or customer has no contact — park for PROVIDE_EMAIL turn
+	if (!customerEmail && autoSendEmail) {
+		const pendingEmailPayload = {
+			customerId,
+			customerName,
+			invoiceId: invoice.id,
+			invoiceNo: invoiceRef,
+			items: emailItems,
+			total,
+			pdfUrl: pdfUrl || null,
+			pdfObjectKey: pdfObjectKey || null,
+		};
+		if (conversationId) {
+			await conversationMemory.setContext(conversationId, 'pendingInvoiceEmail', pendingEmailPayload);
+		}
+		await conversationMemory.setShopPendingEmail(pendingEmailPayload);
+		return {
+			success: true,
+			message: `✅ ${customerName} ka bill confirm ho gaya! Invoice #${invoiceRef}. Total ₹${total}. Email bhejne ke liye address batao.`,
+			data: { invoiceId: invoice.id, invoiceNo: invoiceRef, total, customerName, awaitingEmail: true },
+		};
 	}
-	await conversationMemory.setShopPendingEmail(pendingEmailPayload);
 
+	// Both channels disabled — silent confirm
 	return {
 		success: true,
-		message: `✅ ${customerName} ka bill confirm ho gaya! Invoice #${invoiceRef}. Total ₹${total}. Email bhejne ke liye address batao.`,
-		data: { invoiceId: invoice.id, invoiceNo: invoiceRef, total, customerName, awaitingEmail: true },
+		message: `✅ ${customerName} ka bill confirm ho gaya! Invoice #${invoiceRef}. Total ₹${total}.`,
+		data: { invoiceId: invoice.id, invoiceNo: invoiceRef, total, customerName },
 	};
 }
