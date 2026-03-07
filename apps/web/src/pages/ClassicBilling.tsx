@@ -674,7 +674,7 @@ export default function ClassicBilling() {
             </h1>
             <p className="text-[11px] text-muted-foreground truncate">
               {validItemCount > 0
-                ? `${validItemCount} item${validItemCount > 1 ? "s" : ""} · ₹${inr(grandTotal)}`
+                ? `${validItemCount} item${validItemCount > 1 ? "s" : ""} · ₹${inr(finalTotal)}`
                 : "Add items to create invoice"}
             </p>
           </div>
@@ -695,7 +695,9 @@ export default function ClassicBilling() {
         {/* ── Draft restored banner ──────────────────────────────────── */}
         {draftBanner && (
           <div className="flex items-center justify-between rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs">
-            <span className="text-amber-700 font-medium">↺ Draft restored from last session</span>
+            <span className="text-amber-700 font-medium">
+              ↺ Draft restored from last session
+            </span>
             <button
               onClick={() => {
                 setDraftBanner(false);
@@ -703,10 +705,15 @@ export default function ClassicBilling() {
                 setSelectedCustomer(null);
                 setCustomerQuery("");
                 setWithGst(false);
-                setDiscountPct(""); setDiscountFlat("");
-                setPaymentMode("cash"); setPaymentAmount("");
-                setSplitEnabled(false); setSplits([newSplit("cash")]);
-                setNotes(""); setBuyerGstin(""); setDueDate("");
+                setDiscountPct("");
+                setDiscountFlat("");
+                setPaymentMode("cash");
+                setPaymentAmount("");
+                setSplitEnabled(false);
+                setSplits([newSplit("cash")]);
+                setNotes("");
+                setBuyerGstin("");
+                setDueDate("");
                 localStorage.removeItem(DRAFT_KEY);
               }}
               className="text-amber-600 hover:text-red-600 font-semibold underline transition-colors"
@@ -721,14 +728,19 @@ export default function ClassicBilling() {
             <FileText className="h-3.5 w-3.5" />
             Invoice Style
           </label>
-          <div className="grid grid-cols-4 gap-2">
+          {/* horizontal-scroll on mobile, 4-col grid on sm+ */}
+          <div className="flex gap-2 overflow-x-auto pb-1 snap-x sm:grid sm:grid-cols-4 sm:overflow-visible sm:snap-none">
             {TEMPLATES.map((t) => (
-              <TemplateThumbnail
+              <div
                 key={t.id}
-                template={t}
-                selected={invoiceTemplate === t.id}
-                onClick={() => handleTemplateChange(t.id)}
-              />
+                className="shrink-0 snap-start w-[23vw] min-w-[72px] sm:w-auto"
+              >
+                <TemplateThumbnail
+                  template={t}
+                  selected={invoiceTemplate === t.id}
+                  onClick={() => handleTemplateChange(t.id)}
+                />
+              </div>
             ))}
           </div>
         </div>
@@ -767,7 +779,7 @@ export default function ClassicBilling() {
                   setSelectedCustomer(null);
                   setCustomerQuery("");
                 }}
-                className="text-[10px] text-muted-foreground border rounded px-2 py-0.5 hover:border-destructive hover:text-destructive transition-colors"
+                className="text-xs text-muted-foreground border rounded-lg px-3 py-1.5 hover:border-destructive hover:text-destructive transition-colors"
               >
                 Change
               </button>
@@ -784,52 +796,53 @@ export default function ClassicBilling() {
                 }}
                 onFocus={() => setShowCustomerSuggest(true)}
                 placeholder="Search customer… (blank = Walk-in)"
-                className="pl-9 pr-3"
+                className="pl-9 pr-3 h-11 text-base"
               />
               {searchingCustomers && (
                 <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
               )}
               {showCustomerSuggest &&
-                (customerSuggestions.length > 0 || customerQuery.length >= 1) && (
-                <div className="absolute z-30 w-full mt-1 rounded-xl border bg-popover shadow-lg overflow-hidden">
-                  {customerSuggestions.map((c) => (
-                    <button
-                      key={c.id}
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        setSelectedCustomer(c);
-                        setCustomerQuery("");
-                        setShowCustomerSuggest(false);
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-muted transition-colors"
-                    >
-                      <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <div>
-                        <p className="text-sm font-medium">{c.name}</p>
-                        {c.phone && (
-                          <p className="text-[11px] text-muted-foreground">
-                            {c.phone}
-                          </p>
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                  {customerQuery.length >= 1 && (
-                    <button
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        setNewCustName(customerQuery.trim());
-                        setShowNewCustDialog(true);
-                        setShowCustomerSuggest(false);
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-primary hover:bg-primary/5 border-t transition-colors"
-                    >
-                      <UserPlus className="h-4 w-4" />
-                      Add "{customerQuery}" as new customer
-                    </button>
-                  )}
-                </div>
-              )}
+                (customerSuggestions.length > 0 ||
+                  customerQuery.length >= 1) && (
+                  <div className="absolute z-30 w-full mt-1 rounded-xl border bg-popover shadow-lg overflow-hidden">
+                    {customerSuggestions.map((c) => (
+                      <button
+                        key={c.id}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setSelectedCustomer(c);
+                          setCustomerQuery("");
+                          setShowCustomerSuggest(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-muted transition-colors"
+                      >
+                        <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium">{c.name}</p>
+                          {c.phone && (
+                            <p className="text-[11px] text-muted-foreground">
+                              {c.phone}
+                            </p>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                    {customerQuery.length >= 1 && (
+                      <button
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setNewCustName(customerQuery.trim());
+                          setShowNewCustDialog(true);
+                          setShowCustomerSuggest(false);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-primary hover:bg-primary/5 border-t transition-colors"
+                      >
+                        <UserPlus className="h-4 w-4" />
+                        Add "{customerQuery}" as new customer
+                      </button>
+                    )}
+                  </div>
+                )}
               {customerQuery.length === 0 && (
                 <p className="text-[11px] text-muted-foreground mt-1 pl-1">
                   Leave blank → Walk-in / cash customer
@@ -876,7 +889,7 @@ export default function ClassicBilling() {
             <div className="border-t">
               <button
                 onClick={addItem}
-                className="w-full flex items-center gap-1.5 px-3 py-2.5 text-sm text-primary hover:bg-primary/5 transition-colors"
+                className="w-full flex items-center gap-1.5 px-3 py-3 text-sm font-medium text-primary hover:bg-primary/5 active:bg-primary/10 transition-colors"
               >
                 <Plus className="h-4 w-4" />
                 Add item
@@ -905,6 +918,7 @@ export default function ClassicBilling() {
             <div className="relative">
               <Input
                 type="number"
+                inputMode="decimal"
                 min={0}
                 max={100}
                 value={discountPct}
@@ -913,7 +927,7 @@ export default function ClassicBilling() {
                   if (e.target.value) setDiscountFlat("");
                 }}
                 placeholder="0"
-                className="pr-7"
+                className="pr-7 h-11 text-base"
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
                 %
@@ -930,6 +944,7 @@ export default function ClassicBilling() {
               </span>
               <Input
                 type="number"
+                inputMode="decimal"
                 min={0}
                 value={discountFlat}
                 onChange={(e) => {
@@ -937,7 +952,7 @@ export default function ClassicBilling() {
                   if (e.target.value) setDiscountPct("");
                 }}
                 placeholder="0.00"
-                className="pl-7"
+                className="pl-7 h-11 text-base"
               />
             </div>
           </div>
@@ -954,7 +969,9 @@ export default function ClassicBilling() {
               onChange={(e) => setBuyerGstin(e.target.value.toUpperCase())}
               placeholder="e.g. 29ABCDE1234F1Z5"
               maxLength={15}
-              className="font-mono"
+              autoCapitalize="characters"
+              inputMode="text"
+              className="font-mono h-11 text-base"
             />
           </div>
         )}
@@ -998,7 +1015,9 @@ export default function ClassicBilling() {
                   {grandTotalWords}
                 </p>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <span className="text-[10px] text-muted-foreground">Round off</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    Round off
+                  </span>
                   <Switch
                     checked={roundOffEnabled}
                     onCheckedChange={setRoundOffEnabled}
@@ -1008,7 +1027,8 @@ export default function ClassicBilling() {
               </div>
               {roundOffEnabled && roundOff !== 0 && (
                 <p className="text-[10px] text-blue-600">
-                  {roundOff > 0 ? "+" : ""}{inr(roundOff)} rounded
+                  {roundOff > 0 ? "+" : ""}
+                  {inr(roundOff)} rounded
                 </p>
               )}
             </div>
@@ -1044,8 +1064,7 @@ export default function ClassicBilling() {
                     key={id}
                     type="button"
                     onClick={() => setPaymentMode(id)}
-                    className={`flex flex-col items-center rounded-xl border-2 py-2.5 px-1 text-xs font-semibold transition-all
-								  ${paymentMode === id ? "border-primary bg-primary/5 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}
+                    className={`flex flex-col items-center justify-center rounded-xl border-2 py-3 px-1 text-xs font-semibold transition-all min-h-[56px] ${paymentMode === id ? "border-primary bg-primary/5 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}
                   >
                     <span className="text-lg mb-0.5">{icon}</span>
                     {label}
@@ -1060,18 +1079,20 @@ export default function ClassicBilling() {
                     </span>
                     <Input
                       type="number"
+                      inputMode="decimal"
                       min={0}
                       value={paymentAmount}
                       onChange={(e) => setPaymentAmount(e.target.value)}
                       placeholder={`Amount paid (₹${inr(finalTotal)})`}
-                      className="pl-7"
+                      className="pl-7 h-11 text-base"
                     />
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-9 text-xs"
-                    onClick={() => setPaymentAmount(String(finalTotal))}>
+                    className="h-11 text-sm shrink-0 px-4"
+                    onClick={() => setPaymentAmount(String(finalTotal))}
+                  >
                     Full
                   </Button>
                 </div>
@@ -1134,13 +1155,14 @@ export default function ClassicBilling() {
                     </span>
                     <Input
                       type="number"
+                      inputMode="decimal"
                       min={0}
                       value={sp.amount}
                       onChange={(e) =>
                         updateSplit(sp.id, { amount: e.target.value })
                       }
                       placeholder={`₹ ${PAY_MODES.find((m) => m.id === sp.mode)?.label} amount`}
-                      className="pl-7 h-9"
+                      className="pl-7 h-10 text-base"
                     />
                   </div>
                   {/* Quick-fill remaining */}
@@ -1187,7 +1209,7 @@ export default function ClassicBilling() {
                 <button
                   type="button"
                   onClick={addSplit}
-                  className="w-full flex items-center gap-1.5 px-3 py-2 text-xs text-primary hover:bg-primary/5 transition-colors"
+                  className="w-full flex items-center gap-1.5 px-3 py-3 text-sm font-medium text-primary hover:bg-primary/5 active:bg-primary/10 transition-colors"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   Add another payment method
@@ -1197,8 +1219,8 @@ export default function ClassicBilling() {
           )}
         </div>
 
-        {/* ── Notes ────────────────────────────────────────────────── */}
-        <div className="space-y-1.5">
+        {/* ── Notes + Due Date ───────────────────────────────────── */}
+        <div className="space-y-2">
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
             <Receipt className="h-3.5 w-3.5" />
             Notes / Remarks (optional)
@@ -1210,6 +1232,28 @@ export default function ClassicBilling() {
             rows={2}
             className="text-sm resize-none"
           />
+          {/* Due date inline row */}
+          <div className="flex items-center gap-3 rounded-xl border px-3 py-2.5">
+            <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+              Due Date
+            </span>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="flex-1 h-9 min-w-0 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            {dueDate && (
+              <button
+                type="button"
+                onClick={() => setDueDate("")}
+                className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive transition-colors shrink-0"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1301,13 +1345,19 @@ export default function ClassicBilling() {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Due</span>
                     <span className="font-medium">
-                      {new Date(dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                      {new Date(dueDate).toLocaleDateString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
                     </span>
                   </div>
                 )}
                 <div className="flex justify-between border-t pt-1.5">
                   <span className="text-muted-foreground">Amount</span>
-                  <span className="font-black text-base text-primary">₹{inr(savedInvoice.total)}</span>
+                  <span className="font-black text-base text-primary">
+                    ₹{inr(savedInvoice.total)}
+                  </span>
                 </div>
               </div>
               {selectedCustomer?.phone && (
@@ -1335,12 +1385,18 @@ export default function ClassicBilling() {
                   onClick={() => {
                     setSavedInvoice(null);
                     setItems([newItem()]);
-                    setSelectedCustomer(null); setCustomerQuery("");
+                    setSelectedCustomer(null);
+                    setCustomerQuery("");
                     setWithGst(false);
-                    setDiscountPct(""); setDiscountFlat("");
-                    setPaymentMode("cash"); setPaymentAmount("");
-                    setSplitEnabled(false); setSplits([newSplit("cash")]);
-                    setNotes(""); setBuyerGstin(""); setDueDate("");
+                    setDiscountPct("");
+                    setDiscountFlat("");
+                    setPaymentMode("cash");
+                    setPaymentAmount("");
+                    setSplitEnabled(false);
+                    setSplits([newSplit("cash")]);
+                    setNotes("");
+                    setBuyerGstin("");
+                    setDueDate("");
                     setRoundOffEnabled(false);
                   }}
                 >
@@ -1363,7 +1419,9 @@ export default function ClassicBilling() {
           </DialogHeader>
           <div className="space-y-3 pt-1">
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name *</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Name *
+              </label>
               <Input
                 value={newCustName}
                 onChange={(e) => setNewCustName(e.target.value)}
@@ -1372,7 +1430,9 @@ export default function ClassicBilling() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Phone (optional)</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Phone (optional)
+              </label>
               <Input
                 value={newCustPhone}
                 onChange={(e) => setNewCustPhone(e.target.value)}
@@ -1382,7 +1442,11 @@ export default function ClassicBilling() {
               />
             </div>
             <div className="flex gap-2 pt-1">
-              <Button variant="outline" className="flex-1" onClick={() => setShowNewCustDialog(false)}>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowNewCustDialog(false)}
+              >
                 Cancel
               </Button>
               <Button
@@ -1390,9 +1454,11 @@ export default function ClassicBilling() {
                 disabled={!newCustName.trim() || createCustomerInline.isPending}
                 onClick={() => void createCustomerInline.mutateAsync()}
               >
-                {createCustomerInline.isPending
-                  ? <Loader2 className="h-4 w-4 animate-spin" />
-                  : "Save & Use"}
+                {createCustomerInline.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Save & Use"
+                )}
               </Button>
             </div>
           </div>
@@ -1524,7 +1590,7 @@ function ItemRow({
             onFocus={onFocus}
             onKeyDown={handleKeyDown}
             placeholder="Product name…"
-            className="h-9 text-sm"
+            className="h-11 text-base"
           />
           {showSuggest && (
             <ProductDropdown
@@ -1538,56 +1604,67 @@ function ItemRow({
           )}
         </div>
         {item.name && (
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2">
             <div>
-              <p className="text-[9px] text-muted-foreground mb-0.5">Qty</p>
+              <p className="text-[11px] font-medium text-muted-foreground mb-1">
+                Qty
+              </p>
               <Input
                 type="number"
+                inputMode="decimal"
                 min={0.1}
                 step={0.1}
                 value={item.qty}
                 onChange={(e) => onUpdate({ qty: e.target.value })}
-                className="h-8 text-sm text-center px-1"
+                className="h-10 text-base text-center px-2"
               />
             </div>
             <div>
-              <p className="text-[9px] text-muted-foreground mb-0.5">Unit</p>
+              <p className="text-[11px] font-medium text-muted-foreground mb-1">
+                Unit
+              </p>
               <Input
                 value={item.unit}
                 onChange={(e) => onUpdate({ unit: e.target.value })}
-                className="h-8 text-sm px-1"
+                className="h-10 text-base px-2"
                 placeholder="pcs"
               />
             </div>
             <div>
-              <p className="text-[9px] text-muted-foreground mb-0.5">Rate ₹</p>
+              <p className="text-[11px] font-medium text-muted-foreground mb-1">
+                Rate ₹
+              </p>
               <Input
                 type="number"
+                inputMode="decimal"
                 min={0}
                 value={item.rate}
                 onChange={(e) => onUpdate({ rate: e.target.value })}
-                className="h-8 text-sm px-1"
-                placeholder="0"
+                className="h-10 text-base px-2"
+                placeholder="0.00"
               />
             </div>
             <div>
-              <p className="text-[9px] text-muted-foreground mb-0.5">Disc%</p>
+              <p className="text-[11px] font-medium text-muted-foreground mb-1">
+                Disc %
+              </p>
               <Input
                 type="number"
+                inputMode="decimal"
                 min={0}
                 max={100}
                 value={item.discount}
                 onChange={(e) => onUpdate({ discount: e.target.value })}
-                className="h-8 text-sm px-1"
+                className="h-10 text-base px-2"
                 placeholder="0"
               />
             </div>
           </div>
         )}
         {item.name && (
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Amount:</span>
-            <span className="font-semibold text-sm">
+          <div className="flex items-center justify-between rounded-xl bg-muted/40 px-3 py-2">
+            <span className="text-xs text-muted-foreground">Amount</span>
+            <span className="font-bold text-base text-primary">
               ₹
               {item.amount.toLocaleString("en-IN", {
                 minimumFractionDigits: 2,
@@ -1595,7 +1672,7 @@ function ItemRow({
             </span>
             <button
               onClick={onRemove}
-              className="text-muted-foreground hover:text-destructive transition-colors"
+              className="h-9 w-9 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
             >
               <Trash2 className="h-4 w-4" />
             </button>
