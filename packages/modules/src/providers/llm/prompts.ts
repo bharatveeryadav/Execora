@@ -8,28 +8,28 @@
  * response-generation prompt.
  */
 export function getLangStyle(code: string): string {
-	const styles: Record<string, string> = {
-		hi: 'Hinglish (Hindi verbs + English names/numbers)',
-		'hi-en': 'Hinglish (Hindi verbs + English names/numbers)',
-		en: 'English',
-		bn: 'Bengali',
-		ta: 'Tamil',
-		te: 'Telugu',
-		mr: 'Marathi',
-		gu: 'Gujarati',
-		kn: 'Kannada',
-		pa: 'Punjabi',
-		ml: 'Malayalam',
-		ur: 'Urdu',
-		ar: 'Arabic',
-		es: 'Spanish',
-		fr: 'French',
-		de: 'German',
-		ja: 'Japanese',
-		zh: 'Chinese',
-		pt: 'Portuguese',
-	};
-	return styles[code] ?? 'Hinglish (Hindi verbs + English names/numbers)';
+  const styles: Record<string, string> = {
+    hi: "Hinglish (Hindi verbs + English names/numbers)",
+    "hi-en": "Hinglish (Hindi verbs + English names/numbers)",
+    en: "English",
+    bn: "Bengali",
+    ta: "Tamil",
+    te: "Telugu",
+    mr: "Marathi",
+    gu: "Gujarati",
+    kn: "Kannada",
+    pa: "Punjabi",
+    ml: "Malayalam",
+    ur: "Urdu",
+    ar: "Arabic",
+    es: "Spanish",
+    fr: "French",
+    de: "German",
+    ja: "Japanese",
+    zh: "Chinese",
+    pt: "Portuguese",
+  };
+  return styles[code] ?? "Hinglish (Hindi verbs + English names/numbers)";
 }
 
 /**
@@ -37,7 +37,7 @@ export function getLangStyle(code: string): string {
  * Injected with live conversation context before each API call.
  */
 export function buildIntentSystemPrompt(conversationContext: string): string {
-	return `You are an intent extraction system for an Indian SME business assistant.
+  return `You are an intent extraction system for an Indian SME business assistant.
 15) Recognize Hindi/English patterns for total pending payment queries:
   - "total pending payment kitna hai", "टोटल पेंडिंग पेमेंट कितना है", "pending amount batao", "pending balance kitna hai", "kitna paisa baki hai", "sab ka total baki kitna hai", "total kitna baki hai", "total pending kitna hai", "pending kitna hai", "pending payment kitna hai", "pending balance kitna hai", "pending amount kitna hai", "total baki kitna hai", "total amount pending hai", "total payment pending hai", "total balance pending hai" → TOTAL_PENDING_AMOUNT
   - Example: "टोटल पेंडिंग पेमेंट कितना है" → {"intent":"TOTAL_PENDING_AMOUNT","entities":{},"confidence":0.98}
@@ -90,6 +90,7 @@ Available intents:
 - EXPORT_GSTR1: User wants GSTR-1 report / GST filing report — entities.fy (optional, e.g. "2025-26"), entities.from/to (optional dates), entities.email (optional)
 - EXPORT_PNL: User wants P&L / Profit & Loss report — entities.month (optional, e.g. "march"), entities.from/to (optional dates), entities.email (optional)
 - ADD_DISCOUNT: Apply a discount to the pending invoice. For the whole bill: entities.discountPercent or entities.discountAmount. For a specific item: also set entities.product (the item name in Roman/English)
+- UPDATE_STOCK: Record inbound stock arrival — "X kg/pcs PRODUCT aaya/mili/add karo". entities: product (name), quantity (number), unit (optional: kg/pcs/litre), operation always 'add'
 - UNKNOWN: Cannot determine intent
 
 Critical extraction rules for Indian voice patterns:
@@ -261,6 +262,18 @@ Critical extraction rules for Indian voice patterns:
    - Example: "10% discount karo" → {"intent":"ADD_DISCOUNT","entities":{"discountPercent":10},"confidence":0.96}
    - Example: "50 rupay kam karo" → {"intent":"ADD_DISCOUNT","entities":{"discountAmount":50},"confidence":0.95}
 
+25) Recognize UPDATE_STOCK — user recording inbound stock arrival:
+   - Triggered when user says a product "aaya/aayi/mila/mili/add karo/stock mein daalo"
+   - NEVER trigger for outgoing sales — those are CREATE_INVOICE
+   - entities.product = product name (Roman/English), entities.quantity = number, entities.unit = kg/pcs/litre/dozen etc (if mentioned)
+   - "50 kilo aata aaya" → UPDATE_STOCK, product=aata, quantity=50, unit=kg
+   - "100 Maggi stock mein add karo" → UPDATE_STOCK, product=Maggi, quantity=100
+   - "cheeni 2 bori aayi" → UPDATE_STOCK, product=cheeni, quantity=2, unit=bori
+   - "doodh 10 litre aaya" → UPDATE_STOCK, product=doodh, quantity=10, unit=litre
+   - "5 dozen anda aaya" → UPDATE_STOCK, product=anda, quantity=5, unit=dozen
+   - Example: "50 kilo aata aaya" → {"intent":"UPDATE_STOCK","entities":{"product":"aata","quantity":50,"unit":"kg"},"confidence":0.95}
+   - Example: "100 Maggi ka stock add karo" → {"intent":"UPDATE_STOCK","entities":{"product":"Maggi","quantity":100},"confidence":0.94}
+
 Also include a "normalized" field: a cleaned version of the input transcript — remove filler words (um, uh, acha suno, haan ji), fix obvious ASR errors, convert spoken numbers to digits. Keep meaning identical.
 
 Respond ONLY with valid JSON. No other text.
@@ -316,7 +329,7 @@ Example responses:
  * System prompt used for response generation (Groq/OpenAI, free-form text).
  */
 export function buildResponseSystemPrompt(langStyle: string): string {
-	return `You are a voice assistant for an Indian shop. Respond in ${langStyle}.
+  return `You are a voice assistant for an Indian shop. Respond in ${langStyle}.
 
 BREVITY — MOST IMPORTANT RULE:
 - MAX 1 sentence for simple results (balance, payment, credit, stock).
@@ -363,5 +376,5 @@ Respond with plain text only (no JSON, no quotes).`;
 
 /** System prompt for Devanagari → Roman transliteration fallback */
 export const TRANSLITERATE_PROMPT =
-	'Transliterate the following Devanagari text to Roman/English letters. ' +
-	'Output ONLY the romanized text — no explanation, no JSON, no quotes.';
+  "Transliterate the following Devanagari text to Roman/English letters. " +
+  "Output ONLY the romanized text — no explanation, no JSON, no quotes.";

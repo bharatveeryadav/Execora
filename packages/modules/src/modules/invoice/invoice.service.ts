@@ -255,7 +255,13 @@ class InvoiceService {
         );
         if (autoCreated) autoCreatedProducts.push(product.name);
 
-        const unitPrice = parseFloat(product.price.toString());
+        const rawUnitPrice = parseFloat(product.price.toString());
+        const lineDisc =
+          (item as { lineDiscountPercent?: number }).lineDiscountPercent ?? 0;
+        const unitPrice =
+          lineDisc > 0
+            ? Math.round(rawUnitPrice * (1 - lineDisc / 100) * 10000) / 10000
+            : rawUnitPrice;
         const gstRate = parseFloat((product.gstRate ?? 0).toString());
         const cessRate = parseFloat((product.cess ?? 0).toString());
         const isGstExempt = product.isGstExempt ?? false;
@@ -580,10 +586,16 @@ class InvoiceService {
           if (autoCreated) autoCreatedProducts.push(product.name);
 
           // Use caller-supplied price (from UI) over DB price; fallback to DB catalog price
-          const unitPrice =
+          const rawUnitPrice =
             item.unitPrice != null && item.unitPrice > 0
               ? item.unitPrice
               : parseFloat(product.price.toString());
+          const lineDiscPct = item.lineDiscountPercent ?? 0;
+          const unitPrice =
+            lineDiscPct > 0
+              ? Math.round(rawUnitPrice * (1 - lineDiscPct / 100) * 10000) /
+                10000
+              : rawUnitPrice;
           const itemSubtotal =
             Math.round(unitPrice * item.quantity * 100) / 100;
 
@@ -977,7 +989,17 @@ class InvoiceService {
           tx,
           item.productName,
         );
-        const unitPrice = parseFloat(product.price.toString());
+        const rawUP = parseFloat(product.price.toString());
+        // Honor caller-supplied unit price override for update path
+        const suppliedPrice = (item as { unitPrice?: number }).unitPrice;
+        const basePrice =
+          suppliedPrice != null && suppliedPrice > 0 ? suppliedPrice : rawUP;
+        const lineDiscUpdate =
+          (item as { lineDiscountPercent?: number }).lineDiscountPercent ?? 0;
+        const unitPrice =
+          lineDiscUpdate > 0
+            ? Math.round(basePrice * (1 - lineDiscUpdate / 100) * 10000) / 10000
+            : basePrice;
         const itemSubtotal = Math.round(unitPrice * item.quantity * 100) / 100;
 
         let cgst = 0,
