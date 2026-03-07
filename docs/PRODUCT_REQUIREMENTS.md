@@ -26,6 +26,7 @@
 13. [What Is Built vs What Is Pending](#13-what-is-built-vs-what-is-pending)
 14. [User Research Findings](#14-user-research-findings--review-backed-priority-updates-v24)
 15. [Sprint 9 — Plan](#15-sprint-9--plan-2026-03-05-onwards)
+16. [Sprint 10 — Plan](#16-sprint-10--plan-2026-03-07-onwards)
 
 ---
 
@@ -1661,47 +1662,47 @@ Remaining = 0 → done. Any leftover → customer credit advance.
 
 ### P0 — Must Have (Core Product, Ship First)
 
-| Feature                                                | Status     |
-| ------------------------------------------------------ | ---------- |
-| Voice invoice creation (Hindi/Hinglish)                | ✅ Built   |
-| Walk-in billing (no customer name)                     | ✅ Built   |
-| GST invoice (B2C intra-state)                          | ✅ Built   |
-| Non-GST cash memo                                      | ✅ Built   |
-| Customer ledger (udaar)                                | ✅ Built   |
-| Payment recording (cash/UPI/card)                      | ✅ Built   |
-| Auto-settlement (khata style)                          | ✅ Built   |
-| WhatsApp payment reminders                             | ✅ Built   |
-| Real-time dashboard (WebSocket)                        | ✅ Built   |
-| Low stock alerts                                       | ✅ Built   |
-| Top selling products (real units sold)                 | ✅ Built   |
-| Invoice status tracking (paid/partial/pending)         | ✅ Built   |
-| Multi-turn voice drafts with Redis persistence         | ✅ Built   |
-| TTS voice response (ElevenLabs/OpenAI/Browser)         | ✅ Built   |
-| Bill-level discount (voice "10% discount karo" + form) | ✅ Built   |
-| Item-level discount                                    | 🔴 TODO    |
-| B2B invoice with buyer GSTIN                           | ✅ Built   |
-| IGST (inter-state) calculation                         | ✅ Built   |
-| Invoice PDF via WhatsApp                               | ✅ Built   |
-| Mobile-responsive UI                                   | ⚠️ Partial |
+| Feature                                                | Status                                  |
+| ------------------------------------------------------ | --------------------------------------- |
+| Voice invoice creation (Hindi/Hinglish)                | ✅ Built                                |
+| Walk-in billing (no customer name)                     | ✅ Built                                |
+| GST invoice (B2C intra-state)                          | ✅ Built                                |
+| Non-GST cash memo                                      | ✅ Built                                |
+| Customer ledger (udaar)                                | ✅ Built                                |
+| Payment recording (cash/UPI/card)                      | ✅ Built                                |
+| Auto-settlement (khata style)                          | ✅ Built                                |
+| WhatsApp payment reminders                             | ✅ Built                                |
+| Real-time dashboard (WebSocket)                        | ✅ Built                                |
+| Low stock alerts                                       | ✅ Built                                |
+| Top selling products (real units sold)                 | ✅ Built                                |
+| Invoice status tracking (paid/partial/pending)         | ✅ Built                                |
+| Multi-turn voice drafts with Redis persistence         | ✅ Built                                |
+| TTS voice response (ElevenLabs/OpenAI/Browser)         | ✅ Built                                |
+| Bill-level discount (voice "10% discount karo" + form) | ✅ Built                                |
+| Item-level discount                                    | ⚠️ UI only — backend not wired (S10-01) |
+| B2B invoice with buyer GSTIN                           | ✅ Built                                |
+| IGST (inter-state) calculation                         | ✅ Built                                |
+| Invoice PDF via WhatsApp (auto-send on confirm)        | ✅ Built                                |
+| Mobile-responsive UI                                   | ⚠️ Partial (S10-03)                     |
 
 ### P1 — Should Have (Differentiation, Ship Second)
 
 | Feature                                                  | Status     |
 | -------------------------------------------------------- | ---------- |
 | ~~Barcode scan to add product~~                          | ✅ Built   |
-| Repeat last bill ("same as before")                      | 🔴 TODO    |
-| Customer credit limit enforcement                        | 🔴 TODO    |
+| Repeat last bill ("same as before")                      | ✅ Built   |
+| Customer credit limit enforcement                        | ✅ Built   |
 | Partial payment at billing time ("500 diye baki kal")    | ✅ Built   |
 | Mixed-mode payment voice intent (cash + UPI split)       | ✅ Built   |
-| Expiry date tracking                                     | 🔴 TODO    |
+| Expiry date tracking                                     | ✅ Partially built (S9-06) |
 | GST report (GSTR-1 ready) — B2B/B2CS/HSN + PDF/CSV/email | ✅ Built   |
 | Date range reports + export (CSV/PDF/email) — P&L        | ✅ Built   |
 | Bulk WhatsApp reminders                                  | ✅ Built   |
 | Regional language support (Marathi, Tamil, etc.)         | ⚠️ Partial |
 | Proforma invoice / quotation (form + voice CONFIRM flow) | ✅ Built   |
-| Invoice editing (post-creation)                          | ⚠️ Partial |
-| Customer tags (VIP, wholesale, blacklist)                | 🔴 TODO    |
-| Stock batch/expiry tracking                              | 🔴 TODO    |
+| Invoice editing (post-creation)                          | ✅ Built   |
+| Customer tags (VIP, wholesale, blacklist)                | ✅ Built   |
+| Stock batch/expiry tracking                              | ✅ Partially built (S9-06) |
 | WhatsApp chatbot interface                               | 🔴 TODO    |
 
 ### P2 — Nice to Have (Scale Features)
@@ -2130,10 +2131,130 @@ Trustpilot, GetApp (181 ratings), and Play Store. Full analysis in
 
 ---
 
+## 16. Sprint 10 — Plan (2026-03-07 onwards)
+
+### Goal
+
+Close the last P0 billing gap (item-level discount), add the most-requested missing voice command (inbound stock receipt), and improve mobile layout for counter use. Offline mode is scoped separately as a large dedicated milestone.
+
+### Sprint 10 Stories — Code Audit (2026-03-07)
+
+> **Audit date:** 2026-03-07
+> Legend: ✅ Done | ⚠️ Partial | 🔴 Not built
+
+| #      | Story                              | Priority | Est. | Status | Audit Finding |
+| ------ | ---------------------------------- | -------- | ---- | ------ | ------------- |
+| S10-01 | **Item-level discount — backend**  | P0       | 3 h  | ⚠️ **UI only** | `InvoiceItem.discount` (%) column renders in `InvoiceCreation.tsx` and `InvoiceDetail.tsx`. But submit map drops `discount`. `InvoiceItemInput` type has no `lineDiscountPercent`. `resolveItemsAndTotals()` in `invoice.service.ts` has no per-line discount logic. Voice `ADD_DISCOUNT` with `product` entity is documented in prompts but handler doesn't route it per-item. |
+| S10-02 | **UPDATE_STOCK voice intent**      | P0       | 3 h  | 🔴 **Not built** | `productService.updateStock(productId, qty, 'add')` exists and is tested. But: no `UPDATE_STOCK` intent in `prompts.ts`, no handler in `voice/engine/`, LLM cannot parse "50 kilo aata aaya" and route it here. |
+| S10-03 | **Mobile layout — counter mode**   | P0       | 2 d  | ⚠️ **Partial** | App is desktop-first. Missing: bottom navigation bar for small screens, larger touch targets on invoice item rows, full-screen slide-over panels on mobile, sticky action bar on InvoiceDetail. |
+| S10-04 | **Offline mode (PWA)**             | P0       | 5 d  | 🔴 **Not built** | No service worker, no `manifest.json`, no IndexedDB queue. 22% of users cite this as a dealbreaker. Scoped as separate milestone — see implementation plan below. |
+| S10-05 | **Pharmacy: batch/expiry UI**      | P1       | 1 d  | ⚠️ **Backend only** | `product.service.ts` has full batch/expiry logic (S9-06). Missing: frontend batch entry on Purchase form, expiry alert banner on Inventory page, batch selector on invoice item rows. |
+
+---
+
+### What Remains To Build
+
+#### ⚠️ S10-01 — Item-level discount — backend wiring (~3 h)
+
+**4 files to change:**
+
+1. **`packages/types/src/index.ts`** — add `lineDiscountPercent` to `InvoiceItemInput`:
+   ```typescript
+   export interface InvoiceItemInput {
+     productName: string;
+     quantity: number;
+     unitPrice?: number;
+     lineDiscountPercent?: number; // 0–100 per-line discount %
+   }
+   ```
+
+2. **`packages/modules/src/modules/invoice/invoice.service.ts`** — in `resolveItemsAndTotals()`, apply line discount before subtotal:
+   ```typescript
+   const lineDisc = item.lineDiscountPercent ?? 0;
+   const effectivePrice = lineDisc > 0
+     ? Math.round(unitPrice * (1 - lineDisc / 100) * 10000) / 10000
+     : unitPrice;
+   const subtotal = Math.round(effectivePrice * item.quantity * 100) / 100;
+   ```
+
+3. **`apps/web/src/components/InvoiceCreation.tsx`** — in the submit `invItems` map (~line 643), pass discount:
+   ```typescript
+   items.map((it) => ({
+     productName: it.name,
+     quantity: parseInt(it.qty) || 1,
+     unitPrice: it.price > 0 ? it.price : undefined,
+     lineDiscountPercent: it.discount > 0 ? it.discount : undefined,
+   }))
+   ```
+
+4. **`packages/modules/src/providers/llm/prompts.ts`** — `ADD_DISCOUNT` with `product` entity should route to per-line, not bill-level. Handler in `invoice.handler.ts` needs to detect the `product` entity and apply `lineDiscountPercent` only to that item in the draft.
+
+---
+
+#### 🔴 S10-02 — UPDATE_STOCK voice intent (~3 h)
+
+`productService.updateStock()` already exists. Only the voice layer is missing.
+
+**3 files to change:**
+
+1. **`packages/modules/src/providers/llm/prompts.ts`** — add `UPDATE_STOCK` intent definition and examples:
+   ```
+   UPDATE_STOCK: inbound stock receipt — "X kg/pcs Y aaya/mila/stock mein add karo"
+   Examples:
+   - "50 kilo aata aaya" → UPDATE_STOCK, product=aata, quantity=50
+   - "100 Maggi stock mein add karo" → UPDATE_STOCK, product=Maggi, quantity=100
+   - "cheeni 2 bori aayi" → UPDATE_STOCK, product=cheeni, quantity=2
+   ```
+
+2. **`packages/modules/src/modules/voice/engine/product.handler.ts`** (new handler or add to existing) — `executeUpdateStock()`:
+   ```typescript
+   export async function executeUpdateStock(entities, conversationId) {
+     const product = await productService.findByName(entities.product);
+     if (!product) return { success: false, message: `'${entities.product}' product nahi mila` };
+     const updated = await productService.updateStock(product.id, entities.quantity, 'add');
+     return { success: true, message: `✅ ${product.name} ka stock ${updated.stock} ho gaya (+${entities.quantity})` };
+   }
+   ```
+
+3. **`packages/modules/src/modules/voice/engine/enhanced-handler.ts`** (or equivalent router) — add `UPDATE_STOCK` case to the intent dispatch switch.
+
+---
+
+#### ⚠️ S10-03 — Mobile layout — counter mode (~2 d)
+
+**What to add:**
+- Bottom navigation bar (`Home | Customers | Invoice | Reports | Settings`) visible only on `max-md` that replaces the side drawer on mobile
+- Increase all `h-8 w-8` touch targets on invoice item rows to `h-10 w-10` (min 44×44 px)
+- `InvoiceCreation.tsx` — sheet should use `h-full` on mobile (`sm:h-auto`)
+- `InvoiceDetail.tsx` — sticky "Record Payment" CTA bar pinned to bottom on mobile
+- `ClassicBilling.tsx` — already exists, confirm it is touch-friendly
+
+---
+
+#### 🔴 S10-04 — Offline mode PWA (~5 d — separate milestone)
+
+**Implementation plan:**
+1. Add `vite-plugin-pwa` to `apps/web/vite.config.ts`; configure `manifest.json` (name, icons, theme_color)
+2. Service worker strategy: `StaleWhileRevalidate` for GET APIs, `NetworkFirst` for mutations
+3. IndexedDB queue (`idb` npm): when offline, `createInvoice()` / `addPayment()` write to a local `outbox` store
+4. Background sync: when network returns, drain `outbox` in FIFO order via `navigator.serviceWorker.sync`
+5. UI: show "Offline — X actions queued" banner; disable voice STT gracefully; mark queued invoices with ⏳ badge
+
+---
+
+### Sprint 10 Success Criteria
+
+- 🔴 Voice "aata pe 5% discount do" correctly reduces that line's taxable value in the PDF and totals (S10-01)
+- 🔴 Voice "50 kilo aata aaya" successfully increments aata stock by 50 (S10-02)
+- ⚠️ All primary flows (create invoice, record payment, view customers) fully usable on 375 px screen without horizontal scroll (S10-03)
+
+---
+
 _Document maintained by the Execora engineering team._
 _v2.3: Sprint 7 — Overdue page, bulk reminders, phone-optional reminder path._
 _v2.4: Priority matrix updated based on 193+ real user reviews. New P0: OCR purchase bill ingestion, single-screen billing, offline queue, UPI QR. Full research: docs/audit/USER_RESEARCH_IMPROVEMENT_ANALYSIS.md._
 _v2.5: Sprint 8 — Barcode scanning (ZXing, EAN/QR, invoice + inventory), DraftManagerPanel Standard Mode + Fast Mode Excel spreadsheet (inline edit + auto-save), NotificationCenter live draft notifications._
 _v2.6: Sprint 8 enhancements closed — Fast Mode 12-col table (Core/Full toggle), 9-field OCR extraction, auto-open draft panel after OCR, always-visible column toggle. OCR purchase bill ingestion marked ✅ Partially Built. Sprint 9 plan added (Section 15): WhatsApp PDF on confirm, walk-in 1-tap, UPI QR, item discount, single-screen billing._
 _v2.7 (2026-03-07): Sprint 9 full code audit. Confirmed ✅ Done: S9-02 (walk-in tap), S9-03 (UPI QR in pdf.ts), S9-05 (ClassicBilling.tsx), S9-07 (email prompt in Customers.tsx). S9-06 (batch/expiry) ✅ Partially built — backend done, frontend TBD. S9-04 (item discount) ⚠️ UI column exists but `InvoiceItemInput` has no `lineDiscountPercent`, submit drops discount, `resolveItemsAndTotals()` has no per-line logic. S9-01 (WhatsApp auto-send) 🔴 Not built — `confirmInvoice()` only queues email. Remaining work with exact files documented in "What Remains To Build" section above._
-_Next review: after S9-01 (WhatsApp auto-send) and S9-04 (item-level discount backend) ship._
+_v2.8 (2026-03-07): Sprint 9 CLOSED. S9-01 fully shipped — per-tenant autoSendEmail/autoSendWhatsApp toggles in Settings, gated in both manual (`dispatchInvoicePdfEmail`) and voice (`shared.ts sendConfirmedInvoiceEmail`) flows. P1 matrix updated: repeat-last-bill, credit-limit enforcement, invoice editing, customer tags confirmed ✅ Built via code audit. Sprint 10 plan added (Section 16)._
+_Next review: after S10-01 (item-level discount backend) and S10-02 (UPDATE_STOCK voice) ship._
