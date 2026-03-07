@@ -72,11 +72,11 @@ Execora is a **real-time voice-driven business operating system** that:
 - **Tech level**: Uses WhatsApp heavily, UPI daily, but types slowly on phones
 - **Language**: Hindi primary, some English words
 - **Pain points**:
-    - Creating bills mid-rush is too slow with any typing app
-    - GST filing is outsourced to a CA at extra cost because he can't operate Tally
-    - 50-100 customers on credit (udaar) — he forgets who owes what
-    - Stock runs out without warning (especially flour, oil, salt)
-    - Collecting payments from credit customers requires awkward phone calls
+  - Creating bills mid-rush is too slow with any typing app
+  - GST filing is outsourced to a CA at extra cost because he can't operate Tally
+  - 50-100 customers on credit (udaar) — he forgets who owes what
+  - Stock runs out without warning (especially flour, oil, salt)
+  - Collecting payments from credit customers requires awkward phone calls
 - **What he needs**: Say the order in Hindi → invoice done → WhatsApp reminder sent → stock updated → no more paper
 
 ### Persona 2: Meena — Cosmetics/FMCG Shop Owner
@@ -85,10 +85,10 @@ Execora is a **real-time voice-driven business operating system** that:
 - **Business**: Beauty products, skincare, cosmetics — 80-150 customers/day
 - **Language**: Hindi + regional (Marathi/Telugu/Kannada)
 - **Pain points**:
-    - Product names are complex (English brand names + Hindi quantities)
-    - Product expiry tracking is manual
-    - Small margin business — GST input credit matters a lot
-    - Many loyal customers on monthly credit
+  - Product names are complex (English brand names + Hindi quantities)
+  - Product expiry tracking is manual
+  - Small margin business — GST input credit matters a lot
+  - Many loyal customers on monthly credit
 
 ### Persona 3: Ramesh — Small Wholesaler/Distributor
 
@@ -96,11 +96,11 @@ Execora is a **real-time voice-driven business operating system** that:
 - **Business**: Supplies 50-200 kirana stores, ₹5-50 lakh daily B2B turnover
 - **Language**: Hindi + local language
 - **Pain points**:
-    - Orders come via WhatsApp voice notes all day
-    - Each kirana store has different pricing (volume discounts)
-    - Credit cycles of 15-30 days make cash flow hard to track
-    - Delivery tracking is manual
-    - B2B invoices must be GST-compliant with proper GSTIN of buyer
+  - Orders come via WhatsApp voice notes all day
+  - Each kirana store has different pricing (volume discounts)
+  - Credit cycles of 15-30 days make cash flow hard to track
+  - Delivery tracking is manual
+  - B2B invoices must be GST-compliant with proper GSTIN of buyer
 
 ### Persona 4: Priya — Pharmacy Owner
 
@@ -108,10 +108,10 @@ Execora is a **real-time voice-driven business operating system** that:
 - **Business**: Pharmacy, 100-200 daily prescriptions + OTC
 - **Language**: Hindi + English
 - **Pain points**:
-    - Drug names are complex (brand + generic + dose)
-    - Expiry date tracking is mandatory
-    - Batch number tracking for returns/recalls
-    - GST rates vary per drug category (0%, 5%, 12%)
+  - Drug names are complex (brand + generic + dose)
+  - Expiry date tracking is mandatory
+  - Batch number tracking for returns/recalls
+  - GST rates vary per drug category (0%, 5%, 12%)
 
 ---
 
@@ -1349,21 +1349,21 @@ Status: scheduled → sent → delivered → read → failed
 // WSContext.tsx handles all server events and invalidates React Query cache
 // This ensures Classic Mode UI always shows fresh data after any Agent Mode action
 
-wsClient.on('invoice:created', () => {
-	qc.invalidateQueries({ queryKey: ['invoices'] });
-	qc.invalidateQueries({ queryKey: ['summary'] });
+wsClient.on("invoice:created", () => {
+  qc.invalidateQueries({ queryKey: ["invoices"] });
+  qc.invalidateQueries({ queryKey: ["summary"] });
 });
 
-wsClient.on('product:updated', () => {
-	qc.invalidateQueries({ queryKey: ['products'] });
-	qc.invalidateQueries({ queryKey: ['products', 'low-stock'] });
+wsClient.on("product:updated", () => {
+  qc.invalidateQueries({ queryKey: ["products"] });
+  qc.invalidateQueries({ queryKey: ["products", "low-stock"] });
 });
 
-wsClient.on('payment:recorded', () => {
-	qc.invalidateQueries({ queryKey: ['invoices'] });
-	qc.invalidateQueries({ queryKey: ['customers'] });
-	qc.invalidateQueries({ queryKey: ['ledger'] });
-	qc.invalidateQueries({ queryKey: ['summary'] });
+wsClient.on("payment:recorded", () => {
+  qc.invalidateQueries({ queryKey: ["invoices"] });
+  qc.invalidateQueries({ queryKey: ["customers"] });
+  qc.invalidateQueries({ queryKey: ["ledger"] });
+  qc.invalidateQueries({ queryKey: ["summary"] });
 });
 ```
 
@@ -1907,24 +1907,98 @@ This removes the app install barrier entirely. Growth = viral WhatsApp sharing.
 
 Close the top P0 gaps that directly impact daily counter sales: frictionless walk-in billing, WhatsApp PDF delivery on confirm, and UPI QR on invoices. These three together eliminate the most common reasons a kirana owner prefers Vyapar over Execora.
 
-### Sprint 9 Stories
+### Sprint 9 Stories — Code Audit (2026-03-07)
 
-| #     | Story                                         | Priority | Est. | Notes                                                                                                                                |
-| ----- | --------------------------------------------- | -------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| S9-01 | **WhatsApp auto-send PDF on invoice confirm** | P0       | 4 h  | `invoice:confirmed` event → WhatsApp API with PDF URL. Mirrors current email auto-send. Add toggle in Settings per customer.         |
-| S9-02 | **Walk-in 1-tap button**                      | P0       | 2 h  | Dashboard/header "New Sale ▶" pre-selects Walk-in customer + opens invoice form in one tap. No customer search step.                 |
-| S9-03 | **UPI QR code on invoice PDF**                | P0       | 3 h  | `qrcode` npm → embed UPI deep-link QR in PDF footer. Uses `upiVpa` from business profile. Scanned by customer to pay on the spot.    |
-| S9-04 | **Item-level discount**                       | P0       | 3 h  | Each invoice item line gets `discountPct` / `discountAmt` field. Voice: "aata pe 5% discount do". Updates taxable value correctly.   |
-| S9-05 | **Single-screen classic billing UI**          | P0       | 1 d  | Customer search + item addition + totals on one page, no navigation. Mobile-responsive. Addresses #1 UX complaint from 193+ reviews. |
-| S9-06 | **Batch / expiry entry**                      | P1       | 1 d  | Pharma vertical: batch number + expiry date on purchase; alert 30 days before expiry; FIFO deduction.                                |
-| S9-07 | **Customer email prompt at creation**         | P1       | 2 h  | Email field highlighted (not required) in Customer form; tooltip explains it enables PDF delivery.                                   |
+> **Audit date:** 2026-03-07
+> Legend: ✅ Done | ⚠️ Partial — needs backend work | 🔴 Not built
+
+| #     | Story                                         | Priority | Est. | Status                             | Audit Finding                                                                                                                                                                                                                                                        |
+| ----- | --------------------------------------------- | -------- | ---- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S9-01 | **WhatsApp auto-send PDF on invoice confirm** | P0       | 4 h  | 🔴 **Not built**                   | `confirmInvoice()` only queues an email job. No WhatsApp job queued. No per-tenant WhatsApp auto-send toggle in Settings.                                                                                                                                            |
+| S9-02 | **Walk-in 1-tap button**                      | P0       | 2 h  | ✅ **Done**                        | `QuickActions.tsx` "Quick Sale ▶" opens `<InvoiceCreation startAsWalkIn />`. Walk-in customer auto-selected, search step skipped.                                                                                                                                    |
+| S9-03 | **UPI QR code on invoice PDF**                | P0       | 3 h  | ✅ **Done**                        | `packages/infrastructure/src/pdf.ts` imports `qrcode`, generates `upi://pay?pa=…` URL, embeds 64×64 PNG in PDF footer when `upiVpa` is set.                                                                                                                          |
+| S9-04 | **Item-level discount**                       | P0       | 3 h  | ⚠️ **UI only — backend not wired** | Per-item `discount` (%) column exists in `InvoiceCreation.tsx` and renders correctly. But submit drops it — only `{ productName, quantity, unitPrice }` is sent. `InvoiceItemInput` has no discount field. `resolveItemsAndTotals()` has no per-line discount logic. |
+| S9-05 | **Single-screen classic billing UI**          | P0       | 1 d  | ✅ **Done**                        | `apps/web/src/pages/ClassicBilling.tsx` exists with S9-05 comment. Route `/classicbilling` registered in `App.tsx`.                                                                                                                                                  |
+| S9-06 | **Batch / expiry entry**                      | P1       | 1 d  | ✅ **Partially built**             | `product.service.ts` has full backend logic: `batchNo`, `expiryDate`, 7/30/90-day alerts, `writeOffExpiredBatch()`, FIFO deduction. Frontend batch-entry UI in Inventory needs verification.                                                                         |
+| S9-07 | **Customer email prompt at creation**         | P1       | 2 h  | ✅ **Done**                        | `Customers.tsx` email label is blue-highlighted with `(Enables PDF delivery)` hint text and blue-bordered input.                                                                                                                                                     |
+
+---
+
+### What Remains To Build
+
+#### 🔴 S9-01 — WhatsApp auto-send PDF on invoice confirm (~4 h)
+
+**Files to change:**
+
+1. **`packages/modules/src/modules/invoice/invoice.service.ts`**
+   In `confirmInvoice()`, after the email job is queued, queue a WhatsApp job when the customer has a phone number and the tenant has `autoWhatsapp` enabled:
+
+   ```typescript
+   if (customer.phone && tenantSettings.autoWhatsapp) {
+     await queue.add("whatsapp:send-invoice", {
+       tenantId,
+       invoiceId: invoice.id,
+       phone: customer.phone,
+       pdfUrl: invoice.pdfUrl,
+     });
+   }
+   ```
+
+2. **`apps/web/src/pages/Settings.tsx`** — add a "Auto-send invoice via WhatsApp" toggle (mirrors the existing email toggle). Saves to tenant settings as `autoWhatsapp: boolean`.
+
+3. **`packages/types/src/index.ts`** — add `autoWhatsapp?: boolean` to the tenant settings type if not already present.
+
+---
+
+#### ⚠️ S9-04 — Item-level discount — wire backend (~3 h)
+
+The UI already has a `discount` (%) column per item. Three places need to change:
+
+1. **`packages/types/src/index.ts`** — add `lineDiscountPercent` to `InvoiceItemInput`:
+
+   ```typescript
+   export interface InvoiceItemInput {
+     productName: string;
+     quantity: number;
+     unitPrice?: number;
+     lineDiscountPercent?: number; // 0–100 per-line discount %
+   }
+   ```
+
+2. **`packages/modules/src/modules/invoice/invoice.service.ts`** — in `resolveItemsAndTotals()`, apply line discount before computing subtotal:
+
+   ```typescript
+   const lineDisc = item.lineDiscountPercent ?? 0;
+   const effectivePrice =
+     lineDisc > 0
+       ? Math.round(unitPrice * (1 - lineDisc / 100) * 10000) / 10000
+       : unitPrice;
+   const subtotal = Math.round(effectivePrice * item.quantity * 100) / 100;
+   ```
+
+3. **`apps/web/src/components/InvoiceCreation.tsx`** — in the submit `invItems` map (~line 643), pass the discount through:
+
+   ```typescript
+   items.map((it) => ({
+     productName: it.name,
+     quantity: parseInt(it.qty) || 1,
+     unitPrice: it.price > 0 ? it.price : undefined,
+     lineDiscountPercent: it.discount > 0 ? it.discount : undefined,
+   }));
+   ```
+
+4. **Voice engine** — `packages/modules/src/providers/llm/prompts.ts` already documents per-item discount syntax (`ADD_DISCOUNT` with a `product` entity). The handler needs to extract `discountPercent` from the entity and pass it as `lineDiscountPercent` on the matching item.
+
+---
 
 ### Sprint 9 Success Criteria
 
-- Invoice confirm → WhatsApp PDF received within 5 s (S9-01)
-- Walk-in bill completed in < 10 s from dashboard (S9-02)
-- Any invoice PDF download shows UPI QR in footer (S9-03)
-- Voice "item pe 5% discount" round-trips and reduces taxable value (S9-04)
+- ✅ Walk-in bill completed in < 10 s from dashboard (S9-02)
+- ✅ Any invoice PDF with `upiVpa` configured shows UPI QR in footer (S9-03)
+- ✅ Single-screen classic billing at `/classicbilling` (S9-05)
+- ✅ Customer creation form highlights email with "Enables PDF delivery" hint (S9-07)
+- 🔴 Invoice confirm → WhatsApp PDF received within 5 s (S9-01)
+- ⚠️ Voice/manual "item pe 5% discount" reduces that line's taxable value in totals and PDF (S9-04)
 
 ---
 
@@ -1953,12 +2027,12 @@ Close the top P0 gaps that directly impact daily counter sales: frictionless wal
 // UI layer (apps/web/src): React components consuming REST + WebSocket
 
 // Cross-package imports: always use barrel imports
-import { customerService, invoiceService } from '@execora/modules';
-import { prisma, logger } from '@execora/infrastructure';
+import { customerService, invoiceService } from "@execora/modules";
+import { prisma, logger } from "@execora/infrastructure";
 
 // Database: always include tenantId in all queries
 const results = await prisma.product.findMany({
-	where: { tenantId: tenantContext.get().tenantId, isActive: true },
+  where: { tenantId: tenantContext.get().tenantId, isActive: true },
 });
 
 // Invoice status values: 'draft' | 'pending' | 'partial' | 'paid' | 'cancelled'
@@ -1991,10 +2065,10 @@ Mode 3 — True Agent (planned): STT → LLM with tool definitions → tool call
 1. **Service layer** — implement in `packages/modules/src/modules/X/x.service.ts`
 2. **REST route** — thin wrapper in `apps/api/src/api/routes/x.routes.ts` (Form/Dashboard mode ✅)
 3. **Intent handler** — add to `packages/modules/src/modules/voice/engine/x.handler.ts`
-    - Add case to `engine/index.ts` switch statement
-    - Add to LLM extraction prompt with Hindi few-shot examples (Intent-Based mode ✅)
+   - Add case to `engine/index.ts` switch statement
+   - Add to LLM extraction prompt with Hindi few-shot examples (Intent-Based mode ✅)
 4. **Agent tool** — add tool definition to `packages/modules/src/providers/llm/agent-tools.ts`
-    - Description in plain English so LLM can discover and use it (Agent Mode ✅)
+   - Description in plain English so LLM can discover and use it (Agent Mode ✅)
 5. **React Query hook** — add to `apps/web/src/hooks/useQueries.ts`
 6. **WebSocket** — add invalidation to `apps/web/src/contexts/WSContext.tsx`
 7. **Update this document** — Section 4 (requirements) + Section 13 (built/pending)
@@ -2061,4 +2135,5 @@ _v2.3: Sprint 7 — Overdue page, bulk reminders, phone-optional reminder path._
 _v2.4: Priority matrix updated based on 193+ real user reviews. New P0: OCR purchase bill ingestion, single-screen billing, offline queue, UPI QR. Full research: docs/audit/USER_RESEARCH_IMPROVEMENT_ANALYSIS.md._
 _v2.5: Sprint 8 — Barcode scanning (ZXing, EAN/QR, invoice + inventory), DraftManagerPanel Standard Mode + Fast Mode Excel spreadsheet (inline edit + auto-save), NotificationCenter live draft notifications._
 _v2.6: Sprint 8 enhancements closed — Fast Mode 12-col table (Core/Full toggle), 9-field OCR extraction, auto-open draft panel after OCR, always-visible column toggle. OCR purchase bill ingestion marked ✅ Partially Built. Sprint 9 plan added (Section 15): WhatsApp PDF on confirm, walk-in 1-tap, UPI QR, item discount, single-screen billing._
-_Next review: when any Sprint 9 P0 story ships._
+_v2.7 (2026-03-07): Sprint 9 full code audit. Confirmed ✅ Done: S9-02 (walk-in tap), S9-03 (UPI QR in pdf.ts), S9-05 (ClassicBilling.tsx), S9-07 (email prompt in Customers.tsx). S9-06 (batch/expiry) ✅ Partially built — backend done, frontend TBD. S9-04 (item discount) ⚠️ UI column exists but `InvoiceItemInput` has no `lineDiscountPercent`, submit drops discount, `resolveItemsAndTotals()` has no per-line logic. S9-01 (WhatsApp auto-send) 🔴 Not built — `confirmInvoice()` only queues email. Remaining work with exact files documented in "What Remains To Build" section above._
+_Next review: after S9-01 (WhatsApp auto-send) and S9-04 (item-level discount backend) ship._
