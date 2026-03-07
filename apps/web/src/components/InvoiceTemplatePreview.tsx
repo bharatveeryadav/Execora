@@ -5,7 +5,14 @@
  */
 import React from "react";
 
-export type TemplateId = "classic" | "modern" | "vyapari" | "thermal";
+export type TemplateId =
+  | "classic"
+  | "modern"
+  | "vyapari"
+  | "thermal"
+  | "ecom"
+  | "flipkart"
+  | "minimal";
 
 export const TEMPLATES: Array<{
   id: TemplateId;
@@ -36,6 +43,24 @@ export const TEMPLATES: Array<{
     label: "Thermal",
     desc: "80mm receipt format",
     color: "#111827",
+  },
+  {
+    id: "ecom",
+    label: "E-Com",
+    desc: "Amazon-style order invoice",
+    color: "#ff9900",
+  },
+  {
+    id: "flipkart",
+    label: "Flipkart",
+    desc: "Blue e-commerce receipt",
+    color: "#2874f0",
+  },
+  {
+    id: "minimal",
+    label: "Minimal",
+    desc: "Clean typographic style",
+    color: "#6d28d9",
   },
 ];
 
@@ -597,6 +622,555 @@ function ThermalRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+// ── E-Com (Amazon-style) template ────────────────────────────────────────────
+function EcomPreview({ d }: { d: PreviewData }) {
+  return (
+    <div
+      style={{
+        fontFamily: '"Amazon Ember", Arial, sans-serif',
+        fontSize: 11,
+        color: "#0f1111",
+        background: "#fff",
+        width: 560,
+        border: "1px solid #d5d9d9",
+        borderRadius: 4,
+      }}
+    >
+      {/* Header bar */}
+      <div
+        style={{
+          background: "#232f3e",
+          padding: "10px 16px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div
+          style={{
+            color: "#ff9900",
+            fontWeight: 900,
+            fontSize: 20,
+            letterSpacing: -0.5,
+          }}
+        >
+          {d.shopName}
+        </div>
+        <div style={{ color: "#fff", fontSize: 10, textAlign: "right" }}>
+          <div style={{ fontWeight: 600 }}>TAX INVOICE</div>
+          <div style={{ color: "#ccc" }}>Order # {d.invoiceNo}</div>
+        </div>
+      </div>
+      {/* Orange accent stripe */}
+      <div style={{ height: 3, background: "#ff9900" }} />
+      {/* Buyer / Seller info */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 0,
+          borderBottom: "1px solid #e3e6e6",
+        }}
+      >
+        <div style={{ padding: "10px 16px", borderRight: "1px solid #e3e6e6" }}>
+          <div
+            style={{
+              fontSize: 9,
+              fontWeight: 700,
+              color: "#565959",
+              marginBottom: 3,
+            }}
+          >
+            BILL TO
+          </div>
+          <div style={{ fontWeight: 600 }}>{d.customerName}</div>
+          {d.gstin && (
+            <div style={{ fontSize: 10, color: "#565959" }}>
+              GSTIN: {d.gstin}
+            </div>
+          )}
+        </div>
+        <div style={{ padding: "10px 16px" }}>
+          <div
+            style={{
+              fontSize: 9,
+              fontWeight: 700,
+              color: "#565959",
+              marginBottom: 3,
+            }}
+          >
+            ORDER DATE
+          </div>
+          <div style={{ fontWeight: 600 }}>{d.date}</div>
+          <div style={{ fontSize: 10, color: "#565959" }}>
+            Invoice: {d.invoiceNo}
+          </div>
+        </div>
+      </div>
+      {/* Items */}
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead>
+          <tr
+            style={{ borderBottom: "1px solid #e3e6e6", background: "#f7f8f8" }}
+          >
+            {["#", "Items Ordered", "Qty", "Unit Price", "Disc", "Total"].map(
+              (h) => (
+                <th
+                  key={h}
+                  style={{
+                    padding: "6px 8px",
+                    textAlign: ["Unit Price", "Total", "Disc"].includes(h)
+                      ? "right"
+                      : "left",
+                    fontSize: 10,
+                    color: "#565959",
+                    fontWeight: 700,
+                  }}
+                >
+                  {h}
+                </th>
+              ),
+            )}
+          </tr>
+        </thead>
+        <tbody>
+          {d.items.map((it, i) => (
+            <tr
+              key={i}
+              style={{
+                borderBottom: "1px solid #f0f2f2",
+                background: i % 2 === 0 ? "#fff" : "#fafafa",
+              }}
+            >
+              <td style={{ padding: "5px 8px", color: "#888" }}>{i + 1}</td>
+              <td style={{ padding: "5px 8px" }}>
+                <div style={{ fontWeight: 600 }}>{it.name}</div>
+                {it.hsnCode && (
+                  <div style={{ fontSize: 9, color: "#888" }}>
+                    HSN: {it.hsnCode}
+                  </div>
+                )}
+                <div style={{ fontSize: 9, color: "#ff9900" }}>{it.unit}</div>
+              </td>
+              <td style={{ padding: "5px 8px", textAlign: "right" }}>
+                {it.qty}
+              </td>
+              <td style={{ padding: "5px 8px", textAlign: "right" }}>
+                {inr(it.rate)}
+              </td>
+              <td
+                style={{
+                  padding: "5px 8px",
+                  textAlign: "right",
+                  color: "#b12704",
+                }}
+              >
+                {it.discount > 0 ? `${it.discount}%` : "-"}
+              </td>
+              <td
+                style={{
+                  padding: "5px 8px",
+                  textAlign: "right",
+                  fontWeight: 700,
+                }}
+              >
+                {inr(it.amount)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {/* Totals */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          padding: "10px 16px 14px",
+          borderTop: "1px solid #e3e6e6",
+        }}
+      >
+        <div style={{ minWidth: 210 }}>
+          <TotalsBlock d={d} accentColor="#ff9900" />
+        </div>
+      </div>
+      {d.notes && (
+        <div
+          style={{
+            borderTop: "1px solid #e3e6e6",
+            padding: "8px 16px",
+            fontSize: 10,
+            color: "#565959",
+          }}
+        >
+          <b>Note:</b> {d.notes}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Flipkart-style template ───────────────────────────────────────────────────
+function FlipkartPreview({ d }: { d: PreviewData }) {
+  const blue = "#2874f0";
+  const yellow = "#ffe500";
+  return (
+    <div
+      style={{
+        fontFamily: "Roboto, Arial, sans-serif",
+        fontSize: 11,
+        color: "#212121",
+        background: "#fff",
+        width: 560,
+        borderRadius: 4,
+        border: "1px solid #dbdfe4",
+        overflow: "hidden",
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          background: blue,
+          padding: "0 0 0 0",
+          display: "flex",
+          alignItems: "stretch",
+        }}
+      >
+        <div
+          style={{
+            background: blue,
+            padding: "10px 18px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            style={{
+              color: yellow,
+              fontSize: 22,
+              fontWeight: 900,
+              letterSpacing: -0.5,
+            }}
+          >
+            {d.shopName}
+          </div>
+          <div
+            style={{
+              color: "rgba(255,255,255,0.8)",
+              fontSize: 9,
+              marginTop: 1,
+            }}
+          >
+            TAX INVOICE
+          </div>
+        </div>
+        <div
+          style={{
+            marginLeft: "auto",
+            background: yellow,
+            padding: "8px 16px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "flex-end",
+          }}
+        >
+          <div style={{ color: blue, fontWeight: 800, fontSize: 12 }}>
+            #{d.invoiceNo}
+          </div>
+          <div style={{ color: "#333", fontSize: 10 }}>{d.date}</div>
+        </div>
+      </div>
+      {/* Customer bar */}
+      <div
+        style={{
+          background: "#f5f7ff",
+          borderBottom: "1px solid #dce6ff",
+          padding: "7px 18px",
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: 11,
+        }}
+      >
+        <div>
+          <span style={{ color: "#878787" }}>Customer: </span>
+          <b>{d.customerName}</b>
+        </div>
+        {d.gstin && (
+          <div>
+            <span style={{ color: "#878787" }}>GSTIN: </span>
+            <b>{d.gstin}</b>
+          </div>
+        )}
+      </div>
+      {/* Items */}
+      <table
+        style={{ width: "100%", borderCollapse: "collapse", margin: "8px 0" }}
+      >
+        <thead>
+          <tr style={{ borderBottom: `2px solid ${blue}` }}>
+            {["#", "Product", "Qty", "Rate", "Disc%", "Amount"].map((h) => (
+              <th
+                key={h}
+                style={{
+                  padding: "5px 8px",
+                  textAlign: ["Rate", "Amount", "Disc%"].includes(h)
+                    ? "right"
+                    : "left",
+                  fontSize: 10,
+                  color: blue,
+                  fontWeight: 700,
+                }}
+              >
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {d.items.map((it, i) => (
+            <tr
+              key={i}
+              style={{
+                borderBottom: "1px solid #f0f2f5",
+                background: i % 2 === 0 ? "#fff" : "#f5f7ff",
+              }}
+            >
+              <td style={{ padding: "4px 8px", color: "#878787" }}>{i + 1}</td>
+              <td style={{ padding: "4px 8px" }}>
+                <span style={{ fontWeight: 500 }}>{it.name}</span>
+                {it.unit && (
+                  <span
+                    style={{ color: "#878787", marginLeft: 4, fontSize: 10 }}
+                  >
+                    ({it.unit})
+                  </span>
+                )}
+              </td>
+              <td style={{ padding: "4px 8px", textAlign: "right" }}>
+                {it.qty}
+              </td>
+              <td style={{ padding: "4px 8px", textAlign: "right" }}>
+                {inr(it.rate)}
+              </td>
+              <td
+                style={{
+                  padding: "4px 8px",
+                  textAlign: "right",
+                  color: "#388e3c",
+                }}
+              >
+                {it.discount > 0 ? `${it.discount}%` : "-"}
+              </td>
+              <td
+                style={{
+                  padding: "4px 8px",
+                  textAlign: "right",
+                  fontWeight: 700,
+                  color: blue,
+                }}
+              >
+                {inr(it.amount)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {/* Totals */}
+      <div
+        style={{
+          background: "#f5f7ff",
+          borderTop: `2px solid ${blue}`,
+          padding: "10px 18px",
+          display: "flex",
+          justifyContent: "flex-end",
+        }}
+      >
+        <div style={{ minWidth: 200 }}>
+          <TotalsBlock d={d} accentColor={blue} />
+        </div>
+      </div>
+      {d.notes && (
+        <div
+          style={{ padding: "6px 18px 10px", fontSize: 10, color: "#878787" }}
+        >
+          <b>Remarks:</b> {d.notes}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Minimal typographic template ──────────────────────────────────────────────
+function MinimalPreview({ d }: { d: PreviewData }) {
+  const accent = "#6d28d9";
+  return (
+    <div
+      style={{
+        fontFamily: '"Georgia", serif',
+        fontSize: 11,
+        color: "#111",
+        background: "#fff",
+        width: 560,
+        padding: "28px 32px",
+      }}
+    >
+      {/* Shop name */}
+      <div
+        style={{
+          fontSize: 26,
+          fontWeight: 700,
+          letterSpacing: -0.5,
+          borderBottom: `3px solid ${accent}`,
+          paddingBottom: 10,
+          marginBottom: 16,
+          color: accent,
+        }}
+      >
+        {d.shopName}
+      </div>
+      {/* Meta row */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: 20,
+          fontSize: 11,
+        }}
+      >
+        <div>
+          <div
+            style={{
+              color: "#888",
+              fontSize: 9,
+              textTransform: "uppercase",
+              letterSpacing: 1,
+            }}
+          >
+            Billed To
+          </div>
+          <div style={{ fontWeight: 600, marginTop: 2 }}>{d.customerName}</div>
+          {d.gstin && (
+            <div style={{ color: "#666", fontSize: 10 }}>GSTIN: {d.gstin}</div>
+          )}
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div
+            style={{
+              color: "#888",
+              fontSize: 9,
+              textTransform: "uppercase",
+              letterSpacing: 1,
+            }}
+          >
+            Invoice
+          </div>
+          <div style={{ fontWeight: 600, marginTop: 2, color: accent }}>
+            {d.invoiceNo}
+          </div>
+          <div style={{ color: "#666" }}>{d.date}</div>
+        </div>
+      </div>
+      {/* Items */}
+      <table
+        style={{ width: "100%", borderCollapse: "collapse", marginBottom: 16 }}
+      >
+        <thead>
+          <tr>
+            <th
+              colSpan={6}
+              style={{
+                textAlign: "left",
+                fontSize: 8,
+                letterSpacing: 2,
+                textTransform: "uppercase",
+                color: "#999",
+                borderBottom: "1px solid #e5e7eb",
+                paddingBottom: 4,
+              }}
+            >
+              Items
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {d.items.map((it, i) => (
+            <tr key={i} style={{ borderBottom: "1px solid #f3f4f6" }}>
+              <td
+                style={{
+                  padding: "5px 0",
+                  width: 18,
+                  color: "#bbb",
+                  fontSize: 10,
+                }}
+              >
+                {i + 1}
+              </td>
+              <td style={{ padding: "5px 4px", fontWeight: 500 }}>{it.name}</td>
+              <td
+                style={{
+                  padding: "5px 4px",
+                  color: "#888",
+                  textAlign: "right",
+                }}
+              >
+                {it.qty} {it.unit}
+              </td>
+              <td
+                style={{
+                  padding: "5px 4px",
+                  color: "#888",
+                  textAlign: "right",
+                }}
+              >
+                @ {inr(it.rate)}
+              </td>
+              <td
+                style={{
+                  padding: "5px 4px",
+                  color: "#388e3c",
+                  textAlign: "right",
+                }}
+              >
+                {it.discount > 0 ? `−${it.discount}%` : ""}
+              </td>
+              <td
+                style={{
+                  padding: "5px 0",
+                  textAlign: "right",
+                  fontWeight: 600,
+                }}
+              >
+                {inr(it.amount)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {/* Totals */}
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <div style={{ minWidth: 190 }}>
+          <TotalsBlock d={d} accentColor={accent} />
+        </div>
+      </div>
+      {d.notes && (
+        <div
+          style={{
+            marginTop: 16,
+            borderTop: "1px solid #f3f4f6",
+            paddingTop: 10,
+            fontSize: 10,
+            color: "#888",
+            fontStyle: "italic",
+          }}
+        >
+          {d.notes}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export function InvoiceTemplatePreview({
@@ -618,6 +1192,9 @@ export function InvoiceTemplatePreview({
       {template === "modern" && <ModernPreview d={data} />}
       {template === "vyapari" && <VyapariPreview d={data} />}
       {template === "thermal" && <ThermalPreview d={data} />}
+      {template === "ecom" && <EcomPreview d={data} />}
+      {template === "flipkart" && <FlipkartPreview d={data} />}
+      {template === "minimal" && <MinimalPreview d={data} />}
     </div>
   );
 }
