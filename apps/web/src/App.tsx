@@ -21,6 +21,7 @@ import ExpiryPage from "./pages/Expiry";
 import NotFound from "./pages/NotFound";
 import LoginPage from "./pages/LoginPage";
 import ClassicBilling from "./pages/ClassicBilling";
+import InvoicePortal from "./pages/InvoicePortal";
 import RecurringBilling from "./pages/RecurringBilling";
 import BalanceSheet from "./pages/BalanceSheet";
 import BankReconciliation from "./pages/BankReconciliation";
@@ -233,6 +234,8 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      {/* Public customer-facing portal — no auth required */}
+      <Route path="/pub/:id/:token" element={<InvoicePortal />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

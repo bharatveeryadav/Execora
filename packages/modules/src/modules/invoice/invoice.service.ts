@@ -255,9 +255,12 @@ class InvoiceService {
         );
         if (autoCreated) autoCreatedProducts.push(product.name);
 
-        const rawUnitPrice = parseFloat(product.price.toString());
-        const lineDisc =
-          (item as { lineDiscountPercent?: number }).lineDiscountPercent ?? 0;
+        // Honour explicit per-line unitPrice override; fall back to product catalog price
+        const rawUnitPrice =
+          item.unitPrice !== undefined && item.unitPrice > 0
+            ? item.unitPrice
+            : parseFloat(product.price.toString());
+        const lineDisc = item.lineDiscountPercent ?? 0;
         const unitPrice =
           lineDisc > 0
             ? Math.round(rawUnitPrice * (1 - lineDisc / 100) * 10000) / 10000

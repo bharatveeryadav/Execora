@@ -474,6 +474,8 @@ export const invoiceApi = {
       `/api/v1/invoices/${id}/send-email`,
       { method: "POST" },
     ),
+  portalToken: (id: string) =>
+    request<{ token: string }>(`/api/v1/invoices/${id}/portal-token`),
 };
 
 export const productApi = {

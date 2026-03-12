@@ -319,7 +319,9 @@ const Settings = () => {
             ...(instamojoSalt ? { instamojoSalt } : {}),
             ...(stripeSecret ? { stripeWebhookSecret: stripeSecret } : {}),
             ...(easebuzzSalt ? { easebuzzSalt } : {}),
-            ...(bharatpeSecret ? { bharatpeWebhookSecret: bharatpeSecret } : {}),
+            ...(bharatpeSecret
+              ? { bharatpeWebhookSecret: bharatpeSecret }
+              : {}),
           },
         },
       });
@@ -986,7 +988,9 @@ const Settings = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="rounded-xl border border-sky-200/50 bg-sky-50/50 dark:bg-sky-950/20 px-4 py-3 text-sm text-muted-foreground">
-              <p className="font-semibold text-foreground">Paytm Payment Gateway Webhook</p>
+              <p className="font-semibold text-foreground">
+                Paytm Payment Gateway Webhook
+              </p>
               <p className="mt-1 text-xs">
                 Accept payments from all UPI apps via Paytm Payment Gateway.
                 When STATUS=TXN_SUCCESS, Execora announces the payment.
@@ -994,7 +998,8 @@ const Settings = () => {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">
-                Step 1 — Add this URL in Paytm Dashboard → Developer Settings → Webhook
+                Step 1 — Add this URL in Paytm Dashboard → Developer Settings →
+                Webhook
               </Label>
               <div className="flex gap-2">
                 <Input
@@ -1018,12 +1023,18 @@ const Settings = () => {
                     setTimeout(() => setUrlCopied(false), 2000);
                   }}
                 >
-                  {urlCopied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+                  {urlCopied ? (
+                    <Check className="h-4 w-4 text-success" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Step 2 — Paste Paytm Merchant Key here</Label>
+              <Label className="text-xs">
+                Step 2 — Paste Paytm Merchant Key here
+              </Label>
               <div className="flex gap-2">
                 <Input
                   type={showSecret ? "text" : "password"}
@@ -1032,12 +1043,21 @@ const Settings = () => {
                   placeholder="Paytm merchant key"
                   className="font-mono text-sm"
                 />
-                <Button variant="outline" size="icon" onClick={() => setShowSecret((v) => !v)}>
-                  {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowSecret((v) => !v)}
+                >
+                  {showSecret ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Found in Paytm Dashboard → Developer Settings → API Keys → Merchant Key.
+                Found in Paytm Dashboard → Developer Settings → API Keys →
+                Merchant Key.
               </p>
             </div>
             <div className="rounded-xl border border-dashed p-3 text-center">
@@ -1045,12 +1065,23 @@ const Settings = () => {
                 size="sm"
                 variant="outline"
                 onClick={() => {
-                  window.dispatchEvent(new CustomEvent("__payment_test__", {
-                    detail: { amount: 350, customerName: "Test Customer", source: "paytm" },
-                  }));
-                  toast({ title: "🔊 Testing Paytm sound box…", description: "You should hear the announcement." });
+                  window.dispatchEvent(
+                    new CustomEvent("__payment_test__", {
+                      detail: {
+                        amount: 350,
+                        customerName: "Test Customer",
+                        source: "paytm",
+                      },
+                    }),
+                  );
+                  toast({
+                    title: "🔊 Testing Paytm sound box…",
+                    description: "You should hear the announcement.",
+                  });
                 }}
-              >🔊 Preview Announcement</Button>
+              >
+                🔊 Preview Announcement
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -1067,13 +1098,14 @@ const Settings = () => {
             <div className="rounded-xl border border-pink-200/50 bg-pink-50/50 dark:bg-pink-950/20 px-4 py-3 text-sm text-muted-foreground">
               <p className="font-semibold text-foreground">Instamojo Webhook</p>
               <p className="mt-1 text-xs">
-                Popular with freelancers and small online businesses.
-                Triggers on successful UPI / card payments.
+                Popular with freelancers and small online businesses. Triggers
+                on successful UPI / card payments.
               </p>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">
-                Step 1 — Add this URL in Instamojo Dashboard → Developers → Webhook URL
+                Step 1 — Add this URL in Instamojo Dashboard → Developers →
+                Webhook URL
               </Label>
               <div className="flex gap-2">
                 <Input
@@ -1097,15 +1129,24 @@ const Settings = () => {
                     setTimeout(() => setUrlCopied(false), 2000);
                   }}
                 >
-                  {urlCopied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+                  {urlCopied ? (
+                    <Check className="h-4 w-4 text-success" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Event: <span className="font-medium text-foreground">status = Credit</span>
+                Event:{" "}
+                <span className="font-medium text-foreground">
+                  status = Credit
+                </span>
               </p>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Step 2 — Paste Instamojo Private Salt</Label>
+              <Label className="text-xs">
+                Step 2 — Paste Instamojo Private Salt
+              </Label>
               <div className="flex gap-2">
                 <Input
                   type={showSecret ? "text" : "password"}
@@ -1114,12 +1155,21 @@ const Settings = () => {
                   placeholder="Instamojo private salt"
                   className="font-mono text-sm"
                 />
-                <Button variant="outline" size="icon" onClick={() => setShowSecret((v) => !v)}>
-                  {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowSecret((v) => !v)}
+                >
+                  {showSecret ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Found in Instamojo Dashboard → Settings → Advanced Settings → Private Salt.
+                Found in Instamojo Dashboard → Settings → Advanced Settings →
+                Private Salt.
               </p>
             </div>
             <div className="rounded-xl border border-dashed p-3 text-center">
@@ -1127,12 +1177,23 @@ const Settings = () => {
                 size="sm"
                 variant="outline"
                 onClick={() => {
-                  window.dispatchEvent(new CustomEvent("__payment_test__", {
-                    detail: { amount: 499, customerName: "Test Customer", source: "instamojo" },
-                  }));
-                  toast({ title: "🔊 Testing Instamojo sound box…", description: "You should hear the announcement." });
+                  window.dispatchEvent(
+                    new CustomEvent("__payment_test__", {
+                      detail: {
+                        amount: 499,
+                        customerName: "Test Customer",
+                        source: "instamojo",
+                      },
+                    }),
+                  );
+                  toast({
+                    title: "🔊 Testing Instamojo sound box…",
+                    description: "You should hear the announcement.",
+                  });
                 }}
-              >🔊 Preview Announcement</Button>
+              >
+                🔊 Preview Announcement
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -1150,13 +1211,16 @@ const Settings = () => {
               <p className="font-semibold text-foreground">Stripe Webhook</p>
               <p className="mt-1 text-xs">
                 Stripe supports UPI for India. Any{" "}
-                <span className="font-medium text-foreground">payment_intent.succeeded</span>{" "}
+                <span className="font-medium text-foreground">
+                  payment_intent.succeeded
+                </span>{" "}
                 event with UPI as payment method triggers the sound box.
               </p>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">
-                Step 1 — Add this URL in Stripe Dashboard → Developers → Webhooks
+                Step 1 — Add this URL in Stripe Dashboard → Developers →
+                Webhooks
               </Label>
               <div className="flex gap-2">
                 <Input
@@ -1180,15 +1244,24 @@ const Settings = () => {
                     setTimeout(() => setUrlCopied(false), 2000);
                   }}
                 >
-                  {urlCopied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+                  {urlCopied ? (
+                    <Check className="h-4 w-4 text-success" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Subscribe to: <span className="font-medium text-foreground">payment_intent.succeeded</span>
+                Subscribe to:{" "}
+                <span className="font-medium text-foreground">
+                  payment_intent.succeeded
+                </span>
               </p>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Step 2 — Paste Stripe Webhook Signing Secret</Label>
+              <Label className="text-xs">
+                Step 2 — Paste Stripe Webhook Signing Secret
+              </Label>
               <div className="flex gap-2">
                 <Input
                   type={showSecret ? "text" : "password"}
@@ -1197,12 +1270,21 @@ const Settings = () => {
                   placeholder="whsec_xxxxxxxxxxxxxxxx"
                   className="font-mono text-sm"
                 />
-                <Button variant="outline" size="icon" onClick={() => setShowSecret((v) => !v)}>
-                  {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowSecret((v) => !v)}
+                >
+                  {showSecret ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Found in Stripe Dashboard → Developers → Webhooks → your endpoint → Signing secret.
+                Found in Stripe Dashboard → Developers → Webhooks → your
+                endpoint → Signing secret.
               </p>
             </div>
             <div className="rounded-xl border border-dashed p-3 text-center">
@@ -1210,12 +1292,23 @@ const Settings = () => {
                 size="sm"
                 variant="outline"
                 onClick={() => {
-                  window.dispatchEvent(new CustomEvent("__payment_test__", {
-                    detail: { amount: 2000, customerName: "Test Customer", source: "stripe" },
-                  }));
-                  toast({ title: "🔊 Testing Stripe sound box…", description: "You should hear the announcement." });
+                  window.dispatchEvent(
+                    new CustomEvent("__payment_test__", {
+                      detail: {
+                        amount: 2000,
+                        customerName: "Test Customer",
+                        source: "stripe",
+                      },
+                    }),
+                  );
+                  toast({
+                    title: "🔊 Testing Stripe sound box…",
+                    description: "You should hear the announcement.",
+                  });
                 }}
-              >🔊 Preview Announcement</Button>
+              >
+                🔊 Preview Announcement
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -1232,13 +1325,15 @@ const Settings = () => {
             <div className="rounded-xl border border-teal-200/50 bg-teal-50/50 dark:bg-teal-950/20 px-4 py-3 text-sm text-muted-foreground">
               <p className="font-semibold text-foreground">EaseBuzz Webhook</p>
               <p className="mt-1 text-xs">
-                EaseBuzz is a popular Indian payment aggregator supporting UPI, cards, and wallets.
-                Uses reverse-hash verification (similar to PayU).
+                EaseBuzz is a popular Indian payment aggregator supporting UPI,
+                cards, and wallets. Uses reverse-hash verification (similar to
+                PayU).
               </p>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">
-                Step 1 — Add this URL in EaseBuzz Dashboard → Settings → Webhook URL
+                Step 1 — Add this URL in EaseBuzz Dashboard → Settings → Webhook
+                URL
               </Label>
               <div className="flex gap-2">
                 <Input
@@ -1262,12 +1357,18 @@ const Settings = () => {
                     setTimeout(() => setUrlCopied(false), 2000);
                   }}
                 >
-                  {urlCopied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+                  {urlCopied ? (
+                    <Check className="h-4 w-4 text-success" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Step 2 — Paste EaseBuzz Salt Key</Label>
+              <Label className="text-xs">
+                Step 2 — Paste EaseBuzz Salt Key
+              </Label>
               <div className="flex gap-2">
                 <Input
                   type={showSecret ? "text" : "password"}
@@ -1276,8 +1377,16 @@ const Settings = () => {
                   placeholder="EaseBuzz salt key"
                   className="font-mono text-sm"
                 />
-                <Button variant="outline" size="icon" onClick={() => setShowSecret((v) => !v)}>
-                  {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowSecret((v) => !v)}
+                >
+                  {showSecret ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
               <p className="text-[11px] text-muted-foreground">
@@ -1289,12 +1398,23 @@ const Settings = () => {
                 size="sm"
                 variant="outline"
                 onClick={() => {
-                  window.dispatchEvent(new CustomEvent("__payment_test__", {
-                    detail: { amount: 800, customerName: "Test Customer", source: "easebuzz" },
-                  }));
-                  toast({ title: "🔊 Testing EaseBuzz sound box…", description: "You should hear the announcement." });
+                  window.dispatchEvent(
+                    new CustomEvent("__payment_test__", {
+                      detail: {
+                        amount: 800,
+                        customerName: "Test Customer",
+                        source: "easebuzz",
+                      },
+                    }),
+                  );
+                  toast({
+                    title: "🔊 Testing EaseBuzz sound box…",
+                    description: "You should hear the announcement.",
+                  });
                 }}
-              >🔊 Preview Announcement</Button>
+              >
+                🔊 Preview Announcement
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -1309,15 +1429,18 @@ const Settings = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="rounded-xl border border-green-200/50 bg-green-50/50 dark:bg-green-950/20 px-4 py-3 text-sm text-muted-foreground">
-              <p className="font-semibold text-foreground">BharatPe Merchant Webhook</p>
+              <p className="font-semibold text-foreground">
+                BharatPe Merchant Webhook
+              </p>
               <p className="mt-1 text-xs">
-                BharatPe pioneered the single-QR model for small merchants.
-                Any UPI payment to your BharatPe QR triggers the Execora sound box.
+                BharatPe pioneered the single-QR model for small merchants. Any
+                UPI payment to your BharatPe QR triggers the Execora sound box.
               </p>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">
-                Step 1 — Add this URL in BharatPe Merchant Dashboard → Settings → Webhook URL
+                Step 1 — Add this URL in BharatPe Merchant Dashboard → Settings
+                → Webhook URL
               </Label>
               <div className="flex gap-2">
                 <Input
@@ -1341,15 +1464,24 @@ const Settings = () => {
                     setTimeout(() => setUrlCopied(false), 2000);
                   }}
                 >
-                  {urlCopied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+                  {urlCopied ? (
+                    <Check className="h-4 w-4 text-success" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Event: <span className="font-medium text-foreground">status = SUCCESS</span>
+                Event:{" "}
+                <span className="font-medium text-foreground">
+                  status = SUCCESS
+                </span>
               </p>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Step 2 — Paste BharatPe Webhook Secret</Label>
+              <Label className="text-xs">
+                Step 2 — Paste BharatPe Webhook Secret
+              </Label>
               <div className="flex gap-2">
                 <Input
                   type={showSecret ? "text" : "password"}
@@ -1358,12 +1490,21 @@ const Settings = () => {
                   placeholder="BharatPe webhook secret"
                   className="font-mono text-sm"
                 />
-                <Button variant="outline" size="icon" onClick={() => setShowSecret((v) => !v)}>
-                  {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setShowSecret((v) => !v)}
+                >
+                  {showSecret ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                Contact BharatPe Business support to obtain your webhook secret for signature verification.
+                Contact BharatPe Business support to obtain your webhook secret
+                for signature verification.
               </p>
             </div>
             <div className="rounded-xl border border-dashed p-3 text-center">
@@ -1371,12 +1512,23 @@ const Settings = () => {
                 size="sm"
                 variant="outline"
                 onClick={() => {
-                  window.dispatchEvent(new CustomEvent("__payment_test__", {
-                    detail: { amount: 150, customerName: "Test Customer", source: "bharatpe" },
-                  }));
-                  toast({ title: "🔊 Testing BharatPe sound box…", description: "You should hear the announcement." });
+                  window.dispatchEvent(
+                    new CustomEvent("__payment_test__", {
+                      detail: {
+                        amount: 150,
+                        customerName: "Test Customer",
+                        source: "bharatpe",
+                      },
+                    }),
+                  );
+                  toast({
+                    title: "🔊 Testing BharatPe sound box…",
+                    description: "You should hear the announcement.",
+                  });
                 }}
-              >🔊 Preview Announcement</Button>
+              >
+                🔊 Preview Announcement
+              </Button>
             </div>
           </CardContent>
         </Card>

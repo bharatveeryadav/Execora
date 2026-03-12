@@ -36,9 +36,15 @@ export function CustomersScreen() {
     <SafeAreaView className="flex-1 bg-white">
       {/* Header */}
       <View className="px-4 pt-4 pb-2 border-b border-slate-100">
-        <Text className="text-xl font-black text-slate-800 mb-3">
-          Customers
-        </Text>
+        <View className="flex-row items-center justify-between mb-3">
+          <Text className="text-xl font-black text-slate-800">Customers</Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate("Overdue")}
+            className="flex-row items-center gap-1 bg-red-50 border border-red-100 rounded-lg px-3 py-1.5"
+          >
+            <Text className="text-xs font-bold text-red-600">Udhaar List</Text>
+          </TouchableOpacity>
+        </View>
         <View className="flex-row items-center border border-slate-200 rounded-xl bg-slate-50 px-3">
           <Text className="text-slate-400 mr-2">🔍</Text>
           <TextInput

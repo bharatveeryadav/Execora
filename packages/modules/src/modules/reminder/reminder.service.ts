@@ -321,7 +321,7 @@ class ReminderService {
 					scheduledTime,
 					recurringPattern: recurringPattern as Prisma.InputJsonValue | undefined,
 					customMessage: message,
-					channels: channels as Prisma.ReminderCreatechannelsInput,
+					channels: channels as unknown as Prisma.ReminderCreatechannelsInput,
 					status: 'pending',
 					notes: amount.toString(),
 				},

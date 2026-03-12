@@ -652,8 +652,8 @@ export async function adminRoutes(fastify: FastifyInstance) {
     const data: Prisma.TenantUpdateInput = {};
     const b = request.body;
     if (b.name               !== undefined) data.name               = b.name;
-    if (b.plan               !== undefined) data.plan               = b.plan;
-    if (b.status             !== undefined) data.status             = b.status;
+    if (b.plan               !== undefined) data.plan               = b.plan as Prisma.TenantUpdateInput['plan'];
+    if (b.status             !== undefined) data.status             = b.status as Prisma.TenantUpdateInput['status'];
     if (b.currency           !== undefined) data.currency           = b.currency;
     if (b.timezone           !== undefined) data.timezone           = b.timezone;
     if (b.language           !== undefined) data.language           = b.language;

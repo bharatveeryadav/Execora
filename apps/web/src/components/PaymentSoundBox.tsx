@@ -16,6 +16,7 @@ interface PayEvent {
   amount: number;
   customerId: string;
   customerName: string;
+  source?: string;
 }
 
 let _seq = 0;
@@ -31,7 +32,10 @@ function getVoice(lang: "hi" | "en") {
   );
 }
 
-function buildUtterance(amount: number, customerName: string): SpeechSynthesisUtterance {
+function buildUtterance(
+  amount: number,
+  customerName: string,
+): SpeechSynthesisUtterance {
   const amtStr = amount.toLocaleString("en-IN");
   const hiVoice = getVoice("hi");
   const enVoice = getVoice("en");
@@ -80,6 +84,7 @@ export function PaymentSoundBox() {
         customerId?: string;
         amount?: number;
         customerName?: string;
+        source?: string;
       };
       const amount = parseFloat(String(p.amount ?? 0));
       if (!amount || amount <= 0) return;
@@ -101,10 +106,39 @@ export function PaymentSoundBox() {
           amount,
           customerId: p.customerId ?? "",
           customerName,
+          source: p.source,
         },
       ]);
     });
   }, [qc]);
+
+  // Test event from Settings page
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail =
+        (
+          e as CustomEvent<{
+            amount?: number;
+            customerName?: string;
+            source?: string;
+          }>
+        ).detail ?? {};
+      const amount = parseFloat(String(detail.amount ?? 500));
+      if (!amount) return;
+      setQueue((q) => [
+        ...q,
+        {
+          id: ++_seq,
+          amount,
+          customerId: "",
+          customerName: detail.customerName ?? "Test Customer",
+          source: detail.source,
+        },
+      ]);
+    };
+    window.addEventListener("__payment_test__", handler);
+    return () => window.removeEventListener("__payment_test__", handler);
+  }, []);
 
   // Process queue one at a time
   useEffect(() => {
@@ -137,7 +171,9 @@ export function PaymentSoundBox() {
   return (
     <div
       className={`fixed left-1/2 top-4 z-[9999] -translate-x-1/2 transition-all duration-300 ease-out ${
-        visible ? "translate-y-0 opacity-100 scale-100" : "-translate-y-16 opacity-0 scale-95"
+        visible
+          ? "translate-y-0 opacity-100 scale-100"
+          : "-translate-y-16 opacity-0 scale-95"
       }`}
       style={{ width: "min(92vw, 380px)" }}
       role="alert"
@@ -157,6 +193,11 @@ export function PaymentSoundBox() {
           <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-emerald-100">
             <Volume2 className="h-3 w-3" />
             Payment Received
+            {current.source && (
+              <span className="ml-1 rounded-full bg-white/20 px-1.5 py-0.5 text-[9px] font-semibold lowercase tracking-wide text-white/90">
+                via {current.source}
+              </span>
+            )}
           </p>
           <p className="mt-0.5 text-2xl font-extrabold tabular-nums tracking-tight leading-none">
             ₹{fmtAmt}

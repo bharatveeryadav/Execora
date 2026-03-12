@@ -22,6 +22,7 @@ import { reportRoutes } from './routes/report.routes';
 import { expenseRoutes } from './routes/expense.routes';
 import { aiRoutes } from './routes/ai.routes';
 import { draftRoutes } from './routes/draft.routes';
+import { portalRoutes } from './routes/portal.routes';
 
 export async function registerRoutes(fastify: FastifyInstance) {
 	// ── BullMQ queue dashboard (/admin/queues) — protected by admin key ──────
@@ -68,8 +69,9 @@ export async function registerRoutes(fastify: FastifyInstance) {
 	fastify.get('/.well-known/appspecific/com.chrome.devtools.json', async (_r, reply) => reply.code(204).send());
 
 	// ── Public routes (no JWT required) ──────────────────────────────────────
-	await fastify.register(authRoutes); // POST /api/v1/auth/login|refresh|logout|hash
+	await fastify.register(authRoutes);   // POST /api/v1/auth/login|refresh|logout|hash
 	await fastify.register(webhookRoutes); // POST /webhooks/*
+	await fastify.register(portalRoutes); // GET /pub/invoice/:id/:token
 
 	// ── Protected routes (JWT required) ───────────────────────────────────────
 	// All routes registered inside this scope inherit the requireAuth preHandler.

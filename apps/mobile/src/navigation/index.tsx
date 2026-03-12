@@ -11,6 +11,8 @@ import { LoginScreen } from "../screens/LoginScreen";
 import { InvoiceDetailScreen } from "../screens/InvoiceDetailScreen";
 import { CustomerDetailScreen } from "../screens/CustomerDetailScreen";
 import { PaymentScreen } from "../screens/PaymentScreen";
+import { VoiceScreen } from "../screens/VoiceScreen";
+import { OverdueScreen } from "../screens/OverdueScreen";
 
 // ── Param lists ───────────────────────────────────────────────────────────────
 
@@ -28,6 +30,7 @@ export type MainTabParams = {
   Billing: undefined;
   CustomersTab: undefined;
   InvoicesTab: undefined;
+  Voice: undefined;
 };
 
 export type BillingStackParams = {
@@ -44,6 +47,7 @@ export type CustomersStackParams = {
   CustomerList: undefined;
   CustomerDetail: { id: string };
   Payment: { customerId?: string };
+  Overdue: undefined;
 };
 
 // ── Navigators ────────────────────────────────────────────────────────────────
@@ -120,6 +124,11 @@ function CustomersNavigator() {
       <CustomersStack.Screen name="CustomerList" component={CustomersScreen} />
       <CustomersStack.Screen name="CustomerDetail" component={CustomerDetailScreen} />
       <CustomersStack.Screen name="Payment" component={PaymentScreen} />
+      <CustomersStack.Screen
+        name="Overdue"
+        component={OverdueScreen}
+        options={{ headerShown: true, title: "Overdue / Udhaar" }}
+      />
     </CustomersStack.Navigator>
   );
 }
@@ -132,6 +141,7 @@ function TabIcon({ name, color }: { name: string; color: string }) {
     Billing: "🧾",
     CustomersTab: "👥",
     InvoicesTab: "📋",
+    Voice: "🎤",
   };
   return <Text style={{ fontSize: 20, color }}>{icons[name] ?? "•"}</Text>;
 }
@@ -164,6 +174,11 @@ function MainTabs() {
         name="InvoicesTab"
         component={InvoicesNavigator}
         options={{ tabBarLabel: "Invoices" }}
+      />
+      <Tab.Screen
+        name="Voice"
+        component={VoiceScreen}
+        options={{ tabBarLabel: "Voice" }}
       />
     </Tab.Navigator>
   );

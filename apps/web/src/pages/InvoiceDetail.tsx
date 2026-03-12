@@ -11,6 +11,7 @@ import {
   XCircle,
   Clock,
   Share2,
+  Link2,
   Download,
   AlertTriangle,
   Edit3,
@@ -134,6 +135,7 @@ export default function InvoiceDetail() {
   const [convertOpen, setConvertOpen] = useState(false);
   const [convertAmount, setConvertAmount] = useState("");
   const [convertMethod, setConvertMethod] = useState("cash");
+  const [copyingLink, setCopyingLink] = useState(false);
 
   const { data: invoice, isLoading } = useInvoice(id!);
   const { data: meData } = useMe();
@@ -143,6 +145,21 @@ export default function InvoiceDetail() {
 
   // Real-time cache invalidation via WebSocket
   useWsInvalidation(["invoices"]);
+
+  async function copyPortalLink() {
+    if (!id) return;
+    setCopyingLink(true);
+    try {
+      const { token } = await invoiceApi.portalToken(id);
+      const url = `${window.location.origin}/pub/${id}/${token}`;
+      await navigator.clipboard.writeText(url);
+      toast({ title: "Portal link copied!", description: "Share this link with your customer." });
+    } catch {
+      toast({ title: "Failed to copy link", variant: "destructive" });
+    } finally {
+      setCopyingLink(false);
+    }
+  }
 
   function openEditModal() {
     if (!invoice) return;
@@ -636,6 +653,20 @@ export default function InvoiceDetail() {
             }
           >
             <Share2 className="h-4 w-4" /> Share
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={copyPortalLink}
+            disabled={copyingLink}
+            title="Copy shareable customer portal link"
+          >
+            {copyingLink ? (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+            ) : (
+              <Link2 className="h-4 w-4" />
+            )}
+            Copy Portal Link
           </Button>
         </div>
 

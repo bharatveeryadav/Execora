@@ -159,7 +159,7 @@ export async function usersRoutes(fastify: FastifyInstance) {
       if (request.body.role === 'owner') {
         return reply.code(403).send({ error: "Cannot assign owner role via API" });
       }
-      data.role = request.body.role;
+      data.role = request.body.role as Prisma.UserUpdateInput['role'];
     }
     if (request.body.permissions !== undefined) data.permissions = request.body.permissions;
 

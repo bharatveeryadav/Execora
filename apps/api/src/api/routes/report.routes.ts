@@ -343,7 +343,8 @@ export async function reportRoutes(fastify: FastifyInstance) {
 
 // ── Email HTML builders ────────────────────────────────────────────────────────
 
-function buildGstr1EmailHtml(report: Record<string, unknown>, fromStr: string, toStr: string): string {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildGstr1EmailHtml(report: any, fromStr: string, toStr: string): string {
   const t = report.totals;
   const INR = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
   return `
@@ -372,7 +373,8 @@ function buildGstr1EmailHtml(report: Record<string, unknown>, fromStr: string, t
     </div>`;
 }
 
-function buildPnlEmailHtml(report: Record<string, unknown>, shopName: string, fromStr: string, toStr: string): string {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildPnlEmailHtml(report: any, shopName: string, fromStr: string, toStr: string): string {
   const t = report.totals;
   const INR = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
   return `

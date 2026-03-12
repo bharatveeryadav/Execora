@@ -74,6 +74,87 @@ export interface InvoiceItemInput {
   lineDiscountPercent?: number;
 }
 
+// ── Feature flags — data-driven per-tenant capability gating ─────────────────
+//
+// Tier mapping (see docs/PRODUCT_STRATEGY_2026.md Section 3):
+//   Free    — VOICE_BILLING (rate-limited), WALK_IN_BILLING, UDHAAR_TRACKING, WHATSAPP_REMINDERS (5/mo)
+//   Starter — + GSTR1_EXPORT, EMAIL_DELIVERY, UNLIMITED_VOICE (2 users)
+//   Business — + BATCH_EXPIRY, PNL_REPORTS, BARCODE_SCAN, OCR_PURCHASE_BILL, CREDIT_LIMITS (5 users)
+//   Enterprise — + E_INVOICING, E_WAY_BILL, MULTI_BRANCH, BANK_RECONCILIATION, API_ACCESS
+export enum FeatureFlag {
+  // Always-on core (no gating needed)
+  WALK_IN_BILLING       = "walk_in_billing",
+  UDHAAR_TRACKING       = "udhaar_tracking",
+
+  // Starter+
+  GSTR1_EXPORT          = "gstr1_export",
+  EMAIL_DELIVERY        = "email_delivery",
+  UNLIMITED_VOICE       = "unlimited_voice",    // Free = 50/mo cap; Starter+ = unlimited
+
+  // Business+
+  BATCH_EXPIRY          = "batch_expiry",
+  PNL_REPORTS           = "pnl_reports",
+  BARCODE_SCAN          = "barcode_scan",
+  OCR_PURCHASE_BILL     = "ocr_purchase_bill",
+  CREDIT_LIMITS         = "credit_limits",
+  MULTI_USER            = "multi_user",         // Free = 1; Starter = 2; Business = 5; Enterprise = unlimited
+
+  // Enterprise
+  E_INVOICING           = "e_invoicing",
+  E_WAY_BILL            = "e_way_bill",
+  MULTI_BRANCH          = "multi_branch",
+  BANK_RECONCILIATION   = "bank_reconciliation",
+  API_ACCESS            = "api_access",
+  CA_PARTNER_MODE       = "ca_partner_mode",
+}
+
+// Tier → feature set (used to seed tenant.features on plan change)
+export const TIER_FEATURES: Record<"free" | "starter" | "business" | "enterprise", FeatureFlag[]> = {
+  free: [
+    FeatureFlag.WALK_IN_BILLING,
+    FeatureFlag.UDHAAR_TRACKING,
+  ],
+  starter: [
+    FeatureFlag.WALK_IN_BILLING,
+    FeatureFlag.UDHAAR_TRACKING,
+    FeatureFlag.GSTR1_EXPORT,
+    FeatureFlag.EMAIL_DELIVERY,
+    FeatureFlag.UNLIMITED_VOICE,
+  ],
+  business: [
+    FeatureFlag.WALK_IN_BILLING,
+    FeatureFlag.UDHAAR_TRACKING,
+    FeatureFlag.GSTR1_EXPORT,
+    FeatureFlag.EMAIL_DELIVERY,
+    FeatureFlag.UNLIMITED_VOICE,
+    FeatureFlag.BATCH_EXPIRY,
+    FeatureFlag.PNL_REPORTS,
+    FeatureFlag.BARCODE_SCAN,
+    FeatureFlag.OCR_PURCHASE_BILL,
+    FeatureFlag.CREDIT_LIMITS,
+    FeatureFlag.MULTI_USER,
+  ],
+  enterprise: [
+    FeatureFlag.WALK_IN_BILLING,
+    FeatureFlag.UDHAAR_TRACKING,
+    FeatureFlag.GSTR1_EXPORT,
+    FeatureFlag.EMAIL_DELIVERY,
+    FeatureFlag.UNLIMITED_VOICE,
+    FeatureFlag.BATCH_EXPIRY,
+    FeatureFlag.PNL_REPORTS,
+    FeatureFlag.BARCODE_SCAN,
+    FeatureFlag.OCR_PURCHASE_BILL,
+    FeatureFlag.CREDIT_LIMITS,
+    FeatureFlag.MULTI_USER,
+    FeatureFlag.E_INVOICING,
+    FeatureFlag.E_WAY_BILL,
+    FeatureFlag.MULTI_BRANCH,
+    FeatureFlag.BANK_RECONCILIATION,
+    FeatureFlag.API_ACCESS,
+    FeatureFlag.CA_PARTNER_MODE,
+  ],
+};
+
 // Business execution result
 export interface ExecutionResult {
   success: boolean;

@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { invoiceService, ledgerService } from '@execora/modules';
 import { broadcaster } from '../../ws/broadcaster';
+import { makePortalToken } from '@execora/infrastructure';
 
 function parseLimit(raw: unknown, defaultVal: number, maxVal = 100): number {
 	const n = parseInt(String(raw ?? defaultVal), 10);
@@ -290,6 +291,13 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 			return { invoice };
 		}
 	);
+
+	// ── GET /api/v1/invoices/:id/portal-token — get public portal token ─────────
+	fastify.get<{ Params: { id: string } }>('/api/v1/invoices/:id/portal-token', async (request, reply) => {
+		const invoice = await invoiceService.getInvoiceById(request.params.id);
+		if (!invoice) return reply.code(404).send({ error: 'Invoice not found' });
+		return { token: makePortalToken(request.params.id) };
+	});
 
 	// ── POST /api/v1/invoices/:id/send-email — (re-)send invoice PDF to customer ──
 	fastify.post<{ Params: { id: string } }>('/api/v1/invoices/:id/send-email', async (request, reply) => {

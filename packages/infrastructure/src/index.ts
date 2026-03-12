@@ -20,3 +20,5 @@ export * from './metrics';
 export * from './metrics-plugin';
 export * from './error-handler';
 export * from './reminder-ops';
+export * from './feature-flags';
+export * from './portal-token';

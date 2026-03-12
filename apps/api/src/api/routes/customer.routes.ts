@@ -3,6 +3,37 @@ import { customerService, invoiceService } from '@execora/modules';
 import { broadcaster } from '../../ws/broadcaster';
 
 export async function customerRoutes(fastify: FastifyInstance) {
+	// ── GET /api/v1/customers — list / search (shared API client entry point) ───
+	// Supports: ?q=<search>&limit=N  OR  ?page=N&limit=N
+	fastify.get(
+		'/api/v1/customers',
+		async (
+			request: FastifyRequest<{
+				Querystring: { q?: string; page?: string; limit?: string };
+			}>
+		) => {
+			const q = (request.query.q ?? '').trim();
+			const page = Math.max(1, parseInt(request.query.page ?? '1', 10) || 1);
+			const limit = Math.min(200, Math.max(1, parseInt(request.query.limit ?? '20', 10) || 20));
+			const offset = (page - 1) * limit;
+
+			if (q.length > 0) {
+				const customers = await customerService.searchCustomer(q);
+				return { customers, total: customers.length, page: 1, limit };
+			}
+
+			const customers = await customerService.listAllCustomers(limit + offset);
+			const sliced = customers.slice(offset, offset + limit);
+			return { customers: sliced, total: customers.length, page, limit };
+		}
+	);
+
+	// ── GET /api/v1/customers/overdue — customers with unpaid balance > 0 ───────
+	fastify.get('/api/v1/customers/overdue', async () => {
+		const customers = await customerService.getAllCustomersWithPendingBalance();
+		return { customers };
+	});
+
 	// ── GET /api/v1/customers/search ────────────────────────────────────────────
 	fastify.get(
 		'/api/v1/customers/search',
@@ -84,7 +115,7 @@ export async function customerRoutes(fastify: FastifyInstance) {
 	);
 
 	// ── GET /api/v1/customers/:id/communication-prefs ───────────────────────────
-	fastify.get<{ Params: { id: string } }>('/api/v1/customers/:id/communication-prefs', async (request, reply) => {
+	fastify.get<{ Params: { id: string } }>('/api/v1/customers/:id/communication-prefs', async (request) => {
 		const prefs = await customerService.getCommPrefs(request.params.id);
 		// Return empty object (not 404) when prefs don't exist yet — simpler for the UI
 		return { prefs: prefs ?? null };

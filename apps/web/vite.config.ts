@@ -18,6 +18,10 @@ export default defineConfig(({ mode }) => ({
         target: "http://localhost:3006",
         changeOrigin: true,
       },
+      "/pub": {
+        target: "http://localhost:3006",
+        changeOrigin: true,
+      },
       "/ws": {
         target: "ws://localhost:3006",
         ws: true,

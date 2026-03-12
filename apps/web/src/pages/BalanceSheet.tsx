@@ -242,7 +242,13 @@ export default function BalanceSheet() {
           ))}
         </div>
         <div className="px-4 pb-2">
-          <VoiceBar idleHint={<span>"balance sheet" · "total assets this month" · "show last FY"</span>} />
+          <VoiceBar
+            idleHint={
+              <span>
+                "balance sheet" · "total assets this month" · "show last FY"
+              </span>
+            }
+          />
         </div>
       </div>
 
@@ -338,7 +344,6 @@ export default function BalanceSheet() {
           consult your CA.
         </div>
       </div>
-
     </div>
   );
 }
