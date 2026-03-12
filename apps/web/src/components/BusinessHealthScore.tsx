@@ -6,6 +6,7 @@ import {
   useDailySummary,
   useCustomers,
   useLowStockProducts,
+  useReminders,
 } from "@/hooks/useQueries";
 import { useWS } from "@/contexts/WSContext";
 import { wsClient } from "@/lib/ws";
@@ -139,6 +140,15 @@ const BusinessHealthScore = () => {
     ];
     return () => offs.forEach((o) => o());
   }, [qc]);
+
+  const { data: remindersData = [] } = useReminders();
+  const upcomingList = (remindersData as any[])
+    .filter((r) => r.status === "pending")
+    .sort(
+      (a, b) =>
+        new Date(a.scheduledTime).getTime() - new Date(b.scheduledTime).getTime(),
+    )
+    .slice(0, 6);
 
   // ── Scores ──────────────────────────────────────────────────────────────────
   const overdueCount = customers.filter(
@@ -291,51 +301,120 @@ const BusinessHealthScore = () => {
         </div>
 
         {/* Overdue payment alert — compact pill row, only when there are overdues */}
-        {overdueCount > 0 && (() => {
-          const overdueList = customers
-            .filter((c) => parseFloat(String(c.balance)) > 0)
-            .sort((a, b) => parseFloat(String(b.balance)) - parseFloat(String(a.balance)));
-          const topThree = overdueList.slice(0, 3);
-          const extra = Math.max(0, overdueList.length - 3);
-          const totalOwed = overdueList.reduce(
-            (s, c) => s + parseFloat(String(c.balance)), 0
-          );
-          return (
-            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2.5">
-              <span className="shrink-0 text-xs font-semibold text-destructive">
-                🔴 Overdue ({overdueList.length}):
-              </span>
-              {topThree.map((c) => (
+        {overdueCount > 0 &&
+          (() => {
+            const overdueList = customers
+              .filter((c) => parseFloat(String(c.balance)) > 0)
+              .sort(
+                (a, b) =>
+                  parseFloat(String(b.balance)) - parseFloat(String(a.balance)),
+              );
+            const topThree = overdueList.slice(0, 3);
+            const extra = Math.max(0, overdueList.length - 3);
+            const totalOwed = overdueList.reduce(
+              (s, c) => s + parseFloat(String(c.balance)),
+              0,
+            );
+            return (
+              <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2.5">
+                <span className="shrink-0 text-xs font-semibold text-destructive">
+                  🔴 Overdue ({overdueList.length}):
+                </span>
+                {topThree.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => navigate("/overdue")}
+                    title={`${c.name} · ₹${parseFloat(String(c.balance)).toLocaleString("en-IN")}`}
+                    className="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive transition-opacity hover:opacity-75"
+                  >
+                    {(c.name ?? "").length > 12
+                      ? (c.name ?? "").slice(0, 11) + "…"
+                      : c.name}
+                    <span className="ml-1 opacity-70">
+                      {formatCurrency(parseFloat(String(c.balance)))}
+                    </span>
+                  </button>
+                ))}
+                {extra > 0 && (
+                  <button
+                    onClick={() => navigate("/overdue")}
+                    className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground hover:bg-background"
+                  >
+                    +{extra} more
+                  </button>
+                )}
+                <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[10px] font-semibold text-destructive">
+                  {formatCurrency(totalOwed)} total
+                </span>
                 <button
-                  key={c.id}
                   onClick={() => navigate("/overdue")}
-                  title={`${c.name} · ₹${parseFloat(String(c.balance)).toLocaleString("en-IN")}`}
-                  className="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive transition-opacity hover:opacity-75"
+                  className="ml-auto shrink-0 text-[11px] text-muted-foreground hover:text-foreground"
                 >
-                  {(c.name ?? "").length > 12 ? (c.name ?? "").slice(0, 11) + "…" : c.name}
-                  <span className="ml-1 opacity-70">{formatCurrency(parseFloat(String(c.balance)))}</span>
+                  View All →
                 </button>
-              ))}
-              {extra > 0 && (
+              </div>
+            );
+          })()}
+
+        {/* Upcoming reminders alert — compact pill row */}
+        {upcomingList.length > 0 &&
+          (() => {
+            const topThree = upcomingList.slice(0, 3);
+            const extra = Math.max(0, upcomingList.length - 3);
+            return (
+              <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5">
+                <span className="shrink-0 text-xs font-semibold text-primary">
+                  🟡 Upcoming ({upcomingList.length}):
+                </span>
+                {topThree.map((r: any) => {
+                  const days = Math.max(
+                    0,
+                    Math.ceil(
+                      (new Date(r.scheduledTime).getTime() - Date.now()) /
+                        86400000,
+                    ),
+                  );
+                  const pillCls =
+                    days <= 3
+                      ? "border-destructive/30 bg-destructive/10 text-destructive"
+                      : days <= 5
+                        ? "border-warning/30 bg-warning/10 text-warning"
+                        : "border-success/30 bg-success/10 text-success";
+                  const dayLabel = days === 0 ? "Today" : `${days}d`;
+                  return (
+                    <button
+                      key={r.id}
+                      onClick={() => navigate("/overdue?tab=upcoming")}
+                      title={`${r.customer?.name ?? "—"} · ${formatCurrency(parseFloat(String(r.amount)))} · ${dayLabel}`}
+                      className={`rounded-full border px-2 py-0.5 text-xs font-medium transition-opacity hover:opacity-75 ${pillCls}`}
+                    >
+                      {(r.customer?.name ?? "—").length > 12
+                        ? (r.customer?.name ?? "").slice(0, 11) + "…"
+                        : (r.customer?.name ?? "—")}
+                      <span className="ml-1 opacity-70">
+                        {formatCurrency(parseFloat(String(r.amount)))} ·{" "}
+                        {dayLabel}
+                      </span>
+                    </button>
+                  );
+                })}
+                {extra > 0 && (
+                  <button
+                    onClick={() => navigate("/overdue?tab=upcoming")}
+                    className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground hover:bg-background"
+                  >
+                    +{extra} more
+                  </button>
+                )}
                 <button
-                  onClick={() => navigate("/overdue")}
-                  className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground hover:bg-background"
+                  onClick={() => navigate("/overdue?tab=upcoming")}
+                  className="ml-auto shrink-0 text-[11px] text-muted-foreground hover:text-foreground"
                 >
-                  +{extra} more
+                  View All →
                 </button>
-              )}
-              <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[10px] font-semibold text-destructive">
-                {formatCurrency(totalOwed)} total
-              </span>
-              <button
-                onClick={() => navigate("/overdue")}
-                className="ml-auto shrink-0 text-[11px] text-muted-foreground hover:text-foreground"
-              >
-                View All →
-              </button>
-            </div>
-          );
-        })()}
+              </div>
+            );
+          })()}
       </CardContent>
     </Card>
   );
