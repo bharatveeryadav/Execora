@@ -5,7 +5,7 @@
 > It covers **what we are building, why, for whom, and exactly how** — grounded in real Indian SME use cases.
 >
 > **Maintained by**: Update this document whenever a feature ships, a use case is validated, or competitive landscape shifts.
-> **Version**: 2.6 — 2026-03-05
+> **Version**: 2.9 — 2026-03-12
 
 ---
 
@@ -1834,6 +1834,18 @@ This removes the app install barrier entirely. Growth = viral WhatsApp sharing.
 - **[Sprint 8] OCR prompt 9-field extraction** — `packages/infrastructure/src/workers.ts` product_catalog OCR prompt now extracts: `name, price, mrp, unit, category, sku, barcode, hsnCode, minStock` (was 4 fields); draft data object maps all 9 with null fallbacks
 - **[Sprint 8] Auto-open Draft panel after OCR** — `apps/web/src/pages/Inventory.tsx` dispatches `window.dispatchEvent(new CustomEvent('open-draft-panel'))` immediately after OCR job completes, so the Fast Mode table opens automatically without any user navigation
 - **[Sprint 8] Core/Full toggle always visible** — toolbar split into two rows; column-group toggle never clipped by panel edge; dashed empty-state shown when no product drafts exist pointing to "Import from Photo"
+- **[Sprint 10] Payment Sound Box (Paytm-style)** — `apps/web/src/components/PaymentSoundBox.tsx`; globally mounted in `App.tsx`; listens to `payment:recorded` WS events; shows a green slide-in banner (amount + customer name + source badge "via razorpay" etc.) at top of screen; announces in Hindi ("Rupaye X mile from Y") or English using Web Speech API; supports a queue so back-to-back payments never overlap; 4.8 s auto-dismiss with draining progress bar; also listens to `__payment_test__` custom DOM event from Settings test buttons
+- **[Sprint 10] Multi-gateway UPI webhook — 9 aggregators** — `apps/api/src/api/routes/webhook.routes.ts`; single `processUpiPayment()` helper (idempotency → customer phone match → `ledgerService.recordPayment` → WS broadcast); tenant-scoped URLs at `/api/v1/webhook/{gateway}/:tenantId`:
+  - **Razorpay**: `x-razorpay-signature` HMAC-SHA256-hex; events `payment.captured` / `payment_link.paid`
+  - **PhonePe Business**: `x-verify` SHA256(base64+saltKey); event `PAYMENT_SUCCESS`; body.response is base64-encoded JSON
+  - **Cashfree**: `x-webhook-signature` HMAC-SHA256-base64 + `x-webhook-timestamp`; event `PAYMENT_SUCCESS_WEBHOOK`
+  - **PayU**: reverse SHA-512 hash in body; `status=success`
+  - **Paytm Payment Gateway**: `STATUS=TXN_SUCCESS` + `RESPCODE=01`
+  - **Instamojo**: HMAC-SHA1(salt, pipe-joined fields); `status=Credit`
+  - **Stripe India UPI**: `stripe-signature` `t=,v1=` format; event `payment_intent.succeeded`
+  - **EaseBuzz**: SHA-512 reverse hash; `status=success`
+  - **BharatPe**: `x-bharatpe-signature` HMAC-SHA256-hex; `status=SUCCESS`
+- **[Sprint 10] Settings — UPI gateway cards** — 9 gateway sections in `Settings.tsx`; each card has: tenant-scoped webhook URL (copy button), secret/salt key input, subscribed events list, and a "🔊 Preview Announcement" test button; secrets persisted to `Tenant.settings` JSON via `updateProfile` mutation
 
 ### Pending / Critical Gaps 🔴
 
@@ -2276,4 +2288,5 @@ _v2.5: Sprint 8 — Barcode scanning (ZXing, EAN/QR, invoice + inventory), Draft
 _v2.6: Sprint 8 enhancements closed — Fast Mode 12-col table (Core/Full toggle), 9-field OCR extraction, auto-open draft panel after OCR, always-visible column toggle. OCR purchase bill ingestion marked ✅ Partially Built. Sprint 9 plan added (Section 15): WhatsApp PDF on confirm, walk-in 1-tap, UPI QR, item discount, single-screen billing._
 _v2.7 (2026-03-07): Sprint 9 full code audit. Confirmed ✅ Done: S9-02 (walk-in tap), S9-03 (UPI QR in pdf.ts), S9-05 (ClassicBilling.tsx), S9-07 (email prompt in Customers.tsx). S9-06 (batch/expiry) ✅ Partially built — backend done, frontend TBD. S9-04 (item discount) ⚠️ UI column exists but `InvoiceItemInput` has no `lineDiscountPercent`, submit drops discount, `resolveItemsAndTotals()` has no per-line logic. S9-01 (WhatsApp auto-send) 🔴 Not built — `confirmInvoice()` only queues email. Remaining work with exact files documented in "What Remains To Build" section above._
 _v2.8 (2026-03-07): Sprint 9 CLOSED. S9-01 fully shipped — per-tenant autoSendEmail/autoSendWhatsApp toggles in Settings, gated in both manual (`dispatchInvoicePdfEmail`) and voice (`shared.ts sendConfirmedInvoiceEmail`) flows. P1 matrix updated: repeat-last-bill, credit-limit enforcement, invoice editing, customer tags confirmed ✅ Built via code audit. Sprint 10 plan added (Section 16)._
+_v2.9 (2026-03-12): Sprint 10 — Payment Sound Box shipped. `PaymentSoundBox.tsx` announces payments Paytm-style via Web Speech API (Hindi preferred). 9-gateway UPI webhook routes added (Razorpay, PhonePe, Cashfree, PayU, Paytm, Instamojo, Stripe, EaseBuzz, BharatPe) — covers all major Indian UPI aggregators. Settings page extended with 9 gateway setup cards._
 _Next review: after S10-01 (item-level discount backend) and S10-02 (UPDATE_STOCK voice) ship._
