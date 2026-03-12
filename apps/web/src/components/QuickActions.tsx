@@ -23,21 +23,21 @@ const QuickActions = () => {
 
 	return (
 		<div>
-			<div className="grid grid-cols-4 gap-2.5">
+			<div className="grid grid-cols-4 gap-2">
 				{actions.map((action) => (
 					<button
 						key={action.label}
 						onClick={action.onClick}
-						className={`flex flex-col items-center gap-1.5 rounded-xl border py-4 text-center transition-all active:scale-95 ${
+						className={`flex flex-col items-center gap-1 rounded-xl border py-3 text-center transition-all active:scale-95 ${
 							action.primary
 								? 'border-primary bg-primary text-primary-foreground shadow-md'
 								: 'border-border bg-card text-foreground hover:bg-muted/60'
 						}`}
 					>
 						<action.icon
-							className={`h-5 w-5 ${action.primary ? 'text-primary-foreground' : 'text-muted-foreground'}`}
-						/>
-						<span className="text-[11px] font-semibold leading-tight">{action.label}</span>
+						className={`h-4 w-4 ${action.primary ? 'text-primary-foreground' : 'text-muted-foreground'}`}
+					/>
+						<span className="text-[10px] font-semibold leading-tight">{action.label}</span>
 					</button>
 				))}
 			</div>

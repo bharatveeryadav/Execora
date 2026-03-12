@@ -49,7 +49,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
       <DashboardHeader />
-      <main className="mx-auto max-w-3xl space-y-4 p-4 md:p-6">
+      <main className="mx-auto max-w-3xl space-y-3 p-3 md:p-5">
         {/* 1 ── Greeting ───────────────────────────────────────── */}
         <DashboardGreeting />
 

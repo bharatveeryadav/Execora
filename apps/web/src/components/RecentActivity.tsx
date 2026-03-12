@@ -28,7 +28,7 @@ const RecentActivity = () => {
   } = useInvoices(20);
   const secsAgo = useSecondsAgo(dataUpdatedAt);
 
-  const activities = invoices.slice(0, 8).map((inv) => ({
+  const activities = invoices.slice(0, 5).map((inv) => ({
     time: new Date(inv.createdAt).toLocaleTimeString("en-IN", {
       hour: "2-digit",
       minute: "2-digit",
@@ -49,7 +49,7 @@ const RecentActivity = () => {
 
   return (
     <Card className="border-none shadow-sm">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-2 pt-3 px-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
             📋 Recent Activity
@@ -71,13 +71,13 @@ const RecentActivity = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-muted/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
-                <th className="px-4 py-2.5">Time</th>
-                <th className="px-4 py-2.5">Type</th>
-                <th className="px-4 py-2.5">Customer/Item</th>
-                <th className="px-4 py-2.5 text-right">Amount</th>
-                <th className="px-4 py-2.5">Status</th>
-                <th className="hidden px-4 py-2.5 md:table-cell">Details</th>
+              <tr className="border-b bg-muted/50 text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                <th className="px-3 py-2">Time</th>
+                <th className="px-3 py-2">Type</th>
+                <th className="px-3 py-2">Customer/Item</th>
+                <th className="px-3 py-2 text-right">Amount</th>
+                <th className="px-3 py-2">Status</th>
+                <th className="hidden px-3 py-2 md:table-cell">Details</th>
               </tr>
             </thead>
             <tbody>
@@ -111,22 +111,22 @@ const RecentActivity = () => {
                     key={a.id}
                     className="border-b last:border-none hover:bg-muted/30 transition-colors"
                   >
-                    <td className="px-4 py-3 text-muted-foreground">
+                    <td className="px-3 py-2 text-muted-foreground">
                       {a.time}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                       <Badge
                         variant="secondary"
-                        className="text-xs font-normal"
+                        className="text-[10px] font-normal"
                       >
                         {a.type}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 font-medium">{a.customer}</td>
-                    <td className="px-4 py-3 text-right font-semibold">
+                    <td className="px-3 py-2 font-medium">{a.customer}</td>
+                    <td className="px-3 py-2 text-right font-semibold">
                       {a.amount}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                       <span
                         className={`inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
                           a.status === "paid"
@@ -143,7 +143,7 @@ const RecentActivity = () => {
                             : "⏳ Due"}
                       </span>
                     </td>
-                    <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
+                    <td className="hidden px-3 py-2 text-muted-foreground md:table-cell">
                       {a.details}
                     </td>
                   </tr>

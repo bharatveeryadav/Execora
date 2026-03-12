@@ -71,14 +71,7 @@ const KPICards = () => {
 
   return (
     <div>
-      {/* Header row */}
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-foreground">
-          📊 Today's Overview
-        </h2>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
           return (
@@ -87,28 +80,28 @@ const KPICards = () => {
               className="cursor-pointer border-none shadow-sm transition-shadow hover:shadow-md"
               onClick={() => navigate(kpi.href)}
             >
-              <CardContent className="p-4">
+              <CardContent className="p-3">
                 <div className="flex items-start justify-between">
-                  <p className="text-xs font-medium text-muted-foreground">
+                  <p className="text-[11px] font-medium text-muted-foreground">
                     {kpi.title}
                   </p>
-                  <div className={`rounded-lg p-1.5 ${kpi.iconBg}`}>
-                    <Icon className={`h-4 w-4 ${kpi.iconColor}`} />
+                  <div className={`rounded-md p-1 ${kpi.iconBg}`}>
+                    <Icon className={`h-3.5 w-3.5 ${kpi.iconColor}`} />
                   </div>
                 </div>
 
                 {kpi.value === null ? (
                   <>
-                    <Skeleton className="mt-2 h-7 w-24 rounded" />
-                    <Skeleton className="mt-2 h-3 w-32 rounded" />
+                    <Skeleton className="mt-1.5 h-6 w-20 rounded" />
+                    <Skeleton className="mt-1 h-3 w-28 rounded" />
                   </>
                 ) : (
                   <>
-                    <p className="mt-2 text-2xl font-bold tracking-tight">
+                    <p className="mt-1 text-lg font-bold tracking-tight">
                       {kpi.value}
                     </p>
                     <p
-                      className={`mt-1 text-xs font-medium ${kpi.changePositive ? "text-success" : "text-destructive"}`}
+                      className={`mt-0.5 text-[10px] font-medium ${kpi.changePositive ? "text-success" : "text-destructive"}`}
                     >
                       {kpi.change}
                     </p>

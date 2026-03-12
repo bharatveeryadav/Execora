@@ -34,17 +34,17 @@ function Pillar({ label, score, icon, hint, flash, onClick }: PillarProps) {
   return (
     <button
       onClick={onClick}
-      className={`group flex flex-1 flex-col gap-1.5 rounded-xl border bg-card p-3 text-left transition-all duration-300 hover:bg-muted/40 ${flash ? "ring-2 ring-primary/40" : ""}`}
+      className={`group flex flex-1 flex-col gap-1 rounded-xl border bg-card p-2.5 text-left transition-all duration-300 hover:bg-muted/40 ${flash ? "ring-2 ring-primary/40" : ""}`}
     >
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">
+        <span className="text-[10px] font-medium text-muted-foreground">
           {icon} {label}
         </span>
-        <span className={`text-xs font-bold tabular-nums ${text}`}>
+        <span className={`text-[10px] font-bold tabular-nums ${text}`}>
           {score}%
         </span>
       </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+      <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
         <div
           className={`h-full rounded-full transition-all duration-700 ${bar}`}
           style={{ width: `${score}%` }}
@@ -146,7 +146,8 @@ const BusinessHealthScore = () => {
     .filter((r) => r.status === "pending")
     .sort(
       (a, b) =>
-        new Date(a.scheduledTime).getTime() - new Date(b.scheduledTime).getTime(),
+        new Date(a.scheduledTime).getTime() -
+        new Date(b.scheduledTime).getTime(),
     )
     .slice(0, 6);
 
@@ -189,9 +190,9 @@ const BusinessHealthScore = () => {
 
   return (
     <Card className="border-none shadow-sm">
-      <CardContent className="p-4">
+      <CardContent className="p-3">
         {/* Header */}
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-2 flex items-center justify-between">
           <div>
             <div className="flex items-center gap-1.5">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -213,7 +214,7 @@ const BusinessHealthScore = () => {
             </div>
             <div className="flex items-baseline gap-1.5">
               <span
-                className={`text-2xl font-extrabold tabular-nums ${overallColor}`}
+                className={`text-xl font-extrabold tabular-nums ${overallColor}`}
               >
                 {overall}
               </span>
@@ -263,7 +264,7 @@ const BusinessHealthScore = () => {
         </div>
 
         {/* Overall progress bar */}
-        <div className="mb-4 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+        <div className="mb-3 h-1 w-full overflow-hidden rounded-full bg-muted">
           <div
             className={`h-full rounded-full transition-all duration-700 ${overallBar}`}
             style={{ width: `${overall}%` }}
