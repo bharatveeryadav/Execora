@@ -52,6 +52,7 @@ export async function ledgerRoutes(fastify: FastifyInstance) {
 				broadcaster.send(tid, 'payment:recorded', {
 					customerId: request.body.customerId,
 					amount: request.body.amount,
+					customerName: entry.customer?.name ?? '',
 				});
 			return { entry };
 		}
