@@ -18,7 +18,7 @@ export function requireRole(allowedRoles: Array<UserRole | string>) {
       reply.code(401).send({ error: 'Unauthorized' });
       return;
     }
-    if (!allowedRoles.includes(user.role as any)) {
+    if (!allowedRoles.includes(user.role)) {
       reply.code(403).send({
         error: 'Forbidden',
         message: `This action requires one of: ${allowedRoles.join(', ')}`,

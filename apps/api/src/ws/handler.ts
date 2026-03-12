@@ -8,6 +8,7 @@ import { conversationMemory } from '@execora/modules';
 import { voiceSessionService } from '@execora/modules';
 import { prisma } from '@execora/infrastructure';
 import { tenantContext } from '@execora/infrastructure';
+import { Prisma } from '@prisma/client';
 import { WSMessage, WSMessageType } from '@execora/types';
 
 interface VoiceSession {
@@ -249,11 +250,11 @@ class WebSocketHandler {
               normalizedInput:  normalizedText,
               intent:           intent.intent,
               intentConfidence: intent.confidence,
-              entities:         intent.entities as any,
+              entities:         intent.entities as Prisma.InputJsonValue,
               response,
               responseType:     'voice',
               processingTimeMs,
-            } as any,
+            },
           }).catch((err) => logger.error({ err, sessionId }, 'Failed to persist conversation turn to DB'));
         }).catch(() => { /* non-critical — turn count unavailable */ });
       }

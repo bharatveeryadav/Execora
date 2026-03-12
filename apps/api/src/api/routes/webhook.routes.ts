@@ -1,6 +1,24 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
+import { Prisma } from '@prisma/client';
 import { whatsappService } from '@execora/infrastructure';
 import { prisma } from '@execora/infrastructure';
+
+/** Minimal shape of a Meta WhatsApp status update object */
+interface WhatsAppStatusEntry {
+  id: string;
+  status: string;
+}
+
+/** Minimal shape of the Meta WhatsApp webhook payload */
+interface WhatsAppWebhookBody {
+  entry?: Array<{
+    changes?: Array<{
+      value?: {
+        statuses?: WhatsAppStatusEntry[];
+      };
+    }>;
+  }>;
+}
 
 export async function webhookRoutes(fastify: FastifyInstance) {
   // Verification handshake — Meta sends a challenge to confirm the endpoint
@@ -17,21 +35,21 @@ export async function webhookRoutes(fastify: FastifyInstance) {
   });
 
   // Incoming messages and delivery status updates
-  fastify.post('/api/v1/webhook/whatsapp', {
+  fastify.post<{ Body: WhatsAppWebhookBody }>('/api/v1/webhook/whatsapp', {
     config: { rateLimit: false },
-  }, async (request: FastifyRequest<{ Body: any }>, reply) => {
-    const body = request.body as any;
-    await whatsappService.processWebhookEvent(body);
+  }, async (request, _reply) => {
+    const body = request.body;
+    await whatsappService.processWebhookEvent(body as Record<string, unknown>);
 
-    const statuses: Array<any> = body.entry?.[0]?.changes?.[0]?.value?.statuses ?? [];
+    const statuses: WhatsAppStatusEntry[] = body.entry?.[0]?.changes?.[0]?.value?.statuses ?? [];
     if (statuses.length > 0) {
       try {
         await prisma.$transaction(
-          statuses.map((status: any) =>
+          statuses.map((status) =>
             prisma.messageLog.updateMany({
               where: { providerMessageId: status.id },
               data: {
-                status:      status.status as any,
+                status:      status.status as Prisma.MessageLogUpdateManyMutationInput['status'],
                 deliveredAt: status.status === 'delivered' ? new Date() : undefined,
                 readAt:      status.status === 'read'      ? new Date() : undefined,
               },

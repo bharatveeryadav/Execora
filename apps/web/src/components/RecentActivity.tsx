@@ -9,7 +9,10 @@ import { useNavigate } from "react-router-dom";
 function useSecondsAgo(refetchedAt: number) {
   const [secs, setSecs] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setSecs(Math.round((Date.now() - refetchedAt) / 1000)), 1000);
+    const t = setInterval(
+      () => setSecs(Math.round((Date.now() - refetchedAt) / 1000)),
+      1000,
+    );
     return () => clearInterval(t);
   }, [refetchedAt]);
   return secs;
@@ -17,15 +20,29 @@ function useSecondsAgo(refetchedAt: number) {
 
 const RecentActivity = () => {
   const navigate = useNavigate();
-  const { data: invoices = [], isLoading, dataUpdatedAt, refetch } = useInvoices(20);
+  const {
+    data: invoices = [],
+    isLoading,
+    dataUpdatedAt,
+    refetch,
+  } = useInvoices(20);
   const secsAgo = useSecondsAgo(dataUpdatedAt);
 
   const activities = invoices.slice(0, 8).map((inv) => ({
-    time: new Date(inv.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }),
+    time: new Date(inv.createdAt).toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    }),
     type: "🧾 Bill",
     customer: inv.customer?.name ?? "—",
     amount: formatCurrency(parseFloat(String(inv.total ?? inv.subtotal))),
-    status: inv.status === "paid" ? "paid" : inv.status === "cancelled" ? "cancelled" : "pending",
+    status:
+      inv.status === "paid"
+        ? "paid"
+        : inv.status === "cancelled"
+          ? "cancelled"
+          : "pending",
     details: `${inv.invoiceNo} · ${inv.status}`,
     id: inv.id,
   }));
@@ -37,8 +54,8 @@ const RecentActivity = () => {
           <CardTitle className="flex items-center gap-2 text-base">
             📋 Recent Activity
             {/* LIVE indicator */}
-            <span className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-400">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
+            <span className="flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
               LIVE
             </span>
           </CardTitle>
@@ -66,7 +83,12 @@ const RecentActivity = () => {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">Loading…</td>
+                  <td
+                    colSpan={6}
+                    className="px-4 py-6 text-center text-muted-foreground"
+                  >
+                    Loading…
+                  </td>
                 </tr>
               ) : activities.length === 0 ? (
                 <tr>
@@ -75,32 +97,55 @@ const RecentActivity = () => {
                       icon="📋"
                       title="No activity yet"
                       description="Create your first invoice to see activity here."
-                      action={{ label: "New Invoice", onClick: () => navigate("/") }}
+                      action={{
+                        label: "New Invoice",
+                        onClick: () => navigate("/"),
+                      }}
                       compact
                     />
                   </td>
                 </tr>
               ) : (
                 activities.map((a) => (
-                  <tr key={a.id} className="border-b last:border-none hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3 text-muted-foreground">{a.time}</td>
+                  <tr
+                    key={a.id}
+                    className="border-b last:border-none hover:bg-muted/30 transition-colors"
+                  >
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {a.time}
+                    </td>
                     <td className="px-4 py-3">
-                      <Badge variant="secondary" className="text-xs font-normal">{a.type}</Badge>
+                      <Badge
+                        variant="secondary"
+                        className="text-xs font-normal"
+                      >
+                        {a.type}
+                      </Badge>
                     </td>
                     <td className="px-4 py-3 font-medium">{a.customer}</td>
-                    <td className="px-4 py-3 text-right font-semibold">{a.amount}</td>
+                    <td className="px-4 py-3 text-right font-semibold">
+                      {a.amount}
+                    </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
-                        a.status === "paid"
-                          ? "bg-green-500/10 text-green-600 dark:text-green-400"
+                      <span
+                        className={`inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                          a.status === "paid"
+                            ? "bg-success/10 text-success"
+                            : a.status === "cancelled"
+                              ? "bg-muted text-muted-foreground"
+                              : "bg-warning/10 text-warning"
+                        }`}
+                      >
+                        {a.status === "paid"
+                          ? "✅ Paid"
                           : a.status === "cancelled"
-                          ? "bg-muted text-muted-foreground"
-                          : "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400"
-                      }`}>
-                        {a.status === "paid" ? "✅ Paid" : a.status === "cancelled" ? "❌ Void" : "⏳ Due"}
+                            ? "❌ Void"
+                            : "⏳ Due"}
                       </span>
                     </td>
-                    <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">{a.details}</td>
+                    <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
+                      {a.details}
+                    </td>
                   </tr>
                 ))
               )}

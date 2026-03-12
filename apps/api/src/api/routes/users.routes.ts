@@ -13,6 +13,7 @@
  * Small shop (single user): only the owner exists and manages themselves via /auth/me.
  * SME/corporate: owner creates staff accounts with specific permissions.
  */
+import { Prisma } from '@prisma/client';
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma } from '@execora/infrastructure';
 import { logger } from '@execora/infrastructure';
@@ -88,7 +89,7 @@ export async function usersRoutes(fastify: FastifyInstance) {
         email,
         name,
         phone,
-        role:         role as any,
+        role:         role as Prisma.UserCreateInput['role'],
         permissions:  effectivePerms,
         passwordHash,
         isActive:     true,
@@ -150,7 +151,7 @@ export async function usersRoutes(fastify: FastifyInstance) {
       return reply.code(403).send({ error: "Cannot modify owner account" });
     }
 
-    const data: any = {};
+    const data: Prisma.UserUpdateInput = {};
     if (request.body.name        !== undefined) data.name        = request.body.name;
     if (request.body.phone       !== undefined) data.phone       = request.body.phone;
     if (request.body.isActive    !== undefined) data.isActive    = request.body.isActive;

@@ -98,7 +98,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 			const { customerId, items, notes, ...opts } = request.body;
 			try {
 				const result = await invoiceService.createInvoice(customerId, items, notes, opts);
-				const tid = (request as any).user?.tenantId;
+				const tid = request.user!.tenantId;
 				if (tid)
 					broadcaster.send(tid, 'invoice:created', {
 						invoiceId: result.invoice.id,
@@ -197,7 +197,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 	// ── POST /api/v1/invoices/:id/convert — proforma → invoice ───────────────
 	fastify.post<{ Params: { id: string }; Body: { amount?: number; method?: string } }>(
 		'/api/v1/invoices/:id/convert',
-		async (request, reply) => {
+		async (request, _reply) => {
 			const initialPayment = request.body?.amount
 				? {
 						amount: request.body.amount,
@@ -205,7 +205,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 					}
 				: undefined;
 			const invoice = await invoiceService.convertProformaToInvoice(request.params.id, initialPayment);
-			const tid = (request as any).user?.tenantId;
+			const tid = request.user!.tenantId;
 			if (tid)
 				broadcaster.send(tid, 'invoice:confirmed', { invoiceId: invoice.id, invoiceNo: invoice.invoiceNo });
 			// Fire-and-forget: re-generate PDF (confirmed, not proforma) + send email
@@ -266,11 +266,11 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 					placeOfSupply?: string;
 				};
 			}>,
-			reply
+			_reply
 		) => {
 			const { items, notes, ...optsRaw } = request.body;
 			const invoice = await invoiceService.updateInvoice(request.params.id, { items, notes, opts: optsRaw });
-			const tid = (request as any).user?.tenantId;
+			const tid = request.user!.tenantId;
 			if (tid) broadcaster.send(tid, 'invoice:updated', { invoiceId: invoice.id });
 			return { invoice };
 		}
@@ -285,7 +285,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 			}>
 		) => {
 			const invoice = await invoiceService.cancelInvoice(request.params.id);
-			const tid = (request as any).user?.tenantId;
+			const tid = request.user!.tenantId;
 			if (tid) broadcaster.send(tid, 'invoice:cancelled', { invoiceId: invoice.id });
 			return { invoice };
 		}
@@ -344,7 +344,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 				request.body.splits,
 				request.body.notes
 			);
-			const tid = (request as any).user?.tenantId;
+			const tid = request.user!.tenantId;
 			if (tid) broadcaster.send(tid, 'payment:recorded', { customerId: request.body.customerId });
 			return reply.code(201).send(result);
 		}

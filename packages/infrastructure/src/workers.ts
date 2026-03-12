@@ -19,6 +19,7 @@ import {
 import { whatsappService } from './whatsapp';
 import { SYSTEM_TENANT_ID } from './bootstrap';
 import { Decimal } from '@prisma/client/runtime/library';
+import { MessageChannel, MessageStatus, Prisma } from '@prisma/client';
 
 // ---------------------------------------------------------------------------
 // Reminder Worker
@@ -100,10 +101,10 @@ const reminderWorker = new Worker<ReminderJobData>(
 						reminderId,
 						recipient: deliveryChannel === 'email' ? (emailTo ?? phone) : phone,
 						messageContent: message,
-						channel: deliveryChannel,
+						channel: deliveryChannel as MessageChannel,
 						providerMessageId: providerMessageId ?? null,
-						status: 'sent',
-					} as any,
+						status: MessageStatus.sent,
+					},
 				});
 			} catch (dbError) {
 				logger.error({ dbError, reminderId }, 'Failed to create message log (message was sent)');
@@ -137,10 +138,10 @@ const reminderWorker = new Worker<ReminderJobData>(
 							reminderId,
 							recipient: phone,
 							messageContent: message,
-							channel: 'whatsapp',
-							status: 'failed',
+							channel: MessageChannel.whatsapp,
+							status: MessageStatus.failed,
 							errorMessage: 'No delivery channel available after all attempts',
-						} as any,
+						},
 					});
 				} catch {
 					/* ignore audit log failures */
@@ -204,10 +205,10 @@ const whatsappWorker = new Worker<WhatsAppJobData>(
 						reminderId,
 						recipient: phone,
 						messageContent: message,
-						channel: 'whatsapp',
+						channel: MessageChannel.whatsapp,
 						providerMessageId: result.messageId,
-						status: 'sent',
-					} as any,
+						status: MessageStatus.sent,
+					},
 				});
 			} catch (dbError) {
 				logger.error({ dbError, phone }, 'Failed to create WhatsApp message log (message was sent)');
@@ -265,20 +266,13 @@ const ocrWorker = new Worker<OcrJobData>(
 		log.info('OCR job started');
 
 		// ── 1. Mark as processing ─────────────────────────────────────────────
-		const ocrJob = await prisma.$queryRaw<
-			Array<{
-				id: string;
-				job_type: string;
-				image_key: string;
-				image_mime_type: string;
-			}>
-		>`
-      UPDATE ocr_jobs SET status = 'processing', updated_at = NOW()
-      WHERE id = ${ocrJobId}::uuid
-      RETURNING id, job_type, image_key, image_mime_type
-    `;
-		if (!ocrJob[0]) throw new Error(`OcrJob ${ocrJobId} not found`);
-		const { job_type: jobType, image_key: imageKey, image_mime_type: mimeType } = ocrJob[0];
+		const ocrJobRow = await prisma.ocrJob.update({
+			where: { id: ocrJobId },
+			data: { status: 'processing' },
+			select: { id: true, jobType: true, imageKey: true, imageMimeType: true },
+		}).catch(() => null);
+		if (!ocrJobRow) throw new Error(`OcrJob ${ocrJobId} not found`);
+		const { jobType, imageKey, imageMimeType: mimeType } = ocrJobRow;
 
 		// ── 2. Read image from MinIO ──────────────────────────────────────────
 		const imageBuffer = await minioClient.getFile(imageKey);
@@ -369,16 +363,20 @@ Extract ALL line items visible. Use Indian currency (INR). Omit unclear fields.`
 						},
 					});
 
+					if (!product) {
+						log.warn({ itemName: item.name }, 'OCR: no matching product found for purchase item, skipping PO line');
+						continue;
+					}
 					await prisma.purchaseOrderItem.create({
 						data: {
 							poId: po.id,
-							productId: product?.id ?? undefined,
+							productId: product.id,
 							quantity: Math.round(item.quantity),
 							receivedQuantity: Math.round(item.quantity),
 							unitPrice: new Decimal(item.unitPrice),
 							total: new Decimal(item.total ?? item.unitPrice * item.quantity),
 						},
-					} as any);
+					});
 
 					// Update stock if product exists
 					if (product) {
@@ -403,13 +401,16 @@ Extract ALL line items visible. Use Indian currency (INR). Omit unclear fields.`
 				}
 
 				// Update OcrJob as completed
-				await prisma.$executeRaw`
-          UPDATE ocr_jobs
-          SET status = 'completed', raw_result = ${JSON.stringify({ rawText })}::jsonb,
-              parsed_items = ${JSON.stringify(items)}::jsonb,
-              purchase_order_id = ${po.id}, processed_at = NOW(), updated_at = NOW()
-          WHERE id = ${ocrJobId}::uuid
-        `;
+				await prisma.ocrJob.update({
+					where: { id: ocrJobId },
+					data: {
+						status: 'completed',
+						rawResult: { rawText } as Prisma.InputJsonValue,
+						parsedItems: items as Prisma.InputJsonValue,
+						purchaseOrderId: po.id,
+						processedAt: new Date(),
+					},
+				});
 
 				ocrJobsTotal.inc({ job_type: 'purchase_bill', status: 'success', tenantId });
 				ocrJobDuration.observe({ job_type: 'purchase_bill' }, (Date.now() - jobStart) / 1000);
@@ -505,20 +506,23 @@ Rules:
 								barcode: p.barcode ?? undefined,
 								hsnCode: p.hsnCode ?? undefined,
 								minStock: p.minStock ?? 5,
-							} as any,
+							} as Prisma.InputJsonValue,
 							notes: 'Imported via photo scan',
 						},
 					});
 					created++;
 				}
 
-				await prisma.$executeRaw`
-          UPDATE ocr_jobs
-          SET status = 'completed', raw_result = ${JSON.stringify({ rawText })}::jsonb,
-              parsed_items = ${JSON.stringify(products)}::jsonb,
-              products_created = ${created}, processed_at = NOW(), updated_at = NOW()
-          WHERE id = ${ocrJobId}::uuid
-        `;
+				await prisma.ocrJob.update({
+					where: { id: ocrJobId },
+					data: {
+						status: 'completed',
+						rawResult: { rawText } as Prisma.InputJsonValue,
+						parsedItems: products as Prisma.InputJsonValue,
+						productsCreated: created,
+						processedAt: new Date(),
+					},
+				});
 
 				ocrJobsTotal.inc({ job_type: 'product_catalog', status: 'success', tenantId });
 				ocrJobDuration.observe({ job_type: 'product_catalog' }, (Date.now() - jobStart) / 1000);
@@ -527,12 +531,14 @@ Rules:
 			}
 		} catch (err: any) {
 			// Mark job as failed in DB
-			await prisma.$executeRaw`
-        UPDATE ocr_jobs
-        SET status = 'failed', error_message = ${err?.message ?? 'unknown error'},
-            retry_count = retry_count + 1, updated_at = NOW()
-        WHERE id = ${ocrJobId}::uuid
-      `.catch(() => {});
+			await prisma.ocrJob.update({
+				where: { id: ocrJobId },
+				data: {
+					status: 'failed',
+					errorMessage: err?.message ?? 'unknown error',
+					retryCount: { increment: 1 },
+				},
+			}).catch(() => {});
 
 			ocrJobsTotal.inc({ job_type: jobType, status: 'failed', tenantId });
 			errorCounter.inc({ service: 'worker', type: err?.name || 'ocr_job_error' });

@@ -9,6 +9,7 @@
  * POST /api/v1/auth/hash           — generate a scrypt hash for a password
  *                                    (admin tool, disabled in production unless ADMIN_API_KEY matches)
  */
+import { Prisma } from '@prisma/client';
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma } from '@execora/infrastructure';
 import { logger } from '@execora/infrastructure';
@@ -50,7 +51,7 @@ export async function authRoutes(fastify: FastifyInstance) {
 			const { email, password, tenantId } = request.body;
 
 			// Look up user — if tenantId provided, scope the search
-			const where: any = { email };
+			const where: Prisma.UserWhereInput = { email };
 			if (tenantId) where.tenantId = tenantId;
 
 			const user = await prisma.user.findFirst({
@@ -243,17 +244,17 @@ export async function authRoutes(fastify: FastifyInstance) {
 			const tenantId = request.user!.tenantId;
 			const role = request.user!.role;
 
-			const userData: any = {};
+			const userData: Prisma.UserUpdateInput = {};
 			if (request.body.name !== undefined) userData.name = request.body.name;
 			if (request.body.phone !== undefined) userData.phone = request.body.phone;
-			if (request.body.preferences !== undefined) userData.preferences = request.body.preferences;
+			if (request.body.preferences !== undefined) userData.preferences = request.body.preferences as Prisma.InputJsonValue;
 
 			const canEditTenant = role === 'owner' || role === 'admin';
 			if (request.body.tenant && !canEditTenant) {
 				return reply.code(403).send({ error: 'Only owner/admin can update business profile fields' });
 			}
 
-			const tenantData: any = {};
+			const tenantData: Prisma.TenantUpdateInput = {};
 			const tenantBody = request.body.tenant;
 			if (tenantBody) {
 				if (tenantBody.name !== undefined) tenantData.name = tenantBody.name;
@@ -271,126 +272,40 @@ export async function authRoutes(fastify: FastifyInstance) {
 						select: { settings: true },
 					});
 					const currentSettings = (existing?.settings as Record<string, unknown>) ?? {};
-					tenantData.settings = { ...currentSettings, ...tenantBody.settings };
+					tenantData.settings = { ...currentSettings, ...tenantBody.settings } as Prisma.InputJsonValue;
 				}
 			}
 
-			const [updatedUser] = await prisma.$transaction(async (tx) => {
-				const updatedUser = Object.keys(userData).length
-					? await tx.user.update({
-							where: { id: userId },
-							data: userData,
-							select: {
-								id: true,
-								tenantId: true,
-								email: true,
-								name: true,
-								phone: true,
-								role: true,
-								permissions: true,
-								avatarUrl: true,
-								preferences: true,
-								lastLogin: true,
-								createdAt: true,
-								tenant: {
-									select: {
-										id: true,
-										name: true,
-										plan: true,
-										features: true,
-										status: true,
-										gstin: true,
-										legalName: true,
-										tradeName: true,
-										currency: true,
-										timezone: true,
-										language: true,
-										dateFormat: true,
-										settings: true,
-									},
-								},
-							},
-						})
-					: await tx.user.findUniqueOrThrow({
-							where: { id: userId },
-							select: {
-								id: true,
-								tenantId: true,
-								email: true,
-								name: true,
-								phone: true,
-								role: true,
-								permissions: true,
-								avatarUrl: true,
-								preferences: true,
-								lastLogin: true,
-								createdAt: true,
-								tenant: {
-									select: {
-										id: true,
-										name: true,
-										plan: true,
-										features: true,
-										status: true,
-										gstin: true,
-										legalName: true,
-										tradeName: true,
-										currency: true,
-										timezone: true,
-										language: true,
-										dateFormat: true,
-										settings: true,
-									},
-								},
-							},
-						});
+			// Shared select shape used for the final user response
+		const userSelect = {
+				id: true, tenantId: true, email: true, name: true, phone: true,
+				role: true, permissions: true, avatarUrl: true, preferences: true,
+				lastLogin: true, createdAt: true,
+				tenant: {
+					select: {
+						id: true, name: true, plan: true, features: true, status: true,
+						gstin: true, legalName: true, tradeName: true, currency: true,
+						timezone: true, language: true, dateFormat: true, settings: true,
+					},
+				},
+			} as const;
 
+			// Update tenant FIRST inside transaction so the subsequent user fetch
+			// returns fresh tenant data — avoids a second round-trip after the tx.
+			const updatedUser = await prisma.$transaction(async (tx) => {
 				if (Object.keys(tenantData).length) {
 					await tx.tenant.update({ where: { id: tenantId }, data: tenantData });
 				}
-
-				return [updatedUser] as const;
-			});
-
-			const refreshed = await prisma.user.findUnique({
-				where: { id: userId },
-				select: {
-					id: true,
-					tenantId: true,
-					email: true,
-					name: true,
-					phone: true,
-					role: true,
-					permissions: true,
-					avatarUrl: true,
-					preferences: true,
-					lastLogin: true,
-					createdAt: true,
-					tenant: {
-						select: {
-							id: true,
-							name: true,
-							plan: true,
-							features: true,
-							status: true,
-							gstin: true,
-							legalName: true,
-							tradeName: true,
-							currency: true,
-							timezone: true,
-							language: true,
-							dateFormat: true,
-							settings: true,
-						},
-					},
-				},
+				return Object.keys(userData).length
+					? tx.user.update({ where: { id: userId }, data: userData, select: userSelect })
+					: tx.user.findUniqueOrThrow({ where: { id: userId }, select: userSelect });
 			});
 
 			logger.info(
 				{ userId, tenantId, role, userFields: Object.keys(userData), tenantFields: Object.keys(tenantData) },
 				'Profile updated'
 			);
-			return reply.send({ user: refreshed ?? updatedUser });
+			return reply.send({ user: updatedUser });
 		}
 	);
 

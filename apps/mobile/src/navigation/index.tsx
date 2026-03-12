@@ -8,6 +8,9 @@ import { BillingScreen } from "../screens/BillingScreen";
 import { CustomersScreen } from "../screens/CustomersScreen";
 import { InvoiceListScreen } from "../screens/InvoiceListScreen";
 import { LoginScreen } from "../screens/LoginScreen";
+import { InvoiceDetailScreen } from "../screens/InvoiceDetailScreen";
+import { CustomerDetailScreen } from "../screens/CustomerDetailScreen";
+import { PaymentScreen } from "../screens/PaymentScreen";
 
 // ── Param lists ───────────────────────────────────────────────────────────────
 
@@ -23,8 +26,8 @@ export type AuthStackParams = {
 export type MainTabParams = {
   Dashboard: undefined;
   Billing: undefined;
-  Customers: undefined;
-  Invoices: undefined;
+  CustomersTab: undefined;
+  InvoicesTab: undefined;
 };
 
 export type BillingStackParams = {
@@ -32,10 +35,25 @@ export type BillingStackParams = {
   InvoiceDetail: { id: string };
 };
 
+export type InvoicesStackParams = {
+  InvoiceList: undefined;
+  InvoiceDetail: { id: string };
+};
+
+export type CustomersStackParams = {
+  CustomerList: undefined;
+  CustomerDetail: { id: string };
+  Payment: { customerId?: string };
+};
+
+// ── Navigators ────────────────────────────────────────────────────────────────
+
 const Root = createNativeStackNavigator<RootStackParams>();
 const Auth = createNativeStackNavigator<AuthStackParams>();
 const Tab = createBottomTabNavigator<MainTabParams>();
 const BillingStack = createNativeStackNavigator<BillingStackParams>();
+const InvoicesStack = createNativeStackNavigator<InvoicesStackParams>();
+const CustomersStack = createNativeStackNavigator<CustomersStackParams>();
 
 // ── Auth stack ────────────────────────────────────────────────────────────────
 
@@ -66,7 +84,43 @@ function BillingNavigator() {
         component={BillingScreen}
         options={{ title: "New Invoice" }}
       />
+      <BillingStack.Screen
+        name="InvoiceDetail"
+        component={InvoiceDetailScreen}
+        options={{ headerShown: false }}
+      />
     </BillingStack.Navigator>
+  );
+}
+
+// ── Invoices stack ─────────────────────────────────────────────────────────────
+
+function InvoicesNavigator() {
+  return (
+    <InvoicesStack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <InvoicesStack.Screen name="InvoiceList" component={InvoiceListScreen} />
+      <InvoicesStack.Screen name="InvoiceDetail" component={InvoiceDetailScreen} />
+    </InvoicesStack.Navigator>
+  );
+}
+
+// ── Customers stack ────────────────────────────────────────────────────────────
+
+function CustomersNavigator() {
+  return (
+    <CustomersStack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <CustomersStack.Screen name="CustomerList" component={CustomersScreen} />
+      <CustomersStack.Screen name="CustomerDetail" component={CustomerDetailScreen} />
+      <CustomersStack.Screen name="Payment" component={PaymentScreen} />
+    </CustomersStack.Navigator>
   );
 }
 
@@ -76,8 +130,8 @@ function TabIcon({ name, color }: { name: string; color: string }) {
   const icons: Record<string, string> = {
     Dashboard: "📊",
     Billing: "🧾",
-    Customers: "👥",
-    Invoices: "📋",
+    CustomersTab: "👥",
+    InvoicesTab: "📋",
   };
   return <Text style={{ fontSize: 20, color }}>{icons[name] ?? "•"}</Text>;
 }
@@ -101,8 +155,16 @@ function MainTabs() {
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="Billing" component={BillingNavigator} />
-      <Tab.Screen name="Customers" component={CustomersScreen} />
-      <Tab.Screen name="Invoices" component={InvoiceListScreen} />
+      <Tab.Screen
+        name="CustomersTab"
+        component={CustomersNavigator}
+        options={{ tabBarLabel: "Customers" }}
+      />
+      <Tab.Screen
+        name="InvoicesTab"
+        component={InvoicesNavigator}
+        options={{ tabBarLabel: "Invoices" }}
+      />
     </Tab.Navigator>
   );
 }

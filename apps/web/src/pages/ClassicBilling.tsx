@@ -694,8 +694,8 @@ export default function ClassicBilling() {
       <div className="flex-1 px-4 py-4 space-y-5 pb-36">
         {/* ── Draft restored banner ──────────────────────────────────── */}
         {draftBanner && (
-          <div className="flex items-center justify-between rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs">
-            <span className="text-amber-700 font-medium">
+          <div className="flex items-center justify-between rounded-xl bg-warning/10 border border-warning/30 px-3 py-2 text-xs">
+            <span className="text-warning font-medium">
               ↺ Draft restored from last session
             </span>
             <button
@@ -716,7 +716,7 @@ export default function ClassicBilling() {
                 setDueDate("");
                 localStorage.removeItem(DRAFT_KEY);
               }}
-              className="text-amber-600 hover:text-red-600 font-semibold underline transition-colors"
+              className="text-warning hover:text-destructive font-semibold underline transition-colors"
             >
               Discard
             </button>
@@ -764,12 +764,12 @@ export default function ClassicBilling() {
                   </p>
                 )}
                 {outstandingBalance > 0 && (
-                  <p className="text-[10px] font-semibold text-amber-600">
+                  <p className="text-[10px] font-semibold text-warning">
                     ⚠ ₹{inr(outstandingBalance)} outstanding
                   </p>
                 )}
                 {outstandingBalance < 0 && (
-                  <p className="text-[10px] font-semibold text-green-600">
+                  <p className="text-[10px] font-semibold text-success">
                     ✓ ₹{inr(Math.abs(outstandingBalance))} advance credit
                   </p>
                 )}
@@ -984,7 +984,7 @@ export default function ClassicBilling() {
               <TotalRow
                 label={discountPct ? `Discount (${discountPct}%)` : "Discount"}
                 value={`−₹${inr(discountAmt)}`}
-                valueClass="font-semibold text-sm text-green-600"
+                valueClass="font-semibold text-sm text-success"
               />
             )}
             {withGst && (
@@ -1026,7 +1026,7 @@ export default function ClassicBilling() {
                 </div>
               </div>
               {roundOffEnabled && roundOff !== 0 && (
-                <p className="text-[10px] text-blue-600">
+                <p className="text-[10px] text-info">
                   {roundOff > 0 ? "+" : ""}
                   {inr(roundOff)} rounded
                 </p>
@@ -1097,7 +1097,7 @@ export default function ClassicBilling() {
                   </Button>
                 </div>
               ) : (
-                <p className="text-[11px] text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                <p className="text-[11px] text-warning bg-warning/10 border border-warning/30 rounded-lg px-3 py-2">
                   Full amount added to customer's credit account
                 </p>
               )}
@@ -1113,16 +1113,16 @@ export default function ClassicBilling() {
                   Total ₹{inr(finalTotal)}
                 </span>
                 <div className="flex items-center gap-3">
-                  <span className="text-green-700 font-semibold">
+                  <span className="text-success font-semibold">
                     Paid ₹{inr(splitTotal)}
                   </span>
                   {finalTotal - splitTotal > 0.001 && (
-                    <span className="text-amber-600 font-semibold">
+                    <span className="text-warning font-semibold">
                       Remaining ₹{inr(finalTotal - splitTotal)}
                     </span>
                   )}
                   {Math.abs(finalTotal - splitTotal) < 0.01 && (
-                    <span className="text-green-700 font-bold">✓ Settled</span>
+                    <span className="text-success font-bold">✓ Settled</span>
                   )}
                 </div>
               </div>
@@ -1324,7 +1324,7 @@ export default function ClassicBilling() {
         <Dialog open onOpenChange={() => undefined}>
           <DialogContent className="max-w-sm">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-green-700">
+              <DialogTitle className="flex items-center gap-2 text-success">
                 <CheckCircle2 className="h-5 w-5" />
                 Invoice Created!
               </DialogTitle>
@@ -1365,7 +1365,7 @@ export default function ClassicBilling() {
                   href={`https://wa.me/91${selectedCustomer.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Invoice #${savedInvoice.no}\nAmount: ₹${inr(savedInvoice.total)}\nFrom: My Shop${dueDate ? `\nDue: ${new Date(dueDate).toLocaleDateString("en-IN")}` : ""}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-green-500 hover:bg-green-600 text-white font-semibold py-2.5 text-sm transition-colors"
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-success hover:bg-success/90 text-success-foreground font-semibold py-2.5 text-sm transition-colors"
                 >
                   <MessageCircle className="h-4 w-4" />
                   Share on WhatsApp
@@ -1706,7 +1706,7 @@ function ItemRow({
             <span className="absolute right-1 top-1/2 -translate-y-1/2">
               <Badge
                 variant="outline"
-                className="text-[8px] px-1 py-0 h-4 text-green-600 border-green-300"
+                className="text-[8px] px-1 py-0 h-4 text-success border-success/40"
               >
                 DB
               </Badge>
@@ -1796,7 +1796,7 @@ function ProductDropdown({
         const stockClass = outOfStock
           ? "text-destructive font-medium"
           : lowStock
-            ? "text-orange-500"
+            ? "text-warning"
             : "text-muted-foreground";
         const stockLabel = outOfStock ? "Out of stock" : `Stock: ${p.stock}`;
         return (

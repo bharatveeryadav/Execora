@@ -47,7 +47,7 @@ export async function ledgerRoutes(fastify: FastifyInstance) {
 				request.body.reference,
 				request.body.paymentDate ? new Date(request.body.paymentDate) : undefined
 			);
-			const tid = (request as any).user?.tenantId;
+			const tid = request.user!.tenantId;
 			if (tid)
 				broadcaster.send(tid, 'payment:recorded', {
 					customerId: request.body.customerId,
@@ -83,7 +83,7 @@ export async function ledgerRoutes(fastify: FastifyInstance) {
 				request.body.amount,
 				request.body.description
 			);
-			const tid = (request as any).user?.tenantId;
+			const tid = request.user!.tenantId;
 			if (tid)
 				broadcaster.send(tid, 'payment:recorded', {
 					customerId: request.body.customerId,

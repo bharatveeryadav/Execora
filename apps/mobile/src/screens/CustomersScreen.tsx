@@ -11,10 +11,12 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigation } from "@react-navigation/native";
 import { customerApi } from "../lib/api";
 import { inr, type Customer } from "@execora/shared";
 
 export function CustomersScreen() {
+  const navigation = useNavigation<any>();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -72,6 +74,7 @@ export function CustomersScreen() {
           <TouchableOpacity
             className="flex-row items-center rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm"
             activeOpacity={0.7}
+            onPress={() => navigation.navigate("CustomerDetail", { id: c.id })}
           >
             <View className="w-10 h-10 rounded-full bg-indigo-100 items-center justify-center mr-3">
               <Text className="text-indigo-600 font-bold">

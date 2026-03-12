@@ -60,9 +60,9 @@ export async function bootstrapSystem(): Promise<void> {
     SYSTEM_TENANT_ID = tenant.id;
     SYSTEM_USER_ID   = user.id;
 
-    logger.info({ tenantId: SYSTEM_TENANT_ID, userId: SYSTEM_USER_ID }, '✅ System bootstrap complete');
+    logger.info({ tenantId: SYSTEM_TENANT_ID, userId: SYSTEM_USER_ID }, 'System bootstrap complete');
   } catch (error) {
-    logger.error({ error }, '❌ System bootstrap failed');
+    logger.error({ error }, 'System bootstrap failed');
     throw error;
   }
 }

@@ -12,7 +12,7 @@
  * GET  /api/v1/reports/pnl/csv           — P&L CSV
  * POST /api/v1/reports/email             — Email a report as PDF attachment
  */
-import { FastifyInstance, FastifyRequest } from 'fastify';
+import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { gstr1Service, getIndianFY, indianFYRange } from '@execora/modules';
 import { generateGstr1Pdf, generatePnlPdf, emailService, prisma } from '@execora/infrastructure';
 import { logger } from '@execora/infrastructure';
@@ -38,7 +38,7 @@ interface EmailBody {
 }
 
 /** Parse and validate a date range from request query. Returns null if invalid. */
-function resolveDateRange(q: ReportQuerystring, reply: any): { from: Date; to: Date } | null {
+function resolveDateRange(q: ReportQuerystring, reply: FastifyReply): { from: Date; to: Date } | null {
   let from: Date, to: Date;
 
   if (q.fy) {
@@ -343,7 +343,7 @@ export async function reportRoutes(fastify: FastifyInstance) {
 
 // ── Email HTML builders ────────────────────────────────────────────────────────
 
-function buildGstr1EmailHtml(report: any, fromStr: string, toStr: string): string {
+function buildGstr1EmailHtml(report: Record<string, unknown>, fromStr: string, toStr: string): string {
   const t = report.totals;
   const INR = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
   return `
@@ -372,7 +372,7 @@ function buildGstr1EmailHtml(report: any, fromStr: string, toStr: string): strin
     </div>`;
 }
 
-function buildPnlEmailHtml(report: any, shopName: string, fromStr: string, toStr: string): string {
+function buildPnlEmailHtml(report: Record<string, unknown>, shopName: string, fromStr: string, toStr: string): string {
   const t = report.totals;
   const INR = (n: number) => `₹${n.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
   return `

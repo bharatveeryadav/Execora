@@ -843,14 +843,17 @@ class InvoiceService {
       if (invoice.status !== "proforma")
         throw new Error("Only proforma invoices can be converted");
 
-      // Deduct stock
-      for (const item of invoice.items) {
-        if (item.productId) {
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { stock: { decrement: Number(item.quantity) } },
-          });
-        }
+      // Deduct stock — one UPDATE per product via CASE expression (batch, not N+1)
+      const stockItems = invoice.items.filter((i) => i.productId != null);
+      if (stockItems.length > 0) {
+        // Aggregate quantity per product so each product gets exactly ONE update
+        const qtyMap = new Map<string, number>();
+        for (const i of stockItems) qtyMap.set(i.productId!, (qtyMap.get(i.productId!) ?? 0) + Number(i.quantity));
+        await Promise.all(
+          Array.from(qtyMap.entries()).map(([productId, qty]) =>
+            tx.product.update({ where: { id: productId }, data: { stock: { decrement: qty } } })
+          )
+        );
       }
 
       const grandTotal = parseFloat(invoice.total.toString());
@@ -1138,14 +1141,17 @@ class InvoiceService {
           throw new Error("Invoice already cancelled");
 
         // Restore stock (proforma invoices never deducted stock so skip)
+        // Aggregate qty per product — one update per unique product, not per line item
         if (invoice.status !== "proforma") {
-          for (const item of invoice.items) {
-            if (item.productId) {
-              await tx.product.update({
-                where: { id: item.productId },
-                data: { stock: { increment: Number(item.quantity) } },
-              });
-            }
+          const restoreItems = invoice.items.filter((i) => i.productId != null);
+          if (restoreItems.length > 0) {
+            const qtyMap = new Map<string, number>();
+            for (const i of restoreItems) qtyMap.set(i.productId!, (qtyMap.get(i.productId!) ?? 0) + Number(i.quantity));
+            await Promise.all(
+              Array.from(qtyMap.entries()).map(([productId, qty]) =>
+                tx.product.update({ where: { id: productId }, data: { stock: { increment: qty } } })
+              )
+            );
           }
         }
 

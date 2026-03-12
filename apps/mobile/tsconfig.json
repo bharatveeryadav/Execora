@@ -3,15 +3,25 @@
   "compilerOptions": {
     "strict": true,
     "jsx": "react-native",
-    "lib": ["ES2022"],
+    "lib": [
+      "ES2022"
+    ],
     "module": "CommonJS",
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
+    "rootDir": ".",
+    "outDir": "./dist",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     }
   },
-  "include": ["src", "index.ts"]
+  "include": [
+    "src",
+    "index.ts",
+    "nativewind-env.d.ts"
+  ]
 }

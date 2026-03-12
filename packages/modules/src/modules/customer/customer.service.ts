@@ -56,9 +56,10 @@ class CustomerService {
 	 * Get total pending amount (sum of all customer balances > 0)
 	 */
 	async getTotalPendingAmount(): Promise<number> {
+		const { tenantId } = tenantContext.get();
 		const result = await prisma.customer.aggregate({
 			_sum: { balance: true },
-			where: { balance: { gt: 0 } },
+			where: { tenantId, balance: { gt: 0 } },
 		});
 		return parseFloat(result._sum.balance?.toString() || '0');
 	}
@@ -68,8 +69,10 @@ class CustomerService {
 	async getAllCustomersWithPendingBalance(): Promise<
 		Array<{ id: string; name: string; balance: number; landmark?: string; phone?: string }>
 	> {
+		const { tenantId } = tenantContext.get();
 		const customers = await prisma.customer.findMany({
 			where: {
+				tenantId,
 				balance: {
 					gt: 0,
 				},
@@ -97,7 +100,9 @@ class CustomerService {
 	 * Unlike searchCustomer, this never filters by score — it just pages through all records.
 	 */
 	async listAllCustomers(limit = 200): Promise<CustomerSearchResult[]> {
+		const { tenantId } = tenantContext.get();
 		const customers = await prisma.customer.findMany({
+			where: { tenantId },
 			orderBy: { balance: 'desc' },
 			take: limit,
 			select: {
@@ -212,8 +217,9 @@ class CustomerService {
 			return cached;
 		}
 
-		const customer = await prisma.customer.findUnique({
-			where: { id: context.activeCustomerId },
+		const { tenantId } = tenantContext.get();
+		const customer = await prisma.customer.findFirst({
+			where: { id: context.activeCustomerId, tenantId },
 			select: {
 				id: true,
 				name: true,

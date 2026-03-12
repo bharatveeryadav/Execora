@@ -44,14 +44,20 @@ const RecentInvoices = () => {
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground text-xs">
+                  <td
+                    colSpan={6}
+                    className="px-4 py-6 text-center text-muted-foreground text-xs"
+                  >
                     Loading…
                   </td>
                 </tr>
               )}
               {!isLoading && invoices.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground text-xs">
+                  <td
+                    colSpan={6}
+                    className="px-4 py-6 text-center text-muted-foreground text-xs"
+                  >
                     No invoices yet
                   </td>
                 </tr>
@@ -79,18 +85,30 @@ const RecentInvoices = () => {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Badge
-                        variant={isCancelled ? "destructive" : isPaid ? "default" : "secondary"}
+                        variant={
+                          isCancelled
+                            ? "destructive"
+                            : isPaid
+                              ? "default"
+                              : "secondary"
+                        }
                         className={
                           isPaid
                             ? "bg-success text-success-foreground"
                             : isCancelled
-                            ? ""
-                            : isPartial
-                            ? "bg-blue-500/15 text-blue-600 border-blue-500/30"
-                            : "bg-warning/15 text-warning border-warning/30"
+                              ? ""
+                              : isPartial
+                                ? "bg-info/15 text-info border-info/30"
+                                : "bg-warning/15 text-warning border-warning/30"
                         }
                       >
-                        {isPaid ? "✅ Paid" : isCancelled ? "❌ Cancelled" : isPartial ? "🔵 Partial" : "⏳ Pending"}
+                        {isPaid
+                          ? "✅ Paid"
+                          : isCancelled
+                            ? "❌ Cancelled"
+                            : isPartial
+                              ? "🔵 Partial"
+                              : "⏳ Pending"}
                       </Badge>
                     </td>
                   </tr>

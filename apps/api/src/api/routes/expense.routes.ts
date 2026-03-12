@@ -25,7 +25,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 				Querystring: { from?: string; to?: string; category?: string; limit?: string };
 			}>
 		) => {
-			const tenantId = (request as any).user!.tenantId as string;
+			const tenantId = request.user!.tenantId;
 			const { from, to, category } = request.query;
 			const limit = Math.min(parseInt(request.query.limit ?? '200', 10) || 200, 500);
 			const { f, t } = parseDateRange(from, to);
@@ -70,7 +70,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 			}>,
 			reply
 		) => {
-			const tenantId = (request as any).user!.tenantId as string;
+			const tenantId = request.user!.tenantId;
 			const { category, amount, note, vendor, date } = request.body;
 			const expense = await prisma.expense.create({
 				data: {
@@ -90,7 +90,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 
 	// ── DELETE /api/v1/expenses/:id ───────────────────────────────────────────
 	fastify.delete<{ Params: { id: string } }>('/api/v1/expenses/:id', async (request, reply) => {
-		const tenantId = (request as any).user!.tenantId as string;
+		const tenantId = request.user!.tenantId;
 		const row = await prisma.expense.findFirst({ where: { id: request.params.id, tenantId } });
 		if (!row) return reply.code(404).send({ error: 'Not found' });
 		await prisma.expense.delete({ where: { id: row.id } });
@@ -106,7 +106,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 				Querystring: { from?: string; to?: string };
 			}>
 		) => {
-			const tenantId = (request as any).user!.tenantId as string;
+			const tenantId = request.user!.tenantId;
 			const { from, to } = request.query;
 			const { f, t } = parseDateRange(from, to);
 
@@ -134,7 +134,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 				Querystring: { from?: string; to?: string; limit?: string };
 			}>
 		) => {
-			const tenantId = (request as any).user!.tenantId as string;
+			const tenantId = request.user!.tenantId;
 			const limit = Math.min(parseInt(request.query.limit ?? '200', 10) || 200, 500);
 			const { f, t } = parseDateRange(request.query.from, request.query.to);
 
@@ -187,7 +187,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 			}>,
 			reply
 		) => {
-			const tenantId = (request as any).user!.tenantId as string;
+			const tenantId = request.user!.tenantId;
 			const { category, amount, itemName, vendor, quantity, unit, ratePerUnit, note, date } = request.body;
 			const purchase = await prisma.expense.create({
 				data: {
@@ -211,7 +211,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 
 	// ── DELETE /api/v1/purchases/:id ──────────────────────────────────────────
 	fastify.delete<{ Params: { id: string } }>('/api/v1/purchases/:id', async (request, reply) => {
-		const tenantId = (request as any).user!.tenantId as string;
+		const tenantId = request.user!.tenantId;
 		const row = await prisma.expense.findFirst({ where: { id: request.params.id, tenantId, type: 'purchase' } });
 		if (!row) return reply.code(404).send({ error: 'Not found' });
 		await prisma.expense.delete({ where: { id: row.id } });
@@ -228,7 +228,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 				Querystring: { from?: string; to?: string };
 			}>
 		) => {
-			const tenantId = (request as any).user!.tenantId as string;
+			const tenantId = request.user!.tenantId;
 			const { f, t } = parseDateRange(request.query.from, request.query.to);
 
 			const [payments, expenses] = await Promise.all([

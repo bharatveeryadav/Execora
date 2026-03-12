@@ -11,8 +11,78 @@ import {
   productApi,
   invoiceApi,
   authApi,
+  apiFetch,
 } from "@execora/shared";
 import { tokenStorage } from "./storage";
+
+// ── Extended invoice API ───────────────────────────────────────────────────────
+
+export const invoiceExtApi = {
+  cancel: (id: string) =>
+    apiFetch<{ invoice: unknown }>(`/api/v1/invoices/${id}/cancel`, { method: 'POST' }),
+
+  update: (id: string, data: { items?: Array<{ productName: string; quantity: number }>; notes?: string }) =>
+    apiFetch<{ invoice: unknown }>(`/api/v1/invoices/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  sendEmail: (id: string) =>
+    apiFetch<{ sent: boolean }>(`/api/v1/invoices/${id}/send-email`, { method: 'POST' }),
+};
+
+// ── Extended customer API ─────────────────────────────────────────────────────
+
+export const customerExtApi = {
+  delete: (id: string) =>
+    apiFetch<{ success: boolean }>(`/api/v1/customers/${id}`, { method: 'DELETE' }),
+
+  getLedger: (id: string) =>
+    apiFetch<{ entries: Array<{ id: string; type: string; description: string; amount: string | number; createdAt: string }> }>(
+      `/api/v1/customers/${id}/ledger`
+    ),
+
+  getCommPrefs: (id: string) =>
+    apiFetch<{ prefs: { whatsappEnabled?: boolean; whatsappNumber?: string; emailEnabled?: boolean; emailAddress?: string; smsEnabled?: boolean; preferredLanguage?: string } | null }>(
+      `/api/v1/customers/${id}/comm-prefs`
+    ),
+
+  updateCommPrefs: (id: string, data: { whatsappEnabled?: boolean; whatsappNumber?: string; emailEnabled?: boolean; emailAddress?: string; smsEnabled?: boolean; preferredLanguage?: string }) =>
+    apiFetch<{ prefs: unknown }>(`/api/v1/customers/${id}/comm-prefs`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+};
+
+// ── Reminders API ─────────────────────────────────────────────────────────────
+
+export const reminderApi = {
+  list: (customerId?: string) =>
+    apiFetch<{ reminders: Array<{ id: string; status: string; scheduledTime: string; message?: string }> }>(
+      `/api/v1/reminders${customerId ? `?customerId=${customerId}` : ''}`
+    ),
+
+  create: (data: { customerId: string; amount?: number; datetime: string; message?: string }) =>
+    apiFetch<{ reminder: unknown }>('/api/v1/reminders', {
+      method: 'POST',
+      body: JSON.stringify({
+        customerId: data.customerId,
+        amount: data.amount,
+        scheduledTime: data.datetime,
+        message: data.message,
+      }),
+    }),
+};
+
+// ── Payments API ──────────────────────────────────────────────────────────────
+
+export const paymentApi = {
+  record: (data: { customerId?: string; invoiceId?: string; amount: number; method: string; reference?: string; date?: string }) =>
+    apiFetch<{ payment: unknown }>('/api/v1/payments', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
 
 // ── Global auth-expiry callback ───────────────────────────────────────────────
 // Set this after navigation is ready so we can navigate to the Login screen.

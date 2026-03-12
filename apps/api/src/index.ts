@@ -35,7 +35,7 @@ const wsHandler = useEnhancedAudio ? enhancedWebsocketHandler : websocketHandler
 
 // Create Fastify instance
 const fastify = Fastify({
-  logger: logger as any,
+  logger: logger as unknown as import('fastify').FastifyBaseLogger,
   trustProxy: true,
   bodyLimit: 1048576, // 1 MB for JSON — multipart has its own 100 MB limit
 });
@@ -48,7 +48,7 @@ fastify.addHook('onRequest', function requestIdHook(request, reply, done) {
   const reqId    = (typeof incoming === 'string' && incoming.length > 0)
     ? incoming
     : Math.random().toString(36).slice(2, 10);
-  (request as any).reqId = reqId;
+  request.id = reqId; // Fastify's built-in request.id for log correlation
   reply.header('x-request-id', reqId);
   done();
 });
@@ -57,7 +57,8 @@ fastify.addHook('onRequest', function requestIdHook(request, reply, done) {
 // Using callback form so done() is called inside tenantContext.run(),
 // which causes Node.js AsyncLocalStorage to propagate the context through
 // the entire async call chain for this request (handlers, services, etc.).
-// TODO: extract tenantId from JWT once multi-tenant auth is implemented.
+// Protected routes override these defaults via requireAuth middleware which
+// calls tenantContext.update({ tenantId, userId }) after JWT verification.
 fastify.addHook('onRequest', function tenantContextHook(_request, _reply, done) {
   tenantContext.run({ tenantId: SYSTEM_TENANT_ID, userId: SYSTEM_USER_ID }, done);
 });
@@ -115,9 +116,10 @@ async function registerPlugins() {
 // Register WebSocket route
 function registerWebSocket() {
   fastify.register(async (fastify) => {
-    fastify.get('/ws', { websocket: true }, (connection: any, request) => {
-      const wsConnection = connection?.socket ?? connection;
-      wsHandler.handleConnection(wsConnection, request);
+    fastify.get('/ws', { websocket: true }, (connection, request) => {
+      // @fastify/websocket v9 passes a SocketStream; .socket is the raw ws.WebSocket
+      const wsConnection = (connection as { socket?: unknown }).socket ?? connection;
+      wsHandler.handleConnection(wsConnection as Parameters<typeof wsHandler.handleConnection>[0], request);
     });
   });
 

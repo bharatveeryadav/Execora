@@ -1,5 +1,6 @@
 import { prisma } from '@execora/infrastructure';
 import { logger } from '@execora/infrastructure';
+import { Prisma } from '@prisma/client';
 import { reminderQueue } from '@execora/infrastructure';
 import { tenantContext } from '@execora/infrastructure';
 import { scheduleNextReminderOccurrence, markReminderSent, markReminderFailed } from '@execora/infrastructure';
@@ -318,12 +319,12 @@ class ReminderService {
 					customerId,
 					reminderType: 'payment_due',
 					scheduledTime,
-					recurringPattern: recurringPattern as any,
+					recurringPattern: recurringPattern as Prisma.InputJsonValue | undefined,
 					customMessage: message,
-					channels,
+					channels: channels as Prisma.ReminderCreatechannelsInput,
 					status: 'pending',
 					notes: amount.toString(),
-				} as any,
+				},
 				include: {
 					customer: true,
 				},
@@ -401,15 +402,15 @@ class ReminderService {
 
 			await this.removeQueuedJobsForReminder(reminderId);
 
-			const amount = parseFloat((reminder as any).notes || '0');
-			const message = (reminder as any).customMessage || 'Payment reminder';
+			const amount = parseFloat(reminder.notes || '0');
+			const message = reminder.customMessage || 'Payment reminder';
 
 			await this.enqueueReminderJob(
 				{
 					reminderId: reminder.id,
 					customerId: reminder.customerId!,
-					customerName: (reminder as any).customer?.name || '',
-					phone: (reminder as any).customer?.phone || '',
+					customerName: reminder.customer?.name || '',
+					phone: reminder.customer?.phone || '',
 					amount,
 					message,
 				} as ReminderJobData,
@@ -430,6 +431,7 @@ class ReminderService {
 	async getPendingReminders(customerId?: string) {
 		return await prisma.reminder.findMany({
 			where: {
+				tenantId: tenantContext.get().tenantId,
 				status: 'pending',
 				...(customerId && { customerId }),
 			},
@@ -447,7 +449,7 @@ class ReminderService {
 	 */
 	async getCustomerReminders(customerId: string, limit: number = 10) {
 		return await prisma.reminder.findMany({
-			where: { customerId },
+			where: { tenantId: tenantContext.get().tenantId, customerId },
 			orderBy: { createdAt: 'desc' },
 			take: limit,
 			include: {
@@ -478,6 +480,7 @@ class ReminderService {
 	async getDueReminders() {
 		return await prisma.reminder.findMany({
 			where: {
+				tenantId: tenantContext.get().tenantId,
 				status: 'pending',
 				scheduledTime: { lte: new Date() },
 			},

@@ -39,7 +39,7 @@ class ProductService {
 					unit: data.unit || 'piece',
 					barcode: data.barcode || null,
 					sku: data.sku || null,
-				} as any,
+				},
 			});
 
 			logger.info({ productId: product.id, name: product.name }, 'Product created');
@@ -51,11 +51,14 @@ class ProductService {
 	}
 
 	/**
-	 * Search products by name
+	 * Search products by name — scoped to current tenant
 	 */
 	async searchProducts(query: string) {
+		const { tenantId } = tenantContext.get();
 		return await prisma.product.findMany({
 			where: {
+				tenantId,
+				isActive: true,
 				name: {
 					contains: query,
 					mode: 'insensitive',
@@ -66,22 +69,24 @@ class ProductService {
 	}
 
 	/**
-	 * Get product by ID
+	 * Get product by ID — scoped to current tenant to prevent cross-tenant reads
 	 */
 	async getProductById(id: string) {
-		return await prisma.product.findUnique({
-			where: { id },
+		const { tenantId } = tenantContext.get();
+		return await prisma.product.findFirst({
+			where: { id, tenantId },
 		});
 	}
 
 	/**
-	 * Update product stock
+	 * Update product stock — scoped to current tenant
 	 */
 	async updateStock(productId: string, quantity: number, operation: 'add' | 'subtract') {
+		const { tenantId } = tenantContext.get();
 		try {
 			if (operation === 'subtract') {
-				const current = await prisma.product.findUnique({
-					where: { id: productId },
+				const current = await prisma.product.findFirst({
+					where: { id: productId, tenantId },
 					select: { stock: true, name: true },
 				});
 				if (!current) throw new Error('Product not found');
@@ -160,9 +165,12 @@ class ProductService {
 	}
 
 	/**
-	 * Update product price
+	 * Update product price — scoped to current tenant
 	 */
 	async updatePrice(productId: string, newPrice: number) {
+		const { tenantId } = tenantContext.get();
+		const existing = await prisma.product.findFirst({ where: { id: productId, tenantId } });
+		if (!existing) throw new Error('Product not found');
 		return await prisma.product.update({
 			where: { id: productId },
 			data: {
@@ -174,6 +182,7 @@ class ProductService {
 	/**
 	 * Update product fields (name, price, stock, unit, category, description).
 	 * Only updates fields that are explicitly provided.
+	 * Scoped to current tenant — silently no-ops if product belongs to another tenant.
 	 */
 	async updateProduct(
 		productId: string,
@@ -200,20 +209,25 @@ class ProductService {
 		if (data.sku !== undefined) updateData.sku = data.sku || null;
 		if (data.minStock !== undefined) updateData.minStock = data.minStock;
 
+		const { tenantId } = tenantContext.get();
+		const existing = await prisma.product.findFirst({ where: { id: productId, tenantId } });
+		if (!existing) throw new Error('Product not found');
 		const product = await prisma.product.update({
 			where: { id: productId },
-			data: updateData as any,
+			data: updateData as Parameters<typeof prisma.product.update>[0]['data'],
 		});
 		logger.info({ productId, fields: Object.keys(updateData) }, 'Product updated');
 		return product;
 	}
 
 	/**
-	 * Get product stock
+	 * Get product stock — scoped to current tenant
 	 */
 	async getStock(productName: string): Promise<number> {
+		const { tenantId } = tenantContext.get();
 		const product = await prisma.product.findFirst({
 			where: {
+				tenantId,
 				name: {
 					contains: productName,
 					mode: 'insensitive',

@@ -1,7 +1,6 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { customerService, invoiceService } from '@execora/modules';
 import { broadcaster } from '../../ws/broadcaster';
-import { SYSTEM_TENANT_ID } from '@execora/infrastructure';
 
 export async function customerRoutes(fastify: FastifyInstance) {
 	// ── GET /api/v1/customers/search ────────────────────────────────────────────
@@ -64,7 +63,7 @@ export async function customerRoutes(fastify: FastifyInstance) {
 		async (request, reply) => {
 			try {
 				const customer = await customerService.updateProfile(request.params.id, request.body);
-				const tid = (request as any).user?.tenantId ?? SYSTEM_TENANT_ID;
+				const tid = request.user!.tenantId;
 				broadcaster.send(tid, 'customer:updated', { customerId: customer.id });
 				return { customer };
 			} catch (err: any) {
@@ -171,7 +170,7 @@ export async function customerRoutes(fastify: FastifyInstance) {
 			const customer = await customerService.createCustomer(rest);
 
 			// Apply extra fields that createCustomer doesn't handle
-			const extras: any = {};
+			const extras: { email?: string; tags?: string[]; creditLimit?: number } = {};
 			if (email) extras.email = email;
 			if (tags?.length) extras.tags = tags;
 			if (creditLimit !== undefined && creditLimit > 0) extras.creditLimit = creditLimit;
@@ -180,7 +179,7 @@ export async function customerRoutes(fastify: FastifyInstance) {
 			if (openingBalance && openingBalance > 0) await customerService.updateBalance(customer.id, openingBalance);
 
 			const fresh = await customerService.getCustomerById(customer.id);
-			const tid = (request as any).user?.tenantId ?? SYSTEM_TENANT_ID;
+			const tid = request.user!.tenantId;
 			broadcaster.send(tid, 'customer:created', { customerId: customer.id });
 			return reply.code(201).send({ customer: fresh ?? customer });
 		}
@@ -197,7 +196,7 @@ export async function customerRoutes(fastify: FastifyInstance) {
 	fastify.delete<{ Params: { id: string } }>('/api/v1/customers/:id', async (request, reply) => {
 		const result = await customerService.deleteCustomerAndAllData(request.params.id);
 		if (!result.success) return reply.code(404).send({ error: 'Customer not found or delete failed' });
-		const tid = (request as any).user?.tenantId ?? SYSTEM_TENANT_ID;
+		const tid = request.user!.tenantId;
 		broadcaster.send(tid, 'customer:deleted', { customerId: request.params.id });
 		return { ok: true };
 	});

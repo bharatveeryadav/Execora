@@ -1,7 +1,6 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { reminderService } from '@execora/modules';
 import { broadcaster } from '../../ws/broadcaster';
-import { SYSTEM_TENANT_ID } from '@execora/infrastructure';
 
 export async function reminderRoutes(fastify: FastifyInstance) {
 	fastify.get(
@@ -45,7 +44,7 @@ export async function reminderRoutes(fastify: FastifyInstance) {
 				request.body.datetime,
 				request.body.message
 			);
-			const tid = (request as any).user?.tenantId ?? SYSTEM_TENANT_ID;
+			const tid = request.user!.tenantId;
 			broadcaster.send(tid, 'reminder:created', { reminderId: reminder.id, customerId: reminder.customerId });
 			return reply.code(201).send({ reminder });
 		}
@@ -60,7 +59,7 @@ export async function reminderRoutes(fastify: FastifyInstance) {
 			reply
 		) => {
 			const reminder = await reminderService.cancelReminder(request.params.id);
-			const tid = (request as any).user?.tenantId ?? SYSTEM_TENANT_ID;
+			const tid = request.user!.tenantId;
 			broadcaster.send(tid, 'reminder:cancelled', { reminderId: request.params.id });
 			return reply.send({ reminder });
 		}
@@ -90,7 +89,7 @@ export async function reminderRoutes(fastify: FastifyInstance) {
 			reply
 		) => {
 			const reminders = await reminderService.bulkScheduleReminders(request.body);
-			const tid = (request as any).user?.tenantId ?? SYSTEM_TENANT_ID;
+			const tid = request.user!.tenantId;
 			broadcaster.send(tid, 'reminder:created', { count: reminders.length });
 			return reply.code(201).send({ reminders });
 		}

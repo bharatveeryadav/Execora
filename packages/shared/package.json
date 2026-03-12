@@ -4,6 +4,7 @@
   "private": true,
   "description": "Platform-agnostic business logic — usable in web (React/Vite) and mobile (React Native/Expo)",
   "main": "./dist/index.js",
+  "source": "./src/index.ts",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {

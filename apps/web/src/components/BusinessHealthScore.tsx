@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { useDailySummary, useCustomers, useLowStockProducts } from "@/hooks/useQueries";
+import {
+  useDailySummary,
+  useCustomers,
+  useLowStockProducts,
+} from "@/hooks/useQueries";
 import { useWS } from "@/contexts/WSContext";
 import { wsClient } from "@/lib/ws";
 
@@ -17,13 +21,13 @@ interface PillarProps {
 
 function Pillar({ label, score, icon, hint, flash, onClick }: PillarProps) {
   const bar =
-    score >= 80 ? "bg-green-500" : score >= 50 ? "bg-yellow-400" : "bg-destructive";
+    score >= 80 ? "bg-success" : score >= 50 ? "bg-warning" : "bg-destructive";
   const text =
     score >= 80
-      ? "text-green-700 dark:text-green-400"
+      ? "text-success"
       : score >= 50
-      ? "text-yellow-700 dark:text-yellow-400"
-      : "text-destructive";
+        ? "text-warning"
+        : "text-destructive";
 
   return (
     <button
@@ -31,8 +35,12 @@ function Pillar({ label, score, icon, hint, flash, onClick }: PillarProps) {
       className={`group flex flex-1 flex-col gap-1.5 rounded-xl border bg-card p-3 text-left transition-all duration-300 hover:bg-muted/40 ${flash ? "ring-2 ring-primary/40" : ""}`}
     >
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">{icon} {label}</span>
-        <span className={`text-xs font-bold tabular-nums ${text}`}>{score}%</span>
+        <span className="text-xs font-medium text-muted-foreground">
+          {icon} {label}
+        </span>
+        <span className={`text-xs font-bold tabular-nums ${text}`}>
+          {score}%
+        </span>
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
         <div
@@ -132,27 +140,41 @@ const BusinessHealthScore = () => {
   }, [qc]);
 
   // ── Scores ──────────────────────────────────────────────────────────────────
-  const overdueCount = customers.filter((c) => parseFloat(String(c.balance)) > 0).length;
+  const overdueCount = customers.filter(
+    (c) => parseFloat(String(c.balance)) > 0,
+  ).length;
   const totalSales = summary?.totalSales ?? 0;
   const totalPayments = summary?.totalPayments ?? 0;
 
   const collectionScore =
-    totalSales > 0 ? Math.min(100, Math.round((totalPayments / totalSales) * 100)) : 0;
+    totalSales > 0
+      ? Math.min(100, Math.round((totalPayments / totalSales) * 100))
+      : 0;
   const stockScore = Math.max(0, 100 - lowStock.length * 15);
   const overdueScore = Math.max(0, 100 - overdueCount * 10);
   const overall = Math.round((collectionScore + stockScore + overdueScore) / 3);
 
   const overallColor =
     overall >= 70
-      ? "text-green-700 dark:text-green-400"
+      ? "text-success"
       : overall >= 50
-      ? "text-yellow-700 dark:text-yellow-400"
-      : "text-destructive";
+        ? "text-warning"
+        : "text-destructive";
 
-  const overallLabel = overall >= 70 ? "Good" : overall >= 50 ? "Needs Work" : "Critical";
-  const overallStroke = overall >= 70 ? "#22c55e" : overall >= 50 ? "#eab308" : "#ef4444";
+  const overallLabel =
+    overall >= 70 ? "Good" : overall >= 50 ? "Needs Work" : "Critical";
+  const overallStroke =
+    overall >= 70
+      ? "hsl(var(--success))"
+      : overall >= 50
+        ? "hsl(var(--warning))"
+        : "hsl(var(--destructive))";
   const overallBar =
-    overall >= 70 ? "bg-green-500" : overall >= 50 ? "bg-yellow-400" : "bg-destructive";
+    overall >= 70
+      ? "bg-success"
+      : overall >= 50
+        ? "bg-warning"
+        : "bg-destructive";
 
   return (
     <Card className="border-none shadow-sm">
@@ -168,7 +190,9 @@ const BusinessHealthScore = () => {
               <span
                 title={isConnected ? "Live data" : "Offline"}
                 className={`inline-block h-1.5 w-1.5 rounded-full ${
-                  isConnected ? "bg-green-500 animate-pulse" : "bg-muted-foreground"
+                  isConnected
+                    ? "bg-success animate-pulse"
+                    : "bg-muted-foreground"
                 }`}
               />
               {/* Refresh spinner */}
@@ -177,28 +201,53 @@ const BusinessHealthScore = () => {
               )}
             </div>
             <div className="flex items-baseline gap-1.5">
-              <span className={`text-2xl font-extrabold tabular-nums ${overallColor}`}>
+              <span
+                className={`text-2xl font-extrabold tabular-nums ${overallColor}`}
+              >
                 {overall}
               </span>
-              <span className="text-xs text-muted-foreground">/ 100 · {overallLabel}</span>
+              <span className="text-xs text-muted-foreground">
+                / 100 · {overallLabel}
+              </span>
             </div>
-            <p className="mt-0.5 text-[10px] text-muted-foreground">Updated {updatedLabel}</p>
+            <p className="mt-0.5 text-[10px] text-muted-foreground">
+              Updated {updatedLabel}
+            </p>
           </div>
 
           {/* Ring gauge */}
-          <div className="relative flex h-14 w-14 items-center justify-center" title={`${overall}/100`}>
+          <div
+            className="relative flex h-14 w-14 items-center justify-center"
+            title={`${overall}/100`}
+          >
             <svg viewBox="0 0 36 36" className="h-14 w-14 -rotate-90">
-              <circle cx="18" cy="18" r="15.9" fill="none" stroke="hsl(var(--muted))" strokeWidth="3" />
               <circle
-                cx="18" cy="18" r="15.9" fill="none"
+                cx="18"
+                cy="18"
+                r="15.9"
+                fill="none"
+                stroke="hsl(var(--muted))"
+                strokeWidth="3"
+              />
+              <circle
+                cx="18"
+                cy="18"
+                r="15.9"
+                fill="none"
                 stroke={overallStroke}
                 strokeWidth="3"
                 strokeDasharray={`${overall} ${100 - overall}`}
                 strokeLinecap="round"
-                style={{ transition: "stroke-dasharray 0.7s ease, stroke 0.5s ease" }}
+                style={{
+                  transition: "stroke-dasharray 0.7s ease, stroke 0.5s ease",
+                }}
               />
             </svg>
-            <span className={`absolute text-xs font-bold tabular-nums ${overallColor}`}>{overall}%</span>
+            <span
+              className={`absolute text-xs font-bold tabular-nums ${overallColor}`}
+            >
+              {overall}%
+            </span>
           </div>
         </div>
 
@@ -224,7 +273,9 @@ const BusinessHealthScore = () => {
             label="Stock"
             icon="📦"
             score={stockScore}
-            hint={lowStock.length === 0 ? "All stocked" : `${lowStock.length} low`}
+            hint={
+              lowStock.length === 0 ? "All stocked" : `${lowStock.length} low`
+            }
             flash={flashStock}
             onClick={() => navigate("/inventory")}
           />

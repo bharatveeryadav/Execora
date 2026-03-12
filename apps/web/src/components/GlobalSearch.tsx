@@ -1,5 +1,13 @@
 import { useState, useEffect } from "react";
-import { Search, FileText, Users, Package, X, ChevronRight, ArrowRight } from "lucide-react";
+import {
+  Search,
+  FileText,
+  Users,
+  Package,
+  X,
+  ChevronRight,
+  ArrowRight,
+} from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,24 +22,27 @@ interface GlobalSearchProps {
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  paid:      "bg-green-500/10 text-green-700 dark:text-green-400",
-  pending:   "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
-  partial:   "bg-orange-500/10 text-orange-700 dark:text-orange-400",
+  paid: "bg-success/10 text-success",
+  pending: "bg-warning/10 text-warning",
+  partial: "bg-warning/10 text-warning",
   cancelled: "bg-destructive/10 text-destructive",
-  draft:     "bg-muted text-muted-foreground",
-  proforma:  "bg-blue-500/10 text-blue-700 dark:text-blue-400",
+  draft: "bg-muted text-muted-foreground",
+  proforma: "bg-info/10 text-info",
 };
 
 const QUICK_LINKS = [
-  { icon: "🧾", label: "New Invoice",   path: "/invoices",   action: "invoice" },
-  { icon: "👥", label: "Customers",     path: "/customers",  action: "nav" },
-  { icon: "📦", label: "Inventory",     path: "/inventory",  action: "nav" },
-  { icon: "💵", label: "Cash Book",     path: "/cashbook",   action: "nav" },
-  { icon: "📊", label: "Reports",       path: "/reports",    action: "nav" },
-  { icon: "📖", label: "Day Book",      path: "/daybook",    action: "nav" },
+  { icon: "🧾", label: "New Invoice", path: "/invoices", action: "invoice" },
+  { icon: "👥", label: "Customers", path: "/customers", action: "nav" },
+  { icon: "📦", label: "Inventory", path: "/inventory", action: "nav" },
+  { icon: "💵", label: "Cash Book", path: "/cashbook", action: "nav" },
+  { icon: "📊", label: "Reports", path: "/reports", action: "nav" },
+  { icon: "📖", label: "Day Book", path: "/daybook", action: "nav" },
 ];
 
-export default function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
+export default function GlobalSearch({
+  open,
+  onOpenChange,
+}: GlobalSearchProps) {
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
   const { data: customers = [] } = useCustomers("", 200);
@@ -63,28 +74,35 @@ export default function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) 
   const q = query.toLowerCase().trim();
 
   const matchedCustomers = q
-    ? customers.filter(
-        (c) =>
-          c.name?.toLowerCase().includes(q) ||
-          c.phone?.toLowerCase().includes(q) ||
-          (c as any).nickname?.toLowerCase().includes(q)
-      ).slice(0, 4)
+    ? customers
+        .filter(
+          (c) =>
+            c.name?.toLowerCase().includes(q) ||
+            c.phone?.toLowerCase().includes(q) ||
+            (c as any).nickname?.toLowerCase().includes(q),
+        )
+        .slice(0, 4)
     : [];
 
   const matchedInvoices = q
-    ? invoices.filter(
-        (inv) =>
-          inv.invoiceNo?.toLowerCase().includes(q) ||
-          inv.customer?.name?.toLowerCase().includes(q) ||
-          inv.customer?.phone?.toLowerCase().includes(q)
-      ).slice(0, 4)
+    ? invoices
+        .filter(
+          (inv) =>
+            inv.invoiceNo?.toLowerCase().includes(q) ||
+            inv.customer?.name?.toLowerCase().includes(q) ||
+            inv.customer?.phone?.toLowerCase().includes(q),
+        )
+        .slice(0, 4)
     : [];
 
   const matchedProducts = q
     ? products.filter((p) => p.name?.toLowerCase().includes(q)).slice(0, 3)
     : [];
 
-  const hasResults = matchedCustomers.length > 0 || matchedInvoices.length > 0 || matchedProducts.length > 0;
+  const hasResults =
+    matchedCustomers.length > 0 ||
+    matchedInvoices.length > 0 ||
+    matchedProducts.length > 0;
 
   function go(path: string) {
     onOpenChange(false);
@@ -105,14 +123,22 @@ export default function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) 
             className="h-9 border-0 p-0 shadow-none focus-visible:ring-0 text-sm"
           />
           {query && (
-            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => setQuery("")}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 shrink-0"
+              onClick={() => setQuery("")}
+            >
               <X className="h-3 w-3" />
             </Button>
           )}
         </div>
 
         {/* Results */}
-        <div className="max-h-[420px] overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
+        <div
+          className="max-h-[420px] overflow-y-auto"
+          style={{ scrollbarWidth: "thin" }}
+        >
           {/* Empty state — show quick links */}
           {!q && (
             <div>
@@ -127,7 +153,9 @@ export default function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) 
                     className="flex flex-col items-center gap-1.5 py-4 hover:bg-accent transition-colors text-center"
                   >
                     <span className="text-2xl">{link.icon}</span>
-                    <span className="text-xs text-muted-foreground font-medium">{link.label}</span>
+                    <span className="text-xs text-muted-foreground font-medium">
+                      {link.label}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -140,8 +168,12 @@ export default function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) 
           {q && !hasResults && (
             <div className="py-10 text-center">
               <Search className="mx-auto mb-2 h-8 w-8 text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">No results for <strong>"{query}"</strong></p>
-              <p className="mt-1 text-xs text-muted-foreground">Try a name, phone number, or invoice #</p>
+              <p className="text-sm text-muted-foreground">
+                No results for <strong>"{query}"</strong>
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Try a name, phone number, or invoice #
+              </p>
             </div>
           )}
 
@@ -173,7 +205,16 @@ export default function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) 
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{c.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {c.phone ?? "No phone"} · Bal: <span className={bal > 0 ? "text-destructive font-medium" : "text-green-600"}>{formatCurrency(bal)}</span>
+                        {c.phone ?? "No phone"} · Bal:{" "}
+                        <span
+                          className={
+                            bal > 0
+                              ? "text-destructive font-medium"
+                              : "text-success"
+                          }
+                        >
+                          {formatCurrency(bal)}
+                        </span>
                       </p>
                     </div>
                     <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -204,17 +245,24 @@ export default function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) 
                   className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-accent transition-colors"
                 >
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-sm shrink-0">
-                    {inv.status === "paid" ? "✅" : inv.status === "cancelled" ? "❌" : "📄"}
+                    {inv.status === "paid"
+                      ? "✅"
+                      : inv.status === "cancelled"
+                        ? "❌"
+                        : "📄"}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium">{inv.invoiceNo}</p>
-                      <Badge className={`h-4 px-1.5 text-[9px] font-semibold capitalize ${STATUS_COLOR[inv.status] ?? ""}`}>
+                      <Badge
+                        className={`h-4 px-1.5 text-[9px] font-semibold capitalize ${STATUS_COLOR[inv.status] ?? ""}`}
+                      >
                         {inv.status}
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground truncate">
-                      {inv.customer?.name ?? "Unknown"} · {formatCurrency(parseFloat(String(inv.total ?? 0)))}
+                      {inv.customer?.name ?? "Unknown"} ·{" "}
+                      {formatCurrency(parseFloat(String(inv.total ?? 0)))}
                     </p>
                   </div>
                   <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -249,7 +297,8 @@ export default function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) 
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{p.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      Stock: {(p as any).stock ?? 0} · {formatCurrency(parseFloat(String(p.price ?? 0)))}
+                      Stock: {(p as any).stock ?? 0} ·{" "}
+                      {formatCurrency(parseFloat(String(p.price ?? 0)))}
                     </p>
                   </div>
                   <ChevronRight className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
@@ -261,9 +310,15 @@ export default function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) 
 
         {/* Footer hint */}
         <div className="border-t px-4 py-2 flex gap-3 text-[10px] text-muted-foreground">
-          <span><kbd className="rounded bg-muted px-1">↵</kbd> open</span>
-          <span><kbd className="rounded bg-muted px-1">Esc</kbd> close</span>
-          <span><kbd className="rounded bg-muted px-1">Ctrl+K</kbd> anywhere</span>
+          <span>
+            <kbd className="rounded bg-muted px-1">↵</kbd> open
+          </span>
+          <span>
+            <kbd className="rounded bg-muted px-1">Esc</kbd> close
+          </span>
+          <span>
+            <kbd className="rounded bg-muted px-1">Ctrl+K</kbd> anywhere
+          </span>
         </div>
       </DialogContent>
     </Dialog>

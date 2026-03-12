@@ -43,6 +43,7 @@ export function requireFeature(featureKey: string) {
           error:   'Feature not available',
           message: `The '${featureKey}' feature is not enabled on your plan (${tenant.plan}).`,
         });
+        return; // prevent handler from executing after the 403 response
       }
     } catch (err: any) {
       logger.error({ err, featureKey }, 'Feature check failed');

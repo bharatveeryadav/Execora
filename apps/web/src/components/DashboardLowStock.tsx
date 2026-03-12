@@ -12,8 +12,8 @@ const DashboardLowStock = () => {
   const criticalCount = lowStock.filter((p) => p.stock === 0).length;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-yellow-400/30 bg-yellow-500/5 px-3 py-2.5">
-      <span className="shrink-0 text-xs font-semibold text-yellow-700 dark:text-yellow-400">
+    <div className="flex flex-wrap items-center gap-2 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2.5">
+      <span className="shrink-0 text-xs font-semibold text-warning">
         {criticalCount > 0 ? "🔴" : "⚠️"} Stock Alert ({lowStock.length}):
       </span>
       {items.map((item) => (
@@ -24,12 +24,13 @@ const DashboardLowStock = () => {
           className={`rounded-full border px-2 py-0.5 text-xs font-medium transition-colors hover:opacity-80 ${
             item.stock === 0
               ? "border-destructive/40 bg-destructive/10 text-destructive"
-              : "border-yellow-400/40 bg-yellow-500/10 text-yellow-700 dark:text-yellow-400"
+              : "border-warning/40 bg-warning/15 text-warning"
           }`}
         >
           {item.name}
           <span className="ml-1 opacity-60 tabular-nums">
-            {item.stock}{item.unit}
+            {item.stock}
+            {item.unit}
           </span>
         </button>
       ))}

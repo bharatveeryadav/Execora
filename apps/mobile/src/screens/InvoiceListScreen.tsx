@@ -74,6 +74,7 @@ export function InvoiceListScreen() {
             <TouchableOpacity
               className="flex-row items-center rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm"
               activeOpacity={0.7}
+              onPress={() => (navigation as any).navigate("InvoiceDetail", { id: inv.id })}
             >
               <View className="flex-1">
                 <View className="flex-row items-center gap-2 mb-0.5">

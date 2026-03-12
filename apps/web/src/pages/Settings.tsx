@@ -620,15 +620,15 @@ const Settings = () => {
             <div className="flex items-center gap-2">
               <CardTitle className="text-base">Invoice Auto-Delivery</CardTitle>
               {autoSendEmail && autoSendWhatsApp ? (
-                <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:bg-green-900/40 dark:text-green-400">
+                <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-semibold text-success">
                   Email + WhatsApp ON
                 </span>
               ) : autoSendEmail ? (
-                <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-400">
+                <span className="rounded-full bg-info/10 px-2 py-0.5 text-[10px] font-semibold text-info">
                   Email only
                 </span>
               ) : autoSendWhatsApp ? (
-                <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-semibold text-green-700 dark:bg-green-900/40 dark:text-green-400">
+                <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-semibold text-success">
                   WhatsApp only
                 </span>
               ) : (
@@ -648,8 +648,8 @@ const Settings = () => {
             {/* Email toggle */}
             <div className="flex items-center justify-between rounded-lg border border-border p-3">
               <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-50 dark:bg-blue-900/30">
-                  <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-info/10">
+                  <Mail className="h-4 w-4 text-info" />
                 </div>
                 <div>
                   <p className="text-sm font-medium">Auto-send via Email</p>
@@ -667,8 +667,8 @@ const Settings = () => {
             {/* WhatsApp toggle */}
             <div className="flex items-center justify-between rounded-lg border border-border p-3">
               <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-green-50 dark:bg-green-900/30">
-                  <MessageCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-success/10">
+                  <MessageCircle className="h-4 w-4 text-success" />
                 </div>
                 <div>
                   <p className="text-sm font-medium">Auto-send via WhatsApp</p>
@@ -684,7 +684,7 @@ const Settings = () => {
             </div>
 
             {!autoSendEmail && !autoSendWhatsApp && (
-              <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
+              <p className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
                 ⚠️ Both channels are off — invoices will not be sent
                 automatically. Use the "Send" button on the invoice detail page
                 to deliver manually.
@@ -698,7 +698,8 @@ const Settings = () => {
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Invoice Template</CardTitle>
             <p className="text-xs text-muted-foreground">
-              Choose how your printed and PDF invoices look. You can also switch templates inside Classic Billing.
+              Choose how your printed and PDF invoices look. You can also switch
+              templates inside Classic Billing.
             </p>
           </CardHeader>
           <CardContent>

@@ -282,7 +282,7 @@ class LedgerService {
 	 */
 	async getCustomerLedger(customerId: string, limit: number = 50) {
 		return await prisma.payment.findMany({
-			where: { customerId },
+			where: { tenantId: tenantContext.get().tenantId, customerId },
 			orderBy: { receivedAt: 'desc' },
 			take: limit,
 			include: {

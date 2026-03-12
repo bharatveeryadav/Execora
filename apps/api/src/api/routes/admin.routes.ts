@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@execora/infrastructure';
 import { getRuntimeConfig, setRuntimeConfig } from '@execora/infrastructure';
 import { reminderQueue, whatsappQueue, mediaQueue, checkRedisHealth } from '@execora/infrastructure';
@@ -92,7 +93,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
     const skip  = (page - 1) * limit;
     const q     = request.query.q?.trim();
 
-    const where: any = q
+    const where: Prisma.CustomerWhereInput = q
       ? { OR: [{ name: { contains: q, mode: 'insensitive' } }, { phone: { contains: q } }] }
       : {};
 
@@ -165,13 +166,14 @@ export async function adminRoutes(fastify: FastifyInstance) {
     const skip  = (page - 1) * limit;
     const { status, customerId, from, to } = request.query;
 
-    const where: any = {};
-    if (status)     where.status     = status;
+    const where: Prisma.InvoiceWhereInput = {};
+    if (status)     where.status     = status as Prisma.InvoiceWhereInput['status'];
     if (customerId) where.customerId = customerId;
     if (from || to) {
-      where.createdAt = {};
-      if (from) where.createdAt.gte = new Date(from);
-      if (to)   where.createdAt.lte = new Date(to);
+      where.createdAt = {
+        ...(from && { gte: new Date(from) }),
+        ...(to   && { lte: new Date(to) }),
+      };
     }
 
     const [invoices, total] = await Promise.all([
@@ -218,7 +220,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
     const skip  = (page - 1) * limit;
     const q     = request.query.q?.trim();
 
-    const where: any = q ? { name: { contains: q, mode: 'insensitive' } } : {};
+    const where: Prisma.ProductWhereInput = q ? { name: { contains: q, mode: 'insensitive' } } : {};
 
     const [products, total] = await Promise.all([
       prisma.product.findMany({ where, skip, take: limit, orderBy: { name: 'asc' } }),
@@ -251,13 +253,14 @@ export async function adminRoutes(fastify: FastifyInstance) {
     const skip  = (page - 1) * limit;
     const { customerId, from, to, method } = request.query;
 
-    const where: any = {};
+    const where: Prisma.PaymentWhereInput = {};
     if (customerId) where.customerId = customerId;
-    if (method)     where.method     = method;
+    if (method)     where.method     = method as Prisma.PaymentWhereInput['method'];
     if (from || to) {
-      where.receivedAt = {};
-      if (from) where.receivedAt.gte = new Date(from);
-      if (to)   where.receivedAt.lte = new Date(to);
+      where.receivedAt = {
+        ...(from && { gte: new Date(from) }),
+        ...(to   && { lte: new Date(to) }),
+      };
     }
 
     const [payments, total, agg] = await Promise.all([
@@ -283,11 +286,12 @@ export async function adminRoutes(fastify: FastifyInstance) {
     Querystring: { from?: string; to?: string };
   }>, reply) => {
     const { from, to } = request.query;
-    const where: any = {};
+    const where: Prisma.PaymentWhereInput = {};
     if (from || to) {
-      where.receivedAt = {};
-      if (from) where.receivedAt.gte = new Date(from);
-      if (to)   where.receivedAt.lte = new Date(to);
+      where.receivedAt = {
+        ...(from && { gte: new Date(from) }),
+        ...(to   && { lte: new Date(to) }),
+      };
     }
 
     const [byMethod, totals] = await Promise.all([
@@ -315,8 +319,8 @@ export async function adminRoutes(fastify: FastifyInstance) {
     const skip  = (page - 1) * limit;
     const { status, customerId } = request.query;
 
-    const where: any = {};
-    if (status)     where.status     = status;
+    const where: Prisma.ReminderWhereInput = {};
+    if (status)     where.status     = status as Prisma.ReminderWhereInput['status'];
     if (customerId) where.customerId = customerId;
 
     const [reminders, total] = await Promise.all([
@@ -363,9 +367,9 @@ export async function adminRoutes(fastify: FastifyInstance) {
     const skip  = (page - 1) * limit;
     const { channel, status } = request.query;
 
-    const where: any = {};
-    if (channel) where.channel = channel;
-    if (status)  where.status  = status;
+    const where: Prisma.MessageLogWhereInput = {};
+    if (channel) where.channel = channel as Prisma.MessageLogWhereInput['channel'];
+    if (status)  where.status  = status  as Prisma.MessageLogWhereInput['status'];
 
     const [logs, total] = await Promise.all([
       prisma.messageLog.findMany({
@@ -453,7 +457,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
       return reply.code(400).send({ error: 'Request body must be a JSON object' });
     }
     try {
-      await setRuntimeConfig(body as any);
+      await setRuntimeConfig(body as Record<string, unknown>);
       logger.info({ ip: request.ip, keys: Object.keys(body) }, 'Admin updated runtime config');
       return reply.send({ success: true, config: getRuntimeConfig() });
     } catch (error: any) {
@@ -482,9 +486,9 @@ export async function adminRoutes(fastify: FastifyInstance) {
     const skip  = (page - 1) * limit;
     const { q, plan, status } = request.query;
 
-    const where: any = {};
-    if (plan)   where.plan   = plan;
-    if (status) where.status = status;
+    const where: Prisma.TenantWhereInput = {};
+    if (plan)   where.plan   = plan   as Prisma.TenantWhereInput['plan'];
+    if (status) where.status = status as Prisma.TenantWhereInput['status'];
     if (q) {
       where.OR = [
         { name:      { contains: q, mode: 'insensitive' } },
@@ -560,8 +564,8 @@ export async function adminRoutes(fastify: FastifyInstance) {
       data: {
         name,
         subdomain:    subdomain ?? null,
-        businessType: (businessType ?? 'retail') as any,
-        plan:         (plan ?? 'free') as any,
+        businessType: (businessType ?? 'retail') as Prisma.TenantCreateInput['businessType'],
+        plan:         (plan ?? 'free') as Prisma.TenantCreateInput['plan'],
         currency:     currency  ?? 'INR',
         timezone:     timezone  ?? 'Asia/Kolkata',
         language:     language  ?? 'hi',
@@ -583,7 +587,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
       },
     });
 
-    logger.info({ tenantId: tenant.id, plan: tenant.plan }, 'Tenant created by platform admin');
+    logger.info({ tenantId: tenant.id, plan: tenant.plan, ownerEmail, ip: request.ip }, 'Tenant created by platform admin');
     return reply.code(201).send({ tenant });
   });
 
@@ -645,7 +649,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
     const target = await prisma.tenant.findUnique({ where: { id: request.params.id } });
     if (!target) return reply.code(404).send({ error: 'Tenant not found' });
 
-    const data: any = {};
+    const data: Prisma.TenantUpdateInput = {};
     const b = request.body;
     if (b.name               !== undefined) data.name               = b.name;
     if (b.plan               !== undefined) data.plan               = b.plan;
@@ -668,7 +672,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
       },
     });
 
-    logger.info({ tenantId: request.params.id, changes: Object.keys(data) }, 'Tenant updated by platform admin');
+    logger.info({ tenantId: request.params.id, changes: Object.keys(data), ip: request.ip }, 'Tenant updated by platform admin');
     return reply.send({ tenant: updated });
   });
 
@@ -699,7 +703,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
     });
 
     logger.info(
-      { tenantId: request.params.id, overrides: request.body },
+      { tenantId: request.params.id, overrides: request.body, ip: request.ip },
       'Tenant features updated by platform admin',
     );
     return reply.send({ features: merged });
@@ -714,9 +718,9 @@ export async function adminRoutes(fastify: FastifyInstance) {
     const skip  = (page - 1) * limit;
     const { q, tenantId, role } = request.query;
 
-    const where: any = {};
+    const where: Prisma.UserWhereInput = {};
     if (tenantId) where.tenantId = tenantId;
-    if (role)     where.role     = role;
+    if (role)     where.role     = role as Prisma.UserWhereInput['role'];
     if (q) {
       where.OR = [
         { name:  { contains: q, mode: 'insensitive' } },
@@ -769,7 +773,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
     // Invalidate all existing sessions for this user
     await prisma.session.deleteMany({ where: { userId: request.params.id } });
 
-    logger.info({ targetUserId: request.params.id, tenantId: user.tenantId }, 'User password reset by platform admin');
+    logger.info({ targetUserId: request.params.id, targetEmail: user.email, tenantId: user.tenantId, ip: request.ip }, 'User password reset by platform admin');
     return reply.send({ success: true });
   });
 }

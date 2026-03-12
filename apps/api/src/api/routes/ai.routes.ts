@@ -28,10 +28,10 @@ export async function aiRoutes(fastify: FastifyInstance) {
 	// and immediately returns { jobId, status: 'pending' }.
 	// The frontend polls GET /api/v1/ai/ocr-jobs/:id to check completion.
 	fastify.post('/api/v1/ai/purchase-bill/ocr', async (request, reply) => {
-		const tenantId = (request as any).user?.tenantId ?? tenantContext.get().tenantId;
+		const tenantId = request.user!.tenantId;
 		const log = logger.child({ route: 'POST /ai/purchase-bill/ocr', tenantId });
 
-		const data = await (request as any).file();
+		const data = await (request as any).file(); // @fastify/multipart doesn't ship TS declarations
 		if (!data) {
 			return reply.code(400).send({ error: 'No image file provided' });
 		}
@@ -58,13 +58,11 @@ export async function aiRoutes(fastify: FastifyInstance) {
 		const imageKey = `ai/ocr/${tenantId}/${Date.now()}.${ext}`;
 		await minioClient.uploadFile(imageKey, imageBuffer, { contentType: mimeType });
 
-		// Create OcrJob row
-		const jobRows = await prisma.$queryRaw<Array<{ id: string }>>`
-      INSERT INTO ocr_jobs (id, tenant_id, job_type, status, image_key, image_mime_type, created_at, updated_at)
-      VALUES (gen_random_uuid(), ${tenantId}, 'purchase_bill', 'pending', ${imageKey}, ${mimeType}, NOW(), NOW())
-      RETURNING id
-    `;
-		const ocrJobId = jobRows[0].id;
+		// Create OcrJob row via Prisma (type-safe, no raw SQL)
+		const ocrJob = await prisma.ocrJob.create({
+			data: { tenantId, jobType: 'purchase_bill', imageKey, imageMimeType: mimeType },
+		});
+		const ocrJobId = ocrJob.id;
 
 		// Enqueue BullMQ job
 		await ocrJobQueue.add('process-ocr', { ocrJobId, tenantId } satisfies OcrJobData, { jobId: ocrJobId });
@@ -78,10 +76,10 @@ export async function aiRoutes(fastify: FastifyInstance) {
 	// ── POST /api/v1/ai/catalog/seed-from-photo ────────────────────────────────
 	// Same flow as above but for product catalog seeding from shelf photos.
 	fastify.post('/api/v1/ai/catalog/seed-from-photo', async (request, reply) => {
-		const tenantId = (request as any).user?.tenantId ?? tenantContext.get().tenantId;
+		const tenantId = request.user!.tenantId;
 		const log = logger.child({ route: 'POST /ai/catalog/seed-from-photo', tenantId });
 
-		const data = await (request as any).file();
+		const data = await (request as any).file(); // @fastify/multipart doesn't ship TS declarations
 		if (!data) return reply.code(400).send({ error: 'No image file provided' });
 
 		const mimeType = (data.mimetype as string) || 'image/jpeg';
@@ -104,12 +102,10 @@ export async function aiRoutes(fastify: FastifyInstance) {
 		const imageKey = `ai/catalog/${tenantId}/${Date.now()}.${ext}`;
 		await minioClient.uploadFile(imageKey, imageBuffer, { contentType: mimeType });
 
-		const jobRows = await prisma.$queryRaw<Array<{ id: string }>>`
-      INSERT INTO ocr_jobs (id, tenant_id, job_type, status, image_key, image_mime_type, created_at, updated_at)
-      VALUES (gen_random_uuid(), ${tenantId}, 'product_catalog', 'pending', ${imageKey}, ${mimeType}, NOW(), NOW())
-      RETURNING id
-    `;
-		const ocrJobId = jobRows[0].id;
+		const ocrJob = await prisma.ocrJob.create({
+			data: { tenantId, jobType: 'product_catalog', imageKey, imageMimeType: mimeType },
+		});
+		const ocrJobId = ocrJob.id;
 
 		await ocrJobQueue.add('process-ocr', { ocrJobId, tenantId } satisfies OcrJobData, { jobId: ocrJobId });
 
@@ -123,39 +119,28 @@ export async function aiRoutes(fastify: FastifyInstance) {
 	// Returns the current status + result of an OCR job.
 	// Frontend polls this until status is 'completed' or 'failed'.
 	fastify.get<{ Params: { id: string } }>('/api/v1/ai/ocr-jobs/:id', async (request, reply) => {
-		const tenantId = (request as any).user?.tenantId ?? tenantContext.get().tenantId;
+		const tenantId = request.user!.tenantId;
 		const { id } = request.params;
 
-		const rows = await prisma.$queryRaw<
-			Array<{
-				id: string;
-				job_type: string;
-				status: string;
-				parsed_items: unknown;
-				purchase_order_id: string | null;
-				products_created: number;
-				error_message: string | null;
-				processed_at: Date | null;
-			}>
-		>`
-      SELECT id, job_type, status, parsed_items, purchase_order_id,
-             products_created, error_message, processed_at
-      FROM   ocr_jobs
-      WHERE  id = ${id}::uuid AND tenant_id = ${tenantId}
-    `;
+		const job = await prisma.ocrJob.findFirst({
+			where: { id, tenantId },
+			select: {
+				id: true, jobType: true, status: true, parsedItems: true,
+				purchaseOrderId: true, productsCreated: true, errorMessage: true, processedAt: true,
+			},
+		});
 
-		if (!rows[0]) return reply.code(404).send({ error: 'OCR job not found' });
+		if (!job) return reply.code(404).send({ error: 'OCR job not found' });
 
-		const job = rows[0];
 		return {
 			jobId: job.id,
-			jobType: job.job_type,
+			jobType: job.jobType,
 			status: job.status,
-			parsedItems: job.parsed_items ?? null,
-			purchaseOrderId: job.purchase_order_id ?? null,
-			productsCreated: job.products_created,
-			errorMessage: job.error_message ?? null,
-			processedAt: job.processed_at ?? null,
+			parsedItems: job.parsedItems ?? null,
+			purchaseOrderId: job.purchaseOrderId ?? null,
+			productsCreated: job.productsCreated,
+			errorMessage: job.errorMessage ?? null,
+			processedAt: job.processedAt ?? null,
 		};
 	});
 
@@ -192,7 +177,7 @@ export async function aiRoutes(fastify: FastifyInstance) {
 	// Scans near-due invoices and schedules intelligent WhatsApp reminders.
 	// Idempotent — skips invoices that already have a pending/sent reminder.
 	fastify.post('/api/v1/ai/predictive-reminders/schedule', async (request, reply) => {
-		const tenantId = (request as any).user?.tenantId ?? tenantContext.get().tenantId;
+		const tenantId = request.user!.tenantId;
 		const result = await aiService.schedulePredictiveReminders();
 
 		// Broadcast so the UI reminder list refreshes
@@ -205,39 +190,29 @@ export async function aiRoutes(fastify: FastifyInstance) {
 	// ── GET /api/v1/ai/ocr-jobs ────────────────────────────────────────────────
 	// Returns recent OCR jobs for this tenant (for the history list in the UI).
 	fastify.get('/api/v1/ai/ocr-jobs', async (request: FastifyRequest<{ Querystring: { limit?: string } }>, _reply) => {
-		const tenantId = (request as any).user?.tenantId ?? tenantContext.get().tenantId;
+		const tenantId = request.user!.tenantId;
 		const limit = Math.min(parseInt(request.query.limit ?? '20', 10) || 20, 100);
 
-		const jobs = await prisma.$queryRaw<
-			Array<{
-				id: string;
-				job_type: string;
-				status: string;
-				products_created: number;
-				purchase_order_id: string | null;
-				error_message: string | null;
-				processed_at: Date | null;
-				created_at: Date;
-			}>
-		>`
-        SELECT id, job_type, status, products_created, purchase_order_id,
-               error_message, processed_at, created_at
-        FROM   ocr_jobs
-        WHERE  tenant_id = ${tenantId}
-        ORDER  BY created_at DESC
-        LIMIT  ${limit}
-      `;
+		const jobs = await prisma.ocrJob.findMany({
+			where: { tenantId },
+			orderBy: { createdAt: 'desc' },
+			take: limit,
+			select: {
+				id: true, jobType: true, status: true, productsCreated: true,
+				purchaseOrderId: true, errorMessage: true, processedAt: true, createdAt: true,
+			},
+		});
 
 		return {
 			jobs: jobs.map((j) => ({
 				jobId: j.id,
-				jobType: j.job_type,
+				jobType: j.jobType,
 				status: j.status,
-				productsCreated: j.products_created,
-				purchaseOrderId: j.purchase_order_id ?? null,
-				errorMessage: j.error_message ?? null,
-				processedAt: j.processed_at ?? null,
-				createdAt: j.created_at,
+				productsCreated: j.productsCreated,
+				purchaseOrderId: j.purchaseOrderId ?? null,
+				errorMessage: j.errorMessage ?? null,
+				processedAt: j.processedAt ?? null,
+				createdAt: j.createdAt,
 			})),
 		};
 	});

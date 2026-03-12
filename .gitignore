@@ -38,6 +38,13 @@ Thumbs.db
 coverage/
 .nyc_output/
 
+# Playwright
+apps/web/tests/results/
+apps/web/tests/html-report/
+apps/web/tests/snapshots/
+apps/web/playwright-report/
+apps/web/.playwright/
+
 # Prisma
 prisma/migrations/
 

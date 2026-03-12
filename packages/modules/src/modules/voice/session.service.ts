@@ -2,6 +2,7 @@ import { prisma } from '@execora/infrastructure';
 import { logger } from '@execora/infrastructure';
 import { minioClient } from '@execora/infrastructure';
 import { tenantContext } from '@execora/infrastructure';
+import { SessionStatus, Prisma } from '@prisma/client';
 
 const BUCKET_NAME = process.env.MINIO_BUCKET || 'execora-audio';
 
@@ -15,8 +16,8 @@ class VoiceSessionService {
         data: {
           tenantId:   tenantContext.get().tenantId,
           userId:     tenantContext.get().userId,
-          contextStack: metadata ? { current: { stage: 'idle', intent: null, entities: {}, pending_input: false }, metadata: { turn_count: 0, started_at: null, ...metadata } } : undefined,
-        } as any,
+          contextStack: metadata ? { current: { stage: 'idle', intent: null, entities: {}, pending_input: false }, metadata: { turn_count: 0, started_at: null, ...metadata } } as Prisma.InputJsonValue : undefined,
+        },
       });
 
       logger.info({ sessionId: session.id }, 'Conversation session created');
@@ -34,7 +35,7 @@ class VoiceSessionService {
     try {
       const session = await prisma.conversationSession.update({
         where: { id: sessionId },
-        data:  { status: 'ended' } as any,
+        data:  { status: SessionStatus.ended },
       });
 
       logger.info({ sessionId, duration }, 'Session ended');
@@ -74,7 +75,7 @@ class VoiceSessionService {
           fileSizeBytes:   BigInt(audioBuffer.length),
           bucketName:      BUCKET_NAME,
           objectKey,
-        } as any,
+        },
       });
 
       logger.info(
@@ -100,7 +101,7 @@ class VoiceSessionService {
 
       if (!recording) throw new Error('Recording not found');
 
-      return await minioClient.getPresignedUrl((recording as any).objectKey, expirySeconds);
+      return await minioClient.getPresignedUrl(recording.objectKey, expirySeconds);
     } catch (error) {
       logger.error({ error, recordingId }, 'Get recording URL failed');
       throw error;
@@ -148,7 +149,7 @@ class VoiceSessionService {
 
       if (!recording) throw new Error('Recording not found');
 
-      await minioClient.deleteFile((recording as any).objectKey);
+      await minioClient.deleteFile(recording.objectKey);
 
       await prisma.voiceRecording.update({
         where: { id: recordingId },

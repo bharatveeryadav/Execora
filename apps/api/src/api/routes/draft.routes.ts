@@ -22,7 +22,7 @@ type DraftStatus = 'pending' | 'confirmed' | 'discarded';
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 function tenantId(req: FastifyRequest): string {
-	return (req as any).user!.tenantId as string;
+	return req.user!.tenantId;
 }
 
 // ─── confirm dispatch ─────────────────────────────────────────────────────────
@@ -138,7 +138,7 @@ export async function draftRoutes(fastify: FastifyInstance) {
 					title: title ?? null,
 					data: data as Prisma.InputJsonValue,
 					notes: notes ?? null,
-					createdBy: (request as any).user?.userId ?? null,
+					createdBy: request.user!.userId,
 				},
 			});
 
