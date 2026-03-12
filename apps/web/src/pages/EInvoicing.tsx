@@ -137,12 +137,28 @@ function IrnDialog({
   record,
   open,
   onClose,
+  onCancel,
 }: {
   record: EInvoiceRecord | null;
   open: boolean;
   onClose: () => void;
+  onCancel: (invoiceId: string) => void;
 }) {
+  const [cancelling, setCancelling] = useState(false);
+
   if (!record) return null;
+
+  function handleCancel() {
+    if (!record) return;
+    setCancelling(true);
+    // In production: POST /api/v1/einvoice/cancel with { invoiceId, reason }
+    setTimeout(() => {
+      onCancel(record.invoiceId);
+      setCancelling(false);
+      onClose();
+    }, 1200);
+  }
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
@@ -184,6 +200,34 @@ function IrnDialog({
                 </Button>
                 <Button size="sm" variant="outline" className="flex-1">
                   <Download className="mr-2 h-4 w-4" /> Download JSON
+                </Button>
+              </div>
+              <div className="rounded-lg border border-dashed border-destructive/40 bg-destructive/5 p-3">
+                <div className="mb-1 text-[11px] font-semibold text-destructive uppercase">
+                  Cancel IRN
+                </div>
+                <p className="mb-2 text-[11px] text-muted-foreground">
+                  IRN can be cancelled within 24 hours of generation as per GST
+                  rules. Once cancelled, a new IRN must be generated for the
+                  same invoice.
+                </p>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="w-full"
+                  onClick={handleCancel}
+                  disabled={cancelling}
+                >
+                  {cancelling ? (
+                    <>
+                      <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" />{" "}
+                      Cancelling…
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="mr-2 h-3.5 w-3.5" /> Cancel IRN
+                    </>
+                  )}
                 </Button>
               </div>
             </>
@@ -247,6 +291,26 @@ export default function EInvoicing() {
       setGeneratingId(null);
       toast({ title: "✅ IRN generated successfully" });
     }, 1500);
+  }
+
+  function cancelIrn(invoiceId: string) {
+    setRecords((prev) =>
+      prev.map((r) =>
+        r.invoiceId === invoiceId
+          ? {
+              ...r,
+              irnStatus: "cancelled" as IrnStatus,
+              irn: undefined,
+              ackNo: undefined,
+              ackDate: undefined,
+            }
+          : r,
+      ),
+    );
+    toast({
+      title: "IRN cancelled successfully",
+      description: "Generate a new IRN if needed.",
+    });
   }
 
   function bulkGenerate() {
@@ -315,7 +379,13 @@ export default function EInvoicing() {
           </Button>
         </div>
         <div className="px-4 pb-2">
-          <VoiceBar idleHint={<span>"generate IRN" · "e-invoice status" · "bulk generate pending"</span>} />
+          <VoiceBar
+            idleHint={
+              <span>
+                "generate IRN" · "e-invoice status" · "bulk generate pending"
+              </span>
+            }
+          />
         </div>
       </div>
 
@@ -475,8 +545,8 @@ export default function EInvoicing() {
         record={selectedRecord}
         open={!!selectedRecord}
         onClose={() => setSelectedRecord(null)}
+        onCancel={cancelIrn}
       />
-
     </div>
   );
 }

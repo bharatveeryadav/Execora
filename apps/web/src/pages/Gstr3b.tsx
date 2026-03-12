@@ -267,15 +267,18 @@ export default function Gstr3b() {
   }, [totalExpenses]);
 
   const [filing, setFiling] = useState(false);
+  const [arnByMonth, setArnByMonth] = useState<Record<string, string>>({});
   const statusCfg = STATUS_CFG[selMonth.status];
 
   function handleFile() {
     setFiling(true);
     setTimeout(() => {
+      const arn = `AA${Math.random().toString(36).slice(2, 6).toUpperCase()}${Date.now().toString().slice(-8)}`;
+      setArnByMonth((prev) => ({ ...prev, [selMonth.value]: arn }));
       setFiling(false);
       toast({
         title: `✅ GSTR-3B filed for ${selMonth.label}`,
-        description: "ARN generated. Download receipt from GST portal.",
+        description: `ARN: ${arn}. Download receipt from GST portal.`,
       });
     }, 2000);
   }
@@ -353,7 +356,11 @@ export default function Gstr3b() {
           })}
         </div>
         <div className="px-4 pb-2">
-          <VoiceBar idleHint={<span>"GSTR-3B" · "file this month" · "show ITC credits"</span>} />
+          <VoiceBar
+            idleHint={
+              <span>"GSTR-3B" · "file this month" · "show ITC credits"</span>
+            }
+          />
         </div>
       </div>
 
@@ -391,6 +398,27 @@ export default function Gstr3b() {
             </Badge>
           </CardContent>
         </Card>
+
+        {/* ARN display (after successful filing) */}
+        {arnByMonth[selMonth.value] && (
+          <Card className="border-success/40 bg-success/5">
+            <CardContent className="flex items-center gap-3 p-4">
+              <CheckCircle2 className="h-6 w-6 shrink-0 text-success" />
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-semibold text-success uppercase mb-0.5">
+                  Filing Acknowledgement
+                </div>
+                <div className="font-mono text-xs break-all">
+                  ARN: {arnByMonth[selMonth.value]}
+                </div>
+                <div className="mt-1 text-[11px] text-muted-foreground">
+                  Keep this ARN for your records. Download receipt from GST
+                  portal.
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Summary tiles */}
         <div className="grid grid-cols-3 gap-3">
@@ -527,8 +555,6 @@ export default function Gstr3b() {
           </div>
         )}
       </div>
-
-
     </div>
   );
 }

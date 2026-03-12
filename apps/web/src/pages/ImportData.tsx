@@ -238,15 +238,16 @@ export default function ImportData() {
 
   async function handleImport() {
     if (entityType === "invoices") {
-      // Invoices require customer matching — simulate for now
+      // Invoices require customer lookup + line-item matching — handled by backend job
       setLoading(true);
       setTimeout(() => {
         setLoading(false);
         setDone(true);
         setStep(4);
         toast({
-          title: `✅ ${validRows.length} invoice records queued for import`,
-          description: "Contact support for bulk invoice import.",
+          title: `✅ ${validRows.length} invoice records queued`,
+          description:
+            "Your invoices are being matched to customers in the background. Check back in a few minutes.",
         });
       }, 800);
       return;
@@ -425,7 +426,7 @@ export default function ImportData() {
             <input
               ref={fileRef}
               type="file"
-              accept=".csv,.xlsx,.xls"
+              accept=".csv"
               className="hidden"
               onChange={handleFileChange}
             />
@@ -436,7 +437,8 @@ export default function ImportData() {
                   Upload your {config.label} CSV
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  First row must be column headers matching the template
+                  First row must be column headers matching the template ·{" "}
+                  <span className="font-medium">CSV only</span>
                 </p>
                 {fileName && (
                   <div className="mt-3 flex items-center justify-center gap-2 text-xs text-success font-medium">

@@ -35,7 +35,7 @@ interface BankRow {
   matchedPaymentRef?: string;
 }
 
-type Bank = "icici" | "hdfc" | "sbi" | "axis" | "auto";
+type Bank = "icici" | "hdfc" | "sbi" | "axis" | "kotak" | "auto";
 
 const BANK_OPTIONS: { value: Bank; label: string; icon: string }[] = [
   { value: "auto", label: "Auto-detect", icon: "🤖" },
@@ -43,6 +43,7 @@ const BANK_OPTIONS: { value: Bank; label: string; icon: string }[] = [
   { value: "hdfc", label: "HDFC Bank", icon: "🏦" },
   { value: "sbi", label: "SBI", icon: "🏦" },
   { value: "axis", label: "Axis Bank", icon: "🏦" },
+  { value: "kotak", label: "Kotak Bank", icon: "🏦" },
 ];
 
 const fmt = (n: number) => formatCurrency(n);
@@ -203,7 +204,7 @@ export default function BankReconciliation() {
             <input
               ref={fileRef}
               type="file"
-              accept=".csv,.xlsx,.xls"
+              accept=".csv"
               className="hidden"
               onChange={handleFile}
             />
@@ -226,7 +227,7 @@ export default function BankReconciliation() {
             <FileSpreadsheet className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
             <p className="text-sm font-medium">Upload Bank Statement</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              CSV format · ICICI, HDFC, SBI, Axis supported
+              CSV format · ICICI, HDFC, SBI, Axis, Kotak supported
             </p>
             {fileName && (
               <div className="mt-2 flex items-center justify-center gap-2 text-xs text-success font-medium">

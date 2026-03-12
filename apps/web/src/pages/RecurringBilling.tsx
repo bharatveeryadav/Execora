@@ -45,7 +45,7 @@ import { formatCurrency } from "@/lib/api";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type Frequency = "weekly" | "monthly" | "quarterly";
+type Frequency = "weekly" | "biweekly" | "monthly" | "quarterly";
 type Status = "active" | "paused";
 
 interface RecurringTemplate {
@@ -82,6 +82,7 @@ function saveTemplates(t: RecurringTemplate[]): void {
 function computeNextRun(freq: Frequency, from: Date): Date {
   const d = new Date(from);
   if (freq === "weekly") d.setDate(d.getDate() + 7);
+  else if (freq === "biweekly") d.setDate(d.getDate() + 14);
   else if (freq === "monthly") d.setMonth(d.getMonth() + 1);
   else if (freq === "quarterly") d.setMonth(d.getMonth() + 3);
   return d;
@@ -89,12 +90,14 @@ function computeNextRun(freq: Frequency, from: Date): Date {
 
 const FREQ_LABELS: Record<Frequency, string> = {
   weekly: "Every Week",
+  biweekly: "Every 2 Weeks",
   monthly: "Every Month",
   quarterly: "Every 3 Months",
 };
 
 const FREQ_BADGE: Record<Frequency, string> = {
   weekly: "bg-blue-100 text-blue-700",
+  biweekly: "bg-cyan-100 text-cyan-700",
   monthly: "bg-purple-100 text-purple-700",
   quarterly: "bg-orange-100 text-orange-700",
 };
@@ -288,7 +291,14 @@ export default function RecurringBilling() {
           </Button>
         </div>
         <div className="px-4 pb-2">
-          <VoiceBar idleHint={<span>"monthly invoice for Ramesh" · "create weekly order" · "pause recurring"</span>} />
+          <VoiceBar
+            idleHint={
+              <span>
+                "monthly invoice for Ramesh" · "create weekly order" · "pause
+                recurring"
+              </span>
+            }
+          />
         </div>
       </div>
 
@@ -486,6 +496,9 @@ export default function RecurringBilling() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="weekly">Every Week</SelectItem>
+                    <SelectItem value="biweekly">
+                      Every 2 Weeks (Fortnightly)
+                    </SelectItem>
                     <SelectItem value="monthly">Every Month</SelectItem>
                     <SelectItem value="quarterly">Every 3 Months</SelectItem>
                   </SelectContent>
