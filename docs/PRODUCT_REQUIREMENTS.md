@@ -1687,23 +1687,23 @@ Remaining = 0 → done. Any leftover → customer credit advance.
 
 ### P1 — Should Have (Differentiation, Ship Second)
 
-| Feature                                                  | Status     |
-| -------------------------------------------------------- | ---------- |
-| ~~Barcode scan to add product~~                          | ✅ Built   |
-| Repeat last bill ("same as before")                      | ✅ Built   |
-| Customer credit limit enforcement                        | ✅ Built   |
-| Partial payment at billing time ("500 diye baki kal")    | ✅ Built   |
-| Mixed-mode payment voice intent (cash + UPI split)       | ✅ Built   |
+| Feature                                                  | Status                     |
+| -------------------------------------------------------- | -------------------------- |
+| ~~Barcode scan to add product~~                          | ✅ Built                   |
+| Repeat last bill ("same as before")                      | ✅ Built                   |
+| Customer credit limit enforcement                        | ✅ Built                   |
+| Partial payment at billing time ("500 diye baki kal")    | ✅ Built                   |
+| Mixed-mode payment voice intent (cash + UPI split)       | ✅ Built                   |
 | Expiry date tracking                                     | ✅ Partially built (S9-06) |
-| GST report (GSTR-1 ready) — B2B/B2CS/HSN + PDF/CSV/email | ✅ Built   |
-| Date range reports + export (CSV/PDF/email) — P&L        | ✅ Built   |
-| Bulk WhatsApp reminders                                  | ✅ Built   |
-| Regional language support (Marathi, Tamil, etc.)         | ⚠️ Partial |
-| Proforma invoice / quotation (form + voice CONFIRM flow) | ✅ Built   |
-| Invoice editing (post-creation)                          | ✅ Built   |
-| Customer tags (VIP, wholesale, blacklist)                | ✅ Built   |
+| GST report (GSTR-1 ready) — B2B/B2CS/HSN + PDF/CSV/email | ✅ Built                   |
+| Date range reports + export (CSV/PDF/email) — P&L        | ✅ Built                   |
+| Bulk WhatsApp reminders                                  | ✅ Built                   |
+| Regional language support (Marathi, Tamil, etc.)         | ⚠️ Partial                 |
+| Proforma invoice / quotation (form + voice CONFIRM flow) | ✅ Built                   |
+| Invoice editing (post-creation)                          | ✅ Built                   |
+| Customer tags (VIP, wholesale, blacklist)                | ✅ Built                   |
 | Stock batch/expiry tracking                              | ✅ Partially built (S9-06) |
-| WhatsApp chatbot interface                               | 🔴 TODO    |
+| WhatsApp chatbot interface                               | 🔴 TODO                    |
 
 ### P2 — Nice to Have (Scale Features)
 
@@ -2142,13 +2142,13 @@ Close the last P0 billing gap (item-level discount), add the most-requested miss
 > **Audit date:** 2026-03-07
 > Legend: ✅ Done | ⚠️ Partial | 🔴 Not built
 
-| #      | Story                              | Priority | Est. | Status | Audit Finding |
-| ------ | ---------------------------------- | -------- | ---- | ------ | ------------- |
-| S10-01 | **Item-level discount — backend**  | P0       | 3 h  | ⚠️ **UI only** | `InvoiceItem.discount` (%) column renders in `InvoiceCreation.tsx` and `InvoiceDetail.tsx`. But submit map drops `discount`. `InvoiceItemInput` type has no `lineDiscountPercent`. `resolveItemsAndTotals()` in `invoice.service.ts` has no per-line discount logic. Voice `ADD_DISCOUNT` with `product` entity is documented in prompts but handler doesn't route it per-item. |
-| S10-02 | **UPDATE_STOCK voice intent**      | P0       | 3 h  | 🔴 **Not built** | `productService.updateStock(productId, qty, 'add')` exists and is tested. But: no `UPDATE_STOCK` intent in `prompts.ts`, no handler in `voice/engine/`, LLM cannot parse "50 kilo aata aaya" and route it here. |
-| S10-03 | **Mobile layout — counter mode**   | P0       | 2 d  | ⚠️ **Partial** | App is desktop-first. Missing: bottom navigation bar for small screens, larger touch targets on invoice item rows, full-screen slide-over panels on mobile, sticky action bar on InvoiceDetail. |
-| S10-04 | **Offline mode (PWA)**             | P0       | 5 d  | 🔴 **Not built** | No service worker, no `manifest.json`, no IndexedDB queue. 22% of users cite this as a dealbreaker. Scoped as separate milestone — see implementation plan below. |
-| S10-05 | **Pharmacy: batch/expiry UI**      | P1       | 1 d  | ⚠️ **Backend only** | `product.service.ts` has full batch/expiry logic (S9-06). Missing: frontend batch entry on Purchase form, expiry alert banner on Inventory page, batch selector on invoice item rows. |
+| #      | Story                             | Priority | Est. | Status              | Audit Finding                                                                                                                                                                                                                                                                                                                                                                   |
+| ------ | --------------------------------- | -------- | ---- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S10-01 | **Item-level discount — backend** | P0       | 3 h  | ⚠️ **UI only**      | `InvoiceItem.discount` (%) column renders in `InvoiceCreation.tsx` and `InvoiceDetail.tsx`. But submit map drops `discount`. `InvoiceItemInput` type has no `lineDiscountPercent`. `resolveItemsAndTotals()` in `invoice.service.ts` has no per-line discount logic. Voice `ADD_DISCOUNT` with `product` entity is documented in prompts but handler doesn't route it per-item. |
+| S10-02 | **UPDATE_STOCK voice intent**     | P0       | 3 h  | 🔴 **Not built**    | `productService.updateStock(productId, qty, 'add')` exists and is tested. But: no `UPDATE_STOCK` intent in `prompts.ts`, no handler in `voice/engine/`, LLM cannot parse "50 kilo aata aaya" and route it here.                                                                                                                                                                 |
+| S10-03 | **Mobile layout — counter mode**  | P0       | 2 d  | ⚠️ **Partial**      | App is desktop-first. Missing: bottom navigation bar for small screens, larger touch targets on invoice item rows, full-screen slide-over panels on mobile, sticky action bar on InvoiceDetail.                                                                                                                                                                                 |
+| S10-04 | **Offline mode (PWA)**            | P0       | 5 d  | 🔴 **Not built**    | No service worker, no `manifest.json`, no IndexedDB queue. 22% of users cite this as a dealbreaker. Scoped as separate milestone — see implementation plan below.                                                                                                                                                                                                               |
+| S10-05 | **Pharmacy: batch/expiry UI**     | P1       | 1 d  | ⚠️ **Backend only** | `product.service.ts` has full batch/expiry logic (S9-06). Missing: frontend batch entry on Purchase form, expiry alert banner on Inventory page, batch selector on invoice item rows.                                                                                                                                                                                           |
 
 ---
 
@@ -2159,6 +2159,7 @@ Close the last P0 billing gap (item-level discount), add the most-requested miss
 **4 files to change:**
 
 1. **`packages/types/src/index.ts`** — add `lineDiscountPercent` to `InvoiceItemInput`:
+
    ```typescript
    export interface InvoiceItemInput {
      productName: string;
@@ -2169,22 +2170,25 @@ Close the last P0 billing gap (item-level discount), add the most-requested miss
    ```
 
 2. **`packages/modules/src/modules/invoice/invoice.service.ts`** — in `resolveItemsAndTotals()`, apply line discount before subtotal:
+
    ```typescript
    const lineDisc = item.lineDiscountPercent ?? 0;
-   const effectivePrice = lineDisc > 0
-     ? Math.round(unitPrice * (1 - lineDisc / 100) * 10000) / 10000
-     : unitPrice;
+   const effectivePrice =
+     lineDisc > 0
+       ? Math.round(unitPrice * (1 - lineDisc / 100) * 10000) / 10000
+       : unitPrice;
    const subtotal = Math.round(effectivePrice * item.quantity * 100) / 100;
    ```
 
 3. **`apps/web/src/components/InvoiceCreation.tsx`** — in the submit `invItems` map (~line 643), pass discount:
+
    ```typescript
    items.map((it) => ({
      productName: it.name,
      quantity: parseInt(it.qty) || 1,
      unitPrice: it.price > 0 ? it.price : undefined,
      lineDiscountPercent: it.discount > 0 ? it.discount : undefined,
-   }))
+   }));
    ```
 
 4. **`packages/modules/src/providers/llm/prompts.ts`** — `ADD_DISCOUNT` with `product` entity should route to per-line, not bill-level. Handler in `invoice.handler.ts` needs to detect the `product` entity and apply `lineDiscountPercent` only to that item in the draft.
@@ -2198,6 +2202,7 @@ Close the last P0 billing gap (item-level discount), add the most-requested miss
 **3 files to change:**
 
 1. **`packages/modules/src/providers/llm/prompts.ts`** — add `UPDATE_STOCK` intent definition and examples:
+
    ```
    UPDATE_STOCK: inbound stock receipt — "X kg/pcs Y aaya/mila/stock mein add karo"
    Examples:
@@ -2207,12 +2212,24 @@ Close the last P0 billing gap (item-level discount), add the most-requested miss
    ```
 
 2. **`packages/modules/src/modules/voice/engine/product.handler.ts`** (new handler or add to existing) — `executeUpdateStock()`:
+
    ```typescript
    export async function executeUpdateStock(entities, conversationId) {
      const product = await productService.findByName(entities.product);
-     if (!product) return { success: false, message: `'${entities.product}' product nahi mila` };
-     const updated = await productService.updateStock(product.id, entities.quantity, 'add');
-     return { success: true, message: `✅ ${product.name} ka stock ${updated.stock} ho gaya (+${entities.quantity})` };
+     if (!product)
+       return {
+         success: false,
+         message: `'${entities.product}' product nahi mila`,
+       };
+     const updated = await productService.updateStock(
+       product.id,
+       entities.quantity,
+       "add",
+     );
+     return {
+       success: true,
+       message: `✅ ${product.name} ka stock ${updated.stock} ho gaya (+${entities.quantity})`,
+     };
    }
    ```
 
@@ -2223,6 +2240,7 @@ Close the last P0 billing gap (item-level discount), add the most-requested miss
 #### ⚠️ S10-03 — Mobile layout — counter mode (~2 d)
 
 **What to add:**
+
 - Bottom navigation bar (`Home | Customers | Invoice | Reports | Settings`) visible only on `max-md` that replaces the side drawer on mobile
 - Increase all `h-8 w-8` touch targets on invoice item rows to `h-10 w-10` (min 44×44 px)
 - `InvoiceCreation.tsx` — sheet should use `h-full` on mobile (`sm:h-auto`)
@@ -2234,6 +2252,7 @@ Close the last P0 billing gap (item-level discount), add the most-requested miss
 #### 🔴 S10-04 — Offline mode PWA (~5 d — separate milestone)
 
 **Implementation plan:**
+
 1. Add `vite-plugin-pwa` to `apps/web/vite.config.ts`; configure `manifest.json` (name, icons, theme_color)
 2. Service worker strategy: `StaleWhileRevalidate` for GET APIs, `NetworkFirst` for mutations
 3. IndexedDB queue (`idb` npm): when offline, `createInvoice()` / `addPayment()` write to a local `outbox` store
