@@ -9,6 +9,7 @@ import {
 } from "@/hooks/useQueries";
 import { useWS } from "@/contexts/WSContext";
 import { wsClient } from "@/lib/ws";
+import { formatCurrency } from "@/lib/api";
 
 interface PillarProps {
   label: string;
@@ -285,9 +286,56 @@ const BusinessHealthScore = () => {
             score={overdueScore}
             hint={overdueCount === 0 ? "All clear" : `${overdueCount} overdue`}
             flash={flashReceivables}
-            onClick={() => navigate("/customers")}
+            onClick={() => navigate("/overdue")}
           />
         </div>
+
+        {/* Overdue payment alert — compact pill row, only when there are overdues */}
+        {overdueCount > 0 && (() => {
+          const overdueList = customers
+            .filter((c) => parseFloat(String(c.balance)) > 0)
+            .sort((a, b) => parseFloat(String(b.balance)) - parseFloat(String(a.balance)));
+          const topThree = overdueList.slice(0, 3);
+          const extra = Math.max(0, overdueList.length - 3);
+          const totalOwed = overdueList.reduce(
+            (s, c) => s + parseFloat(String(c.balance)), 0
+          );
+          return (
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2.5">
+              <span className="shrink-0 text-xs font-semibold text-destructive">
+                🔴 Overdue ({overdueList.length}):
+              </span>
+              {topThree.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => navigate("/overdue")}
+                  title={`${c.name} · ₹${parseFloat(String(c.balance)).toLocaleString("en-IN")}`}
+                  className="rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive transition-opacity hover:opacity-75"
+                >
+                  {(c.name ?? "").length > 12 ? (c.name ?? "").slice(0, 11) + "…" : c.name}
+                  <span className="ml-1 opacity-70">{formatCurrency(parseFloat(String(c.balance)))}</span>
+                </button>
+              ))}
+              {extra > 0 && (
+                <button
+                  onClick={() => navigate("/overdue")}
+                  className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground hover:bg-background"
+                >
+                  +{extra} more
+                </button>
+              )}
+              <span className="rounded-full bg-destructive/15 px-2 py-0.5 text-[10px] font-semibold text-destructive">
+                {formatCurrency(totalOwed)} total
+              </span>
+              <button
+                onClick={() => navigate("/overdue")}
+                className="ml-auto shrink-0 text-[11px] text-muted-foreground hover:text-foreground"
+              >
+                View All →
+              </button>
+            </div>
+          );
+        })()}
       </CardContent>
     </Card>
   );

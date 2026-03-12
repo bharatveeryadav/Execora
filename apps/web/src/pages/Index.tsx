@@ -6,7 +6,6 @@ import QuickActions from '@/components/QuickActions';
 import KPICards from '@/components/KPICards';
 import BusinessHealthScore from '@/components/BusinessHealthScore';
 import AiAgentFeed from '@/components/AiAgentFeed';
-import OverduePayments from '@/components/OverduePayments';
 import UpcomingPayments from '@/components/UpcomingPayments';
 import DashboardLowStock from '@/components/DashboardLowStock';
 import DashboardExpiryAlert from '@/components/DashboardExpiryAlert';
@@ -66,9 +65,6 @@ const Index = () => {
 
 				{/* 5 ── Today's numbers ────────────────────────────────── */}
 				<KPICards />
-
-				{/* 6 ── Overdue payments ───────────────────────────────── */}
-				<OverduePayments />
 
 				{/* 7 ── Upcoming payments ──────────────────────────────── */}
 				<UpcomingPayments />
