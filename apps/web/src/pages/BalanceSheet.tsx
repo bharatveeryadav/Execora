@@ -241,6 +241,9 @@ export default function BalanceSheet() {
             </button>
           ))}
         </div>
+        <div className="px-4 pb-2">
+          <VoiceBar idleHint={<span>"balance sheet" · "total assets this month" · "show last FY"</span>} />
+        </div>
       </div>
 
       <div className="mx-auto max-w-2xl space-y-4 px-4 pt-4">
@@ -336,13 +339,6 @@ export default function BalanceSheet() {
         </div>
       </div>
 
-      <VoiceBar
-        idleHint={
-          <span>
-            "balance sheet" · "total assets this month" · "show last FY"
-          </span>
-        }
-      />
     </div>
   );
 }

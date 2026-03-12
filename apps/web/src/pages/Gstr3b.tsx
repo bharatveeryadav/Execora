@@ -352,6 +352,9 @@ export default function Gstr3b() {
             );
           })}
         </div>
+        <div className="px-4 pb-2">
+          <VoiceBar idleHint={<span>"GSTR-3B" · "file this month" · "show ITC credits"</span>} />
+        </div>
       </div>
 
       <div className="mx-auto max-w-2xl space-y-4 px-4 pt-4">
@@ -525,11 +528,7 @@ export default function Gstr3b() {
         )}
       </div>
 
-      <VoiceBar
-        idleHint={
-          <span>"GSTR-3B" · "file this month" · "show ITC credits"</span>
-        }
-      />
+
     </div>
   );
 }

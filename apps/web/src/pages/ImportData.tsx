@@ -244,7 +244,10 @@ export default function ImportData() {
         setLoading(false);
         setDone(true);
         setStep(4);
-        toast({ title: `✅ ${validRows.length} invoice records queued for import`, description: "Contact support for bulk invoice import." });
+        toast({
+          title: `✅ ${validRows.length} invoice records queued for import`,
+          description: "Contact support for bulk invoice import.",
+        });
       }, 800);
       return;
     }
@@ -261,7 +264,9 @@ export default function ImportData() {
               email: d["Email"] || undefined,
               landmark: d["Address"] || undefined,
               notes: d["GST Number"] ? `GSTIN: ${d["GST Number"]}` : undefined,
-              openingBalance: d["Opening Balance"] ? parseFloat(d["Opening Balance"]) : undefined,
+              openingBalance: d["Opening Balance"]
+                ? parseFloat(d["Opening Balance"])
+                : undefined,
             });
           }
           if (entityType === "products") {
@@ -337,6 +342,15 @@ export default function ImportData() {
         </div>
         <div className="overflow-x-auto px-4 pb-1 no-scrollbar">
           <Stepper step={step} />
+        </div>
+        <div className="px-4 pb-2">
+          <VoiceBar
+            idleHint={
+              <span>
+                "import customers" · "upload CSV" · "download template"
+              </span>
+            }
+          />
         </div>
       </div>
 
@@ -599,7 +613,6 @@ export default function ImportData() {
           </div>
         )}
       </div>
-      <VoiceBar idleHint={<span>"import customers" · "upload CSV" · "download template"</span>} />
     </div>
   );
 }

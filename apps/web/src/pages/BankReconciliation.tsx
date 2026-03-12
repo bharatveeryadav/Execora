@@ -184,6 +184,16 @@ export default function BankReconciliation() {
             </Button>
           )}
         </div>
+        <div className="px-4 pb-2">
+          <VoiceBar
+            idleHint={
+              <span>
+                "bank reconciliation" · "upload bank statement" · "match
+                transactions"
+              </span>
+            }
+          />
+        </div>
       </div>
 
       <div className="mx-auto max-w-2xl space-y-4 px-4 pt-4">
@@ -399,7 +409,6 @@ export default function BankReconciliation() {
           </>
         )}
       </div>
-      <VoiceBar idleHint={<span>"bank reconciliation" · "upload bank statement" · "match transactions"</span>} />
     </div>
   );
 }

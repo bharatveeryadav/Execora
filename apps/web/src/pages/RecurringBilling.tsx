@@ -287,6 +287,9 @@ export default function RecurringBilling() {
             <Plus className="mr-1 h-4 w-4" /> New
           </Button>
         </div>
+        <div className="px-4 pb-2">
+          <VoiceBar idleHint={<span>"monthly invoice for Ramesh" · "create weekly order" · "pause recurring"</span>} />
+        </div>
       </div>
 
       <div className="mx-auto max-w-2xl space-y-4 px-4 pt-4">
@@ -594,15 +597,6 @@ export default function RecurringBilling() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <VoiceBar
-        idleHint={
-          <span>
-            "monthly invoice for Ramesh" · "create weekly order" · "pause
-            recurring"
-          </span>
-        }
-      />
     </div>
   );
 }

@@ -314,6 +314,9 @@ export default function EInvoicing() {
             Bulk Generate ({counts.pending})
           </Button>
         </div>
+        <div className="px-4 pb-2">
+          <VoiceBar idleHint={<span>"generate IRN" · "e-invoice status" · "bulk generate pending"</span>} />
+        </div>
       </div>
 
       <div className="mx-auto max-w-2xl space-y-4 px-4 pt-4">
@@ -474,13 +477,6 @@ export default function EInvoicing() {
         onClose={() => setSelectedRecord(null)}
       />
 
-      <VoiceBar
-        idleHint={
-          <span>
-            "generate IRN" · "e-invoice status" · "bulk generate pending"
-          </span>
-        }
-      />
     </div>
   );
 }
