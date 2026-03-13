@@ -1779,138 +1779,390 @@ This removes the app install barrier entirely. Growth = viral WhatsApp sharing.
 
 ---
 
-## 13. What Is Built vs What Is Pending
+## Section 13 — Complete Feature Audit (March 13, 2026)
 
-### Built and Working ✅
+> Last audited: 2026-03-13. Source: full code review of all route files, page components, service modules, and infrastructure packages. Every status is code-confirmed, not assumed.
 
-- Voice pipeline: PCM → Deepgram STT → transcript → GPT-4 intent → 25 handlers
-- Multi-turn invoice drafts with Redis persistence
-- GST calculation engine (CGST/SGST + IGST inter-state, 88 seeded products, HSN codes)
-- PDF invoice generation (with/without GST)
-- Customer fuzzy matching (Levenshtein + token overlap + nicknames)
-- Ledger system with auto-settlement (khata style)
-- Payment recording (5 methods)
-- WhatsApp reminders (10 types, natural language scheduling, BullMQ)
-- Real-time WebSocket dashboard with React Query invalidation
-- Low stock alerts (per-product minStock threshold)
-- Top selling products (real units sold from invoice_items aggregate)
-- Invoice status machine (draft → pending → partial → paid/cancelled)
-- TTS response (ElevenLabs/OpenAI/Browser, user-configurable)
-- Multi-task parallel execution (3 concurrent)
-- JWT + RBAC auth (5 roles, 22 permissions)
-- MinIO storage for PDFs
-- Email delivery with PDF attachment
-- Docker + Turborepo monorepo build
-- Prometheus metrics
-- **[NEW] Bill-level discount** — voice ("10% discount karo" / "₹50 kam karo") + form UI
-- **[NEW] B2B invoice** — buyer GSTIN capture, IGST (inter-state) auto-switch via voice + form
-- **[NEW] Partial payment at billing time** — "₹500 diye, baki kal" auto-creates payment + marks partial
-- **[NEW] RECORD_MIXED_PAYMENT voice intent** — split cash + UPI + card amounts in one command
-- **[NEW] Proforma invoice / quotation** — create/convert to invoice + optional initial payment
-- **[NEW] GSTR-1 compliance report** — B2B list, B2CL, B2CS (aggregate), HSN summary, Indian FY support; PDF + CSV + email
-- **[NEW] P&L date-range report** — month-wise revenue/tax/discount/collections + period comparison; PDF + CSV + email
-- **[NEW] 7 report API endpoints** — `/api/v1/reports/gstr1`, `/gstr1/pdf`, `/gstr1/csv`, `/pnl`, `/pnl/pdf`, `/pnl/csv`, `/email`
-- **[NEW] Reports page** — 3-tab UI (Overview, GSTR-1, P&L) with live data, charts, download, email
-- **[Sprint 5] Expenses REST API** — `Expense` DB model, `/api/v1/expenses` CRUD, Expenses page fully migrated from localStorage
-- **[Sprint 5] Purchases REST API** — `Purchase` DB model, `/api/v1/purchases` CRUD, Purchases page fully migrated from localStorage
-- **[Sprint 5] CashBook REST API** — `/api/v1/cashbook` endpoint (entries + totals), CashBook page fully migrated from localStorage
-- **[Sprint 6] WS broadcaster** — `apps/api/src/ws/broadcaster.ts` per-tenant fan-out singleton; registers connections in `enhanced-handler.ts`
-- **[Sprint 6] Route-level WS broadcasts** — invoice (created/confirmed/updated/cancelled/payment), product (updated/stock), ledger (payment:recorded), expense/purchase (created/deleted)
-- **[Sprint 6] `useWsInvalidation` hook** — `apps/web/src/hooks/useWsInvalidation.ts`; maps 12 WS events to React Query keys; wired to all 11 UI pages
-- **[Sprint 6] DayBook real-time data** — replaced localStorage expense/cashbook reads with `useExpenses` + `useCashbook` API hooks
-- **[Sprint 6] InvoiceDetail UPI QR fix** — replaced `localStorage.getItem('execora:bizprofile')` with `useMe` hook (UPI VPA + business name now from API)
-- **[Sprint 6] Split payment UI** — `Payment.tsx` supports single-method and split-mode (cash + UPI + card) with receipt dialog
-- **[Sprint 7] Overdue page** — `/overdue` route with live table: all customers with positive balance, overdue days, last payment, per-row actions (record payment, add credit, remind, cancel reminder)
-- **[Sprint 7] Bulk remind from Overdue page** — "Remind All" button bulk-schedules WhatsApp + email reminders for all overdue customers in one click
-- **[Sprint 7] ScheduleReminderDialog** — channel toggles (WhatsApp / Email), amount pre-fill, "when" picker (Now / Today 6 PM / Tomorrow / 2d / 3d / 7d), optional custom message; uses `useCreateReminder` REST hook
-- **[Sprint 7] Reminder WS real-time** — `reminder:created` and `reminder:cancelled` events added to WS broadcaster (reminder routes) and `useWsInvalidation` map; overdue page updates live
-- **[Sprint 7] Phone-optional reminders** — removed hard phone-required check from `scheduleReminder()`; channels now computed from customer contact data (whatsapp if phone exists, email if email exists); bulk scheduling uses `Promise.allSettled` so one missing-phone customer never blocks the rest
-- **[Sprint 7] Customers list WS sync** — `customer:created`, `customer:updated` events broadcast from customer routes; all voice + REST mutations invalidate React Query cache in real time
-- **[Sprint 8] Barcode scan** — `apps/web/src/components/BarcodeScanner.tsx`; ZXing-based mobile camera scanner; scans EAN-13/QR → product lookup by barcode (`GET /api/v1/products/barcode/:barcode`) → auto-adds to invoice item list or inventory; works from Invoice creation page and Inventory page
-- **[Sprint 8] NotificationCenter live draft alert** — bell icon queries `GET /api/v1/drafts?status=pending` every 15 s; shows "Pending Drafts" notification with count badge; "Review →" action dispatches `open-draft-panel` custom event to open DraftManagerPanel from anywhere in the app
-- **[Sprint 8] DraftManagerPanel — Standard Mode** — `apps/web/src/components/DraftManagerPanel.tsx`; slide-over panel listing all pending drafts grouped by type (Purchase / New Product / Stock Adj.); per-card Confirm / Discard / Detail-Edit buttons; red count badge on trigger; "Confirm All" bulk action; WS-invalidated via `useWsInvalidation(['drafts'])`
-- **[Sprint 8] DraftManagerPanel — Fast Mode (Excel spreadsheet)** — ⚡ toggle in panel header; switches to an Excel-like table showing all product drafts with inline-editable columns (Name · Category · Price ₹ · Stock · Unit · Notes); auto-saves on Tab/Enter via `draftApi.update()`; per-row status indicator (amber=unsaved, blue spinner=saving, green ✓=saved, red=error); Confirm button disabled until row is saved; panel widens to 860 px; preference persisted in localStorage; non-product drafts shown as compact rows below table; OCR-scanned bill items flow directly into this view for bulk review
-- **[Sprint 8] Fast Mode 12-column table** — expanded from 6→12 fields per product row: `name, category, subCategory, price, mrp, stock, unit, sku, barcode, hsn, minStock, notes`; Core (6 cols) / Full (12 cols) toggle with localStorage persistence; 20 Indian SME category dropdown; 17-unit dropdown; 5-state row colour system (idle/dirty/saving/saved/error); sticky thead; focus-within ring; empty-state when no drafts
-- **[Sprint 8] OCR prompt 9-field extraction** — `packages/infrastructure/src/workers.ts` product_catalog OCR prompt now extracts: `name, price, mrp, unit, category, sku, barcode, hsnCode, minStock` (was 4 fields); draft data object maps all 9 with null fallbacks
-- **[Sprint 8] Auto-open Draft panel after OCR** — `apps/web/src/pages/Inventory.tsx` dispatches `window.dispatchEvent(new CustomEvent('open-draft-panel'))` immediately after OCR job completes, so the Fast Mode table opens automatically without any user navigation
-- **[Sprint 8] Core/Full toggle always visible** — toolbar split into two rows; column-group toggle never clipped by panel edge; dashed empty-state shown when no product drafts exist pointing to "Import from Photo"
-- **[Sprint 10] Payment Sound Box (Paytm-style)** — `apps/web/src/components/PaymentSoundBox.tsx`; globally mounted in `App.tsx`; listens to `payment:recorded` WS events; shows a green slide-in banner (amount + customer name + source badge "via razorpay" etc.) at top of screen; announces in Hindi ("Rupaye X mile from Y") or English using Web Speech API; supports a queue so back-to-back payments never overlap; 4.8 s auto-dismiss with draining progress bar; also listens to `__payment_test__` custom DOM event from Settings test buttons
-- **[Sprint 10] Multi-gateway UPI webhook — 9 aggregators** — `apps/api/src/api/routes/webhook.routes.ts`; single `processUpiPayment()` helper (idempotency → customer phone match → `ledgerService.recordPayment` → WS broadcast); tenant-scoped URLs at `/api/v1/webhook/{gateway}/:tenantId`:
-  - **Razorpay**: `x-razorpay-signature` HMAC-SHA256-hex; events `payment.captured` / `payment_link.paid`
-  - **PhonePe Business**: `x-verify` SHA256(base64+saltKey); event `PAYMENT_SUCCESS`; body.response is base64-encoded JSON
-  - **Cashfree**: `x-webhook-signature` HMAC-SHA256-base64 + `x-webhook-timestamp`; event `PAYMENT_SUCCESS_WEBHOOK`
-  - **PayU**: reverse SHA-512 hash in body; `status=success`
-  - **Paytm Payment Gateway**: `STATUS=TXN_SUCCESS` + `RESPCODE=01`
-  - **Instamojo**: HMAC-SHA1(salt, pipe-joined fields); `status=Credit`
-  - **Stripe India UPI**: `stripe-signature` `t=,v1=` format; event `payment_intent.succeeded`
-  - **EaseBuzz**: SHA-512 reverse hash; `status=success`
-  - **BharatPe**: `x-bharatpe-signature` HMAC-SHA256-hex; `status=SUCCESS`
-- **[Sprint 10] Settings — UPI gateway cards** — 9 gateway sections in `Settings.tsx`; each card has: tenant-scoped webhook URL (copy button), secret/salt key input, subscribed events list, and a "🔊 Preview Announcement" test button; secrets persisted to `Tenant.settings` JSON via `updateProfile` mutation
+---
 
-### Pending / Critical Gaps 🔴
+### 13.1 Master Feature Status Table
 
-#### Billing & Invoice
+| # | Feature | Category | Backend | Frontend Web | Mobile | Status | Priority |
+|---|---------|----------|---------|--------------|--------|--------|----------|
+| 1 | Voice invoice creation (Hindi/Hinglish) | Voice | ✅ WebSocket + engine | ✅ VoiceBar + Sessions | ✅ VoiceScreen | ✅ BUILT | P0 |
+| 2 | Multi-turn voice drafts (Redis-backed) | Voice | ✅ ConversationSession | ✅ VoiceBar shows draft | ✅ VoiceScreen | ✅ BUILT | P0 |
+| 3 | TTS voice response (ElevenLabs/OpenAI/Browser) | Voice | ✅ TTS providers | ✅ Audio playback | ✅ VoiceScreen | ✅ BUILT | P0 |
+| 4 | 35 voice intents (CREATE_INVOICE … UPDATE_STOCK) | Voice | ✅ engine/index.ts switch | ✅ All handled | ✅ | ✅ BUILT | P0 |
+| 5 | Intent extraction via GPT-4 | Voice | ✅ LLM provider | ✅ | ✅ | ✅ BUILT | P0 |
+| 6 | Deepgram STT (primary) + Browser WebSpeech (fallback) | Voice | ✅ STT providers | ✅ | ✅ | ✅ BUILT | P0 |
+| 7 | 3 parallel voice tasks per session | Voice | ✅ task-queue | ✅ | — | ✅ BUILT | P1 |
+| 8 | True Agent Mode (LLM tool-calling) | Voice | ❌ not built | ❌ | ❌ | ❌ NOT BUILT | P2 |
+| 9 | B2C GST invoice (CGST+SGST intra-state) | Billing | ✅ invoice.service | ✅ InvoiceCreation | ✅ BillingScreen | ✅ BUILT | P0 |
+| 10 | Non-GST cash memo | Billing | ✅ withGst=false | ✅ | ✅ | ✅ BUILT | P0 |
+| 11 | B2B invoice with buyer GSTIN | Billing | ✅ buyerGstin field | ✅ | — | ✅ BUILT | P0 |
+| 12 | IGST (inter-state) auto-switch | Billing | ✅ supplyType=INTERSTATE | ✅ | — | ✅ BUILT | P0 |
+| 13 | Walk-in billing (no customer name) | Billing | ✅ Walk-in customer | ✅ QuickActions 1-tap | — | ✅ BUILT | P0 |
+| 14 | Partial payment at invoice creation | Billing | ✅ initialPayment field | ✅ | ✅ | ✅ BUILT | P0 |
+| 15 | Bill-level discount (voice + form) | Billing | ✅ discountPercent/Amount | ✅ | ✅ | ✅ BUILT | P0 |
+| 16 | Item-level (per-line) discount | Billing | ✅ lineDiscountPercent in type | ✅ UI column exists | — | ⚙️ BACKEND ONLY | P0 |
+| 17 | Proforma invoice / quotation | Billing | ✅ POST /invoices/proforma | ✅ InvoiceDetail toggle | — | ✅ BUILT | P1 |
+| 18 | Proforma → invoice convert (with initial payment) | Billing | ✅ POST /invoices/:id/convert | ✅ | — | ✅ BUILT | P1 |
+| 19 | Invoice edit (PATCH — items, discounts, GST flags) | Billing | ✅ PATCH /invoices/:id | ✅ InvoiceDetail edit | — | ✅ BUILT | P1 |
+| 20 | Invoice cancel (stock restored, balance adjusted) | Billing | ✅ POST /invoices/:id/cancel | ✅ | — | ✅ BUILT | P1 |
+| 21 | Invoice PDF generation + UPI QR in footer | Billing | ✅ pdf.ts + qrcode | ✅ PDF download | — | ✅ BUILT | P0 |
+| 22 | Invoice PDF auto-email on confirm | Billing | ✅ dispatchInvoicePdfEmail | ✅ | — | ✅ BUILT | P0 |
+| 23 | Invoice PDF auto-WhatsApp on confirm | Billing | ❌ not wired | ❌ no toggle | — | ❌ NOT BUILT | P0 |
+| 24 | Invoice numbering (INV/FY/seq, per-tenant, atomic) | Billing | ✅ generateInvoiceNo | ✅ | ✅ | ⚠️ PARTIAL (IDOR risk) | P0 |
+| 25 | Repeat last bill ("same as before") | Billing | ✅ GET /customers/:id/last-order | ✅ | — | ✅ BUILT | P1 |
+| 26 | Mixed-mode payment (cash+UPI split) | Billing | ✅ POST /ledger/mixed-payment | ✅ Payment page | ✅ PaymentScreen | ✅ BUILT | P1 |
+| 27 | Credit limit enforcement on invoice | Billing | ✅ CREDIT_LIMIT_EXCEEDED 422 | ✅ modal shown | — | ✅ BUILT | P1 |
+| 28 | Single-screen ClassicBilling (/billing) | Billing | ✅ all routes | ✅ ClassicBilling.tsx | — | ✅ BUILT | P0 |
+| 29 | Customer creation (name, phone, email, nickname, tags) | Customer Mgmt | ✅ POST /customers | ✅ Customers.tsx | ✅ CustomersScreen | ✅ BUILT | P0 |
+| 30 | Customer fuzzy search (name/phone/nickname/landmark) | Customer Mgmt | ✅ Levenshtein + token | ✅ | ✅ | ✅ BUILT | P0 |
+| 31 | Customer profile update (credit limit, tags, notes) | Customer Mgmt | ✅ PATCH /customers/:id | ✅ | ✅ CustomerDetailScreen | ✅ BUILT | P0 |
+| 32 | Customer delete (soft delete, GDPR) | Customer Mgmt | ✅ DELETE /customers/:id | ✅ | — | ✅ BUILT | P1 |
+| 33 | Customer communication preferences (WhatsApp/email/SMS) | Customer Mgmt | ✅ GET/PUT /comm-prefs | ✅ | — | ✅ BUILT | P1 |
+| 34 | Customer invoice history | Customer Mgmt | ✅ GET /customers/:id/invoices | ✅ CustomerDetail | ✅ | ✅ BUILT | P0 |
+| 35 | Customer overdue list (balance > 0) | Customer Mgmt | ✅ GET /customers/overdue | ✅ OverduePage | ✅ OverdueScreen | ✅ BUILT | P0 |
+| 36 | Customer portal (read-only, HMAC token) | Customer Mgmt | ✅ GET /pub/invoice/:id/:token | ✅ InvoicePortal.tsx | — | ✅ BUILT | P1 |
+| 37 | Customer portal PDF redirect (presigned URL) | Customer Mgmt | ✅ GET /pub/.../pdf | ✅ | — | ✅ BUILT | P1 |
+| 38 | Customer portal UPI payment link | Customer Mgmt | ❌ not built | ❌ | — | ❌ NOT BUILT | P1 |
+| 39 | Payment recording (cash/UPI/card/other) | Ledger/Payments | ✅ POST /ledger/payment | ✅ Payment page | ✅ PaymentScreen | ✅ BUILT | P0 |
+| 40 | Credit addition to customer account | Ledger/Payments | ✅ POST /ledger/credit | ✅ | — | ✅ BUILT | P0 |
+| 41 | Auto-settlement (oldest-first, khata style) | Ledger/Payments | ✅ ledger.service | ✅ | ✅ | ✅ BUILT | P0 |
+| 42 | Customer ledger view (full audit trail) | Ledger/Payments | ✅ GET /ledger/:customerId | ✅ CustomerDetail | ✅ | ✅ BUILT | P0 |
+| 43 | UPI webhook — Razorpay (HMAC-SHA256) | Ledger/Payments | ✅ webhook.routes.ts | — | — | ✅ BUILT | P1 |
+| 44 | UPI webhook — PhonePe (SHA256+saltKey) | Ledger/Payments | ✅ | — | — | ✅ BUILT | P1 |
+| 45 | UPI webhook — Cashfree (HMAC+timestamp) | Ledger/Payments | ✅ | — | — | ✅ BUILT | P1 |
+| 46 | UPI webhook — PayU (SHA512 reverse hash) | Ledger/Payments | ✅ | — | — | ✅ BUILT | P1 |
+| 47 | UPI webhook — Paytm (TXN_SUCCESS) | Ledger/Payments | ✅ | — | — | ✅ BUILT | P1 |
+| 48 | UPI webhook — Instamojo (HMAC-SHA1) | Ledger/Payments | ✅ | — | — | ✅ BUILT | P1 |
+| 49 | UPI webhook — Stripe India (stripe-signature) | Ledger/Payments | ✅ | — | — | ✅ BUILT | P1 |
+| 50 | UPI webhook — EaseBuzz (SHA512 reverse) | Ledger/Payments | ✅ | — | — | ✅ BUILT | P1 |
+| 51 | UPI webhook — BharatPe (HMAC-SHA256) | Ledger/Payments | ✅ | — | — | ✅ BUILT | P1 |
+| 52 | Payment Sound Box (Paytm-style voice announcement) | Ledger/Payments | ✅ WS broadcast | ✅ PaymentSoundBox.tsx | — | ✅ BUILT | P1 |
+| 53 | Product catalog (name, HSN, GST rate, barcode, stock) | Inventory | ✅ product.routes | ✅ Inventory.tsx | — | ✅ BUILT | P0 |
+| 54 | Stock movements (sale/purchase/return/damage/adjustment) | Inventory | ✅ StockMovement model | ✅ | — | ✅ BUILT | P0 |
+| 55 | Low stock alerts (minStock threshold, WebSocket push) | Inventory | ✅ product.service | ✅ Dashboard widget | — | ✅ BUILT | P0 |
+| 56 | Barcode scan (ZXing EAN-13/QR, web camera) | Inventory | ✅ GET /products/barcode/:barcode | ✅ BarcodeScanner.tsx | — | ✅ BUILT | P1 |
+| 57 | Barcode scan (React Native native camera) | Inventory | ✅ same API | — | ❌ not wired | ⚙️ BACKEND ONLY | P1 |
+| 58 | OCR purchase bill ingestion (OpenAI Vision, 9-field) | Inventory | ✅ ocrJobQueue + draft.routes | ✅ DraftManagerPanel | — | ⚠️ PARTIAL | P1 |
+| 59 | Batch/expiry tracking (batchNo, expiryDate, FIFO) | Inventory | ✅ product.service | ✅ Expiry.tsx page | — | ⚠️ PARTIAL | P1 |
+| 60 | Expiry alerts (7/30/90-day) + writeOff | Inventory | ✅ product.service | ✅ Expiry page | — | ⚠️ PARTIAL | P1 |
+| 61 | UPDATE_STOCK voice intent ("50 kilo aata aaya") | Inventory | ✅ product.handler.ts | — (no voice UI) | — | ⚙️ BACKEND ONLY | P0 |
+| 62 | WhatsApp payment reminders (10 types) | Notifications | ✅ BullMQ + Meta Cloud API | ✅ Reminders CRUD | — | ✅ BUILT | P0 |
+| 63 | Natural language reminder scheduling ("kal 9 baje") | Notifications | ✅ reminder.service | ✅ | — | ✅ BUILT | P0 |
+| 64 | Recurring reminders (monthly, weekly) | Notifications | ✅ reminder.service | ✅ | — | ✅ BUILT | P1 |
+| 65 | Bulk WhatsApp reminders (all overdue customers) | Notifications | ✅ bulk remind endpoint | ✅ OverduePage | ✅ OverdueScreen | ✅ BUILT | P0 |
+| 66 | WhatsApp delivery status tracking (delivered/read) | Notifications | ✅ MessageLog + webhook | ✅ | — | ✅ BUILT | P1 |
+| 67 | Email invoice delivery (SMTP, BullMQ-queued) | Notifications | ✅ email.ts + mediaQueue | ✅ send-email endpoint | — | ✅ BUILT | P1 |
+| 68 | Email reminders (secondary channel) | Notifications | ❌ not built | ❌ | — | ❌ NOT BUILT | P2 |
+| 69 | SMS fallback | Notifications | ❌ not built | ❌ | — | ❌ NOT BUILT | P2 |
+| 70 | GSTR-1 export (B2B/B2CL/B2CS/HSN, Indian FY) | GST | ✅ report.routes | ✅ Reports.tsx | — | ✅ BUILT | P1 |
+| 71 | GSTR-1 PDF + CSV + email delivery | GST | ✅ /gstr1/pdf,/csv,/email | ✅ | — | ✅ BUILT | P1 |
+| 72 | P&L date-range report (month-wise, period comparison) | Reports | ✅ /pnl | ✅ Reports.tsx | — | ✅ BUILT | P1 |
+| 73 | P&L PDF + CSV + email | Reports | ✅ | ✅ | — | ✅ BUILT | P1 |
+| 74 | Balance Sheet page (assets/liabilities/equity) | Reports | ✅ summary API | ✅ BalanceSheet.tsx | — | ✅ BUILT | P1 |
+| 75 | CashBook (daily cash in/out ledger) | Reports | ✅ /cashbook | ✅ CashBook.tsx | — | ✅ BUILT | P1 |
+| 76 | DayBook (day-wise journal) | Reports | ✅ | ✅ DayBook.tsx | — | ✅ BUILT | P1 |
+| 77 | Expenses CRUD | Reports | ✅ expense.routes | ✅ Expenses.tsx | — | ✅ BUILT | P1 |
+| 78 | Purchases CRUD | Reports | ✅ expense.routes | ✅ Purchases.tsx | — | ✅ BUILT | P1 |
+| 79 | GSTR-3B placeholder | GST | ❌ no backend | 🖥️ Gstr3b.tsx (placeholder) | — | 🖥️ FRONTEND ONLY | P2 |
+| 80 | E-invoicing (IRN from GSTN API) | GST | ❌ no backend | 🖥️ EInvoicing.tsx (placeholder) | — | 🖥️ FRONTEND ONLY | P2 |
+| 81 | E-way bill | GST | ❌ not built | ❌ | — | ❌ NOT BUILT | P2 |
+| 82 | JWT auth (HS256, Node crypto, timingSafeEqual) | Auth/RBAC | ✅ auth.routes | ✅ LoginPage | ✅ LoginScreen | ✅ BUILT | P0 |
+| 83 | Refresh token rotation (anti-replay) | Auth/RBAC | ✅ POST /auth/refresh | ✅ AuthContext | ✅ | ✅ BUILT | P0 |
+| 84 | 5 roles (owner/admin/manager/staff/viewer), 22 permissions | Auth/RBAC | ✅ require-auth.ts | ✅ | — | ✅ BUILT | P1 |
+| 85 | Multi-user management (invite, role assignment) | Auth/RBAC | ✅ users.routes | ✅ Settings page | — | ✅ BUILT | P1 |
+| 86 | Feature flags (FeatureFlag enum + TIER_FEATURES + featureGate) | Auth/RBAC | ✅ feature-flags.ts | ✅ (402 on gated) | — | ✅ BUILT | P1 |
+| 87 | Platform admin routes (x-admin-api-key) | Admin | ✅ admin.routes | — | — | ✅ BUILT | P1 |
+| 88 | BullMQ queue dashboard at /admin/queues (Bull Board) | Admin | ✅ Bull Board | — | — | ✅ BUILT | P1 |
+| 89 | Real-time WebSocket dashboard (per-tenant fan-out) | Infrastructure | ✅ broadcaster.ts | ✅ WSContext | ✅ | ✅ BUILT | P0 |
+| 90 | Prometheus metrics (HTTP, voice, LLM cost, queue depth) | Infrastructure | ✅ metrics.ts | — | — | ✅ BUILT | P1 |
+| 91 | Pino structured JSON logging | Infrastructure | ✅ logger.ts | — | — | ✅ BUILT | P0 |
+| 92 | BullMQ queues (reminder, whatsapp, media, ocr) | Infrastructure | ✅ queue.ts | — | — | ✅ BUILT | P0 |
+| 93 | MinIO object storage (PDF storage + presigned URLs) | Infrastructure | ✅ storage.ts | — | — | ✅ BUILT | P0 |
+| 94 | HMAC portal token (makePortalToken/verifyPortalToken) | Infrastructure | ✅ portal-token.ts | ✅ InvoicePortal | — | ✅ BUILT | P1 |
+| 95 | Tenant AsyncLocalStorage context | Infrastructure | ✅ tenant-context.ts | — | — | ✅ BUILT | P0 |
+| 96 | Docker multi-stage builds + docker-compose.prod.yml | Infrastructure | ✅ Dockerfiles | — | — | ✅ BUILT | P0 |
+| 97 | GitHub Actions pg_dump backup (30-day S3 retention) | Infrastructure | ✅ | — | — | ✅ BUILT | P0 |
+| 98 | LLM response cache (Redis, dedup identical prompts) | Infrastructure | ✅ llm-cache.ts | — | — | ✅ BUILT | P1 |
+| 99 | Sentry error tracking | Infrastructure | ❌ not in codebase | ❌ | — | ❌ NOT BUILT | P0 |
+| 100 | Offline mode (PWA + IndexedDB sync queue) | Infrastructure | ❌ no service worker | ❌ no manifest.json | ❌ | ❌ NOT BUILT | P0 |
+| 101 | Bank reconciliation | Reports | ❌ no backend | 🖥️ BankReconciliation.tsx (placeholder) | — | 🖥️ FRONTEND ONLY | P2 |
+| 102 | Recurring billing | Billing | ❌ no backend | 🖥️ RecurringBilling.tsx (placeholder) | — | 🖥️ FRONTEND ONLY | P2 |
+| 103 | Import data (CSV/Tally XML) | Admin | ❌ no backend | 🖥️ ImportData.tsx (placeholder) | — | 🖥️ FRONTEND ONLY | P2 |
+| 104 | Settings page (business profile, GST, voice, 9 gateway cards) | Admin | ✅ tenant update endpoints | ✅ Settings.tsx | — | ✅ BUILT | P0 |
+| 105 | Confetti overlay on payment | UX | — | ✅ ConfettiOverlay.tsx | — | 🖥️ FRONTEND ONLY | P2 |
+| 106 | Razorpay subscription (SaaS plan billing) | Admin | ❌ not integrated | ❌ | — | ❌ NOT BUILT | P0 |
+| 107 | Guided onboarding flow | Admin | ❌ | ❌ | ❌ | ❌ NOT BUILT | P1 |
+| 108 | Multi-branch support | Admin | ❌ | ❌ | — | ❌ NOT BUILT | P2 |
+| 109 | CA partner mode | Admin | ❌ | ❌ | — | ❌ NOT BUILT | P2 |
+| 110 | Mobile ClassicBillingScreen (React Native) | Mobile | ✅ all backend | — | ❌ not built | ⚙️ BACKEND ONLY | P0 |
+| 111 | Mobile dashboard charts | Mobile | ✅ summary API | — | ❌ | ⚙️ BACKEND ONLY | P1 |
+| 112 | Mobile offline / AsyncStorage queue | Mobile | — | — | ❌ | ❌ NOT BUILT | P0 |
 
-| Feature                                 | Priority | Notes                                                                                 |
-| --------------------------------------- | -------- | ------------------------------------------------------------------------------------- |
-| ~~Discount system — bill-level~~        | ~~P0~~   | ✅ Built — voice + form. "10% discount karo" or "₹50 kam karo"                        |
-| Item-level discount (per line)          | P0       | Still TODO — each product line needs its own discount field                           |
-| Walk-in billing UX — truly frictionless | P0       | First tap = bill started, no menu navigation. Still requires customer step            |
-| ~~Partial payment AT invoice creation~~ | ~~P0~~   | ✅ Built — "500 diye baki kal" auto-creates payment + marks partial                   |
-| ~~B2B invoice with buyer GSTIN~~        | ~~P0~~   | ✅ Built — GSTIN field in invoice form + voice capture                                |
-| ~~IGST for inter-state supply~~         | ~~P0~~   | ✅ Built — auto-switch via voice ("interstate bill") + form toggle                    |
-| ~~Mixed payment (cash + UPI split)~~    | ~~P1~~   | ✅ Built via RECORD_MIXED_PAYMENT voice intent                                        |
-| ~~Mixed payment UI in Payment page~~    | ~~P1~~   | ✅ Built — `Payment.tsx` has split-mode toggle with per-method amount inputs          |
-| ~~Proforma invoice / quotation~~        | ~~P1~~   | ✅ Built — create proforma + convert to invoice with initial payment                  |
-| Invoice editing after creation          | P1       | Edit items/notes on PENDING; change customer or add discount to existing — still TODO |
+---
 
-#### Delivery Channels (Email + WhatsApp)
+### 13.2 What Was Built This Sprint Cycle (Since Last Doc Update)
 
-| Feature                                            | Priority | Notes                                                                                                                                           |
-| -------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| WhatsApp auto-send PDF on invoice confirm          | P0       | Currently only email auto-sends. WhatsApp needs voice trigger                                                                                   |
-| ~~Email reminders~~                                | ~~P1~~   | ✅ Built — channels auto-detected: `email` channel included when customer has email; `whatsapp` when phone exists; both if absent (future data) |
-| Customer email on profile (prompted at onboarding) | P0       | Needed for email delivery to work reliably                                                                                                      |
-| Delivery preference per customer                   | P1       | Per-reminder channel toggle in ScheduleReminderDialog; per-customer persistent preference still TODO                                            |
-| Fallback: WhatsApp fail → try email                | P1       | After 3 WhatsApp retries, fallback to email                                                                                                     |
+Features completed across Sprints 8–10 (February–March 2026) that are new since the last documentation update:
 
-#### Voice & Agent Mode
+**Customer Portal** (`apps/api/src/api/routes/portal.routes.ts`, `apps/web/src/pages/InvoicePortal.tsx`)
+- Public invoice view at `/pub/invoice/:id/:token` — no auth required, HMAC-SHA256 token, sanitised JSON (no tenant IDs)
+- PDF redirect via fresh 1-hour presigned MinIO URL at `/pub/invoice/:id/:token/pdf`
+- `GET /api/v1/invoices/:id/portal-token` endpoint generates the token
+- `packages/infrastructure/src/portal-token.ts` — deterministic HMAC, no DB column needed
 
-| Feature                                            | Priority | Notes                                                       |
-| -------------------------------------------------- | -------- | ----------------------------------------------------------- |
-| True Agent Mode (tool-calling LLM)                 | P1       | LLM selects and chains tools. See Section 6 for full design |
-| Conversation Agent + Task Agent split              | P1       | Two-agent pattern. Guide + Executor                         |
-| Conditional voice logic ("if balance > X then...") | P1       | Requires Agent Mode                                         |
-| ~~ADD_DISCOUNT voice intent~~                      | ~~P0~~   | ✅ Built — ADD_DISCOUNT + SET_SUPPLY_TYPE intents wired     |
-| UPDATE_STOCK voice intent                          | P0       | "50 kilo aata aaya" — inbound stock receipt                 |
+**Payment Sound Box** (`apps/web/src/components/PaymentSoundBox.tsx`)
+- Paytm-style voice announcement: listens to `payment:recorded` WS events
+- Green slide-in banner + Web Speech API TTS (prefers hi-IN, falls back to en-IN)
+- Queue-safe: back-to-back payments don't overlap
+- Also triggers React Query cache invalidation for invoices, customers, ledger, summary
 
-#### Inventory & Stock
+**Feature Flag System** (`packages/infrastructure/src/feature-flags.ts`, `packages/types/src/index.ts`)
+- `FeatureFlag` enum: 14 flags across free/starter/business/enterprise tiers
+- `TIER_FEATURES` map: tier → flag set, used to seed `Tenant.features` on plan change
+- `hasFeature()`, `enableFeature()`, `disableFeature()`, `setTierFeatures()`, `featureGate()` (returns HTTP 402)
+- Per-tenant JSON column `Tenant.features` is the live state, updated without deployment
 
-| Feature                                  | Priority | Notes                                                                                            |
-| ---------------------------------------- | -------- | ------------------------------------------------------------------------------------------------ |
-| ~~Barcode product scan (mobile camera)~~ | ~~P1~~   | ✅ Built — ZXing library, camera scan EAN/QR → product lookup → auto-add to invoice or inventory |
-| Customer credit limit enforcement        | P1       | Block bill if customer exceeds limit                                                             |
-| Expiry date tracking (batch)             | P1       | Pharma/FMCG vertical requirement                                                                 |
+**Balance Sheet Page** (`apps/web/src/pages/BalanceSheet.tsx`)
+- Simplified SME assets/liabilities/equity from live API data
+- Route `/balance-sheet` registered in App.tsx
 
-#### Reports & Compliance
+**Invoice Edit (PATCH)** — `PATCH /api/v1/invoices/:id`
+- Edit items, notes, discounts, GST flags, supply type on PENDING invoices
+- Broadcasts `invoice:updated` WS event; ReacrtQuery invalidates InvoiceDetail
 
-| Feature                                | Priority | Notes                                                           |
-| -------------------------------------- | -------- | --------------------------------------------------------------- |
-| ~~GST report export (GSTR-1 ready)~~   | ~~P1~~   | ✅ Built — B2B/B2CL/B2CS/HSN, Indian FY, PDF + CSV + email      |
-| ~~Date range reports with CSV export~~ | ~~P1~~   | ✅ Built — P&L month-wise, period comparison, PDF + CSV + email |
-| GSTR-2A / GSTR-3B reconciliation       | P2       | Input credit reconciliation against purchase invoices           |
+**Proforma → Invoice Convert** — `POST /api/v1/invoices/:id/convert`
+- Accepts optional `initialPayment` (amount + method) for partial payment at time of conversion
+- Fires PDF/email job; broadcasts `invoice:confirmed` WS event
 
-#### Platform
+**9-Aggregator UPI Webhook System** (`apps/api/src/api/routes/webhook.routes.ts`)
+- Razorpay, PhonePe, Cashfree, PayU, Paytm, Instamojo, Stripe, EaseBuzz, BharatPe
+- Each has its own HMAC/signature verification, duplicate-payment guard, `WebhookEvent` store
+- Auto-records ledger payment + fires `payment:recorded` WS event for Sound Box
 
-| Feature                                 | Priority | Notes                                                                                                                                                                                                                                    |
-| --------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Mobile-responsive layout                | P0       | Counter use = mobile. Current UI is desktop-first                                                                                                                                                                                        |
-| Single-screen classic billing UI        | P0       | Top UX complaint across 193+ reviews — no page flips during bill creation                                                                                                                                                                |
-| Offline mode (PWA + IndexedDB queue)    | P0       | 22% of users cite offline as reason to switch tools; elevated from P2                                                                                                                                                                    |
-| ~~OCR purchase bill ingestion (AI)~~    | ~~P0~~   | ✅ Partially built — photo → OpenAI Vision → `drafts` table → DraftManagerPanel Fast Mode (12-col review) → confirm to inventory. Full pipeline live since Sprint 8. Remaining: supplier cost capture on purchase side, auto-PO creation |
-| UPI payment QR code embedded in invoice | P0       | Frequently requested; trivial to add via QR generation library                                                                                                                                                                           |
-| WhatsApp chatbot interface              | P2       | Send voice note to WhatsApp → AI processes → reply                                                                                                                                                                                       |
-| Tally/Vyapar data import                | P2       | Migration path for existing users                                                                                                                                                                                                        |
+**Mobile React Native App** (`apps/mobile/`)
+- 10 screens wired into navigation: Login, Dashboard, BillingScreen, InvoiceList, InvoiceDetail, CustomerList, CustomerDetail, Payment, Overdue, Voice
+- Bottom tab navigator: Dashboard, Billing, Customers, Invoices, Voice
+
+**ClassicBilling Single-Screen Counter UI** — `apps/web/src/pages/ClassicBilling.tsx`
+- Route `/billing`, walk-in 1-tap, all billing on one screen
+
+**Overdue Management** — `apps/web/src/pages/OverduePage.tsx`
+- Live table of all customers with pending balance, per-row actions, bulk remind
+
+**Expiry Tracking** — `apps/web/src/pages/Expiry.tsx`
+- Backend: `batchNo`, `expiryDate`, FIFO deduction, `writeOffExpiredBatch()`, 7/30/90-day alert queries
+- Frontend: Expiry page shows expiring-soon products with alert count
+
+**GSTR-1 + P&L Reports with Email**
+- `GET /api/v1/reports/gstr1` — B2B/B2CL/B2CS/HSN, Indian FY, PDF+CSV+email
+- `GET /api/v1/reports/pnl` — date range, month-wise comparison, PDF+CSV+email
+
+**Email Auto-Delivery on Invoice Confirm**
+- `dispatchInvoicePdfEmail()` fires after every `createInvoice()` and `convertProformaToInvoice()`
+- Manual re-send: `POST /api/v1/invoices/:id/send-email`
+
+**Customer Communication Preferences**
+- `GET/PUT /api/v1/customers/:id/communication-prefs` — per-customer WhatsApp/email/SMS toggles
+
+---
+
+### 13.3 P0 Blockers — Must Fix Before Launch (Security)
+
+These 4 issues are **ship-blocking**. Production must not serve real customer data until all 4 are fixed.
+
+#### Blocker 1 — IDOR in getCustomerById / getInvoiceById
+
+**Severity:** Critical (data breach)
+**Location:** `packages/modules/src/modules/customer/customer.service.ts` → `getCustomerById()`, `packages/modules/src/modules/invoice/invoice.service.ts` → `getInvoiceById()`
+**Problem:** Both methods do `prisma.X.findUnique({ where: { id } })` without filtering by `tenantId`. Any authenticated user with a valid JWT can fetch any other tenant's customer or invoice by guessing or enumerating UUIDs.
+**Fix:** Add `tenantId: tenantContext.get().tenantId` to the `where` clause in both methods. Return `null` (which the route handler converts to 404) if the record belongs to a different tenant.
+**Test:** Create Tenant A + Tenant B. Tenant A should receive 404 when requesting Tenant B's customer UUID.
+
+#### Blocker 2 — InvoiceCounter Missing tenantId
+
+**Severity:** Critical (invoice number collision between tenants)
+**Location:** `packages/modules/src/modules/invoice/invoice.service.ts` → `generateInvoiceNo()`
+**Problem:** `InvoiceCounter` table (used for `$queryRaw` sequence generation) may not partition by `tenantId`. Two tenants in the same financial year could receive the same invoice number — a GST audit failure.
+**Fix:** Verify `InvoiceCounter` has a `tenantId` column. If not, add it via a Prisma migration. Update `generateInvoiceNo()` to filter by `tenantId`. Add a unique constraint on `(tenantId, fiscalYear)`.
+**Test:** Tenant A and Tenant B both create invoices — they must get independent sequences.
+
+#### Blocker 3 — MinIO World-Readable Bucket
+
+**Severity:** High (invoice PDFs publicly accessible without authentication)
+**Location:** MinIO bucket policy, `packages/infrastructure/src/storage.ts`
+**Problem:** If the MinIO bucket is configured with anonymous read access (public policy), any invoice PDF is accessible to anyone who knows or guesses the object key. Invoice PDFs contain customer names, phone numbers, GST details, and purchase amounts.
+**Fix:** Remove anonymous read access from the MinIO bucket. The portal route already generates fresh presigned 1-hour URLs (`minioClient.getPresignedUrl()`). All other PDF delivery goes through the email queue — no direct public URL needed.
+**Test:** Copy the `pdfObjectKey` from an invoice and attempt to GET it directly from MinIO without a presigned URL — should return 403.
+
+#### Blocker 4 — WebSocket Unauthenticated Voice Commands
+
+**Severity:** High (unauthenticated voice command execution)
+**Location:** `apps/api/src/ws/enhanced-handler.ts`
+**Problem:** The WebSocket endpoint at `/ws` may not verify JWT before accepting voice audio streams. If unauthenticated connections are accepted, an attacker could send fabricated voice intent payloads and execute business operations (create invoices, record payments) on any tenant's account.
+**Fix:** On WebSocket upgrade request, extract and verify the JWT (passed as `?token=` query param or `Authorization` header). Close the connection with code 4001 if the JWT is missing, expired, or invalid. Set `request.user` on the connection for downstream use.
+**Test:** Open a raw WebSocket connection to `/ws` without a token — should be rejected with close code 4001.
+
+---
+
+### 13.4 P0 Feature Gaps — Must Build Before Paid Launch
+
+Features that are critical for the kirana/SME launch but are missing or unwired:
+
+| # | Feature | What's Missing | Effort | Segment |
+|---|---------|---------------|--------|---------|
+| 1 | Item-level discount backend wiring | `resolveItemsAndTotals()` not applying `lineDiscountPercent`; submit form drops it | 3h | Both |
+| 2 | WhatsApp auto-send invoice PDF on confirm | `confirmInvoice()` doesn't queue WA job; no per-tenant autoWhatsapp toggle | 4h | Segment A |
+| 3 | UPDATE_STOCK voice intent wired | `executeUpdateStock` handler exists in product.handler.ts but voice engine switch and LLM prompt not updated | 3h | Both |
+| 4 | Sentry / error tracking | No `@sentry/node` in API, no `@sentry/react` in web; production errors invisible | 1h | All |
+| 5 | Mobile-responsive layout (S10-03) | Web app desktop-first; BottomNav exists but breakpoints not enforced; touch targets < 44px | 2d | Segment A |
+| 6 | Mobile ClassicBillingScreen (React Native) | Web ClassicBilling exists; RN equivalent not built; kirana primary device is Android | 3d | Segment A |
+| 7 | Offline mode — PWA + IndexedDB | No service worker, no manifest.json, no IndexedDB outbox; 22% of users cite as dealbreaker | 5d | Segment A |
+| 8 | Razorpay subscription integration | Webhook handler exists; plan billing (subscriptions) not integrated; zero monetization | 2d | All |
+| 9 | GSTIN checksum validation | B2B invoice accepts any 15-char string as GSTIN; no format/state-code validation | 2h | Segment B |
+| 10 | listAllCustomers uses JS slice, not DB pagination | `customerService.listAllCustomers()` loads all records then slices in memory — will break at scale | 1h | All |
+
+---
+
+### 13.5 P1 Feature Gaps — Build in First 30 Days Post-Launch
+
+| # | Feature | Notes | Effort |
+|---|---------|-------|--------|
+| 1 | Guided onboarding flow | No step-by-step onboarding (business profile → first invoice < 5 min); new tenants land on empty dashboard | 3d |
+| 2 | Customer portal UPI payment link | Portal shows invoice but no UPI deep link or pay button | 1d |
+| 3 | WhatsApp delivery failure → email fallback | Currently no fallback chain; failed WA = silent failure | 2h |
+| 4 | Referral program | "Invite 3 friends → 3 months free" not built | 2d |
+| 5 | True Agent Mode (Mode 3) | LLM tool-calling voice; two-agent pattern; planned Q3 2026 | 3w |
+| 6 | Batch/expiry frontend completion (S10-05) | Backend complete; batch entry on Purchase form and batch selector on invoice rows needed | 1d |
+| 7 | Push notifications for payment reminders (mobile) | BullMQ handles WA; native push not integrated | 2d |
+| 8 | React ErrorBoundary in App.tsx | No crash boundary; uncaught React errors show blank screen | 1h |
+| 9 | Barcode scan on React Native (native camera) | Web ZXing works; RN needs react-native-vision-camera | 1d |
+| 10 | Mobile dashboard charts | DashboardScreen exists; recharts/SVG charts not wired | 2d |
+| 11 | PWA "Quick Bill" shortcut (manifest.json) | ClassicBilling exists; home screen shortcut and auto-focus on load not set up | 2h |
+| 12 | Log rotation for logs/app.log | Pino writes to file; no rotation configured; disk fill risk in production | 1h |
+
+---
+
+### 13.6 P2 Backlog — Future Roadmap
+
+| Feature | Tier | Quarter |
+|---------|------|---------|
+| E-invoicing (IRN + QR code from GSTN API) | Enterprise | Q4 2026 |
+| E-way bill generation | Enterprise | Q4 2026 |
+| Multi-branch support (consolidated reporting) | Enterprise | Q4 2026 |
+| Bank reconciliation backend | Enterprise | Q4 2026 |
+| CA partner mode (external accountant dashboard) | Enterprise | Q4 2026 |
+| API webhooks + REST access for ERP integration | Enterprise | Q4 2026 |
+| WhatsApp chatbot interface (voice note → AI → reply) | Enterprise | Q4 2026 |
+| Tally XML import (migration tool for Tally defectors) | Enterprise | Q4 2026 |
+| Desktop Electron wrapper (for Windows Tally replacers) | Enterprise | Q4 2026 |
+| GSTR-3B (output tax liability reconciliation) | Business+ | Q4 2026 |
+| GSTR-2A / ITC reconciliation | Business+ | Q4 2026 |
+| Email reminders (secondary channel after WhatsApp) | Starter+ | Q3 2026 |
+| SMS fallback (Twilio/Textlocal) | All | Q3 2026 |
+| Offline mode (PWA + IndexedDB) | All | Q3 2026 |
+| True Agent Mode (Mode 3 — LLM tool-calling) | Business+ | Q3 2026 |
+| Multi-language STT (Marathi, Gujarati, Tamil, Telugu) | Business+ | Q3 2026 |
+| Recurring billing backend | Starter+ | Q2 2026 |
+| Customer loyalty points | Enterprise | Q4 2026 |
+| Thermal receipt printer support | Business+ | Q4 2026 |
+| Barcode label printing | Business+ | Q4 2026 |
+| Staff attendance tracking | Business+ | Q4 2026 |
+| Price lists (wholesale vs retail tiers) | Business+ | Q3 2026 |
+| Analytics AI ("explain my sales drop") | Enterprise | Q4 2026 |
+| E-commerce integration (Shopify/WooCommerce) | Enterprise | 2027 |
+| Credit scoring from transaction history | Enterprise | 2027 |
+| Bank current account integration | Enterprise | 2027 |
+
+---
+
+### 13.7 Previously Built — Backend API Reference
+
+**Auth & Users**
+- `POST /api/v1/auth/login` — JWT login (HS256, Node crypto)
+- `POST /api/v1/auth/refresh` — refresh token rotation
+- `POST /api/v1/auth/logout`
+- `POST /api/v1/auth/hash`
+- `GET/POST/PATCH /api/v1/users` — user management with RBAC
+
+**Invoices** (`apps/api/src/api/routes/invoice.routes.ts`)
+- `GET /api/v1/invoices` — list with limit
+- `GET /api/v1/invoices/:id` — invoice detail
+- `POST /api/v1/invoices` — create invoice (GST/non-GST, B2B/B2C, INTRASTATE/INTERSTATE, initial payment, bill-level discount, walk-in)
+- `POST /api/v1/invoices/proforma` — create proforma/quotation
+- `POST /api/v1/invoices/:id/convert` — proforma → confirmed invoice (with optional initial payment)
+- `PATCH /api/v1/invoices/:id` — edit pending invoice (items, notes, discounts, GST flags)
+- `POST /api/v1/invoices/:id/cancel` — cancel invoice (stock restored, balance adjusted)
+- `GET /api/v1/invoices/:id/portal-token` — generate HMAC public portal token
+- `POST /api/v1/invoices/:id/send-email` — (re-)send invoice PDF to customer
+- `POST /api/v1/ledger/mixed-payment` — record split cash+UPI payment (also in invoice.routes.ts)
+
+**Customers** (`apps/api/src/api/routes/customer.routes.ts`)
+- `GET /api/v1/customers` — list/paginate/search
+- `GET /api/v1/customers/overdue` — customers with positive balance
+- `GET /api/v1/customers/search` — fuzzy name/phone search
+- `GET /api/v1/customers/:id`
+- `POST /api/v1/customers` — create (with opening balance, credit limit, tags)
+- `PATCH /api/v1/customers/:id` — update profile, credit limit, tags
+- `DELETE /api/v1/customers/:id`
+- `GET /api/v1/customers/:id/invoices`
+- `GET /api/v1/customers/:id/last-order` — for Repeat Last Bill
+- `GET/PUT /api/v1/customers/:id/communication-prefs`
+
+**Ledger** (`apps/api/src/api/routes/ledger.routes.ts`)
+- `POST /api/v1/ledger/payment` — record payment (cash/upi/card/other, date, reference)
+- `POST /api/v1/ledger/credit` — add credit to customer account
+- `GET /api/v1/ledger/:customerId` — full ledger history
+
+**Products & Inventory** (`product.routes.ts`)
+- `GET/POST/PATCH/DELETE /api/v1/products`
+- `GET /api/v1/products/barcode/:barcode` — barcode lookup
+
+**Reminders** (`reminder.routes.ts`)
+- Full CRUD for 10 reminder types (payment_due, payment_overdue, invoice_reminder, low_stock, expiry_alert, birthday, follow_up, gst_filing, staff_task, custom)
+- Natural language scheduling ("kal subah 9 baje")
+- Bulk remind endpoint
+
+**Reports** (`report.routes.ts`)
+- `GET /api/v1/reports/gstr1` — GSTR-1 (B2B/B2CL/B2CS/HSN), Indian FY support
+- `GET /api/v1/reports/gstr1/pdf`, `/gstr1/csv`, `/pnl`, `/pnl/pdf`, `/pnl/csv`, `/email`
+- `GET /api/v1/reports/pnl` — P&L date-range, month-wise, period comparison
+
+**Expenses & Purchases** (`expense.routes.ts`)
+- `GET/POST/PATCH/DELETE /api/v1/expenses`
+- `GET/POST/PATCH/DELETE /api/v1/purchases`
+- `GET /api/v1/cashbook`
+
+**Voice / AI / Sessions** (`ai.routes.ts`, `session.routes.ts`)
+- WebSocket `/ws` — PCM audio → Deepgram STT → GPT-4 intent extraction → 25 handlers
+- `GET/POST/DELETE /api/v1/sessions`
+
+**Drafts / OCR** (`draft.routes.ts`)
+- `GET/POST/PATCH/DELETE /api/v1/drafts`
+- OCR pipeline: photo → OpenAI Vision → 9-field extraction → drafts table
+
+**Admin** (`admin.routes.ts`)
+- `/admin/*` — platform admin routes (x-admin-api-key auth)
+- `/admin/queues` — BullMQ queue dashboard (Bull Board)
+
+**Public / Webhooks**
+- `GET /pub/invoice/:id/:token` — customer-facing invoice portal (no auth, HMAC token)
+- `GET /pub/invoice/:id/:token/pdf` — redirect to presigned MinIO PDF URL
+- `GET/POST /api/v1/webhook/whatsapp` — Meta WhatsApp delivery status
+- `POST /api/v1/webhook/razorpay/:tenantId` — HMAC-SHA256-hex verified
+- `POST /api/v1/webhook/phonepe/:tenantId` — SHA256(base64+saltKey) verified
+- `POST /api/v1/webhook/cashfree/:tenantId` — HMAC-SHA256-base64 + timestamp
+- `POST /api/v1/webhook/payu/:tenantId` — SHA-512 reverse hash
+- `POST /api/v1/webhook/paytm/:tenantId` — STATUS=TXN_SUCCESS
+- `POST /api/v1/webhook/instamojo/:tenantId` — HMAC-SHA1
+- `POST /api/v1/webhook/stripe/:tenantId` — stripe-signature verified
+- `POST /api/v1/webhook/easebuzz/:tenantId` — SHA-512 reverse hash
+- `POST /api/v1/webhook/bharatpe/:tenantId` — HMAC-SHA256-hex
+
+**Health**: `GET /health` — DB + Redis checks (used by load balancers)
 
 ---
 

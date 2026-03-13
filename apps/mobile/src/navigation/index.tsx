@@ -11,8 +11,8 @@ import { LoginScreen } from "../screens/LoginScreen";
 import { InvoiceDetailScreen } from "../screens/InvoiceDetailScreen";
 import { CustomerDetailScreen } from "../screens/CustomerDetailScreen";
 import { PaymentScreen } from "../screens/PaymentScreen";
-import { VoiceScreen } from "../screens/VoiceScreen";
 import { OverdueScreen } from "../screens/OverdueScreen";
+import { ItemsScreen } from "../screens/ItemsScreen";
 
 // ── Param lists ───────────────────────────────────────────────────────────────
 
@@ -30,7 +30,7 @@ export type MainTabParams = {
   Billing: undefined;
   CustomersTab: undefined;
   InvoicesTab: undefined;
-  Voice: undefined;
+  Items: undefined;
 };
 
 export type BillingStackParams = {
@@ -107,7 +107,10 @@ function InvoicesNavigator() {
       }}
     >
       <InvoicesStack.Screen name="InvoiceList" component={InvoiceListScreen} />
-      <InvoicesStack.Screen name="InvoiceDetail" component={InvoiceDetailScreen} />
+      <InvoicesStack.Screen
+        name="InvoiceDetail"
+        component={InvoiceDetailScreen}
+      />
     </InvoicesStack.Navigator>
   );
 }
@@ -122,7 +125,10 @@ function CustomersNavigator() {
       }}
     >
       <CustomersStack.Screen name="CustomerList" component={CustomersScreen} />
-      <CustomersStack.Screen name="CustomerDetail" component={CustomerDetailScreen} />
+      <CustomersStack.Screen
+        name="CustomerDetail"
+        component={CustomerDetailScreen}
+      />
       <CustomersStack.Screen name="Payment" component={PaymentScreen} />
       <CustomersStack.Screen
         name="Overdue"
@@ -141,7 +147,7 @@ function TabIcon({ name, color }: { name: string; color: string }) {
     Billing: "🧾",
     CustomersTab: "👥",
     InvoicesTab: "📋",
-    Voice: "🎤",
+    Items: "📦",
   };
   return <Text style={{ fontSize: 20, color }}>{icons[name] ?? "•"}</Text>;
 }
@@ -176,9 +182,9 @@ function MainTabs() {
         options={{ tabBarLabel: "Invoices" }}
       />
       <Tab.Screen
-        name="Voice"
-        component={VoiceScreen}
-        options={{ tabBarLabel: "Voice" }}
+        name="Items"
+        component={ItemsScreen}
+        options={{ tabBarLabel: "Items" }}
       />
     </Tab.Navigator>
   );

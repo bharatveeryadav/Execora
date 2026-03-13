@@ -26,10 +26,10 @@ docker compose \
   -f docker-compose.tailscale.yml \
   up -d --build
 
-echo "⏳ Waiting for API health at http://127.0.0.1:3006/health ..."
+echo "⏳ Waiting for API health at http://127.0.0.1:3007/health ..."
 healthy="0"
 for _ in {1..45}; do
-  if curl -fsS http://127.0.0.1:3006/health >/dev/null; then
+  if curl -fsS http://127.0.0.1:3007/health >/dev/null; then
     healthy="1"
     break
   fi
@@ -41,8 +41,8 @@ if [[ "$healthy" != "1" ]]; then
   exit 1
 fi
 
-echo "🌐 Enabling Tailscale Funnel (public HTTPS -> localhost:3006)..."
-if ! tailscale funnel --bg --https=443 http://127.0.0.1:3006; then
+echo "🌐 Enabling Tailscale Funnel (public HTTPS -> localhost:3007)..."
+if ! tailscale funnel --bg --https=443 http://127.0.0.1:3007; then
   echo ""
   echo "❌ Could not update Tailscale Funnel config from current user."
   echo "Run one-time to allow non-root changes:"

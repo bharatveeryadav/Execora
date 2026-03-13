@@ -2,7 +2,7 @@ services:
   # Bind all ports to loopback only when exposing through Tailscale Funnel.
   app:
     ports:
-      - "127.0.0.1:3006:3006"
+      - "127.0.0.1:3007:3006"
 
   postgres:
     ports:

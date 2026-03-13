@@ -1,6 +1,113 @@
 # Execora — Senior PM + Architecture Strategy Document
 **Version 1.0 | March 2026**
 
+## Live Status — March 13, 2026
+
+### Billing & Invoice
+| Feature | Status | Notes |
+|---------|--------|-------|
+| B2C GST invoice (CGST+SGST) | ✅ Shipped | Voice + form, all edge cases |
+| Non-GST cash memo | ✅ Shipped | withGst=false |
+| B2B invoice with buyer GSTIN | ✅ Shipped | buyerGstin + IGST inter-state |
+| IGST inter-state auto-switch | ✅ Shipped | supplyType=INTERSTATE |
+| Walk-in billing (1-tap) | ✅ Shipped | QuickActions "Quick Sale" |
+| Partial payment at billing | ✅ Shipped | initialPayment field |
+| Bill-level discount (voice + form) | ✅ Shipped | discountPercent / discountAmount |
+| Item-level (per-line) discount | ⚠️ UI only | lineDiscountPercent type exists; resolveItemsAndTotals() not wired |
+| Proforma invoice / quotation | ✅ Shipped | POST /invoices/proforma |
+| Proforma → invoice convert | ✅ Shipped | With optional initial payment |
+| Invoice edit (PATCH) | ✅ Shipped | Items, notes, discounts, GST flags on PENDING |
+| Invoice cancel (stock restored) | ✅ Shipped | |
+| Invoice PDF + UPI QR footer | ✅ Shipped | qrcode in pdf.ts |
+| Invoice PDF auto-email | ✅ Shipped | BullMQ mediaQueue on confirm |
+| Invoice PDF auto-WhatsApp | ❌ P0 Gap | Not wired from confirmInvoice(); no autoWhatsapp tenant toggle |
+| Invoice numbering (per-tenant, FY-based) | ⚠️ Security gap | InvoiceCounter may lack tenantId isolation — see Blocker 2 |
+| Repeat last bill | ✅ Shipped | GET /customers/:id/last-order |
+| ClassicBilling single-screen UI | ✅ Shipped | /billing route |
+| Mixed payment (cash+UPI split) | ✅ Shipped | POST /ledger/mixed-payment + voice |
+| Credit limit enforcement | ✅ Shipped | 422 CREDIT_LIMIT_EXCEEDED |
+
+### Customer Management
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Customer CRUD (name, phone, email, tags) | ✅ Shipped | |
+| Fuzzy search (name/phone/nickname/landmark) | ✅ Shipped | Levenshtein + token overlap |
+| Customer overdue list | ✅ Shipped | GET /customers/overdue |
+| Communication preferences (WA/email/SMS) | ✅ Shipped | GET/PUT /comm-prefs |
+| Customer portal (read-only, HMAC token) | ✅ Shipped | /pub/invoice/:id/:token |
+| Customer portal PDF redirect (presigned) | ✅ Shipped | |
+| Customer portal UPI payment link | ❌ P1 Gap | Not built |
+| Customer delete (soft delete) | ✅ Shipped | |
+
+### Ledger / Payments
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Payment recording (cash/UPI/card/other) | ✅ Shipped | |
+| Auto-settlement (oldest-first, khata) | ✅ Shipped | |
+| Credit addition | ✅ Shipped | |
+| Customer ledger view | ✅ Shipped | |
+| Payment Sound Box (Paytm-style TTS) | ✅ Shipped | Web Speech API + WS event |
+| Webhook — Razorpay (HMAC-SHA256) | ✅ Shipped | |
+| Webhook — PhonePe (SHA256+saltKey) | ✅ Shipped | |
+| Webhook — Cashfree (HMAC+timestamp) | ✅ Shipped | |
+| Webhook — PayU (SHA512 reverse) | ✅ Shipped | |
+| Webhook — Paytm (TXN_SUCCESS) | ✅ Shipped | |
+| Webhook — Instamojo (HMAC-SHA1) | ✅ Shipped | |
+| Webhook — Stripe India | ✅ Shipped | stripe-signature verified |
+| Webhook — EaseBuzz (SHA512) | ✅ Shipped | |
+| Webhook — BharatPe (HMAC-SHA256) | ✅ Shipped | |
+
+### Inventory
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Product catalog CRUD | ✅ Shipped | HSN, GST rate, barcode, stock |
+| Low stock alerts | ✅ Shipped | minStock threshold, WS push |
+| Barcode scan (web ZXing) | ✅ Shipped | EAN-13/QR |
+| Barcode scan (React Native) | ❌ P1 Gap | Backend ready; native camera not wired |
+| OCR purchase bill (OpenAI Vision) | ⚠️ Partial | 9-field draft; supplier cost capture pending |
+| Batch/expiry tracking | ⚠️ Partial | Backend full (S9-06); frontend batch entry needs verification |
+| UPDATE_STOCK voice intent | ⚠️ Backend only | product.handler.ts exists; voice switch + LLM prompt not wired |
+
+### Reports & GST
+| Feature | Status | Notes |
+|---------|--------|-------|
+| GSTR-1 export (B2B/B2CS/HSN, Indian FY) | ✅ Shipped | PDF + CSV + email |
+| P&L date-range report | ✅ Shipped | Month-wise + email |
+| Balance Sheet page | ✅ Shipped | Assets/liabilities/equity |
+| CashBook, DayBook | ✅ Shipped | |
+| Expenses + Purchases CRUD | ✅ Shipped | |
+| GSTR-3B | 🖥️ Placeholder | Frontend page only |
+| E-invoicing (IRN) | 🖥️ Placeholder | Frontend page; no backend; Q4 2026 |
+| Bank reconciliation | 🖥️ Placeholder | Frontend page; no backend |
+| Recurring billing | 🖥️ Placeholder | Frontend page; no backend |
+
+### Voice Engine
+| Feature | Status | Notes |
+|---------|--------|-------|
+| 35 intents (CREATE_INVOICE … UPDATE_STOCK) | ✅ Shipped | engine/index.ts switch |
+| Multi-turn drafts (Redis, 4h TTL) | ✅ Shipped | ConversationSession |
+| TTS (ElevenLabs/OpenAI/Browser fallback) | ✅ Shipped | |
+| Deepgram STT + Browser WebSpeech fallback | ✅ Shipped | |
+| True Agent Mode (Mode 3) | ❌ P2 | LLM tool-calling; planned Q3 2026 |
+
+### Infrastructure / Auth / Mobile
+| Feature | Status | Notes |
+|---------|--------|-------|
+| JWT auth + refresh rotation | ✅ Shipped | HS256, timingSafeEqual |
+| RBAC (5 roles, 22 permissions) | ✅ Shipped | |
+| Feature flags (FeatureFlag enum + TIER_FEATURES) | ✅ Shipped | featureGate() returns 402 |
+| Real-time WebSocket (per-tenant fan-out) | ✅ Shipped | 12+ event types |
+| BullMQ queues (4 queues + Bull Board) | ✅ Shipped | |
+| MinIO object storage + presigned URLs | ✅ Shipped | |
+| Prometheus metrics | ✅ Shipped | |
+| Docker prod compose (resource limits, no admin UIs) | ✅ Shipped | |
+| GitHub Actions pg_dump backup | ✅ Shipped | 30-day S3 retention |
+| Sentry error tracking | ❌ P0 Gap | Not in codebase |
+| Offline mode (PWA + IndexedDB) | ❌ P0 Gap | No service worker, no manifest.json |
+| Mobile (React Native) — 10 screens | ✅ Shipped | Dashboard, Billing, Customers, Invoices, Voice, Overdue |
+| Mobile ClassicBillingScreen | ❌ P0 Gap | Web ClassicBilling exists; RN equivalent not built |
+| Mobile offline / AsyncStorage queue | ❌ P0 Gap | Not built |
+
 ---
 
 ## Table of Contents
@@ -284,49 +391,60 @@ Launch with Segment A in Q2 2026. Build the enterprise features in Q3 while Segm
 
 | Feature | Core/Add-On | Tier | Implementation Status | Priority |
 |---|---|---|---|---|
-| Voice invoice creation (Hindi/Hinglish) | Core | Free (50/mo cap) | Built | P0 |
-| Walk-in billing (no customer name) | Core | Free | Built | P0 |
-| B2C GST invoice | Core | Free | Built | P0 |
-| Non-GST cash memo | Core | Free | Built | P0 |
-| Customer ledger / udhaar tracking | Core | Free | Built | P0 |
-| Payment recording (cash/UPI/card) | Core | Free | Built | P0 |
-| Auto-settlement (khata-style) | Core | Free | Built | P0 |
-| Real-time dashboard (WebSocket) | Core | Free | Built | P0 |
-| Low stock alerts | Core | Free | Built | P0 |
-| Today's revenue widget | Core | Free | Built | P0 |
-| WhatsApp reminders | Core | Free (5/mo) → Unlimited Starter+ | Built | P0 |
-| Bill-level discount (voice + form) | Core | Free | Built | P0 |
-| Item-level discount | Core | Free | UI built, backend S10-01 | P0 |
-| B2B invoice with buyer GSTIN | Core | Free | Built | P0 |
-| IGST inter-state calculation | Core | Free | Built | P0 |
-| UPI QR code on invoice PDF | Core | Free | Built | P0 |
-| Invoice PDF generation | Core | Free | Built | P0 |
-| Multi-turn voice drafts (Redis) | Core | Free | Built | P0 |
-| TTS voice response | Core | Free | Built | P0 |
-| Single-screen classic billing UI | Core | Free | Built (S9-05) | P0 |
-| Barcode scan (camera, EAN/QR) | Add-On | Business+ | Built | P1 |
-| GSTR-1 export (PDF/CSV/email) | Add-On | Starter+ | Built | P1 |
-| P&L date-range report | Add-On | Business+ | Built | P1 |
-| Email delivery of invoices/reminders | Add-On | Starter+ | Built | P1 |
-| Unlimited voice commands | Add-On | Starter+ | Built | P1 |
-| OCR purchase bill ingestion | Add-On | Business+ | Partially built | P0 |
-| Batch/expiry tracking | Add-On | Business+ | Backend built, frontend S10-05 | P1 |
-| Multi-user + RBAC | Add-On | Business+ (5 users) | Built | P1 |
-| Customer credit limits | Add-On | Business+ | Built | P1 |
-| True Agent Mode (AI tool-calling) | Add-On | Business+ | Planned Q3 2026 | P1 |
-| E-invoicing (IRN/QR from GSTN) | Add-On | Enterprise | Planned Q4 2026 | P2 |
-| E-way bill generation | Add-On | Enterprise | Planned Q4 2026 | P2 |
-| Multi-branch support | Add-On | Enterprise | Planned Q4 2026 | P2 |
-| Bank reconciliation | Add-On | Enterprise | Planned Q4 2026 | P2 |
-| CA partner mode (external accountant access) | Add-On | Enterprise | Planned Q4 2026 | P2 |
-| API access (webhooks + REST) | Add-On | Enterprise | Planned Q4 2026 | P2 |
-| WhatsApp chatbot interface | Add-On | Enterprise | Planned | P2 |
-| Offline mode (PWA + IndexedDB) | Core | All tiers | Planned Q3 2026 | P0 |
-| Supplier invoice / purchase management | Add-On | Business+ | Partially built | P1 |
-| Customer portal (read-only link) | Add-On | Starter+ | Planned | P1 |
-| Loyalty points / rewards | Add-On | Enterprise | Planned | P2 |
-| Thermal receipt printer | Add-On | Business+ | Planned | P2 |
-| Tally XML import | Add-On | Enterprise | Planned | P2 |
+| Voice invoice creation (Hindi/Hinglish) | Core | Free (50/mo cap) | ✅ Built | P0 |
+| Walk-in billing (no customer name) | Core | Free | ✅ Built | P0 |
+| B2C GST invoice | Core | Free | ✅ Built | P0 |
+| Non-GST cash memo | Core | Free | ✅ Built | P0 |
+| Customer ledger / udhaar tracking | Core | Free | ✅ Built | P0 |
+| Payment recording (cash/UPI/card) | Core | Free | ✅ Built | P0 |
+| Auto-settlement (khata-style) | Core | Free | ✅ Built | P0 |
+| Real-time dashboard (WebSocket) | Core | Free | ✅ Built | P0 |
+| Low stock alerts | Core | Free | ✅ Built | P0 |
+| Today's revenue widget | Core | Free | ✅ Built | P0 |
+| WhatsApp reminders | Core | Free (5/mo) → Unlimited Starter+ | ✅ Built | P0 |
+| Bill-level discount (voice + form) | Core | Free | ✅ Built | P0 |
+| Item-level discount | Core | Free | ⚠️ UI built; backend S10-01 (3h remaining) | P0 |
+| B2B invoice with buyer GSTIN | Core | Free | ✅ Built | P0 |
+| IGST inter-state calculation | Core | Free | ✅ Built | P0 |
+| UPI QR code on invoice PDF | Core | Free | ✅ Built | P0 |
+| Invoice PDF generation | Core | Free | ✅ Built | P0 |
+| Multi-turn voice drafts (Redis) | Core | Free | ✅ Built | P0 |
+| TTS voice response | Core | Free | ✅ Built | P0 |
+| Single-screen classic billing UI | Core | Free | ✅ Built (S9-05) | P0 |
+| UPDATE_STOCK voice intent | Core | Free | ⚠️ Handler exists; voice switch not wired (3h) | P0 |
+| Invoice PDF auto-WhatsApp on confirm | Core | Free | ❌ NOT built (4h) | P0 |
+| Barcode scan (web, EAN-13/QR, ZXing) | Add-On | Business+ | ✅ Built | P1 |
+| GSTR-1 export (PDF/CSV/email) | Add-On | Starter+ | ✅ Built | P1 |
+| P&L date-range report | Add-On | Business+ | ✅ Built | P1 |
+| Balance sheet page | Add-On | Starter+ | ✅ Built | P1 |
+| Email delivery of invoices/reminders | Add-On | Starter+ | ✅ Built | P1 |
+| Unlimited voice commands | Add-On | Starter+ | ✅ Built | P1 |
+| 9-aggregator UPI webhooks (Razorpay→BharatPe) | Add-On | Starter+ | ✅ Built | P1 |
+| Payment Sound Box (Paytm-style TTS) | Add-On | Starter+ | ✅ Built | P1 |
+| Customer portal (HMAC token, no auth) | Add-On | Starter+ | ✅ Built | P1 |
+| OCR purchase bill ingestion | Add-On | Business+ | ⚠️ Partially built (9-field draft; supplier cost pending) | P1 |
+| Batch/expiry tracking | Add-On | Business+ | ⚠️ Backend built; frontend batch-entry S10-05 | P1 |
+| Multi-user + RBAC (5 roles, 22 permissions) | Add-On | Business+ | ✅ Built | P1 |
+| Customer credit limits | Add-On | Business+ | ✅ Built | P1 |
+| Feature flags (FeatureFlag enum + featureGate) | Add-On | All | ✅ Built | P1 |
+| Expenses + Purchases CRUD | Add-On | Starter+ | ✅ Built | P1 |
+| CashBook + DayBook | Add-On | Starter+ | ✅ Built | P1 |
+| True Agent Mode (AI tool-calling) | Add-On | Business+ | ❌ Planned Q3 2026 | P2 |
+| E-invoicing (IRN/QR from GSTN) | Add-On | Enterprise | ❌ Planned Q4 2026 | P2 |
+| E-way bill generation | Add-On | Enterprise | ❌ Planned Q4 2026 | P2 |
+| Multi-branch support | Add-On | Enterprise | ❌ Planned Q4 2026 | P2 |
+| Bank reconciliation | Add-On | Enterprise | ❌ Planned Q4 2026 | P2 |
+| CA partner mode (external accountant access) | Add-On | Enterprise | ❌ Planned Q4 2026 | P2 |
+| API access (webhooks + REST) | Add-On | Enterprise | ❌ Planned Q4 2026 | P2 |
+| WhatsApp chatbot interface | Add-On | Enterprise | ❌ Planned | P2 |
+| Offline mode (PWA + IndexedDB) | Core | All tiers | ❌ Planned Q3 2026 | P0 |
+| Supplier invoice / purchase management | Add-On | Business+ | ⚠️ Partially built (form only) | P1 |
+| Customer portal UPI payment link | Add-On | Starter+ | ❌ Not built | P1 |
+| Loyalty points / rewards | Add-On | Enterprise | ❌ Planned | P2 |
+| Thermal receipt printer | Add-On | Business+ | ❌ Planned | P2 |
+| Tally XML import | Add-On | Enterprise | ❌ Planned | P2 |
+| Mobile ClassicBillingScreen (React Native) | Core | Free | ❌ Not built | P0 |
+| Barcode scan (React Native native camera) | Add-On | Business+ | ❌ Not built (backend ready) | P1 |
 
 ---
 
@@ -586,14 +704,42 @@ Segment B needs reports that Segment A does not: month-over-month revenue compar
 
 ### 6.2 Q1 2026 (Jan-Mar) — Foundation
 
-**Technical (current sprint cycle):**
-- Close S10-01: Item-level discount backend wiring (~3h)
-- Close S10-02: UPDATE_STOCK voice intent (~3h)
-- Close S10-03: Mobile layout — bottom nav, touch targets (~2 days)
-- Close S9-01: WhatsApp auto-send invoice on confirm (~4h)
-- Add Sentry error tracking
-- Load test WebSocket at 100 concurrent sessions
-- Razorpay subscription integration (Starter + Business plans)
+**✅ Delivered (as of March 13, 2026):**
+- ✅ Customer portal — `/pub/:id/:token` HMAC token, no-auth invoice view + PDF download
+- ✅ Payment Sound Box — Paytm-style voice announcement via Web Speech API, WS-triggered
+- ✅ Feature flag system — `FeatureFlag` enum, `TIER_FEATURES`, `featureGate()` middleware, per-tenant JSON column
+- ✅ Balance Sheet page — simplified SME assets/liabilities/equity from live API data
+- ✅ Invoice PATCH (edit) — items, notes, discounts, GST flags on pending invoices
+- ✅ Proforma → Invoice convert — with optional initial payment
+- ✅ Email delivery — auto-sends on confirm; manual resend endpoint; GSTR-1 + P&L email
+- ✅ GSTR-1 export — B2B/B2CL/B2CS/HSN, Indian FY, PDF + CSV + email
+- ✅ P&L report — month-wise, period comparison, PDF + CSV + email
+- ✅ Overdue page — live table, bulk remind, per-row actions
+- ✅ Expiry tracking — batch/expiryDate backend; Expiry page shipped
+- ✅ 9-aggregator UPI webhook — Razorpay, PhonePe, Cashfree, PayU, Paytm, Instamojo, Stripe, EaseBuzz, BharatPe
+- ✅ ClassicBilling single-screen UI — `/billing` route, walk-in 1-tap
+- ✅ UPI QR on invoice PDF
+- ✅ Mixed payment (cash+UPI split) — POST /ledger/mixed-payment + voice intent
+- ✅ Expenses + Purchases CRUD pages
+- ✅ CashBook + DayBook pages
+- ✅ Customer communication preferences (GET/PUT /comm-prefs)
+- ✅ Mobile React Native app — 10 screens wired (Dashboard, Billing, Invoice, Customers, Voice, Overdue)
+- ✅ Repeat last bill — GET /customers/:id/last-order
+- ✅ Credit limit enforcement — 422 on invoice creation when exceeded
+- ✅ 35-intent voice engine (including ADD_DISCOUNT, SET_SUPPLY_TYPE, EXPORT_GSTR1, EXPORT_PNL, RECORD_MIXED_PAYMENT)
+
+**❌ Still Open for Q1 Close:**
+- ❌ S10-01: Item-level discount backend wiring — resolveItemsAndTotals() (~3h)
+- ❌ S10-02: UPDATE_STOCK voice intent wiring — LLM prompt + engine switch (~3h)
+- ❌ S10-03: Mobile layout — bottom nav at ≤768px, touch targets ≥44px (~2 days)
+- ❌ S9-01: WhatsApp auto-send invoice PDF on confirm (~4h)
+- ❌ Add Sentry error tracking (~1h)
+- ❌ Load test WebSocket at 100 concurrent sessions
+- ❌ Razorpay subscription integration (Starter + Business plans) (~2 days)
+- ❌ Fix IDOR: getCustomerById/getInvoiceById missing tenantId filter (SHIP BLOCKER)
+- ❌ Fix InvoiceCounter tenantId isolation (SHIP BLOCKER)
+- ❌ Verify MinIO bucket is not world-readable (SHIP BLOCKER)
+- ❌ Verify WebSocket requires JWT on connect (SHIP BLOCKER)
 
 **Team:** 1 backend engineer, 1 frontend engineer, 1 PM/founder
 
@@ -688,58 +834,56 @@ Path to ₹30L ARR (₹2.5Cr) requires ~3,000 users at blended ₹830 ARPU — a
 
 ## 7. Critical P0 Gaps — Must Build Before Launch
 
+> **Status legend:** ✅ BUILT | ⚠️ PARTIAL | ❌ NOT BUILT | 🚨 SECURITY BLOCKER
+
 ### Gap 1 — Item-Level Discount (Backend Wiring)
 
-**User Story:** As Suresh the kirana owner, when I sell soap at 10% off but other items at full price, I want to say "soap pe 10% discount do" and have only that line item discounted in the invoice and PDF.
+**Status: ⚠️ PARTIAL — March 2026**
+Bill-level discount (voice + form) is fully built. `InvoiceItemInput` has `lineDiscountPercent?: number`. The UI column exists in InvoiceCreation.tsx. The `lineDiscountPercent` is correctly exposed in the portal API. However, `resolveItemsAndTotals()` in invoice.service.ts does not yet apply per-line discounts to the effective price calculation before GST.
 
-**Acceptance Criteria:**
-- `InvoiceItemInput` type includes `lineDiscountPercent?: number`
-- `resolveItemsAndTotals()` applies per-line discount to effective price before GST calculation
-- Voice `ADD_DISCOUNT` with a `product` entity routes to per-line, not bill-level
-- Invoice PDF shows strikethrough original price and discounted price per line
-- Total reflects per-item discounts + bill-level discount independently
-
-**Estimated Complexity:** 3-4 hours. The UI column already exists. 4 files to change (documented in S10-01).
+**Remaining work:** 3 hours. Update `resolveItemsAndTotals()` to apply `lineDiscountPercent` before computing line subtotal. Wire the form submit to pass `lineDiscountPercent` through.
 
 **Segment Blocked:** Both. B2B wholesale requires item-level trade discounts for compliance. Kirana needs it for promotional pricing on specific items.
 
 ---
 
-### Gap 2 — B2B Invoice with Buyer GSTIN + IGST (Status: Built)
+### Gap 2 — B2B Invoice with Buyer GSTIN + IGST
 
-This gap is closed. B2B invoice with buyer GSTIN capture, auto-switch between CGST+SGST (intra-state) and IGST (inter-state) is built in voice + form modes. GSTR-1 B2B list export confirmed working.
+**Status: ✅ BUILT — March 2026**
+This gap is closed. B2B invoice with buyer GSTIN capture, auto-switch between CGST+SGST (intra-state) and IGST (inter-state) is built in voice + form modes. GSTR-1 B2B list export confirmed working. Confirmed by code audit March 13, 2026: `POST /api/v1/invoices` accepts `buyerGstin`, `supplyType`, `placeOfSupply`.
 
-**Remaining work:** GSTIN format validation (15-char format check + state code extraction for intra/inter state determination) should be verified in production with real GSTINs.
+**Remaining work:** GSTIN checksum validation (15-char format + state code extraction) — 2h. Backend accepts any 15-char string; no validation.
 
 ---
 
-### Gap 3 — Partial Payment at Invoice Creation Time (Status: Built)
+### Gap 3 — Partial Payment at Invoice Creation Time
 
-This gap is closed. "Ramesh ne 500 diye, baki kal" creates the invoice, records the ₹500 payment, marks status as `partial`, and adds the balance to the customer's udhaar. Confirmed in Sprint S8.
+**Status: ✅ BUILT — March 2026**
+This gap is closed. The `POST /api/v1/invoices` schema includes `initialPayment: { amount, method }`.
 
 ---
 
 ### Gap 4 — Mobile-Responsive / ClassicBillingScreen
 
-**User Story:** As Suresh, when I'm serving customers at the counter, I need to create invoices on my ₹8,000 Android phone in one hand while the other hand is packing items.
+**Status: ⚠️ PARTIAL — March 2026**
+ClassicBilling page (`/billing`) is built on web (S9-05). `BottomNav.tsx` component exists. Mobile breakpoints and touch-target enforcement are in progress (S10-03). React Native ClassicBillingScreen not yet built.
 
 **Acceptance Criteria:**
-- All primary flows (create invoice, record payment, view customers) work on 375px screen without horizontal scroll
+- All primary flows work on 375px screen without horizontal scroll
 - Bottom navigation bar replaces side drawer on screens ≤ 768px
 - Touch targets minimum 44×44px on all interactive elements
-- ClassicBilling screen functional and default-routed on mobile
 - Font sizes minimum 16px throughout
-- No modal/dialog wider than viewport
 
-**Estimated Complexity:** 2 days (S10-03, ~40 CSS/component changes, no backend work).
+**Estimated Complexity:** 2 days (S10-03) for web layout + 3 days for RN ClassicBillingScreen.
 
-**Segment Blocked:** Segment A entirely. Kirana owners use mobile. A desktop-first app on a kirana counter is a non-starter.
+**Segment Blocked:** Segment A entirely. Kirana owners use mobile.
 
 ---
 
-### Gap 5 — Walk-In Billing UX Optimization (Status: Mostly Done)
+### Gap 5 — Walk-In Billing UX Optimization
 
-Walk-in 1-tap button is built (S9-02). ClassicBilling page is built (S9-05). The remaining friction:
+**Status: ⚠️ PARTIAL — March 2026**
+Walk-in 1-tap button is built (S9-02). ClassicBilling page is built (S9-05). QuickActions "Quick Sale" button pre-selects walk-in customer. The remaining friction:
 - Walking from the app's main screen to ClassicBilling still requires navigation
 - On mobile, ClassicBilling should be accessible via a home screen shortcut (PWA manifest shortcut)
 
@@ -753,6 +897,9 @@ Walk-in 1-tap button is built (S9-02). ClassicBilling page is built (S9-05). The
 ---
 
 ### Gap 6 — WhatsApp Auto-Send Invoice PDF on Confirm
+
+**Status: ❌ NOT BUILT — March 2026**
+Email auto-sends on invoice confirm (S9-01 shipped email half). WhatsApp job is not queued from `confirmInvoice()`. No per-tenant `autoWhatsapp` toggle in Settings. WhatsApp Cloud API is integrated for reminders; the invoice dispatch path is not connected.
 
 **User Story:** As Suresh, when I confirm an invoice via voice, I want the customer's WhatsApp to receive the PDF automatically — I should not need to press anything.
 
@@ -789,11 +936,50 @@ Walk-in 1-tap button is built (S9-02). ClassicBilling page is built (S9-05). The
 
 ### Gap 8 — Barcode Scan on Mobile (Status: Built on Web)
 
-Barcode scanning is built for the web using ZXing library (Sprint S8). On React Native, this should use `react-native-vision-camera` with the `@mgcrea/vision-camera-barcode-scanner` plugin for native performance. The backend API (`GET /api/v1/products/barcode/:barcode`) already exists.
+**Status: ⚙️ BACKEND ONLY**
+Barcode scanning is built for the web using ZXing library (Sprint S8). On React Native, this should use `react-native-vision-camera`. The backend API (`GET /api/v1/products/barcode/:barcode`) already exists.
 
-**Estimated Complexity for RN:** 1 day (camera permission + scan → API call already done on web, same backend).
+**Estimated Complexity for RN:** 1 day.
 
-**Segment Blocked:** Both. Fast product lookup during billing is the second-biggest counter speed bottleneck after customer lookup.
+---
+
+### Gap 9 — IDOR in getCustomerById / getInvoiceById
+
+**Status: 🚨 SECURITY BLOCKER — Must fix before first paid customer**
+
+`getCustomerById()` and `getInvoiceById()` in the module services perform `prisma.X.findUnique({ where: { id } })` without filtering by `tenantId`. Any tenant-authenticated user can fetch another tenant's customer or invoice by their UUID.
+
+**Fix:** Add `tenantId: tenantContext.get().tenantId` to the `where` clause. If the record belongs to a different tenant, return `null` (routes convert to 404).
+
+---
+
+### Gap 10 — InvoiceCounter Missing tenantId Isolation
+
+**Status: 🚨 SECURITY BLOCKER — Must fix before first paid customer**
+
+`generateInvoiceNo()` uses `tx.$queryRaw` against the `InvoiceCounter` table. If this table does not partition by `tenantId`, two tenants in the same Indian financial year receive the same invoice numbers — a GST audit failure and data integrity violation.
+
+**Fix:** Verify `InvoiceCounter` has a `(tenantId, fiscalYear)` unique constraint. Add via migration if missing.
+
+---
+
+### Gap 11 — MinIO World-Readable Bucket
+
+**Status: 🚨 SECURITY BLOCKER — Must fix before first paid customer**
+
+If the MinIO bucket was provisioned with an anonymous read policy (common in development), invoice PDFs are accessible to anyone who knows the object key. Invoice PDFs contain customer PII and financial data.
+
+**Fix:** Remove anonymous read access. All PDF access already routes through `minioClient.getPresignedUrl()` (portal) or email (invoice delivery) — no direct public URL is required.
+
+---
+
+### Gap 12 — WebSocket Unauthenticated Voice Commands
+
+**Status: 🚨 SECURITY BLOCKER — Must fix before first paid customer**
+
+The `/ws` WebSocket endpoint may accept connections without JWT verification. An unauthenticated client could send fabricated intent payloads to execute business operations on any tenant's data.
+
+**Fix:** Verify JWT on WebSocket upgrade (token in `?token=` query param). Close with code 4001 if missing or invalid. All 6 existing unit test suites still pass after this change.
 
 ---
 

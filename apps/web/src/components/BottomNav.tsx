@@ -20,8 +20,9 @@ import GlobalSearch from "@/components/GlobalSearch";
 // ── More drawer items ─────────────────────────────────────────────────────────
 const MORE_ITEMS = [
   { emoji: "🧾", label: "New Bill", path: "__invoice__", icon: FileText },
+  { emoji: "🎤", label: "Voice", path: "__voice__", icon: Mic },
   { emoji: "📊", label: "Reports", path: "/reports", icon: BarChart3 },
-  { emoji: "📦", label: "Inventory", path: "/inventory", icon: Package },
+  { emoji: "📦", label: "Items", path: "/inventory", icon: Package },
   { emoji: "⏰", label: "Expiry", path: "/expiry", icon: Package },
   { emoji: "📒", label: "Day Book", path: "/daybook", icon: BookOpen },
   { emoji: "💵", label: "Cash Book", path: "/cashbook", icon: BookOpen },
@@ -50,7 +51,7 @@ const MORE_ITEMS = [
 const NAV_ITEMS = [
   { label: "Home", icon: Home, path: "/" },
   { label: "Customers", icon: Users, path: "/customers" },
-  { label: "__FAB__", icon: Mic, path: "" },
+  { label: "Items", icon: Package, path: "/inventory" },
   { label: "Invoices", icon: FileText, path: "/invoices" },
   { label: "More", icon: MoreHorizontal, path: "__more__" },
 ];
@@ -79,26 +80,6 @@ const BottomNav = () => {
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-sm md:hidden">
         <div className="grid grid-cols-5">
           {NAV_ITEMS.map((item) => {
-            // Centre FAB — new invoice
-            if (item.label === "__FAB__") {
-              return (
-                <button
-                  key="fab"
-                  onClick={() =>
-                    window.dispatchEvent(new CustomEvent("shortcut:voice"))
-                  }
-                  className="flex flex-col items-center justify-center py-1"
-                >
-                  <div className="flex h-14 w-14 -mt-6 items-center justify-center rounded-full bg-primary shadow-xl ring-4 ring-background">
-                    <Mic className="h-7 w-7 text-primary-foreground" />
-                  </div>
-                  <span className="mt-0.5 text-[10px] text-primary font-bold">
-                    बोलो
-                  </span>
-                </button>
-              );
-            }
-
             // More → opens drawer
             if (item.path === "__more__") {
               return (
@@ -120,7 +101,9 @@ const BottomNav = () => {
             const isActive =
               location.pathname === item.path ||
               (item.path === "/customers" &&
-                location.pathname.startsWith("/customers"));
+                location.pathname.startsWith("/customers")) ||
+              (item.path === "/inventory" &&
+                location.pathname.startsWith("/inventory"));
             return (
               <button
                 key={item.label}
@@ -166,6 +149,8 @@ const BottomNav = () => {
                     setMoreOpen(false);
                     if (item.path === "__invoice__") {
                       setInvoiceOpen(true);
+                    } else if (item.path === "__voice__") {
+                      window.dispatchEvent(new CustomEvent("shortcut:voice"));
                     } else {
                       navigate(item.path);
                     }
