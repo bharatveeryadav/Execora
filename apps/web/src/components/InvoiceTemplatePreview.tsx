@@ -84,6 +84,8 @@ export interface PreviewData {
   discountAmt: number;
   cgst: number;
   sgst: number;
+  /** IGST for inter-state supply (when set, CGST+SGST are 0) */
+  igst?: number;
   total: number;
   amountInWords: string;
   paymentMode?: string;
@@ -521,6 +523,7 @@ function TotalsBlock({
           color="#16a34a"
         />
       )}
+      {d.igst != null && d.igst > 0 && <Row label="IGST" value={inr(d.igst)} />}
       {d.cgst > 0 && <Row label="CGST" value={inr(d.cgst)} />}
       {d.sgst > 0 && <Row label="SGST" value={inr(d.sgst)} />}
       <div
@@ -561,6 +564,7 @@ function TotalsBlockThermal({ d }: { d: PreviewData }) {
       {d.discountAmt > 0 && (
         <ThermalRow label="Discount" value={`-${inr(d.discountAmt)}`} />
       )}
+      {d.igst != null && d.igst > 0 && <ThermalRow label="IGST" value={inr(d.igst)} />}
       {d.cgst > 0 && <ThermalRow label="CGST" value={inr(d.cgst)} />}
       {d.sgst > 0 && <ThermalRow label="SGST" value={inr(d.sgst)} />}
       <div

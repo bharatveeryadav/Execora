@@ -12,6 +12,7 @@ import {
   ShoppingCart,
   X,
   Mic,
+  ClipboardList,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import InvoiceCreation from "@/components/InvoiceCreation";
@@ -20,6 +21,7 @@ import GlobalSearch from "@/components/GlobalSearch";
 // More drawer items
 const MORE_ITEMS = [
   { emoji: "🧾", label: "New Bill", path: "__invoice__", icon: FileText },
+  { emoji: "📋", label: "Classic Bill", path: "/billing", icon: ClipboardList },
   { emoji: "🎤", label: "Voice", path: "__voice__", icon: Mic },
   { emoji: "📊", label: "Reports", path: "/reports", icon: BarChart3 },
   { emoji: "📦", label: "Items", path: "/inventory", icon: Package },
@@ -79,8 +81,8 @@ const BottomNav = () => {
 
   return (
     <>
-      {/* Bottom navigation bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-sm md:hidden">
+      {/* Bottom navigation bar — min 44px touch targets, safe-area for notched devices */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-sm md:hidden pb-safe">
         <div className="grid grid-cols-5">
           {NAV_ITEMS.map((item) => {
             if (item.path === "__more__") {
@@ -88,13 +90,13 @@ const BottomNav = () => {
                 <button
                   key="more"
                   onClick={() => setMoreOpen((v) => !v)}
-                  className={`flex flex-col items-center gap-0.5 py-2 text-[10px] transition-colors ${
+                  className={`flex flex-col items-center justify-center gap-0.5 min-h-[52px] py-3 text-[11px] transition-colors touch-manipulation ${
                     moreOpen
                       ? "text-primary font-semibold"
                       : "text-muted-foreground"
                   }`}
                 >
-                  <MoreHorizontal className="h-5 w-5" />
+                  <MoreHorizontal className="h-6 w-6 shrink-0" />
                   <span>More</span>
                 </button>
               );
@@ -105,18 +107,20 @@ const BottomNav = () => {
               (item.path === "/customers" &&
                 location.pathname.startsWith("/customers")) ||
               (item.path === "/inventory" &&
-                location.pathname.startsWith("/inventory"));
+                location.pathname.startsWith("/inventory")) ||
+              (item.path === "/invoices" &&
+                location.pathname.startsWith("/invoices"));
             return (
               <button
                 key={item.label}
                 onClick={() => navigate(item.path)}
-                className={`flex flex-col items-center gap-0.5 py-2 text-[10px] transition-colors ${
+                className={`flex flex-col items-center justify-center gap-0.5 min-h-[52px] py-3 text-[11px] transition-colors touch-manipulation ${
                   isActive
                     ? "text-primary font-semibold"
                     : "text-muted-foreground"
                 }`}
               >
-                <item.icon className="h-5 w-5" />
+                <item.icon className="h-6 w-6 shrink-0" />
                 <span>{item.label}</span>
               </button>
             );
@@ -131,7 +135,7 @@ const BottomNav = () => {
             className="fixed inset-0 z-40 bg-black/40 md:hidden"
             onClick={() => setMoreOpen(false)}
           />
-          <div className="fixed bottom-[56px] left-0 right-0 z-50 rounded-t-2xl border-t bg-card p-4 shadow-2xl md:hidden animate-in slide-in-from-bottom-4 duration-200">
+          <div className="fixed bottom-[60px] left-0 right-0 z-50 rounded-t-2xl border-t bg-card p-4 shadow-2xl md:hidden animate-in slide-in-from-bottom-4 duration-200 pb-safe max-h-[70vh] overflow-y-auto">
             <div className="mb-3 flex items-center justify-between">
               <p className="text-sm font-semibold">More Features</p>
               <button
@@ -155,7 +159,7 @@ const BottomNav = () => {
                       navigate(item.path);
                     }
                   }}
-                  className={`flex flex-col items-center gap-2 rounded-xl border bg-muted/30 py-4 text-center transition-colors hover:bg-muted active:scale-95 ${
+                  className={`flex flex-col items-center justify-center gap-2 rounded-xl border bg-muted/30 min-h-[72px] py-4 text-center transition-colors hover:bg-muted active:scale-95 touch-manipulation ${
                     location.pathname === item.path
                       ? "border-primary/40 bg-primary/5"
                       : "border-border"

@@ -84,7 +84,7 @@ const Invoices = () => {
       {/* Header */}
       <header className="sticky top-0 z-20 border-b bg-card">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="min-h-10 min-w-10 touch-manipulation" aria-label="Go back">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
@@ -181,7 +181,7 @@ const Invoices = () => {
                 return (
                   <div
                     key={inv.id}
-                    className="group flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/30"
+                    className="group flex cursor-pointer items-center gap-3 px-4 py-4 min-h-[60px] transition-colors hover:bg-muted/30 active:bg-muted/50 touch-manipulation"
                     onClick={() => navigate(`/invoices/${inv.id}`)}
                   >
                     {/* Invoice icon */}

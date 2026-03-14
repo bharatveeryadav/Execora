@@ -101,6 +101,29 @@
       system-ui,
       -apple-system,
       sans-serif;
+    overflow-x: hidden;
+  }
+  html {
+    overflow-x: hidden;
+  }
+}
+
+/* Safe area for notched devices (iPhone X+, etc.) */
+@layer utilities {
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+  .pt-safe {
+    padding-top: max(0px, env(safe-area-inset-top));
+  }
+  /* Min 44×44px touch target (WCAG 2.5.5) */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  /* Disable double-tap zoom on buttons for faster tap response */
+  .touch-manipulation {
+    touch-action: manipulation;
   }
 }
 

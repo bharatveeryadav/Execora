@@ -53,6 +53,7 @@ import {
   type TemplateId,
   type PreviewData,
 } from "@/components/InvoiceTemplatePreview";
+import BottomNav from "@/components/BottomNav";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -70,6 +71,18 @@ interface BillingItem {
 }
 
 type PaymentMode = "cash" | "upi" | "card" | "credit";
+type SupplyType = "INTRASTATE" | "INTERSTATE";
+
+/** GSTIN format: 2-digit state + 10-char PAN + entity + Z + checksum (15 chars) */
+const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+function isValidGstin(g: string): boolean {
+  return g.length === 15 && GSTIN_REGEX.test(g.toUpperCase());
+}
+/** Extract state code (01-38) from GSTIN first 2 chars */
+function stateCodeFromGstin(gstin: string): string {
+  if (gstin.length >= 2) return gstin.slice(0, 2);
+  return "";
+}
 
 interface PaymentSplit {
   id: number;
@@ -328,6 +341,8 @@ export default function ClassicBilling() {
   const [splits, setSplits] = useState<PaymentSplit[]>([newSplit("cash")]);
   const [notes, setNotes] = useState("");
   const [buyerGstin, setBuyerGstin] = useState("");
+  const [supplyType, setSupplyType] = useState<SupplyType>("INTRASTATE");
+  const [placeOfSupply, setPlaceOfSupply] = useState("");
   // ── New features ─────────────────────────────────────────────────────────────
   const [dueDate, setDueDate] = useState("");
   const [roundOffEnabled, setRoundOffEnabled] = useState(false);
@@ -387,28 +402,43 @@ export default function ClassicBilling() {
 
   const taxableAmt = Math.round((subtotal - discountAmt) * 100) / 100;
 
-  // Group items by GST rate → compute CGST/SGST per slab (GST Rule 46 compliant)
+  // Group items by GST rate → compute CGST/SGST (intra) or IGST (inter) per slab (GST Rule 46 compliant)
   const gstGroups = useMemo(() => {
     if (!withGst) return [];
     const discountFactor = subtotal > 0 ? discountAmt / subtotal : 0;
-    const map = new Map<number, { taxable: number; cgst: number; sgst: number }>();
+    const isInterstate = supplyType === "INTERSTATE";
+    const map = new Map<
+      number,
+      { taxable: number; cgst: number; sgst: number; igst: number }
+    >();
     for (const it of items) {
       if (!it.name.trim()) continue;
       const rate = it.gstRate ?? 0;
       const taxable = Math.round(it.amount * (1 - discountFactor) * 100) / 100;
-      const slabCgst = Math.round(taxable * (rate / 200) * 100) / 100;
+      const slabCgst = isInterstate
+        ? 0
+        : Math.round(taxable * (rate / 200) * 100) / 100;
       const slabSgst = slabCgst;
-      const existing = map.get(rate) ?? { taxable: 0, cgst: 0, sgst: 0 };
+      const slabIgst = isInterstate
+        ? Math.round(taxable * (rate / 100) * 100) / 100
+        : 0;
+      const existing = map.get(rate) ?? {
+        taxable: 0,
+        cgst: 0,
+        sgst: 0,
+        igst: 0,
+      };
       map.set(rate, {
         taxable: Math.round((existing.taxable + taxable) * 100) / 100,
         cgst: Math.round((existing.cgst + slabCgst) * 100) / 100,
         sgst: Math.round((existing.sgst + slabSgst) * 100) / 100,
+        igst: Math.round((existing.igst + slabIgst) * 100) / 100,
       });
     }
     return Array.from(map.entries())
       .sort(([a], [b]) => a - b)
       .map(([rate, vals]) => ({ rate, ...vals }));
-  }, [withGst, items, discountAmt, subtotal]);
+  }, [withGst, supplyType, items, discountAmt, subtotal]);
 
   // Composition scheme: 1% flat on taxable amount (no CGST/SGST breakdown)
   const compositionTax = compositionScheme && withGst
@@ -417,10 +447,17 @@ export default function ClassicBilling() {
   const totalGstAmt = withGst
     ? compositionScheme
       ? compositionTax
-      : gstGroups.reduce((s, g) => s + g.cgst + g.sgst, 0)
+      : gstGroups.reduce((s, g) => s + g.cgst + g.sgst + g.igst, 0)
     : 0;
-  // Legacy aliases used in previewData / submit
-  const cgst = !compositionScheme && withGst ? Math.round((totalGstAmt / 2) * 100) / 100 : 0;
+  const isInterstate =
+    supplyType === "INTERSTATE" && withGst && !compositionScheme;
+  const igst = isInterstate
+    ? gstGroups.reduce((s, g) => s + g.igst, 0)
+    : 0;
+  const cgst =
+    !compositionScheme && withGst && !isInterstate
+      ? Math.round((totalGstAmt / 2) * 100) / 100
+      : 0;
   const sgst = cgst;
   const grandTotal = Math.round((taxableAmt + totalGstAmt) * 100) / 100;
   const roundOff = roundOffEnabled ? Math.round(grandTotal) - grandTotal : 0;
@@ -452,6 +489,7 @@ export default function ClassicBilling() {
     discountAmt,
     cgst,
     sgst,
+    ...(igst > 0 && { igst }),
     total: grandTotal,
     amountInWords: grandTotalWords,
     notes: notes || undefined,
@@ -513,6 +551,14 @@ export default function ClassicBilling() {
         })),
         notes: vars.notesWithDue || undefined,
         withGst: withGst || undefined,
+        supplyType:
+          withGst && supplyType !== "INTRASTATE" ? supplyType : undefined,
+        placeOfSupply:
+          withGst && supplyType === "INTERSTATE" && placeOfSupply.trim()
+            ? placeOfSupply.trim()
+            : undefined,
+        buyerGstin:
+          withGst && buyerGstin.trim() ? buyerGstin.trim() : undefined,
         discountPercent:
           parseFloat(discountPct) > 0 ? parseFloat(discountPct) : undefined,
         discountAmount:
@@ -627,6 +673,8 @@ export default function ClassicBilling() {
           splitEnabled,
           notes,
           buyerGstin,
+          supplyType,
+          placeOfSupply,
           dueDate,
           savedAt: Date.now(),
         }),
@@ -645,6 +693,8 @@ export default function ClassicBilling() {
     splitEnabled,
     notes,
     buyerGstin,
+    supplyType,
+    placeOfSupply,
     dueDate,
     validItemCount,
   ]);
@@ -675,6 +725,8 @@ export default function ClassicBilling() {
         setSplitEnabled(Boolean(d.splitEnabled));
       if (d.notes) setNotes(String(d.notes));
       if (d.buyerGstin) setBuyerGstin(String(d.buyerGstin));
+      if (d.supplyType) setSupplyType(d.supplyType as SupplyType);
+      if (d.placeOfSupply) setPlaceOfSupply(String(d.placeOfSupply));
       if (d.dueDate) setDueDate(String(d.dueDate));
       if (d.customerName) {
         setSelectedCustomer({
@@ -697,13 +749,14 @@ export default function ClassicBilling() {
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col min-h-screen bg-background">
+    <div className="flex flex-col min-h-screen bg-background pb-24 md:pb-0">
       {/* ── Header ──────────────────────────────────────────────────── */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b px-4 py-3">
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
-            className="rounded-lg p-1.5 hover:bg-muted transition-colors"
+            className="touch-target flex items-center justify-center rounded-lg p-2 -m-1 hover:bg-muted transition-colors"
+            aria-label="Go back"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
@@ -720,7 +773,7 @@ export default function ClassicBilling() {
           <Button
             variant="outline"
             size="sm"
-            className="gap-1.5 text-xs h-8"
+            className="gap-1.5 text-xs min-h-10 px-3 touch-manipulation"
             disabled={validItemCount === 0}
             onClick={() => setShowPreview(true)}
           >
@@ -730,7 +783,7 @@ export default function ClassicBilling() {
         </div>
       </div>
 
-      <div className="flex-1 px-4 py-4 space-y-5 pb-36">
+      <div className="flex-1 px-4 py-4 space-y-5 pb-32 md:pb-8">
         {/* ── Draft restored banner ──────────────────────────────────── */}
         {draftBanner && (
           <div className="flex items-center justify-between rounded-xl bg-warning/10 border border-warning/30 px-3 py-2 text-xs">
@@ -752,6 +805,8 @@ export default function ClassicBilling() {
                 setSplits([newSplit("cash")]);
                 setNotes("");
                 setBuyerGstin("");
+                setSupplyType("INTRASTATE");
+                setPlaceOfSupply("");
                 setDueDate("");
                 localStorage.removeItem(DRAFT_KEY);
               }}
@@ -999,21 +1054,67 @@ export default function ClassicBilling() {
           </div>
         </div>
 
-        {/* ── Buyer GSTIN ───────────────────────────────────────────── */}
+        {/* ── Buyer GSTIN + Supply Type ───────────────────────────────── */}
         {withGst && (
-          <div className="space-y-1">
-            <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-              Buyer GSTIN (optional)
-            </label>
-            <Input
-              value={buyerGstin}
-              onChange={(e) => setBuyerGstin(e.target.value.toUpperCase())}
-              placeholder="e.g. 29ABCDE1234F1Z5"
-              maxLength={15}
-              autoCapitalize="characters"
-              inputMode="text"
-              className="font-mono h-11 text-base"
-            />
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                Buyer GSTIN (B2B — for ITC)
+              </label>
+              <Input
+                value={buyerGstin}
+                onChange={(e) => {
+                  const v = e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, "");
+                  setBuyerGstin(v);
+                  if (v.length >= 2 && supplyType === "INTERSTATE" && !placeOfSupply) {
+                    setPlaceOfSupply(stateCodeFromGstin(v));
+                  }
+                }}
+                placeholder="e.g. 29ABCDE1234F1Z5"
+                maxLength={15}
+                autoCapitalize="characters"
+                inputMode="text"
+                className={`font-mono h-11 text-base ${buyerGstin.length === 15 && !isValidGstin(buyerGstin) ? "border-destructive" : ""}`}
+              />
+              {buyerGstin.length === 15 && !isValidGstin(buyerGstin) && (
+                <p className="text-[10px] text-destructive">
+                  Invalid GSTIN format (15 chars: 2 state + 10 PAN + entity + Z + checksum)
+                </p>
+              )}
+            </div>
+            <div className="flex items-center justify-between rounded-xl border px-4 py-3">
+              <div>
+                <p className="text-sm font-semibold">Inter-state supply</p>
+                <p className="text-[11px] text-muted-foreground">
+                  IGST (vs CGST+SGST for same state)
+                </p>
+              </div>
+              <Switch
+                checked={supplyType === "INTERSTATE"}
+                onCheckedChange={(v) => {
+                  setSupplyType(v ? "INTERSTATE" : "INTRASTATE");
+                  if (v && buyerGstin.length >= 2 && !placeOfSupply) {
+                    setPlaceOfSupply(stateCodeFromGstin(buyerGstin));
+                  }
+                }}
+              />
+            </div>
+            {supplyType === "INTERSTATE" && (
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                  Place of Supply (state code)
+                </label>
+                <Input
+                  value={placeOfSupply}
+                  onChange={(e) =>
+                    setPlaceOfSupply(e.target.value.replace(/\D/g, "").slice(0, 2))
+                  }
+                  placeholder="e.g. 29 (Karnataka)"
+                  maxLength={2}
+                  className="font-mono h-11 text-base w-20"
+                />
+              </div>
+            )}
           </div>
         )}
 
@@ -1047,6 +1148,11 @@ export default function ClassicBilling() {
                           label={`GST Exempt (0%)`}
                           value={`₹0.00`}
                           valueClass="text-muted-foreground"
+                        />
+                      ) : supplyType === "INTERSTATE" ? (
+                        <TotalRow
+                          label={`IGST (${g.rate}%) on ₹${inr(g.taxable)}`}
+                          value={`₹${inr(g.igst)}`}
                         />
                       ) : (
                         <>
@@ -1319,10 +1425,10 @@ export default function ClassicBilling() {
         </div>
       </div>
 
-      {/* ── Sticky Footer CTA ──────────────────────────────────────── */}
-      <div className="fixed bottom-0 left-0 right-0 border-t bg-background/95 backdrop-blur px-4 py-3">
+      {/* ── Sticky Footer CTA (above BottomNav on mobile) ────────────── */}
+      <div className="fixed left-0 right-0 z-20 border-t bg-background/95 backdrop-blur px-4 py-3 bottom-[56px] md:bottom-0 pb-safe">
         <Button
-          className="w-full h-12 text-base font-bold gap-2"
+          className="w-full min-h-12 h-12 text-base font-bold gap-2 touch-manipulation"
           disabled={validItemCount === 0 || isSubmitting}
           onClick={() => void handleSubmit()}
         >
@@ -1458,6 +1564,8 @@ export default function ClassicBilling() {
                     setSplits([newSplit("cash")]);
                     setNotes("");
                     setBuyerGstin("");
+                    setSupplyType("INTRASTATE");
+                    setPlaceOfSupply("");
                     setDueDate("");
                     setRoundOffEnabled(false);
                   }}
@@ -1469,6 +1577,8 @@ export default function ClassicBilling() {
           </DialogContent>
         </Dialog>
       )}
+
+      <BottomNav />
 
       {/* ── New Customer Dialog ────────────────────────────────────── */}
       <Dialog open={showNewCustDialog} onOpenChange={setShowNewCustDialog}>
@@ -1752,7 +1862,8 @@ function ItemRow({
             </span>
             <button
               onClick={onRemove}
-              className="h-9 w-9 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+              className="min-h-10 min-w-10 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors touch-manipulation"
+              aria-label="Remove item"
             >
               <Trash2 className="h-4 w-4" />
             </button>
@@ -1842,7 +1953,8 @@ function ItemRow({
         </span>
         <button
           onClick={onRemove}
-          className="flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors h-8"
+          className="flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors min-h-10 min-w-10 touch-manipulation"
+          aria-label="Remove item"
         >
           <Trash2 className="h-4 w-4" />
         </button>

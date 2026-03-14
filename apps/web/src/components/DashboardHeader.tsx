@@ -43,19 +43,19 @@ const DashboardHeader = () => {
 						{isConnected ? 'Live' : 'Offline'}
 					</span>
 					{!isConnected && (
-						<Button variant="ghost" size="icon" onClick={reconnect} title="Reconnect">
+						<Button variant="ghost" size="icon" onClick={reconnect} title="Reconnect" className="min-h-10 min-w-10 touch-manipulation">
 							<WifiOff className="h-4 w-4 text-destructive" />
 						</Button>
 					)}
-					<Button variant="ghost" size="icon" onClick={openSearch} title="Search (Ctrl+K)">
+					<Button variant="ghost" size="icon" onClick={openSearch} title="Search (Ctrl+K)" className="min-h-10 min-w-10 touch-manipulation">
 						<Search className="h-4 w-4" />
 					</Button>
 					<DraftManagerPanel />
 					<NotificationCenter />
-					<Button variant="ghost" size="icon" onClick={toggle} title="Toggle theme">
+					<Button variant="ghost" size="icon" onClick={toggle} title="Toggle theme" className="min-h-10 min-w-10 touch-manipulation">
 						{theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
 					</Button>
-					<Button variant="ghost" size="icon" onClick={() => navigate('/settings')} title="Settings">
+					<Button variant="ghost" size="icon" onClick={() => navigate('/settings')} title="Settings" className="min-h-10 min-w-10 touch-manipulation">
 						<span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
 							{user?.name ? (
 								user.name

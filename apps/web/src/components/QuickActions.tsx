@@ -88,7 +88,7 @@ const QuickActions = () => {
           <button
             key={action.label}
             onClick={action.onClick}
-            className={`flex flex-col items-center gap-1 rounded-xl border py-3 text-center transition-all active:scale-95 ${
+            className={`flex flex-col items-center justify-center gap-1 rounded-xl border min-h-[72px] py-3 text-center transition-all active:scale-95 touch-manipulation ${
               action.primary
                 ? "border-primary bg-primary text-primary-foreground shadow-md"
                 : "border-border bg-card text-foreground hover:bg-muted/60"

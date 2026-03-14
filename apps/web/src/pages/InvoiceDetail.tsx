@@ -54,6 +54,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import BottomNav from "@/components/BottomNav";
+import { Wallet } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -319,12 +321,18 @@ export default function InvoiceDetail() {
   const printUrl = `${(import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "")}/api/v1/invoices/${invoice.id}/pdf`;
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background pb-24 md:pb-6">
       {/* Header */}
       <header className="sticky top-0 z-30 border-b bg-card px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(-1)}
+              className="min-h-10 min-w-10 touch-manipulation"
+              aria-label="Go back"
+            >
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
@@ -352,7 +360,7 @@ export default function InvoiceDetail() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-2xl space-y-4 p-4">
+      <main className={`mx-auto max-w-2xl space-y-4 p-4 ${pending > 0 ? "pb-28 md:pb-6" : ""}`}>
         {/* Amount hero */}
         <Card className="border-none shadow-sm">
           <CardContent className="p-5">
@@ -687,13 +695,31 @@ export default function InvoiceDetail() {
         {invoice.status !== "cancelled" && invoice.status !== "paid" && (
           <Button
             variant="ghost"
-            className="w-full text-destructive hover:bg-destructive/10"
+            className="w-full min-h-11 text-destructive hover:bg-destructive/10 touch-manipulation"
             onClick={() => setConfirmCancel(true)}
           >
             <XCircle className="mr-2 h-4 w-4" /> Cancel Invoice
           </Button>
         )}
       </main>
+
+      {/* Sticky Record Payment CTA — above BottomNav on mobile, at bottom on desktop */}
+      {pending > 0 && (
+        <div className="fixed left-0 right-0 z-20 p-3 bottom-[56px] md:bottom-0 bg-background/95 backdrop-blur border-t pb-safe">
+          <Button
+            className="w-full min-h-12 h-12 text-base font-bold gap-2 touch-manipulation"
+            onClick={() =>
+              navigate("/payment", {
+                state: { invoiceId: invoice.id, customerId: invoice.customerId },
+              })
+            }
+          >
+            <Wallet className="h-5 w-5" /> Record Payment — {formatCurrency(pending)}
+          </Button>
+        </div>
+      )}
+
+      <BottomNav />
 
       {/* Cancel confirmation */}
       <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
