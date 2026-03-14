@@ -904,7 +904,7 @@ export default function ClassicBilling() {
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b px-4 py-3">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate("/")}
             className="touch-target flex items-center justify-center rounded-lg p-2 -m-1 hover:bg-muted transition-colors"
             aria-label="Go back"
           >
