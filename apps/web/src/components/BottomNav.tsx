@@ -44,7 +44,7 @@ const NAV_ITEMS = [
   { label: "Home", icon: Home, path: "/" },
   { label: "Customers", icon: Users, path: "/customers" },
   { label: "Items", icon: Package, path: "/inventory" },
-  { label: "Invoices", icon: FileText, path: "/invoices" },
+  { label: "Bills", icon: FileText, path: "/invoices" },
   { label: "More", icon: MoreHorizontal, path: "__more__" },
 ];
 
