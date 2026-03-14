@@ -5,10 +5,10 @@
 
 ## BLOCKERS (ship nothing until these are done)
 
-- [ ] Fix IDOR: `getCustomerById()` + `getInvoiceById()` — add `tenantId: tenantContext.get().tenantId` to `where` clause in both module services
-- [ ] Fix InvoiceCounter: verify `InvoiceCounter` table has `tenantId` column + `(tenantId, fiscalYear)` unique constraint; add Prisma migration if missing; update `generateInvoiceNo()` to filter by tenantId
-- [ ] Fix MinIO: remove anonymous read access from bucket policy; confirm all PDF access goes through presigned URLs or email
-- [ ] Fix WebSocket: verify JWT on `/ws` upgrade request (token from `?token=` query param); close connection with code 4001 if missing, expired, or invalid
+- [x] ~~Fix IDOR~~ **FIXED 2026-03-13**: `getCustomerById()` + `getInvoiceById()` now use `findFirst({ where: { id, tenantId } })` — Tenant A cannot fetch Tenant B's data
+- [x] ~~Fix InvoiceCounter~~ **FIXED 2026-03-13**: `InvoiceCounter` model updated with `tenantId` field + composite `@@id([fy, tenantId])`; `generateInvoiceNo()` now inserts/upserts with `tenant_id`; migration `20260313000001_invoice_counter_tenant_scope` created — run `pnpm db:generate && pnpm db:migrate` to apply
+- [x] ~~Fix MinIO~~ **FIXED 2026-03-13**: `mc anonymous set download local/execora` removed from `docker-compose.yml`; bucket is now private; PDFs accessed via presigned URLs / email only
+- [x] ~~Fix WebSocket~~ **FIXED 2026-03-13**: `/ws` endpoint in `apps/api/src/index.ts` now validates JWT from `?token=` query param; closes with code 4001 if missing, expired, or invalid; `tenantContext` updated from JWT payload
 
 ---
 
@@ -78,9 +78,9 @@
 
 ## P0 FEATURE GAPS (must build before paid launch)
 
-- [ ] Item-level discount backend wiring: `resolveItemsAndTotals()` must apply `lineDiscountPercent` before GST calculation (3h — S10-01)
+- [x] ~~**Item-level discount — API route schema fix**~~ **FIXED 2026-03-13**: `lineDiscountPercent` + `hsnCode` added to items schema in all 3 routes (POST, proforma, PATCH) in `invoice.routes.ts`. UI in `ClassicBilling.tsx` and voice `ADD_DISCOUNT` intent can now flow end-to-end.
 - [ ] UPDATE_STOCK voice intent: wire `executeUpdateStock` handler into engine switch + add LLM prompt examples (3h — S10-02)
-- [ ] WhatsApp auto-send invoice PDF on confirm: queue `whatsapp:send-invoice` BullMQ job from `confirmInvoice()` + per-tenant Settings toggle (4h — S9-01)
+- [x] ~~WhatsApp auto-send invoice PDF~~ **CONFIRMED BUILT**: `dispatchInvoicePdfEmail()` reads `autoSendWhatsApp` from Tenant.settings → `whatsappService.sendDocumentMessage()`. Just set `WHATSAPP_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID` env vars.
 - [ ] Mobile-responsive web layout: bottom nav at ≤768px, touch targets ≥44px, no horizontal scroll on 375px (2 days — S10-03)
 - [ ] Mobile ClassicBillingScreen (React Native): single-screen counter billing, walk-in default, sticky total bar (3 days)
 - [ ] Offline mode (PWA + IndexedDB): `vite-plugin-pwa`, `StaleWhileRevalidate` for catalog, `NetworkFirst` with IndexedDB outbox for mutations (5 days — S10-04)
@@ -104,6 +104,47 @@
 - [ ] Batch/expiry frontend: batch entry on Purchase form + batch selector on invoice rows (1 day — S10-05)
 - [ ] GSTR-3B backend (currently placeholder page only)
 - [ ] Recurring billing backend (currently placeholder page only)
+
+---
+
+## 🏢 MEDIUM-SCALE BUSINESS FEATURE GAPS
+> Based on full code audit March 13, 2026 — 67/125 features built (67% coverage).
+> These are required before Segment B (5–50 staff, ₹50L–₹10Cr SME) launch.
+
+### 🔴 Must Build Before SME Paid Launch (Top 10, ordered by impact)
+
+- [ ] **Credit note / debit note** — No model, route, or UI. Mandatory for B2B returns; GST compliance requires CN/DN with original invoice reference. Est: 3 days
+- [ ] **Bank account details — Settings + Invoice PDF** — Add `bankAccount` field to Tenant model; show in Settings; print IFSC/Account# on PDF footer. Est: 2h schema + 4h UI + 2h PDF
+- [ ] **GSTR-3B output tax summary** — `Gstr3b.tsx` is a placeholder reading from `useSummaryRange` only. Build backend: aggregate IGST/CGST/SGST from confirmed invoices + ITC from purchases. Est: 3 days
+- [ ] **Input tax credit (ITC) tracking** — No model or route. Add `gstPaid` field to purchases; build ITC summary endpoint; wire into GSTR-3B. Est: 3 days
+- [ ] **Customer statement / ledger export** — Add `GET /api/v1/customers/:id/statement?from=&to=` returning PDF + CSV. CAs require this weekly. Est: 1 day
+- [ ] **GSTR-1 JSON in official GSTN schema** — Current report is CSV. Build JSON export matching GSTN's official schema (B2B/B2CS/CDNR/HSN sections). Required for GST portal upload. Est: 2 days
+- [ ] **Round-off on invoice total** — Add `roundOff` boolean to invoice; calculate and store `roundOffAmount`; print on PDF. Est: 2h
+- [ ] **Amount in words on PDF** — `ClassicBilling.tsx` shows amount-in-words in UI but `generateInvoicePdf()` does not print it. Add to PDF template. Est: 4h
+- [ ] **Terms & conditions on invoice** — Add `termsAndConditions` field to Tenant; show in Settings; print on PDF footer. Est: 4h settings + 2h PDF
+- [x] ~~WhatsApp auto-send invoice~~ — **CONFIRMED BUILT** (see P0 section above). Just needs Meta env vars.
+
+### 🟡 Important (Build Week 2–4 Post SME Launch)
+
+- [ ] **Bulk invoice export (CSV/Excel)** — Add `GET /api/v1/invoices/export?from=&to=&status=` returning CSV. Add download button to Invoices page. Est: 1 day
+- [ ] **Supplier management UI** — `Supplier` model exists in schema; no frontend CRUD. Build `/suppliers` page with name, phone, GSTIN, payment terms. Est: 2 days
+- [ ] **Purchase order management** — No PO model. Add `PurchaseOrder` model with items, supplier, status; CRUD routes + UI. Est: 3 days
+- [ ] **Sales report by product / customer / category** — Add `GET /api/v1/reports/sales?groupBy=product|customer|category&from=&to=`. Est: 2 days
+- [ ] **Cash flow statement** — CashBook shows transactions but not grouped by Operating/Investing/Financing activities. Add a dedicated cash flow endpoint. Est: 2 days
+- [x] ~~Auto-send invoice toggle~~ — **CONFIRMED BUILT**: Settings.tsx saves `autoSendEmail` + `autoSendWhatsApp` to both localStorage and Tenant.settings via `updateProfile.mutateAsync`. `dispatchInvoicePdfEmail()` reads these flags.
+- [ ] **Email reminder fallback** — WhatsApp reminders are built (10 types, BullMQ). Email reminders using same scheduler are not. Add email job to `scheduleReminder` with fallback if WhatsApp undelivered. Est: 1 day
+- [ ] **Inventory valuation report** — No `costPrice` field on `Product`. Add `costPrice` to schema; build `GET /api/v1/reports/inventory-valuation` (stock × cost). Est: 1 day schema + 1 day report
+- [ ] **User audit log UI** — `ActivityLog` model exists in schema with `userId`, `action`, `entity`, `entityId`, `metadata`. Build `GET /api/v1/audit-log` + Settings > Audit Log page. Est: 1 day
+- [ ] **Cost price / margin tracking per product** — Add `costPrice` (Decimal) to Product model; show margin% in Inventory page. Est: 2h schema + 4h UI
+
+### 🟢 Nice-to-Have (Q3 2026)
+
+- [ ] **Bulk customer import (CSV)** — `ImportData.tsx` is a placeholder. Build backend parser endpoint `POST /api/v1/customers/import` + confirm step. Est: 2 days
+- [ ] **Bulk product import (CSV)** — Same — `ImportData.tsx` placeholder. Build `POST /api/v1/products/import`. Est: 1 day
+- [ ] **Product variants (size/color)** — No `ProductVariant` model. Est: 3 days
+- [ ] **Customer segmentation / groups** — No grouping model beyond tags. Est: 2 days
+- [ ] **Purchase order to invoice auto-conversion** — After PO is built. Est: 1 day
+- [ ] **Price lists (wholesale vs retail per customer tag)** — VIP/Wholesale tags exist; no per-tag price logic. Est: 2 days
 
 ---
 

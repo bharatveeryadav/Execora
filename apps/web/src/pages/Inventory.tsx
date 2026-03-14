@@ -171,6 +171,10 @@ const Inventory = () => {
   const [addCategory, setAddCategory] = useState("");
   const [addBarcode, setAddBarcode] = useState("");
   const [addSku, setAddSku] = useState("");
+  const [addHsnCode, setAddHsnCode] = useState("");
+  const [addGstRate, setAddGstRate] = useState("0");
+  const [addMrp, setAddMrp] = useState("");
+  const [addCostPrice, setAddCostPrice] = useState("");
 
   // Draft review state for the confirm dialog
   const [pendingDraft, setPendingDraft] = useState<Draft | null>(null);
@@ -255,6 +259,10 @@ const Inventory = () => {
     setAddCategory("");
     setAddBarcode("");
     setAddSku("");
+    setAddHsnCode("");
+    setAddGstRate("0");
+    setAddMrp("");
+    setAddCostPrice("");
   };
 
   // ── Inline stock quick-edit ─────────────────────────────────────────────────
@@ -523,6 +531,10 @@ const Inventory = () => {
           category: addCategory.trim() || undefined,
           barcode: addBarcode.trim() || undefined,
           sku: addSku.trim() || undefined,
+          hsnCode: addHsnCode.trim() || undefined,
+          gstRate: parseFloat(addGstRate) || 0,
+          mrp: addMrp ? parseFloat(addMrp) : undefined,
+          cost: addCostPrice ? parseFloat(addCostPrice) : undefined,
         },
         `New product: ${addName.trim()}`,
       );
@@ -1916,6 +1928,65 @@ const Inventory = () => {
                   value={addSku}
                   onChange={(e) => setAddSku(e.target.value)}
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">
+                    HSN Code (optional)
+                  </label>
+                  <input
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    placeholder="e.g. 1001"
+                    value={addHsnCode}
+                    onChange={(e) => setAddHsnCode(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">
+                    GST Rate %
+                  </label>
+                  <select
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={addGstRate}
+                    onChange={(e) => setAddGstRate(e.target.value)}
+                  >
+                    <option value="0">0% (Exempt)</option>
+                    <option value="5">5%</option>
+                    <option value="12">12%</option>
+                    <option value="18">18%</option>
+                    <option value="28">28%</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">
+                    MRP (₹, optional)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    placeholder="0.00"
+                    value={addMrp}
+                    onChange={(e) => setAddMrp(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">
+                    Cost Price (₹, optional)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    placeholder="0.00"
+                    value={addCostPrice}
+                    onChange={(e) => setAddCostPrice(e.target.value)}
+                  />
+                </div>
               </div>
               <div className="mt-4 flex gap-2">
                 <Button

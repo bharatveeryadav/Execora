@@ -880,3 +880,749 @@ Sources:
 - [BillNeXX Voice Billing](https://www.billnexx.com/)
 - [Kirana Store Billing Software 2025 — Tuple POS](https://tupleit.com/why-every-kirana-store-needs-a-smart-billing-software-in-2025/)
 - [Best GST Billing Software India — ProfitBooks](https://profitbooks.net/best-gst-billing-software-in-india/)
+
+---
+
+## SECTION 8: Desktop + Mobile UI/UX Strategy — Full Platform Design
+### Competitor Analysis + How to Beat All of Them
+**Last Updated: March 13, 2026 | Based on full codebase audit**
+
+---
+
+## 8.1 Competitor UI/UX Analysis — What They Do and Where They Fail
+
+### Vyapar (50M+ downloads, #1 in India)
+
+**Desktop UI:**
+- Windows desktop app — traditional form-based layout, left sidebar navigation
+- Invoice creation: 6-step form (customer → items → tax → discount → payment → confirm)
+- Good: Works fully offline, fast on low-end Windows machines
+- Bad: 1990s-style UI, no real-time sync, no dark mode, English-only labels
+
+**Mobile UI (Android):**
+- Bottom navigation (5 tabs: Home, Sales, Purchase, Party, Reports)
+- Invoice item entry: Tap product name → tap qty → tap rate → repeat
+- 3-tap minimum per item, 5+ screen transitions per invoice
+- Good: Single-tap payment buttons, good WhatsApp share
+- Bad: Item entry requires too many taps, lags on 2GB RAM phones, frequent "app not responding"
+
+**Where Vyapar LOSES:**
+1. Counter billing is too slow (3-4 taps per item)
+2. No voice
+3. No real-time sync across devices
+4. Desktop and mobile are different apps with different UX — confusion when switching
+5. No web app — desktop-only means no counter tablet use
+
+---
+
+### myBillBook / BillBook (10M+ downloads)
+
+**Desktop (Web):**
+- Modern SaaS web app (similar to Zoho Books lite)
+- Good: Fast page load, clean card-based UI, WhatsApp share built-in
+- Bad: No voice, no dark mode, complex filter/search for large catalogs
+
+**Mobile (Android/iOS):**
+- Similar card-based UI, fairly responsive
+- Good: Offline mode (local SQLite), decent iOS support
+- Bad: Reports are weak on mobile, GST export is web-only, limited customization
+
+**Where myBillBook LOSES:**
+1. Voice is completely absent
+2. GSTR filing is web-only — mobile users can't export
+3. No real-time collaboration (multi-device sync is manual refresh)
+4. Purchase order management is very weak (3/5 rating on GetApp)
+5. No AI/intelligence anywhere in the product
+
+---
+
+### Swipe Billing (B2B focused)
+
+**Desktop (Web):**
+- Clean modern SaaS UI, best-looking of the competitors
+- Good: Multi-user, good B2B invoice template, e-invoicing
+- Bad: No offline mode at all, expensive (₹7,199/year)
+
+**Mobile:**
+- Progressive Web App (PWA) — not a native app
+- Noticeably slower than native on Android
+- Good: Same UI as desktop (consistent)
+- Bad: No native push notifications, no camera/barcode, heavy data usage
+
+**Where Swipe LOSES:**
+1. No offline mode — completely cloud-dependent
+2. No voice
+3. No native mobile experience (PWA only)
+4. Too expensive for small businesses
+5. No Hindi/regional language support
+
+---
+
+### Tally Prime (Enterprise incumbent)
+
+**Desktop:**
+- Windows-only desktop app, 30-year-old architecture
+- Most feature-complete in GST compliance, TDS, multi-company
+- Good: Full offline, CA-trusted, complete audit trail
+- Bad: 1990s UI, no web/mobile, requires 2-3 days training, zero voice
+
+**Mobile:** None. Zero. Not built. Not planned.
+
+**Where Tally LOSES:**
+1. Zero mobile — cannot check reports on phone, cannot bill on tablet
+2. Zero voice
+3. Zero web access
+4. Zero real-time — multi-user requires license purchase + network setup
+5. Cannot be used by staff without operator training
+
+---
+
+### Pilloo AI (new competitor, Feb 2026)
+
+**Current state:** Web app, voice billing, single-intent voice (no multi-turn), Hindi only
+**Good:** First mover on "voice billing" marketing
+**Bad:** No proven track record, no mobile app, voice is single-intent, no real inventory/ledger depth
+
+**Where Pilloo LOSES vs Execora:**
+1. Single-intent voice — cannot handle "Ramesh ko 500 ka bill karo aur kal wapas yaad dilao"
+2. No React Native app
+3. No multi-turn conversation memory
+4. No 9-gateway webhook system
+5. No BullMQ async architecture — likely falls over under load
+
+---
+
+## 8.2 Competitive UI/UX Matrix — Full Comparison
+
+| Feature | Vyapar | myBillBook | Swipe | Tally | Pilloo AI | **Execora** |
+|---------|--------|-----------|-------|-------|-----------|-------------|
+| **Taps to create bill** | 8-12 | 6-10 | 5-8 | 15+ | 1 (voice) | **1 (voice) / 4 (form)** |
+| **Voice billing** | ❌ | ❌ | ❌ | ❌ | ⚠️ Single-intent | **✅ 27 multi-turn intents** |
+| **Offline mode** | ✅ Desktop | ✅ Mobile | ❌ | ✅ | ❌ | ❌ (P0 gap) |
+| **Web app** | ❌ | ✅ | ✅ | ❌ | ✅ | **✅** |
+| **iOS app** | ❌ | ✅ | PWA | ❌ | ❌ | **PWA** |
+| **Android app** | ✅ | ✅ | PWA | ❌ | ❌ | **✅ RN** |
+| **Real-time sync** | ❌ | ❌ | ⚠️ | ❌ | ❌ | **✅ WebSocket** |
+| **Hindi UI** | Partial | ❌ | ❌ | ❌ | ✅ | **✅** |
+| **Dark mode** | ❌ | ❌ | ❌ | ❌ | ❌ | **✅** |
+| **WhatsApp auto-send** | Manual | Manual | Manual | ❌ | ❌ | **✅ Auto** |
+| **GSTR-1 export** | ✅ | ✅ | ✅ | ✅ | ❌ | **✅** |
+| **E-invoicing IRN** | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ (P2) |
+| **GST multi-rate** | ✅ | ✅ | ✅ | ✅ | ❌ | **✅** |
+| **Multi-user RBAC** | ✅ (paid) | ✅ (paid) | ✅ | ✅ | ❌ | **✅ 22 permissions** |
+| **Batch/expiry** | ⚠️ | ⚠️ | ❌ | ✅ | ❌ | **✅** |
+| **Payment Sound Box** | ✅ (paid add-on) | ❌ | ❌ | ❌ | ❌ | **✅ Built-in free** |
+| **Customer portal** | ❌ | ❌ | ✅ | ❌ | ❌ | **✅** |
+| **9-gateway webhooks** | ❌ | ❌ | Razorpay only | ❌ | ❌ | **✅ All 9** |
+| **Desktop design** | Windows native | Modern web | Modern web | Windows | Web | **✅ Modern web** |
+| **Mobile design quality** | 3/5 | 4/5 | 2/5 (PWA) | 0/5 | 2/5 | **3/5 (current)** |
+
+**Execora wins on:** Voice, real-time sync, webhooks, sound box, dark mode, WhatsApp auto-send, customer portal, RBAC depth
+**Execora loses on:** Offline mode, iOS native, e-invoicing, mobile layout quality, market presence
+
+---
+
+## 8.3 Desktop UI/UX — Full Strategy
+
+### Design Principles (Desktop-First)
+
+1. **Left sidebar navigation** — standard SaaS pattern, predictable for accountants and managers
+2. **Data-dense tables** — desktop users have screen real estate; show more columns
+3. **Keyboard shortcuts** — power users (owners, accountants) prefer keyboard over mouse
+4. **Bulk actions** — select multiple rows, apply action
+5. **Multi-tab mental model** — users work across invoices + customers + reports simultaneously
+6. **Sticky header + scrollable content** — navigation always accessible
+
+### Desktop Layout Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  ┌──────────┐  ┌──────────────────────────────────────────────┐ │
+│  │          │  │  Page Header (title + actions + search)      │ │
+│  │  Left    │  ├──────────────────────────────────────────────┤ │
+│  │  Sidebar │  │                                              │ │
+│  │  (220px) │  │  Main Content Area                           │ │
+│  │          │  │  (full width, scrollable)                    │ │
+│  │  Nav     │  │                                              │ │
+│  │  Items   │  │                                              │ │
+│  │  (fixed) │  │                                              │ │
+│  │          │  │                                              │ │
+│  └──────────┘  └──────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Desktop Sidebar Navigation (complete spec)
+
+```
+┌─────────────────┐
+│  🔷 Execora     │ ← Logo + business name
+│  Sharma Stores  │
+├─────────────────┤
+│  📊 Dashboard   │ ← KPIs, charts, alerts
+│  🧾 Invoices    │ ← Full invoice list + filters
+│  ⚡ Quick Bill  │ ← ClassicBilling (highlighted, always visible)
+│  👥 Customers   │ ← Customer list + ledger
+│  📦 Inventory   │ ← Products + stock
+├─────────────────┤
+│  FINANCE        │
+│  💰 Payments    │ ← Record + view payments
+│  📒 Ledger      │ ← Day book + cash book
+│  📈 Reports     │ ← P&L, GSTR-1, Balance Sheet
+│  🛒 Purchases   │ ← Purchase bills + suppliers
+│  💸 Expenses    │ ← Operating expenses
+├─────────────────┤
+│  COMPLIANCE     │
+│  🏛️ GST/GSTR    │ ← GSTR-1/3B, E-invoice
+│  🔔 Reminders   │ ← Payment reminders
+│  📅 Recurring   │ ← Recurring invoices
+├─────────────────┤
+│  TOOLS          │
+│  🎤 Voice       │ ← Voice command panel
+│  📷 OCR Import  │ ← Photo → products
+│  📂 Import Data │ ← CSV import
+├─────────────────┤
+│  ⚙️ Settings    │ ← Fixed at bottom
+│  👤 Profile     │
+└─────────────────┘
+```
+
+### Desktop Screen-by-Screen Specification
+
+#### 1. Dashboard (Desktop)
+```
+┌─ KPI Row ──────────────────────────────────────────────────────┐
+│ Today's Sales: ₹12,400  │ Invoices: 8  │ Collected: ₹9,200    │
+│ Outstanding: ₹3,200     │ Low Stock: 3 │ Overdue: 2 customers  │
+└────────────────────────────────────────────────────────────────┘
+┌─ Charts (2-col) ────────┐ ┌─ Recent Activity ──────────────────┐
+│ Sales last 7 days (bar) │ │ Ramesh — ₹500 payment 2m ago      │
+│ Payment methods (pie)   │ │ Atta stock low (12 kg remaining)   │
+└─────────────────────────┘ └────────────────────────────────────┘
+┌─ Quick Actions ─────────────────────────────────────────────────┐
+│ [⚡ Quick Sale] [➕ Invoice] [💰 Payment] [📦 Stock] [📊 Report] │
+└─────────────────────────────────────────────────────────────────┘
+```
+**Competitor gap:** Vyapar's dashboard shows only basic stats. Execora adds real-time WebSocket updates, AI voice feed, and low-stock/expiry alerts in one view.
+
+#### 2. Invoice List (Desktop)
+```
+┌─ Header ──────────────────────────────────────────────────────┐
+│ Invoices (142 total · ₹8,42,000)  [Search] [Filter▼] [Export]│
+│ [All] [Pending 12] [Partial 3] [Paid 127] [Cancelled]        │
+├────────┬────────────┬──────────┬──────────┬────────┬──────────┤
+│ INV#   │ Customer   │ Date     │ Amount   │ Status │ Actions  │
+├────────┼────────────┼──────────┼──────────┼────────┼──────────┤
+│ 0142   │ Ramesh     │ Today    │ ₹1,200   │ Pending│ Pay | PDF│
+│ 0141   │ Priya      │ Yesterday│ ₹850     │ Paid   │ Portal   │
+│ ☐ 0140│ Walk-in    │ 12 Mar   │ ₹450     │ Paid   │ PDF      │
+└────────┴────────────┴──────────┴──────────┴────────┴──────────┘
+```
+**Competitor gap:** Vyapar shows list only — no bulk select, no inline payment. Execora adds bulk actions + inline "Pay" without opening full detail.
+
+#### 3. Classic Billing (Desktop)
+```
+┌─ Customer ──────────────────┐ ┌─ Invoice Details ─────────────┐
+│ 🔍 Search or Walk-in        │ │ Template: [Classic▼]          │
+│ Ramesh Sharma               │ │ GST: [ON▼] Supply: [Intra▼]  │
+│ Balance: ₹200 due           │ │ Due Date: [15 Mar 2026]       │
+└─────────────────────────────┘ └───────────────────────────────┘
+┌─ Items Table ──────────────────────────────────────────────────┐
+│ #  │ Product     │ Qty  │ Rate    │ Disc% │ GST% │ Amount     │
+│ 1  │ Aata [🔍]   │ [2]  │ [₹40]  │ [0]   │ [5%] │ ₹84.00    │
+│ 2  │ Cheeni [🔍] │ [1]  │ [₹45]  │ [5]   │ [5%] │ ₹42.75    │
+│ +  Add Item                                                    │
+├────────────────────────────────────────────────────────────────┤
+│               Subtotal: ₹126.75  CGST(5%): ₹3.17             │
+│               SGST(5%): ₹3.17   Grand Total: ₹133.09          │
+│               Amount: One Hundred Thirty Three Only            │
+└────────────────────────────────────────────────────────────────┘
+┌─ Payment ──────────────────────────────────────────────────────┐
+│ [💵 Cash] [📱 UPI] [💳 Card] [📒 Credit]                       │
+│ Amount: [₹133.09]  Notes: [__________________]                 │
+│                             [Save Draft] [🧾 Create Invoice]   │
+└────────────────────────────────────────────────────────────────┘
+```
+**Key fix needed:** Item-level discount (`Disc%` column) must pass `lineDiscountPercent` to API — currently stripped at route level (10-min fix). HSN code shown per item for B2B compliance.
+
+#### 4. Customer Detail (Desktop)
+```
+┌─ Customer Header ──────────────────────────────────────────────┐
+│ Ramesh Sharma  📱 9876543210  🏷️ VIP  Balance: ₹1,200 due     │
+│ [💬 WhatsApp] [📞 Call] [📧 Email] [🔔 Reminder] [✏️ Edit]     │
+├────────────────────────────────────────────────────────────────┤
+│ [Invoices (12)] [Payments] [Ledger] [Reminders] [Notes]        │
+├────────────────────────────────────────────────────────────────┤
+│ INVOICES                                                        │
+│ 2025-26/INV/0142  ₹1,200  Pending  [Pay Now] [Send WA] [PDF] │
+│ 2025-26/INV/0138  ₹850    Paid                                 │
+├────────────────────────────────────────────────────────────────┤
+│ LEDGER                                                          │
+│ 12 Mar → Invoice ₹1,200 | 10 Mar → Payment ₹500 received       │
+│                                    [Export Statement PDF/CSV]   │
+└────────────────────────────────────────────────────────────────┘
+```
+**Competitor gap:** Vyapar has customer detail but no tabbed layout. Execora's tabbed customer detail with inline "Pay Now" is ahead.
+
+#### 5. Reports (Desktop)
+```
+┌─ Reports ─────────────────────────────────────────────────────┐
+│ [P&L] [GSTR-1] [Balance Sheet] [Overdue Aging] [Sales Report] │
+│ Period: [This Month▼] [From: 01/03] [To: 13/03] [FY: 2025-26] │
+├───────────────────────────────────────────────────────────────┤
+│ PROFIT & LOSS                                                   │
+│ Revenue: ₹4,20,000  COGS: ₹2,80,000  Gross: ₹1,40,000        │
+│ Expenses: ₹45,000   Net Profit: ₹95,000  Margin: 22.6%        │
+│ [📄 PDF] [📊 CSV] [📧 Email to CA]                             │
+├───────────────────────────────────────────────────────────────┤
+│ GSTR-1 SUMMARY (Apr 2025 – Mar 2026)                           │
+│ B2B: ₹12,40,000 | B2CS: ₹3,20,000 | Total Tax: ₹1,42,600     │
+│ [📄 JSON (GSTN)] [📄 PDF] [📊 CSV] [📧 Email to CA]            │
+└───────────────────────────────────────────────────────────────┘
+```
+
+#### 6. Settings (Desktop)
+```
+┌─ Settings (Tab navigation) ──────────────────────────────────┐
+│ [Business Profile] [Team & Roles] [Notifications] [GST]      │
+│ [Invoice Templates] [Payment Gateways] [Integrations] [Plan] │
+├──────────────────────────────────────────────────────────────┤
+│ BUSINESS PROFILE                                              │
+│ Shop Name: [Sharma General Store _______________]            │
+│ GSTIN: [27AABCS1429B1Z1 ___________] ✅ Valid                │
+│ Legal Name: [Sharma Trading Co. _______________]             │
+│ Bank Account: [HDFC Bank ____] [A/C No: ___] [IFSC: ___]     │
+│ UPI VPA: [sharma@upi]                                         │
+│ Terms & Conditions: [_________________________________]       │
+│ Logo: [Upload Logo] → appears on invoice                      │
+│                                     [Save Business Profile]   │
+└──────────────────────────────────────────────────────────────┘
+```
+**Key gaps exposed:** Bank account, Terms & Conditions, GSTIN validation feedback — all missing from current Settings.
+
+---
+
+## 8.4 Mobile UI/UX — Full Strategy
+
+### Design Principles (Mobile-First)
+
+1. **Single-thumb reachability** — all primary CTAs in bottom 30% of screen
+2. **44×44px minimum touch targets** — Apple HIG + Google Material minimum
+3. **Bottom tab navigation** — thumb-zone navigation
+4. **No horizontal scroll** — content stacks vertically on 375px
+5. **Progressive disclosure** — show only what's needed; "More" button for advanced
+6. **Voice as shortcut** — mic button always accessible from every screen
+7. **Offline-first** — show cached data, queue mutations, sync on reconnect
+8. **Native feel** — use platform-native components (not web components)
+
+### Mobile Layout Architecture
+
+```
+┌─────────────────────────────────┐  ← 390px wide (iPhone 14 std)
+│ ┌─ Status Bar (system) ───────┐ │
+│ └──────────────────────────── ┘ │
+│ ┌─ Screen Header (48px) ──────┐ │
+│ │ ← Back    Title    Action ▪ │ │
+│ └──────────────────────────── ┘ │
+│                                  │
+│  Main Content Area               │
+│  (scrollable)                    │
+│                                  │
+│  ┌─ FAB Button ───────────────┐  │
+│  │  ⚡ Quick Bill  (56px)     │  │
+│  └────────────────────────────┘  │
+│ ┌─ Bottom Tab Bar (64px) ─────┐  │
+│ │ 🏠  🧾  🎤  👥  ⋯         │  │
+│ │Home Inv Voice Cust More     │  │
+│ └────────────────────────────┘  │
+│ ─── Home Indicator ────────────  │
+└─────────────────────────────────┘
+```
+
+### Mobile Bottom Navigation (final spec)
+
+| Tab | Icon | Screen | Badge |
+|-----|------|--------|-------|
+| Home | 🏠 | Dashboard | Overdue count |
+| Invoices | 🧾 | Invoice list | Pending count |
+| **Voice** | 🎤 | Voice billing (centre, accent color) | — |
+| Customers | 👥 | Customer list | Due count |
+| More | ⋯ | Slide-up drawer | — |
+
+**Voice tab is centre** — primary value proposition, always one tap away. This is the Execora differentiator that Vyapar/myBillBook cannot match.
+
+### Mobile More Drawer (slide-up, grid layout)
+
+```
+┌─ More ───────────────────────────────────────────────┐
+│ [─────] (drag handle)                                │
+├──────────────────────────────────────────────────────┤
+│ 📦 Inventory  │ 📊 Reports  │ 💸 Expenses           │
+│ 🛒 Purchases  │ 📅 Recurring│ 📒 Cash Book          │
+│ 📆 Day Book   │ 📋 Overdue  │ ⏰ Reminders          │
+│ 🏛️ GSTR       │ 🏦 Balance  │ ⚙️ Settings           │
+│ 📷 OCR Import │ 📂 Import   │ 📱 Scan Barcode       │
+└──────────────────────────────────────────────────────┘
+```
+
+### Mobile Screen-by-Screen Specification
+
+#### 1. Dashboard (Mobile)
+```
+┌─────────────────────────────────────────┐
+│ 📊 Good Morning, Sharma!  [🔔] [🎤]    │  ← Header
+│ Thu, 13 Mar 2026                        │
+├─────────────────────────────────────────┤
+│  ┌──────────────┐  ┌──────────────┐    │
+│  │ Today Sales  │  │  Outstanding │    │  ← 2-col stat cards
+│  │  ₹12,400    │  │   ₹8,200    │    │
+│  │  8 invoices  │  │  3 customers │    │
+│  └──────────────┘  └──────────────┘    │
+├─────────────────────────────────────────┤
+│ ⚡ QUICK ACTIONS                        │
+│ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐  │
+│ │Quick │ │Pay   │ │Stock │ │Remind│  │  ← 4-col (not 4-equal)
+│ │Bill  │ │In    │ │Check │ │er    │  │
+│ └──────┘ └──────┘ └──────┘ └──────┘  │
+├─────────────────────────────────────────┤
+│ 🔴 OVERDUE (2 customers)               │
+│ Ramesh — ₹1,200 — 5 days overdue [Pay]│
+│ Priya — ₹800 — 2 days [Pay]          │
+├─────────────────────────────────────────┤
+│ 📦 LOW STOCK (3 items)                 │
+│ Atta — 2 kg left  [Update]            │
+│ Cheeni — 0 kg ⚠️  [Update]            │
+└─────────────────────────────────────────┘
+   [🏠] [🧾] [🎤] [👥] [⋯]    ← Bottom tabs
+```
+**vs Vyapar:** Vyapar shows static numbers. Execora adds real-time WebSocket updates + payment actions inline on dashboard.
+
+#### 2. Quick Bill / Classic Billing (Mobile) — CRITICAL SCREEN
+```
+┌─────────────────────────────────────────┐
+│ ← Quick Bill         [Draft] [Preview] │
+├─────────────────────────────────────────┤
+│ Customer                                │
+│ [🔍 Ramesh Sharma             ▼]       │
+│ Balance: ₹200 due                      │
+├─────────────────────────────────────────┤
+│ Items                            [+Add] │
+│ ┌───────────────────────────────────┐  │
+│ │ Aata       [2]  ₹40   =  ₹80    │  │
+│ │ Cheeni     [1]  ₹45   =  ₹45    │  │
+│ │ [Swipe left to delete]            │  │
+│ └───────────────────────────────────┘  │
+├─────────────────────────────────────────┤
+│ Product Search                         │
+│ [🔍 Type or scan barcode...    [📷]]   │
+│ Aata ₹40  |  Cheeni ₹45  |  Oil ₹90  │  ← Quick chips
+├─────────────────────────────────────────┤
+│ Discount  [0 %]    GST  [ON]   [18%▼] │
+├─────────────────────────────────────────┤
+│         CGST: ₹11.25   SGST: ₹11.25   │
+│         ─────────────────────────────  │
+│ ┌───────────────────────────────────┐  │  ← Sticky bottom bar
+│ │ TOTAL: ₹147.50  [💵 Cash ▼] [✓] │  │
+│ └───────────────────────────────────┘  │
+└─────────────────────────────────────────┘
+```
+**Key design decisions:**
+- Product search at bottom (thumb zone) with recent chips
+- Swipe-to-delete items (native gesture)
+- Sticky total bar always visible — no scroll needed to see total
+- Camera icon beside search for barcode scan
+- Single tap creates bill — no confirmation dialog for amounts < ₹10,000
+
+#### 3. Voice Screen (Mobile) — DIFFERENTIATOR
+```
+┌─────────────────────────────────────────┐
+│ ← Voice Billing                   [?] │
+├─────────────────────────────────────────┤
+│                                         │
+│  ┌─── AI Conversation ───────────────┐ │
+│  │ 🤖 "Ramesh ke liye kya bill karu?"│ │
+│  │                                    │ │
+│  │ 👤 "Aata ek, cheeni ek"           │ │
+│  │                                    │ │
+│  │ 🤖 "₹133 ka bill ready hai.       │ │
+│  │     GST ke saath ₹147 hoga.       │ │
+│  │     Confirm karein?"              │ │
+│  │                                    │ │
+│  │ 👤 "Haan confirm"                 │ │
+│  │                                    │ │
+│  │ 🤖 ✅ "Invoice 0142 created.      │ │
+│  │     WhatsApp bhej diya Ramesh ko" │ │
+│  └────────────────────────────────── ┘ │
+│                                         │
+│  ┌─ Listening ──────────────────────┐  │
+│  │  ●●●●●○○○○  [Tap to speak 🎤]   │  │
+│  │  "Cheeni ek kilo..."              │  │
+│  └───────────────────────────────── ┘  │
+│                                         │
+│  Shortcuts: "bill" "payment" "balance" │
+│     [New Session]  [History]           │
+└─────────────────────────────────────────┘
+```
+**This screen doesn't exist at this quality in any competitor. Voice + conversation history + real-time transcription = moat.**
+
+#### 4. Invoice List (Mobile)
+```
+┌─────────────────────────────────────────┐
+│ Invoices (142)  ₹8,42,000  [🔍] [+]   │
+├─────────────────────────────────────────┤
+│ [All] [Pending 12] [Partial] [Paid]    │  ← Horizontal scroll tabs
+├─────────────────────────────────────────┤
+│ ┌─────────────────────────────────────┐ │
+│ │ 2025-26/INV/0142          ₹1,200   │ │
+│ │ Ramesh Sharma          🟡 Pending  │ │
+│ │ 13 Mar 2026           [Pay] [PDF] │ │
+│ └─────────────────────────────────────┘ │
+│ ┌─────────────────────────────────────┐ │
+│ │ 2025-26/INV/0141            ₹850   │ │
+│ │ Priya Patel              🟢 Paid   │ │
+│ │ 12 Mar 2026               [Portal] │ │
+│ └─────────────────────────────────────┘ │
+└─────────────────────────────────────────┘
+  [🏠] [🧾] [🎤] [👥] [⋯]
+```
+
+#### 5. Customer Detail (Mobile)
+```
+┌─────────────────────────────────────────┐
+│ ← Ramesh Sharma              [✏️] [⋯] │
+│ 📱 9876543210  🏷️ VIP                  │
+│ ┌──────────────┐  ┌──────────────┐    │
+│ │ Balance Due  │  │ Total Billed │    │
+│ │   ₹1,200    │  │   ₹12,400   │    │
+│ └──────────────┘  └──────────────┘    │
+│ [💬 WA] [📞 Call] [🔔 Remind] [💰 Pay]│  ← Actions row
+├─────────────────────────────────────────┤
+│ [Invoices] [Ledger] [Reminders]        │
+├─────────────────────────────────────────┤
+│ 2025-26/INV/0142  ₹1,200  🟡 Pending  │
+│ 13 Mar 2026                   [Pay ▶] │
+│ 2025-26/INV/0138  ₹850    🟢 Paid     │
+│ 10 Mar 2026                           │
+└─────────────────────────────────────────┘
+  [🏠] [🧾] [🎤] [👥] [⋯]
+```
+
+#### 6. Record Payment (Mobile)
+```
+┌─────────────────────────────────────────┐
+│ ← Record Payment                       │
+├─────────────────────────────────────────┤
+│ Customer: Ramesh Sharma                │
+│ Outstanding: ₹1,200                   │
+├─────────────────────────────────────────┤
+│ Amount                                  │
+│ ┌─────────────────────────────────────┐ │
+│ │       ₹ [1,200              ]       │ │  ← Large input, pre-filled
+│ └─────────────────────────────────────┘ │
+│ [₹200] [₹500] [₹1,000] [Full: ₹1,200]│  ← Quick-fill chips
+├─────────────────────────────────────────┤
+│ Payment Mode                            │
+│ [💵 Cash ✓] [📱 UPI] [💳 Card]         │
+├─────────────────────────────────────────┤
+│ Reference / UTR (optional)             │
+│ [_______________________________]      │
+├─────────────────────────────────────────┤
+│ ┌─────────────────────────────────────┐ │
+│ │     💰 Record ₹1,200 Payment       │ │  ← Primary CTA
+│ └─────────────────────────────────────┘ │
+└─────────────────────────────────────────┘
+```
+**Key UX wins:** Pre-filled amount, quick-fill chips (₹200/₹500/₹1000/Full), no need to type. Matches how Vyapar does it but adds quick-fill.
+
+#### 7. Inventory (Mobile)
+```
+┌─────────────────────────────────────────┐
+│ ← Inventory           [📷] [🔍] [+]   │
+├─────────────────────────────────────────┤
+│ [All] [Low Stock 3] [Out of Stock 1]   │
+├─────────────────────────────────────────┤
+│ ┌─────────────────────────────────────┐ │
+│ │ 📦 Aata (Wheat)             🟡 Low  │ │
+│ │ Stock: 2 kg  |  ₹40/kg             │ │
+│ │ [- 1] [Stock: 2] [+ 1] [Adjust ▸] │ │
+│ └─────────────────────────────────────┘ │
+│ ┌─────────────────────────────────────┐ │
+│ │ 📦 Cheeni (Sugar)           🔴 Out  │ │
+│ │ Stock: 0 kg  |  ₹45/kg             │ │
+│ │ [Reorder] [Update Stock]            │ │
+│ └─────────────────────────────────────┘ │
+│ ┌─────────────────────────────────────┐ │
+│ │ 📦 Oil (Refined)           🟢 OK   │ │
+│ │ Stock: 24 L  |  ₹90/L             │ │
+│ └─────────────────────────────────────┘ │
+└─────────────────────────────────────────┘
+  [🏠] [🧾] [🎤] [👥] [⋯]
+```
+
+---
+
+## 8.5 Shared Component Architecture (Web + Mobile)
+
+### Code Sharing Strategy
+
+```
+execora/
+├── packages/
+│   ├── types/           ← 100% shared: TypeScript types, enums, interfaces
+│   ├── shared-ui/       ← NEW: shared business logic hooks (no React Native deps)
+│   │   ├── src/hooks/
+│   │   │   ├── useInvoiceCalculator.ts   ← bill totals, GST, discount
+│   │   │   ├── useProductSearch.ts       ← fuzzy search logic
+│   │   │   ├── useAmountInWords.ts       ← Indian numbering (shared!)
+│   │   │   ├── useHinglishNormalizer.ts  ← number normalization
+│   │   │   └── useVoiceSession.ts        ← WebSocket session management
+│   │   └── src/utils/
+│   │       ├── gst.ts          ← GST calculation (pure functions)
+│   │       ├── formatters.ts   ← currency, date (shared)
+│   │       └── validators.ts   ← GSTIN checksum, phone, amount
+│   └── infrastructure/  ← Backend only (Prisma, BullMQ, Redis)
+├── apps/
+│   ├── web/             ← React + Tailwind (desktop-first)
+│   ├── mobile/          ← React Native + NativeWind (mobile-first)
+│   └── api/             ← Fastify backend
+```
+
+### Shared Logic Currently Duplicated (must consolidate)
+
+| Logic | Web Location | Mobile Location | Fix |
+|-------|-------------|-----------------|-----|
+| Amount in words | `ClassicBilling.tsx:104` | Not in mobile | Move to `packages/shared-ui/src/utils/formatters.ts` |
+| GST calculation | `ClassicBilling.tsx:~300` | `BillingScreen.tsx` | Move to `packages/shared-ui/src/utils/gst.ts` |
+| Fuzzy product search | `ClassicBilling.tsx:~200` | Inline in BillingScreen | Move to `packages/shared-ui/src/hooks/useProductSearch.ts` |
+| Invoice number format | `pdf.ts` + inline | Not in mobile | Move to `packages/types` |
+| Auth token management | `api.ts` | `apiClient.ts` | Share via package |
+
+---
+
+## 8.6 How to Beat Every Competitor — Platform by Platform
+
+### Beat Vyapar (desktop counter use)
+1. **Voice = 1 tap vs Vyapar's 8 taps** — already won. Demo this aggressively.
+2. **Real-time sync** — when owner bills on mobile, accountant sees it on desktop instantly. Vyapar requires manual refresh.
+3. **Sound Box built-in free** — Vyapar charges extra. Execora includes it.
+4. **Web app** — Vyapar is Windows-only desktop. Execora works on any browser + tablet.
+
+### Beat myBillBook (mobile use)
+1. **Voice billing** — myBillBook has zero voice. Execora does 27 intents in Hindi.
+2. **WhatsApp auto-send** — myBillBook is manual WhatsApp share. Execora auto-sends on invoice confirm.
+3. **Customer portal** — shareable invoice link with payment option. myBillBook cannot do this.
+4. **Real-time WebSocket** — multi-device instant sync. myBillBook requires manual refresh.
+
+### Beat Swipe (B2B / SME use)
+1. **Offline mode** (when built) — Swipe has zero offline. Execora will have PWA + IndexedDB.
+2. **Price** — Swipe charges ₹7,199/year. Execora Business at ₹999/month = competitive.
+3. **Voice** — Swipe has zero voice. Execora does Hinglish multi-turn.
+4. **Native mobile** — Swipe is PWA-only. Execora has React Native.
+
+### Beat Tally (enterprise compliance)
+1. **Mobile access** — Tally has zero mobile. Execora works on phone.
+2. **Web access** — Tally requires VPN to access remotely. Execora is cloud-native.
+3. **Onboarding** — Tally requires 2-3 day training. Execora voice billing = no training.
+4. **Real-time** — Tally is local DB, no real-time. Execora is live WebSocket.
+5. **Execora cannot beat Tally on:** Full double-entry accounting, TDS, multi-company, 30-year trust. Don't compete head-on — position as "Tally for mobile" or "Tally starter for <₹5Cr businesses."
+
+### Beat Pilloo AI (voice competitor)
+1. **Multi-turn conversation** — Pilloo is single-intent. Execora maintains context across 10 turns.
+2. **27 intents vs Pilloo's ~5** — Execora has RECORD_PAYMENT, CREATE_REMINDER, CHECK_STOCK, EXPORT_GSTR1, etc. Pilloo only does invoice creation.
+3. **Full inventory + ledger** — Pilloo has no inventory or ledger depth. Execora is a full business OS.
+4. **Production track record** — Execora has BullMQ, Prometheus, pg_dump backups. Pilloo has none of this (Feb 2026 launch = no production history).
+5. **Websocket + Redux store** — Pilloo likely uses HTTP polling. Execora is true real-time.
+
+---
+
+## 8.7 Implementation Roadmap — Desktop + Mobile Feature Parity
+
+### Sprint S10 (Current — March 2026): Fix Critical Gaps
+
+| Task | Platform | Effort | Priority |
+|------|----------|--------|----------|
+| Item-level discount — add `lineDiscountPercent` to API route schema | Backend | 10 min | 🔴 P0 |
+| Mobile responsive layout — bottom nav, 44px touch targets | Web | 2 days | 🔴 P0 |
+| Bank account + T&C in Settings | Web + Backend | 4h | 🔴 P0 |
+| ClassicBillingScreen (React Native) | Mobile | 3 days | 🔴 P0 |
+| Voice Screen — native Expo audio input | Mobile | 2 days | 🔴 P0 |
+| Barcode scan (RN Vision Camera) | Mobile | 1 day | 🟡 P1 |
+
+### Sprint S11 (April 2026): Desktop Sidebar + GST
+
+| Task | Platform | Effort |
+|------|----------|--------|
+| Desktop sidebar navigation (replaces current topbar-only layout) | Web | 3 days |
+| Credit note / debit note (model + routes + PDF + UI) | Backend + Web | 3 days |
+| Customer statement export (PDF + CSV) | Backend + Web | 1 day |
+| GSTR-3B backend calculation | Backend | 3 days |
+| GSTR-1 JSON in GSTN schema | Backend | 2 days |
+| Sales report by product/customer/category | Backend + Web | 2 days |
+| Mobile: Settings screen | Mobile | 1 day |
+| Mobile: Reports screen (P&L + GSTR-1) | Mobile | 2 days |
+
+### Sprint S12 (May 2026): Offline + iOS Parity
+
+| Task | Platform | Effort |
+|------|----------|--------|
+| PWA offline mode (IndexedDB + sync queue) | Web | 5 days |
+| ITC (input tax credit) tracking | Backend + Web | 3 days |
+| Supplier management UI | Web | 2 days |
+| Purchase order management | Backend + Web | 3 days |
+| iOS PWA optimisation (Safari safe areas, WKWebView) | Web | 2 days |
+| Bulk invoice export (CSV + Excel) | Backend + Web | 1 day |
+| Mobile: Inventory screen (full feature) | Mobile | 2 days |
+| Mobile: GSTR-1 export trigger | Mobile | 1 day |
+
+### Sprint S13 (June 2026): Desktop Power Features
+
+| Task | Platform | Effort |
+|------|----------|--------|
+| Keyboard shortcut system (global, documented) | Web | 2 days |
+| Bulk actions on Invoice/Customer tables | Web | 2 days |
+| Advanced date range filters on all tables | Web | 1 day |
+| E-invoicing IRN integration (GSTN sandbox) | Backend + Web | 5 days |
+| Multi-branch (location-scoped inventory) | Backend + Web | 5 days |
+
+---
+
+## 8.8 UI/UX Quality Checklist — Before Public Launch
+
+### Desktop Checklist
+- [ ] Left sidebar navigation on ≥1024px (currently center-column layout)
+- [ ] Invoice table shows 8 columns (INV#, Customer, Date, Due Date, Amount, Paid, Status, Actions)
+- [ ] Bulk select + bulk export on Invoice and Customer tables
+- [ ] Keyboard shortcuts: `N` = new invoice, `B` = quick bill, `P` = payment, `G` = GSTR-1, `?` = shortcut help
+- [ ] All modals closable with `Escape`
+- [ ] All forms submittable with `Ctrl+Enter`
+- [ ] Sticky table header on scroll (customer/invoice lists)
+- [ ] Print/PDF preview before download on all PDF exports
+- [ ] Loading skeletons on all async data loads (no blank flashes)
+- [ ] Empty states with CTA on all list pages (no blank tables)
+
+### Mobile Checklist
+- [ ] Bottom navigation bar visible on all screens ≤768px
+- [ ] All tap targets ≥44×44px (test with accessibility inspector)
+- [ ] No horizontal scrolling on 375px iPhone SE width
+- [ ] FAB (Quick Bill) visible on Dashboard and Invoice list
+- [ ] Swipe-to-delete on invoice items in billing screen
+- [ ] Pull-to-refresh on all list screens
+- [ ] Safe area insets respected (iPhone notch + Android navigation bar)
+- [ ] Voice mic button visible from any screen (floating or in header)
+- [ ] Haptic feedback on payment confirm and invoice create
+- [ ] Offline indicator (yellow banner: "Offline — 2 bills queued")
+- [ ] Large numeric input on Payment screen (₹ amount = full-width, 32px font)
+- [ ] Quick-fill chips on payment screen (₹200/₹500/₹1000/Full Amount)
+
+### Cross-Platform Checklist
+- [ ] Dark mode consistent across web and mobile
+- [ ] Same color system (indigo primary, emerald success, red destructive)
+- [ ] Same currency format: `₹1,42,600` (Indian locale, en-IN)
+- [ ] Same date format: `13 Mar 2026` (no ambiguous MM/DD)
+- [ ] Same invoice number format: `2025-26/INV/0142`
+- [ ] WebSocket reconnect logic (exponential backoff, max 5 attempts)
+- [ ] Auth token refresh works on both platforms without logout
+- [ ] WhatsApp share / auto-send works on both
+
+---
+
+*Section 8 added: March 13, 2026 — based on full codebase audit + competitor analysis of Vyapar, myBillBook, Swipe, Tally, Pilloo AI*

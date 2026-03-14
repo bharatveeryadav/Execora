@@ -1,19 +1,23 @@
 # Execora — Senior PM + Architecture Strategy Document
 **Version 1.0 | March 2026**
 
-## Live Status — March 13, 2026
+## Live Status — March 13, 2026 (125-Feature Comprehensive Audit)
 
-### Billing & Invoice
+> Coverage score: 68 built / 9 partial / 32 missing / 16 frontend-only = **67% overall medium-scale coverage**. Full details in PRODUCT_REQUIREMENTS.md Section 13.
+
+### Billing & Invoicing (14/25 built = 56%)
 | Feature | Status | Notes |
 |---------|--------|-------|
 | B2C GST invoice (CGST+SGST) | ✅ Shipped | Voice + form, all edge cases |
 | Non-GST cash memo | ✅ Shipped | withGst=false |
 | B2B invoice with buyer GSTIN | ✅ Shipped | buyerGstin + IGST inter-state |
 | IGST inter-state auto-switch | ✅ Shipped | supplyType=INTERSTATE |
+| HSN/SAC codes per line item | ✅ Shipped | product.hsnCode stored + in PDF |
+| Multiple tax rates (0–28%) | ✅ Shipped | product.gstRate per SKU |
 | Walk-in billing (1-tap) | ✅ Shipped | QuickActions "Quick Sale" |
 | Partial payment at billing | ✅ Shipped | initialPayment field |
 | Bill-level discount (voice + form) | ✅ Shipped | discountPercent / discountAmount |
-| Item-level (per-line) discount | ⚠️ UI only | lineDiscountPercent type exists; resolveItemsAndTotals() not wired |
+| Item-level (per-line) discount | ⚠️ Partial | Type + service exist; ClassicBilling submit not fully wired |
 | Proforma invoice / quotation | ✅ Shipped | POST /invoices/proforma |
 | Proforma → invoice convert | ✅ Shipped | With optional initial payment |
 | Invoice edit (PATCH) | ✅ Shipped | Items, notes, discounts, GST flags on PENDING |
@@ -22,12 +26,21 @@
 | Invoice PDF auto-email | ✅ Shipped | BullMQ mediaQueue on confirm |
 | Invoice PDF auto-WhatsApp | ❌ P0 Gap | Not wired from confirmInvoice(); no autoWhatsapp tenant toggle |
 | Invoice numbering (per-tenant, FY-based) | ⚠️ Security gap | InvoiceCounter may lack tenantId isolation — see Blocker 2 |
+| 4 invoice templates | ✅ Shipped | TEMPLATES selector in ClassicBilling + Settings |
 | Repeat last bill | ✅ Shipped | GET /customers/:id/last-order |
 | ClassicBilling single-screen UI | ✅ Shipped | /billing route |
 | Mixed payment (cash+UPI split) | ✅ Shipped | POST /ledger/mixed-payment + voice |
 | Credit limit enforcement | ✅ Shipped | 422 CREDIT_LIMIT_EXCEEDED |
+| Credit note / debit note | ❌ NOT BUILT | No model, route, or UI |
+| Bank details on invoice | ❌ NOT BUILT | Not stored; not on PDF |
+| Terms & conditions on invoice | ❌ NOT BUILT | No field or PDF section |
+| Round-off on total | ❌ NOT BUILT | No round-off logic |
+| Amount in words (PDF) | ❌ NOT BUILT (backend) | Frontend shows it; PDF does not |
+| Recurring invoice backend | ❌ NOT BUILT | Frontend placeholder only |
+| Bulk invoice export (CSV/Excel) | ❌ NOT BUILT | No export endpoint |
+| Customer portal UPI payment link | ❌ NOT BUILT | Portal shows invoice but no pay button |
 
-### Customer Management
+### Customer Management (7/10 built = 70%)
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Customer CRUD (name, phone, email, tags) | ✅ Shipped | |
@@ -35,78 +48,143 @@
 | Customer overdue list | ✅ Shipped | GET /customers/overdue |
 | Communication preferences (WA/email/SMS) | ✅ Shipped | GET/PUT /comm-prefs |
 | Customer portal (read-only, HMAC token) | ✅ Shipped | /pub/invoice/:id/:token |
-| Customer portal PDF redirect (presigned) | ✅ Shipped | |
-| Customer portal UPI payment link | ❌ P1 Gap | Not built |
+| Customer tags (VIP/Wholesale/Blacklist) | ✅ Shipped | tags[] array |
+| Customer credit limit | ✅ Shipped | creditLimit field + enforcement |
+| Customer opening balance | ✅ Shipped | openingBalance at creation |
 | Customer delete (soft delete) | ✅ Shipped | |
+| Customer statement / ledger export | ❌ NOT BUILT | No PDF/CSV export endpoint |
+| Bulk customer import (CSV) | ❌ NOT BUILT | Frontend placeholder only |
+| Customer segmentation / groups | ❌ NOT BUILT | |
+| Contact history / activity timeline UI | ⚠️ Backend only | ActivityLog model exists; no UI |
 
-### Ledger / Payments
+### Payment & Ledger (12/12 built = 100%)
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Payment recording (cash/UPI/card/other) | ✅ Shipped | |
+| Mixed payment (cash+UPI split) | ✅ Shipped | |
+| Partial payment tracking | ✅ Shipped | |
+| Credit (advance) payment | ✅ Shipped | |
 | Auto-settlement (oldest-first, khata) | ✅ Shipped | |
-| Credit addition | ✅ Shipped | |
 | Customer ledger view | ✅ Shipped | |
 | Payment Sound Box (Paytm-style TTS) | ✅ Shipped | Web Speech API + WS event |
+| Overdue tracking + aging | ✅ Shipped | OverduePage with aging bands |
+| Credit limit enforcement | ✅ Shipped | |
 | Webhook — Razorpay (HMAC-SHA256) | ✅ Shipped | |
-| Webhook — PhonePe (SHA256+saltKey) | ✅ Shipped | |
-| Webhook — Cashfree (HMAC+timestamp) | ✅ Shipped | |
-| Webhook — PayU (SHA512 reverse) | ✅ Shipped | |
-| Webhook — Paytm (TXN_SUCCESS) | ✅ Shipped | |
-| Webhook — Instamojo (HMAC-SHA1) | ✅ Shipped | |
-| Webhook — Stripe India | ✅ Shipped | stripe-signature verified |
-| Webhook — EaseBuzz (SHA512) | ✅ Shipped | |
-| Webhook — BharatPe (HMAC-SHA256) | ✅ Shipped | |
+| Webhook — PhonePe/Cashfree/PayU/Paytm/Instamojo/Stripe/EaseBuzz/BharatPe | ✅ Shipped | 8 more aggregators |
+| WhatsApp payment reminders (10 types) | ✅ Shipped | BullMQ + Meta Cloud API |
 
-### Inventory
+### Inventory & Products (11/17 built = 65%)
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Product catalog CRUD | ✅ Shipped | HSN, GST rate, barcode, stock |
+| Stock tracking (current qty) | ✅ Shipped | StockMovement model |
+| Stock adjustment with reason | ✅ Shipped | PATCH /products/:id/stock |
 | Low stock alerts | ✅ Shipped | minStock threshold, WS push |
+| Sales velocity / top sellers | ✅ Shipped | GET /products/top-selling |
+| Expiry date tracking | ✅ Shipped | expiryDate + getExpiringBatches() |
+| Multi-unit (kg/litre/piece/box) | ✅ Shipped | product.unit field |
+| Product categories | ✅ Shipped | product.category field |
+| Reorder point + auto-alert | ✅ Shipped | product.minStock |
 | Barcode scan (web ZXing) | ✅ Shipped | EAN-13/QR |
+| Batch/lot number tracking | ⚠️ Partial | Backend full; purchase form batch entry missing |
 | Barcode scan (React Native) | ❌ P1 Gap | Backend ready; native camera not wired |
-| OCR purchase bill (OpenAI Vision) | ⚠️ Partial | 9-field draft; supplier cost capture pending |
-| Batch/expiry tracking | ⚠️ Partial | Backend full (S9-06); frontend batch entry needs verification |
-| UPDATE_STOCK voice intent | ⚠️ Backend only | product.handler.ts exists; voice switch + LLM prompt not wired |
+| OCR purchase bill (OpenAI Vision) | ⚠️ Partial | 9-field draft; review UX incomplete |
+| Cost price / margin tracking | ❌ NOT BUILT | No costPrice field on Product |
+| Dead stock tracking (30/60/90 day) | ❌ NOT BUILT | No aging query |
+| Product variants (size/color) | ❌ NOT BUILT | No variant model |
+| Bulk product import (CSV) | ❌ NOT BUILT | Frontend placeholder only |
+| Supplier linking per product | ⚠️ Backend only | Supplier model exists; product-supplier UI missing |
+| UPDATE_STOCK voice intent | ⚠️ Backend only | product.handler.ts exists; voice switch not wired |
 
-### Reports & GST
+### Purchases & Expenses (5/7 built = 71%)
 | Feature | Status | Notes |
 |---------|--------|-------|
-| GSTR-1 export (B2B/B2CS/HSN, Indian FY) | ✅ Shipped | PDF + CSV + email |
-| P&L date-range report | ✅ Shipped | Month-wise + email |
-| Balance Sheet page | ✅ Shipped | Assets/liabilities/equity |
-| CashBook, DayBook | ✅ Shipped | |
-| Expenses + Purchases CRUD | ✅ Shipped | |
-| GSTR-3B | 🖥️ Placeholder | Frontend page only |
-| E-invoicing (IRN) | 🖥️ Placeholder | Frontend page; no backend; Q4 2026 |
-| Bank reconciliation | 🖥️ Placeholder | Frontend page; no backend |
-| Recurring billing | 🖥️ Placeholder | Frontend page; no backend |
+| Purchase bill entry | ✅ Shipped | POST /purchases |
+| Expense categories + entry | ✅ Shipped | POST /expenses |
+| Cash book | ✅ Shipped | GET /cashbook |
+| Day book (all transactions) | ✅ Shipped | DayBook.tsx |
+| Expense categories CRUD | ✅ Shipped | |
+| Supplier management UI | ❌ NOT BUILT | Supplier model in schema; no UI |
+| Purchase order (PO) management | ❌ NOT BUILT | No PO model or route |
 
-### Voice Engine
+### GST & Compliance (2/7 built = 29% — CRITICAL GAP)
 | Feature | Status | Notes |
 |---------|--------|-------|
-| 35 intents (CREATE_INVOICE … UPDATE_STOCK) | ✅ Shipped | engine/index.ts switch |
-| Multi-turn drafts (Redis, 4h TTL) | ✅ Shipped | ConversationSession |
-| TTS (ElevenLabs/OpenAI/Browser fallback) | ✅ Shipped | |
+| GSTR-1 data report (B2B/B2CS/HSN) | ✅ Shipped | PDF + CSV + email |
+| HSN-wise summary | ✅ Shipped | In GSTR-1 report |
+| GSTR-1 JSON export (GST portal format) | ❌ NOT BUILT | CSV only; no official GSTN JSON schema |
+| GSTR-3B (output tax liability) | ❌ NOT BUILT | Frontend placeholder only |
+| E-invoicing (IRN + QR code) | ❌ NOT BUILT | Frontend placeholder; no GSTN API integration |
+| E-way bill generation | ❌ NOT BUILT | |
+| ITC (input tax credit) tracking | ❌ NOT BUILT | No ITC model or tracking from purchases |
+
+### Reports & Analytics (5/9 built = 56%)
+| Feature | Status | Notes |
+|---------|--------|-------|
+| P&L report (month-wise) | ✅ Shipped | Date range + period comparison + email |
+| Balance sheet | ✅ Shipped | Derived from summary API |
+| Collection efficiency report | ✅ Shipped | collectionRate% in P&L |
+| Overdue aging report | ✅ Shipped | OverduePage |
+| P&L PDF + CSV export | ✅ Shipped | |
+| Sales report by product/customer/category | ❌ NOT BUILT | No dedicated sales breakdown |
+| Cash flow statement | ❌ NOT BUILT | CashBook ≠ cash flow statement |
+| Inventory valuation report | ❌ NOT BUILT | No costPrice tracking |
+| Bank reconciliation backend | ❌ NOT BUILT | Frontend placeholder (mock CSV parser) |
+
+### Voice & AI (7/8 built = 88%)
+| Feature | Status | Notes |
+|---------|--------|-------|
+| 35 voice intents (Hindi/Hinglish) | ✅ Shipped | engine/index.ts switch |
+| Voice payment recording | ✅ Shipped | RECORD_PAYMENT intent |
+| Voice customer lookup | ✅ Shipped | GET_CUSTOMER_INFO + CHECK_BALANCE |
+| Voice stock check | ✅ Shipped | CHECK_STOCK intent |
+| Voice reminder creation | ✅ Shipped | CREATE_REMINDER intent |
+| Multi-turn conversation memory (Redis) | ✅ Shipped | 4h TTL ConversationSession |
+| Devanagari number support | ✅ Shipped | devanagari.ts normalizer |
 | Deepgram STT + Browser WebSpeech fallback | ✅ Shipped | |
+| TTS (ElevenLabs/OpenAI/Browser) | ✅ Shipped | |
 | True Agent Mode (Mode 3) | ❌ P2 | LLM tool-calling; planned Q3 2026 |
 
-### Infrastructure / Auth / Mobile
+### User & Team Management (4/5 = 90%)
 | Feature | Status | Notes |
 |---------|--------|-------|
-| JWT auth + refresh rotation | ✅ Shipped | HS256, timingSafeEqual |
-| RBAC (5 roles, 22 permissions) | ✅ Shipped | |
-| Feature flags (FeatureFlag enum + TIER_FEATURES) | ✅ Shipped | featureGate() returns 402 |
-| Real-time WebSocket (per-tenant fan-out) | ✅ Shipped | 12+ event types |
-| BullMQ queues (4 queues + Bull Board) | ✅ Shipped | |
-| MinIO object storage + presigned URLs | ✅ Shipped | |
-| Prometheus metrics | ✅ Shipped | |
-| Docker prod compose (resource limits, no admin UIs) | ✅ Shipped | |
+| Multi-user (owner + staff) | ✅ Shipped | POST /users |
+| RBAC (5 roles, 22 permissions) | ✅ Shipped | requirePermission middleware |
+| Password reset | ✅ Shipped | POST /users/:id/reset-password |
+| Feature flags per tenant | ✅ Shipped | FeatureFlag enum + featureGate() |
+| User activity audit log UI | ❌ NOT BUILT | ActivityLog model exists; no UI |
+
+### Settings & Configuration (5/10 = 50%)
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Business profile (name, GSTIN, logo) | ✅ Shipped | Tenant.gstin, tradeName, logoUrl |
+| Invoice template selection | ✅ Shipped | 4 templates in Settings + ClassicBilling |
+| WhatsApp settings | ✅ Shipped | Settings shows WA config card |
+| Payment gateway config (9 gateways) | ✅ Shipped | 9 gateway cards in Settings |
+| Multi-language selector | ✅ Shipped | Language preference in Settings |
+| Bank account details on invoice | ❌ NOT BUILT | No bankAccount field |
+| Auto-send invoice toggle | ❌ NOT BUILT | No autoWhatsapp/autoEmail stored |
+| SMTP email settings UI | ❌ NOT BUILT | Configured via env vars only |
+| Tax configuration (HSN defaults) | ⚠️ Partial | Per-product works; no global defaults |
+| Feature flag admin UI | ❌ NOT BUILT | Backend only; no UI to toggle flags |
+
+### Security & Infrastructure (9/10 = 95%)
+| Feature | Status | Notes |
+|---------|--------|-------|
+| JWT auth + refresh rotation | ✅ Shipped | HS256, timingSafeEqual, anti-replay |
+| RBAC permission gating | ✅ Shipped | All critical routes gated |
+| Multi-tenancy data isolation | ⚠️ Partial | IDOR risk on getById methods |
+| Audit trail (deletedAt soft delete) | ✅ Shipped | Invoice/Customer/Product |
+| API rate limiting | ✅ Shipped | Fastify rate-limit plugin |
+| WebSocket real-time sync | ✅ Shipped | 12+ event types, per-tenant fan-out |
+| Prometheus metrics | ✅ Shipped | HTTP/voice/LLM/queue metrics |
+| Structured logging (pino) | ✅ Shipped | |
+| Docker production deployment | ✅ Shipped | docker-compose.prod.yml |
 | GitHub Actions pg_dump backup | ✅ Shipped | 30-day S3 retention |
 | Sentry error tracking | ❌ P0 Gap | Not in codebase |
-| Offline mode (PWA + IndexedDB) | ❌ P0 Gap | No service worker, no manifest.json |
-| Mobile (React Native) — 10 screens | ✅ Shipped | Dashboard, Billing, Customers, Invoices, Voice, Overdue |
-| Mobile ClassicBillingScreen | ❌ P0 Gap | Web ClassicBilling exists; RN equivalent not built |
-| Mobile offline / AsyncStorage queue | ❌ P0 Gap | Not built |
+| Offline mode (PWA + IndexedDB) | ❌ P0 Gap | No service worker |
+| Mobile (React Native) — 10 screens | ✅ Shipped | Dashboard, Billing, Customers, Invoices, Voice |
+| Mobile ClassicBillingScreen | ❌ P0 Gap | Web ClassicBilling exists; RN not built |
 
 ---
 
@@ -317,15 +395,55 @@ Target ARPU for Segment A: ₹199/month after 3-month free trial conversion
 6. CA partner access for audit and filing
 7. Integration with bank statements for reconciliation
 
-**Key Features Needed**
-- P0: B2B invoice with GSTIN, auto IGST/CGST switch (already built)
-- P0: GSTR-1 export (B2B/B2CS/HSN, PDF+CSV+email) (already built)
-- P0: Multi-user with RBAC (5 roles, 22 permissions) (already built)
-- P0: P&L date-range report with period comparison (already built)
-- P1: Batch/expiry tracking (backend built, frontend in Sprint S10-05)
-- P1: Bank reconciliation (Enterprise tier, Q4 2026)
-- P1: CA partner mode for external accountant access
-- P2: Tally XML export for migration
+**Key Features Needed — Code-Confirmed Status (March 13, 2026)**
+
+**✅ Already Built (medium-scale ready) — Reverified March 13, 2026:**
+- B2B invoice with GSTIN, IGST/CGST auto-switch by supplyType
+- GSTR-1 report (B2B/B2CS/HSN sections, PDF + CSV + email)
+- Multi-user with RBAC (5 roles, 22 granular permissions)
+- P&L date-range report with period comparison
+- Proforma invoice + convert to confirmed
+- Invoice edit/cancel, invoice PDF, email delivery
+- **WhatsApp auto-send invoice PDF** — wired via `dispatchInvoicePdfEmail()` → reads `autoSendWhatsApp` from Tenant.settings → calls `whatsappService.sendDocumentMessage()` (requires Meta Cloud API env vars configured)
+- **Auto-send email + WhatsApp toggles** — Settings.tsx persists to Tenant.settings via API (`updateProfile.mutateAsync`) AND localStorage; `dispatchInvoicePdfEmail()` reads them
+- **Amount in words on PDF** — `pdf.ts` `toIndianWords()` function prints on all 4 invoice PDF templates
+- Customer portal (shareable link with HMAC token)
+- Mixed payment (cash + UPI split), partial payment tracking
+- Payment reminders (WhatsApp auto-scheduled, 10 types)
+- 9-gateway webhook system (Razorpay/PhonePe/Cashfree/PayU/Paytm/Instamojo/Stripe/EaseBuzz/BharatPe)
+- Overdue tracking + aging, credit limit enforcement
+- Inventory with batch/expiry tracking, low-stock alerts
+- Cash book, day book, expense tracking
+- Password reset for team members
+- Real-time WebSocket sync across all sessions
+
+**🔴 P0 Gaps — Must build before medium-scale launch:**
+1. **Credit note / debit note** — No CN/DN model or route (enum value exists in GstActionType but no Invoice-level model). Mandatory for B2B returns and GST compliance. (3 days)
+2. **Bank details on invoice** — `bankAccount` field doesn't exist on Tenant model; not printed on PDF. No business sends invoices without bank account info. (2h schema + 4h PDF)
+3. **GSTR-3B output tax summary** — `Gstr3b.tsx` is a placeholder reading from summary range only; no backend calculation of output tax liability. Monthly mandatory filing. (3 days)
+4. **ITC (input tax credit) tracking** — No model or route. Medium-scale businesses must claim GST paid on purchases. (3 days)
+5. **Customer statement / ledger export (PDF/CSV)** — No `GET /customers/:id/statement` endpoint. CAs require this for reconciliation. (1 day)
+6. **GSTR-1 JSON export in official GSTN schema** — Current export is CSV only; GST portal upload requires the official GSTN JSON schema. (2 days)
+7. **Round-off on invoice total** — Not in schema, not in service, not on PDF. Standard on all Indian GST invoices. (2h)
+8. **Terms & conditions on invoice** — No `termsAndConditions` field on Tenant; not stored or printed on PDF. (4h settings + 2h PDF)
+9. **Item-level discount API route** — `InvoiceItemInput.lineDiscountPercent` is in the type and applied correctly in `invoice.service.ts`, but `POST /invoices` route schema strips it (only accepts `{productName,quantity,unitPrice}`). **10-minute fix** — add `lineDiscountPercent` to route schema. (10 min)
+
+**🟡 P1 Gaps — Build within 30 days of launch:**
+- Bulk invoice export (CSV/Excel) — no endpoint exists
+- Supplier management UI (Supplier model in schema; no frontend CRUD)
+- Purchase order management (no PO model)
+- Sales report by product/customer/category (no dedicated endpoint)
+- Cash flow statement (CashBook ≠ cash flow statement)
+- Inventory valuation report (no `costPrice` field on Product model)
+- Email reminder fallback channel (WhatsApp reminders built; email reminders not built)
+- User audit log UI (ActivityLog model in schema; no frontend view)
+
+**🟢 P2 / Enterprise:**
+- E-invoicing IRN generation (UI placeholder exists; no IRP API integration)
+- E-way bill
+- CA partner mode
+- Tally XML export
+- Multi-branch support
 
 **UX Requirements**
 - Desktop-first dashboard with multiple open tabs

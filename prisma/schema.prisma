@@ -1436,9 +1436,11 @@ model Draft {
 // Tracks the last used invoice sequence number per FY (e.g. "2024-25").
 // Atomic upsert inside invoice transaction guarantees no gaps/duplicates.
 model InvoiceCounter {
-  fy      String @id           // e.g. "2024-25"
-  lastSeq Int    @default(0) @map("last_seq")
+  fy       String // e.g. "2024-25"
+  tenantId String
+  lastSeq  Int    @default(0) @map("last_seq")
 
+  @@id([fy, tenantId])
   @@map("invoice_counters")
 }
 // =====================================================

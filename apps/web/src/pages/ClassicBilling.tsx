@@ -11,7 +11,7 @@
  *  • 4 invoice templates — user can switch and preview before saving
  *  • Template preference persisted in localStorage
  */
-import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -66,6 +66,7 @@ interface BillingItem {
   amount: number; // computed
   productId?: string;
   hsnCode?: string;
+  gstRate?: number; // per-item GST % from product catalog
 }
 
 type PaymentMode = "cash" | "upi" | "card" | "credit";
@@ -177,8 +178,6 @@ const inr = (n: number) =>
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-
-const DEFAULT_GST_RATE = 18;
 
 // ── Fuzzy product search ─────────────────────────────────────────────────────
 function fuzzyScore(text: string, q: string): number {
@@ -295,6 +294,7 @@ export default function ClassicBilling() {
       unit: product.unit ?? "pcs",
       productId: product.id,
       hsnCode: (product as any).hsnCode ?? undefined,
+      gstRate: parseFloat(String((product as any).gstRate ?? 0)) || 0,
     });
     setActiveSuggestRow(null);
   };
@@ -307,6 +307,14 @@ export default function ClassicBilling() {
     setItems((prev) => [...prev, newItem()]);
     setActiveSuggestRow(null);
   };
+
+  // ── Composition scheme flag — read from business settings (set in Settings page) ──
+  const compositionScheme = (() => {
+    try {
+      const v = JSON.parse(localStorage.getItem("execora:bizprofile") ?? "{}").compositionScheme;
+      return v === true || v === "true";
+    } catch { return false; }
+  })();
 
   // ── Billing options ───────────────────────────────────────────────────
   const [withGst, setWithGst] = useState(false);
@@ -378,12 +386,43 @@ export default function ClassicBilling() {
   }, [subtotal, discountPct, discountFlat]);
 
   const taxableAmt = Math.round((subtotal - discountAmt) * 100) / 100;
-  const gstAmt = withGst
-    ? Math.round(taxableAmt * (DEFAULT_GST_RATE / 100) * 100) / 100
+
+  // Group items by GST rate → compute CGST/SGST per slab (GST Rule 46 compliant)
+  const gstGroups = useMemo(() => {
+    if (!withGst) return [];
+    const discountFactor = subtotal > 0 ? discountAmt / subtotal : 0;
+    const map = new Map<number, { taxable: number; cgst: number; sgst: number }>();
+    for (const it of items) {
+      if (!it.name.trim()) continue;
+      const rate = it.gstRate ?? 0;
+      const taxable = Math.round(it.amount * (1 - discountFactor) * 100) / 100;
+      const slabCgst = Math.round(taxable * (rate / 200) * 100) / 100;
+      const slabSgst = slabCgst;
+      const existing = map.get(rate) ?? { taxable: 0, cgst: 0, sgst: 0 };
+      map.set(rate, {
+        taxable: Math.round((existing.taxable + taxable) * 100) / 100,
+        cgst: Math.round((existing.cgst + slabCgst) * 100) / 100,
+        sgst: Math.round((existing.sgst + slabSgst) * 100) / 100,
+      });
+    }
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([rate, vals]) => ({ rate, ...vals }));
+  }, [withGst, items, discountAmt, subtotal]);
+
+  // Composition scheme: 1% flat on taxable amount (no CGST/SGST breakdown)
+  const compositionTax = compositionScheme && withGst
+    ? Math.round(taxableAmt * 0.01 * 100) / 100
     : 0;
-  const cgst = withGst ? Math.round((gstAmt / 2) * 100) / 100 : 0;
+  const totalGstAmt = withGst
+    ? compositionScheme
+      ? compositionTax
+      : gstGroups.reduce((s, g) => s + g.cgst + g.sgst, 0)
+    : 0;
+  // Legacy aliases used in previewData / submit
+  const cgst = !compositionScheme && withGst ? Math.round((totalGstAmt / 2) * 100) / 100 : 0;
   const sgst = cgst;
-  const grandTotal = Math.round((taxableAmt + gstAmt) * 100) / 100;
+  const grandTotal = Math.round((taxableAmt + totalGstAmt) * 100) / 100;
   const roundOff = roundOffEnabled ? Math.round(grandTotal) - grandTotal : 0;
   const finalTotal = Math.round((grandTotal + roundOff) * 100) / 100;
   const grandTotalWords = amountInWords(finalTotal);
@@ -861,12 +900,13 @@ export default function ClassicBilling() {
 
           <div className="rounded-xl border overflow-hidden">
             {/* Column headers */}
-            <div className="hidden sm:grid sm:grid-cols-[2fr_70px_60px_90px_60px_80px_36px] bg-muted/50 px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide gap-1">
+            <div className={`hidden sm:grid bg-muted/50 px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide gap-1 ${withGst ? "sm:grid-cols-[2fr_70px_60px_90px_60px_55px_80px_36px]" : "sm:grid-cols-[2fr_70px_60px_90px_60px_80px_36px]"}`}>
               <span className="pl-1">Product</span>
               <span className="text-center">Qty</span>
               <span className="text-center">Unit</span>
               <span className="text-right">Rate ₹</span>
               <span className="text-right">Disc%</span>
+              {withGst && <span className="text-right">GST%</span>}
               <span className="text-right">Amount ₹</span>
               <span />
             </div>
@@ -876,6 +916,7 @@ export default function ClassicBilling() {
                 key={item.id}
                 item={item}
                 catalog={catalog}
+                withGst={withGst}
                 isActive={activeSuggestRow === item.id}
                 onFocus={() => setActiveSuggestRow(item.id)}
                 onUpdate={(patch) => updateItem(item.id, patch)}
@@ -903,7 +944,7 @@ export default function ClassicBilling() {
           <div>
             <p className="text-sm font-semibold">Include GST</p>
             <p className="text-[11px] text-muted-foreground">
-              Adds {DEFAULT_GST_RATE}% GST (CGST+SGST) on taxable amount
+              Applies per-item GST rate (CGST + SGST)
             </p>
           </div>
           <Switch checked={withGst} onCheckedChange={setWithGst} />
@@ -993,14 +1034,35 @@ export default function ClassicBilling() {
                   label="Taxable Amount"
                   value={`₹${inr(taxableAmt)}`}
                 />
-                <TotalRow
-                  label={`CGST (${DEFAULT_GST_RATE / 2}%)`}
-                  value={`₹${inr(cgst)}`}
-                />
-                <TotalRow
-                  label={`SGST (${DEFAULT_GST_RATE / 2}%)`}
-                  value={`₹${inr(sgst)}`}
-                />
+                {compositionScheme ? (
+                  <TotalRow
+                    label="Composition Tax (1%)"
+                    value={`₹${inr(compositionTax)}`}
+                  />
+                ) : (
+                  gstGroups.map((g) => (
+                    <Fragment key={g.rate}>
+                      {g.rate === 0 ? (
+                        <TotalRow
+                          label={`GST Exempt (0%)`}
+                          value={`₹0.00`}
+                          valueClass="text-muted-foreground"
+                        />
+                      ) : (
+                        <>
+                          <TotalRow
+                            label={`CGST (${g.rate / 2}%) on ₹${inr(g.taxable)}`}
+                            value={`₹${inr(g.cgst)}`}
+                          />
+                          <TotalRow
+                            label={`SGST (${g.rate / 2}%) on ₹${inr(g.taxable)}`}
+                            value={`₹${inr(g.sgst)}`}
+                          />
+                        </>
+                      )}
+                    </Fragment>
+                  ))
+                )}
               </>
             )}
             <div className="border-t pt-2 mt-1">
@@ -1473,6 +1535,7 @@ export default function ClassicBilling() {
 function ItemRow({
   item,
   catalog,
+  withGst,
   isActive,
   onFocus,
   onUpdate,
@@ -1483,6 +1546,7 @@ function ItemRow({
 }: {
   item: BillingItem;
   catalog: Product[];
+  withGst: boolean;
   isActive: boolean;
   onFocus: () => void;
   onUpdate: (patch: Partial<BillingItem>) => void;
@@ -1659,6 +1723,22 @@ function ItemRow({
                 placeholder="0"
               />
             </div>
+            {withGst && (
+              <div>
+                <p className="text-[11px] font-medium text-muted-foreground mb-1">
+                  GST %
+                </p>
+                <select
+                  value={String(item.gstRate ?? 0)}
+                  onChange={(e) => onUpdate({ gstRate: parseFloat(e.target.value) })}
+                  className="w-full h-10 text-base px-2 rounded-md border border-input bg-background"
+                >
+                  {[0, 5, 12, 18, 28].map((r) => (
+                    <option key={r} value={r}>{r}%</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         )}
         {item.name && (
@@ -1681,7 +1761,7 @@ function ItemRow({
       </div>
 
       {/* Desktop: grid layout */}
-      <div className="hidden sm:grid sm:grid-cols-[2fr_70px_60px_90px_60px_80px_36px] items-center gap-1 px-2 py-1">
+      <div className={`hidden sm:grid items-center gap-1 px-2 py-1 ${withGst ? "sm:grid-cols-[2fr_70px_60px_90px_60px_55px_80px_36px]" : "sm:grid-cols-[2fr_70px_60px_90px_60px_80px_36px]"}`}>
         <div className="relative">
           <Input
             value={item.name}
@@ -1746,6 +1826,17 @@ function ItemRow({
           className="h-8 text-sm text-right border-0 bg-transparent focus-visible:ring-1 px-1"
           placeholder="0"
         />
+        {withGst && (
+          <select
+            value={String(item.gstRate ?? 0)}
+            onChange={(e) => onUpdate({ gstRate: parseFloat(e.target.value) })}
+            className="h-8 text-sm text-right border-0 bg-transparent focus-visible:ring-1 px-1 w-full"
+          >
+            {[0, 5, 12, 18, 28].map((r) => (
+              <option key={r} value={r}>{r}%</option>
+            ))}
+          </select>
+        )}
         <span className="text-sm font-semibold text-right pr-1 tabular-nums">
           {item.amount > 0 ? `₹${inr(item.amount)}` : "—"}
         </span>

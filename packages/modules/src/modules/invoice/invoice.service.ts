@@ -22,12 +22,13 @@ async function generateInvoiceNo(tx: any): Promise<string> {
   const year = now.getFullYear();
   const fyStart = month >= 4 ? year : year - 1;
   const fy = `${fyStart}-${String(fyStart + 1).slice(-2)}`; // e.g. "2024-25"
+  const tenantId = tenantContext.get().tenantId;
 
-  // Atomic increment: insert row for this FY on first invoice, else increment
+  // Atomic increment: insert row for this tenant+FY on first invoice, else increment
   const result = await tx.$queryRaw<Array<{ last_seq: number }>>`
-    INSERT INTO invoice_counters (fy, last_seq)
-    VALUES (${fy}, 1)
-    ON CONFLICT (fy) DO UPDATE
+    INSERT INTO invoice_counters (fy, tenant_id, last_seq)
+    VALUES (${fy}, ${tenantId}, 1)
+    ON CONFLICT (fy, tenant_id) DO UPDATE
       SET last_seq = invoice_counters.last_seq + 1
     RETURNING last_seq
   `;
@@ -1264,10 +1265,10 @@ class InvoiceService {
         return;
       }
 
-      // ── 2. Resolve tenant settings (shopName + upiVpa) ──────────────────
+      // ── 2. Resolve tenant settings (shopName + upiVpa + bank + T&C) ──────
       const tenant = await prisma.tenant.findFirst({
         where: { id: invoice.tenantId },
-        select: { name: true, settings: true },
+        select: { name: true, settings: true, gstin: true },
       });
       const settings =
         (tenant?.settings as Record<string, string> | null) ?? {};
@@ -1277,6 +1278,15 @@ class InvoiceService {
         tenant?.name ||
         "Execora Shop";
       const upiVpa = settings.upiVpa || undefined;
+      const shopAddress = settings.address || undefined;
+      const shopPhone = settings.phone || undefined;
+      const shopGstin = tenant?.gstin || undefined;
+      const bankName = settings.bankName || undefined;
+      const bankAccountNo = settings.bankAccountNo || undefined;
+      const bankIfsc = settings.bankIfsc || undefined;
+      const bankAccountHolder = settings.bankAccountHolder || undefined;
+      const termsAndConditions = settings.termsAndConditions || undefined;
+      const roundOff = settings.roundOff === 'true';
 
       // ── Auto-delivery flags (default true → backward compat) ─────────────
       // 'false' string = off; anything else (undefined / 'true') = on
@@ -1311,15 +1321,26 @@ class InvoiceService {
       // ── 4. Generate PDF ──────────────────────────────────────────────────
       let pdfBuffer: Buffer;
       try {
+        // Calculate round-off if enabled
+        const rawTotal = subtotal - parseFloat((invoice.discount ?? 0).toString()) + totalTax;
+        const roundOffAmount = roundOff ? Math.round(rawTotal) - rawTotal : undefined;
+        const discountAmount = parseFloat((invoice.discount ?? 0).toString()) || undefined;
+
         pdfBuffer = await generateInvoicePdf({
           invoiceNo: invoice.invoiceNo || invoice.id,
           invoiceId: invoice.id,
           invoiceDate: invoice.invoiceDate ?? invoice.createdAt,
           customerName: invoice.customer?.name || "Customer",
+          customerGstin: (invoice as any).buyerGstin || undefined,
           shopName,
+          shopAddress,
+          shopPhone,
+          shopGstin,
           supplyType: totalIgst > 0 ? "INTERSTATE" : "INTRASTATE",
           items: pdfItems,
           subtotal,
+          discountAmount,
+          roundOffAmount,
           totalCgst,
           totalSgst,
           totalIgst,
@@ -1328,6 +1349,11 @@ class InvoiceService {
           grandTotal,
           notes: invoice.notes || undefined,
           upiVpa,
+          bankName,
+          bankAccountNo,
+          bankIfsc,
+          bankAccountHolder,
+          termsAndConditions,
         });
       } catch (err) {
         log.error({ err }, "PDF generation failed — skipping email");
@@ -1439,8 +1465,8 @@ class InvoiceService {
    * Get a single invoice with items and customer.
    */
   async getInvoiceById(invoiceId: string) {
-    return await prisma.invoice.findUnique({
-      where: { id: invoiceId },
+    return await prisma.invoice.findFirst({
+      where: { id: invoiceId, tenantId: tenantContext.get().tenantId },
       include: {
         customer: true,
         items: { include: { product: true } },

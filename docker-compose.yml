@@ -76,8 +76,7 @@ services:
       /bin/sh -c "
         mc alias set local http://minio:9000 minioadmin minioadmin &&
         mc mb --ignore-existing local/execora &&
-        mc anonymous set download local/execora &&
-        echo 'MinIO bucket execora ready.'
+        echo 'MinIO bucket execora ready (private — access via presigned URLs).'
       "
     networks:
       - execora-network

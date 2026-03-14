@@ -1152,8 +1152,9 @@ class CustomerService {
 	 * Get customer by ID
 	 */
 	async getCustomerById(id: string) {
-		return await prisma.customer.findUnique({
-			where: { id },
+		const { tenantId } = tenantContext.get();
+		return await prisma.customer.findFirst({
+			where: { id, tenantId },
 			include: {
 				invoices: {
 					orderBy: { createdAt: 'desc' },

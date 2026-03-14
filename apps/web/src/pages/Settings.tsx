@@ -198,6 +198,36 @@ const Settings = () => {
       return "";
     }
   });
+  // Bank account details
+  const [bankName, setBankName] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}").bankName ?? ""; } catch { return ""; }
+  });
+  const [bankAccountNo, setBankAccountNo] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}").bankAccountNo ?? ""; } catch { return ""; }
+  });
+  const [bankIfsc, setBankIfsc] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}").bankIfsc ?? ""; } catch { return ""; }
+  });
+  const [bankAccountHolder, setBankAccountHolder] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}").bankAccountHolder ?? ""; } catch { return ""; }
+  });
+  // Terms & Conditions
+  const [termsAndConditions, setTermsAndConditions] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}").termsAndConditions ?? ""; } catch { return ""; }
+  });
+  // Invoice options
+  const [roundOff, setRoundOff] = useState<boolean>(() => {
+    try { const v = JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}").roundOff; return v === true || v === "true"; } catch { return false; }
+  });
+  // AI / Voice features toggle
+  const [aiEnabled, setAiEnabled] = useState<boolean>(() => {
+    try { const v = JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}").aiEnabled; return v === false || v === "false" ? false : true; } catch { return true; }
+  });
+  // GST Composition Scheme (Section 10) — 1% flat tax, no CGST/SGST breakdown
+  const [compositionScheme, setCompositionScheme] = useState<boolean>(() => {
+    try { const v = JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}").compositionScheme; return v === true || v === "true"; } catch { return false; }
+  });
+
   const [razorpaySecret, setRazorpaySecret] = useState("");
   const [phonepeSecret, setPhonepeSecret] = useState("");
   const [cashfreeSecret, setCashfreeSecret] = useState("");
@@ -268,11 +298,19 @@ const Settings = () => {
       if (s.bharatpeWebhookSecret) setBharatpeSecret(s.bharatpeWebhookSecret);
       if (stored.autoSendEmail === undefined && s.autoSendEmail !== undefined)
         setAutoSendEmail(s.autoSendEmail !== "false");
-      if (
-        stored.autoSendWhatsApp === undefined &&
-        s.autoSendWhatsApp !== undefined
-      )
+      if (stored.autoSendWhatsApp === undefined && s.autoSendWhatsApp !== undefined)
         setAutoSendWhatsApp(s.autoSendWhatsApp !== "false");
+      if (!stored.bankName && s.bankName) setBankName(s.bankName);
+      if (!stored.bankAccountNo && s.bankAccountNo) setBankAccountNo(s.bankAccountNo);
+      if (!stored.bankIfsc && s.bankIfsc) setBankIfsc(s.bankIfsc);
+      if (!stored.bankAccountHolder && s.bankAccountHolder) setBankAccountHolder(s.bankAccountHolder);
+      if (!stored.termsAndConditions && s.termsAndConditions) setTermsAndConditions(s.termsAndConditions);
+      if (stored.roundOff === undefined && s.roundOff !== undefined)
+        setRoundOff(s.roundOff === "true");
+      if (stored.aiEnabled === undefined && s.aiEnabled !== undefined)
+        setAiEnabled(s.aiEnabled !== "false");
+      if (stored.compositionScheme === undefined && s.compositionScheme !== undefined)
+        setCompositionScheme(s.compositionScheme === "true");
     }
     if (me?.name && !profileName) setProfileName(me.name);
   }, [me]);
@@ -289,6 +327,14 @@ const Settings = () => {
         upiVpa: bizUpiVpa,
         autoSendEmail,
         autoSendWhatsApp,
+        bankName,
+        bankAccountNo,
+        bankIfsc,
+        bankAccountHolder,
+        termsAndConditions,
+        roundOff,
+        aiEnabled,
+        compositionScheme,
       }),
     );
     localStorage.setItem(LANG_STORAGE_KEY, lang);
@@ -307,6 +353,14 @@ const Settings = () => {
             upiVpa: bizUpiVpa,
             autoSendEmail: String(autoSendEmail),
             autoSendWhatsApp: String(autoSendWhatsApp),
+            bankName,
+            bankAccountNo,
+            bankIfsc,
+            bankAccountHolder,
+            termsAndConditions,
+            roundOff: String(roundOff),
+            aiEnabled: String(aiEnabled),
+            compositionScheme: String(compositionScheme),
             ...(razorpaySecret
               ? { razorpayWebhookSecret: razorpaySecret }
               : {}),
@@ -479,6 +533,100 @@ const Settings = () => {
                   Customers can scan this QR to pay directly on the invoice.
                 </p>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Bank Account Details */}
+        <Card className="border-none shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-base">Bank Account Details</CardTitle>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Printed on every invoice PDF footer — customers use these for NEFT/IMPS transfers.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Account Holder Name</Label>
+                <Input
+                  value={bankAccountHolder}
+                  onChange={(e) => setBankAccountHolder(e.target.value)}
+                  placeholder="Business or proprietor name"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Bank Name</Label>
+                <Input
+                  value={bankName}
+                  onChange={(e) => setBankName(e.target.value)}
+                  placeholder="e.g. State Bank of India"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Account Number</Label>
+                <Input
+                  value={bankAccountNo}
+                  onChange={(e) => setBankAccountNo(e.target.value.trim())}
+                  placeholder="e.g. 00110123456789"
+                  className="font-mono text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">IFSC Code</Label>
+                <Input
+                  value={bankIfsc}
+                  onChange={(e) => setBankIfsc(e.target.value.toUpperCase().trim())}
+                  placeholder="e.g. SBIN0001234"
+                  maxLength={11}
+                  className="font-mono text-sm"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Invoice Options */}
+        <Card className="border-none shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Invoice Options</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Round-off toggle */}
+            <div className="flex items-center justify-between rounded-lg border border-border p-3">
+              <div>
+                <p className="text-sm font-medium">Round off invoice total</p>
+                <p className="text-xs text-muted-foreground">
+                  Rounds grand total to nearest rupee — prints ±paise difference on PDF
+                </p>
+              </div>
+              <Switch checked={roundOff} onCheckedChange={setRoundOff} />
+            </div>
+            {/* Composition Scheme toggle */}
+            <div className="flex items-center justify-between rounded-lg border border-border p-3">
+              <div>
+                <p className="text-sm font-medium">GST Composition Scheme</p>
+                <p className="text-xs text-muted-foreground">
+                  Section 10 dealer — 1% flat tax on turnover. Invoices will show Composition Tax instead of CGST/SGST.
+                </p>
+              </div>
+              <Switch checked={compositionScheme} onCheckedChange={setCompositionScheme} />
+            </div>
+            {/* Terms & Conditions */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Terms & Conditions (printed on invoice)</Label>
+              <textarea
+                value={termsAndConditions}
+                onChange={(e) => setTermsAndConditions(e.target.value)}
+                placeholder="e.g. Payment due within 30 days. Goods once sold will not be taken back."
+                rows={3}
+                maxLength={500}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+              />
+              <p className="text-[11px] text-muted-foreground">{termsAndConditions.length}/500 characters</p>
             </div>
           </CardContent>
         </Card>
@@ -1601,15 +1749,44 @@ const Settings = () => {
           </CardContent>
         </Card>
 
-        {/* Voice Assistant */}
+        {/* AI & Voice Features */}
         <Card className="border-none shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
               <Volume2 className="h-4 w-4 text-muted-foreground" />
-              Voice Assistant
+              AI & Voice Features
             </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Disable to use Execora as a pure billing software without AI. Voice tab and assistant will be hidden.
+            </p>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Master AI toggle */}
+            <div className="flex items-center justify-between rounded-lg border border-border p-3">
+              <div>
+                <p className="text-sm font-medium">Enable AI Voice Assistant</p>
+                <p className="text-xs text-muted-foreground">
+                  Turn off to hide Voice tab and disable all AI features — billing still works fully
+                </p>
+              </div>
+              <Switch
+                checked={aiEnabled}
+                onCheckedChange={(v) => {
+                  setAiEnabled(v);
+                  localStorage.setItem(
+                    BIZ_STORAGE_KEY,
+                    JSON.stringify({
+                      ...(() => { try { return JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}"); } catch { return {}; } })(),
+                      aiEnabled: v,
+                    }),
+                  );
+                  // Reload so navigation re-evaluates
+                  setTimeout(() => window.location.reload(), 300);
+                }}
+              />
+            </div>
+
+            {aiEnabled && (
             <div className="space-y-1.5">
               <Label className="text-xs">Text-to-Speech Provider</Label>
               <Select
@@ -1639,6 +1816,7 @@ const Settings = () => {
                 OpenAI require API keys configured on the server.
               </p>
             </div>
+            )}
           </CardContent>
         </Card>
 

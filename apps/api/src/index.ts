@@ -28,6 +28,7 @@ import { emailService } from '@execora/infrastructure';
 import { startWorkers, closeWorkers } from '@execora/infrastructure';
 import { tenantContext } from '@execora/infrastructure';
 import { SYSTEM_TENANT_ID, SYSTEM_USER_ID } from '@execora/infrastructure';
+import { verifyAccessToken } from '@execora/infrastructure';
 
 // Choose WebSocket handler based on configuration
 const useEnhancedAudio = process.env.USE_ENHANCED_AUDIO !== 'false'; // Default to enhanced
@@ -118,8 +119,25 @@ function registerWebSocket() {
   fastify.register(async (fastify) => {
     fastify.get('/ws', { websocket: true }, (connection, request) => {
       // @fastify/websocket v9 passes a SocketStream; .socket is the raw ws.WebSocket
-      const wsConnection = (connection as { socket?: unknown }).socket ?? connection;
-      wsHandler.handleConnection(wsConnection as Parameters<typeof wsHandler.handleConnection>[0], request);
+      const wsConnection = (connection as { socket?: unknown; close?: (code: number, reason: string) => void }).socket ?? connection;
+      const rawWs = wsConnection as any;
+
+      // Require JWT via ?token= query param (Authorization header unavailable during WS handshake)
+      const token = (request.query as Record<string, string>)?.token;
+      if (!token) {
+        rawWs.close?.(4001, 'Unauthorized: missing token');
+        return;
+      }
+      try {
+        const payload = verifyAccessToken(token);
+        tenantContext.update({ tenantId: payload.tenantId, userId: payload.userId });
+        (request as any).user = payload;
+      } catch {
+        rawWs.close?.(4001, 'Unauthorized: invalid token');
+        return;
+      }
+
+      wsHandler.handleConnection(rawWs as Parameters<typeof wsHandler.handleConnection>[0], request);
     });
   });
 

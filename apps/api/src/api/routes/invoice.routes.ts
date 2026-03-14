@@ -46,9 +46,11 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 								type: 'object',
 								required: ['productName', 'quantity'],
 								properties: {
-									productName: { type: 'string', minLength: 1, maxLength: 255 },
-									quantity:    { type: 'integer', minimum: 1 },
-									unitPrice:   { type: 'number', minimum: 0 },
+									productName:         { type: 'string', minLength: 1, maxLength: 255 },
+									quantity:            { type: 'integer', minimum: 1 },
+									unitPrice:           { type: 'number', minimum: 0 },
+									lineDiscountPercent: { type: 'number', minimum: 0, maximum: 100 },
+									hsnCode:             { type: 'string', maxLength: 8 },
 								},
 								additionalProperties: false,
 							},
@@ -82,7 +84,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 			request: FastifyRequest<{
 				Body: {
 					customerId: string;
-					items: Array<{ productName: string; quantity: number; unitPrice?: number }>;
+					items: Array<{ productName: string; quantity: number; unitPrice?: number; lineDiscountPercent?: number; hsnCode?: string }>;
 					notes?: string;
 					discountPercent?: number;
 					discountAmount?: number;
@@ -156,7 +158,9 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 								properties: {
 									productName: { type: 'string', minLength: 1, maxLength: 255 },
 									quantity:    { type: 'integer', minimum: 1 },
-									unitPrice:   { type: 'number', minimum: 0 },
+									unitPrice:           { type: 'number', minimum: 0 },
+									lineDiscountPercent: { type: 'number', minimum: 0, maximum: 100 },
+									hsnCode:             { type: 'string', maxLength: 8 },
 								},
 								additionalProperties: false,
 							},
@@ -177,7 +181,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 			request: FastifyRequest<{
 				Body: {
 					customerId: string;
-					items: Array<{ productName: string; quantity: number }>;
+					items: Array<{ productName: string; quantity: number; unitPrice?: number; lineDiscountPercent?: number; hsnCode?: string }>;
 					notes?: string;
 					discountPercent?: number;
 					discountAmount?: number;
@@ -236,7 +240,9 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 								properties: {
 									productName: { type: 'string', minLength: 1, maxLength: 255 },
 									quantity:    { type: 'integer', minimum: 1 },
-									unitPrice:   { type: 'number', minimum: 0 },
+									unitPrice:           { type: 'number', minimum: 0 },
+									lineDiscountPercent: { type: 'number', minimum: 0, maximum: 100 },
+									hsnCode:             { type: 'string', maxLength: 8 },
 								},
 								additionalProperties: false,
 							},
@@ -257,7 +263,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 			request: FastifyRequest<{
 				Params: { id: string };
 				Body: {
-					items?: Array<{ productName: string; quantity: number; unitPrice?: number }>;
+					items?: Array<{ productName: string; quantity: number; unitPrice?: number; lineDiscountPercent?: number; hsnCode?: string }>;
 					notes?: string;
 					discountPercent?: number;
 					discountAmount?: number;

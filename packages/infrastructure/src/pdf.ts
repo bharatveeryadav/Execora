@@ -84,7 +84,11 @@ export interface InvoicePdfData {
 	invoiceId: string;
 	invoiceDate: Date;
 	customerName: string;
+	customerGstin?: string;
 	shopName: string;
+	shopAddress?: string;
+	shopPhone?: string;
+	shopGstin?: string;
 	supplyType?: 'INTRASTATE' | 'INTERSTATE';
 	items: Array<{
 		productName: string;
@@ -92,6 +96,7 @@ export interface InvoicePdfData {
 		quantity: number;
 		unit: string;
 		unitPrice: number; // price before tax
+		lineDiscountPercent?: number;
 		subtotal: number; // unitPrice × qty  (taxable value)
 		gstRate?: number; // GST slab %
 		cgst?: number;
@@ -101,8 +106,10 @@ export interface InvoicePdfData {
 		totalTax?: number;
 		total: number; // subtotal + tax
 	}>;
-	// Invoice-level GST totals
+	// Invoice-level totals
 	subtotal: number;
+	discountAmount?: number;        // bill-level discount
+	roundOffAmount?: number;        // round-off (+/-)
 	totalCgst?: number;
 	totalSgst?: number;
 	totalIgst?: number;
@@ -111,6 +118,13 @@ export interface InvoicePdfData {
 	grandTotal?: number;
 	notes?: string;
 	upiVpa?: string; // UPI payment address — embeds QR in PDF if set
+	// Bank payment details (shown in footer)
+	bankName?: string;
+	bankAccountNo?: string;
+	bankIfsc?: string;
+	bankAccountHolder?: string;
+	// Terms printed at bottom
+	termsAndConditions?: string;
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -347,6 +361,10 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
 
 				const rows: Array<[string, number, boolean]> = [['Taxable Amount', data.subtotal, false]];
 
+				if ((data.discountAmount ?? 0) > 0) {
+					rows.push([`Discount`, -(data.discountAmount ?? 0), false]);
+				}
+
 				if (isInterstate) {
 					rows.push(['IGST', data.totalIgst ?? 0, false]);
 				} else {
@@ -359,6 +377,11 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
 				}
 
 				rows.push(['Total Tax', data.totalTax ?? 0, false]);
+
+				if (data.roundOffAmount !== undefined && data.roundOffAmount !== 0) {
+					rows.push(['Round Off', data.roundOffAmount, false]);
+				}
+
 				rows.push(['Grand Total', grandTotal, true]);
 
 				const boxH = rows.length * rowHt + 6;
@@ -375,12 +398,13 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
 							.fill();
 					}
 
-					doc.fillColor(isGrandTotal ? '#ffffff' : '#212529')
+					const isDiscount = value < 0;
+					doc.fillColor(isGrandTotal ? '#ffffff' : isDiscount ? '#dc2626' : '#212529')
 						.fontSize(isGrandTotal ? 10 : 8.5)
 						.font(isBold ? 'Helvetica-Bold' : 'Helvetica');
 
 					doc.text(label, labelX, sy, { width: 110, lineBreak: false });
-					doc.text(INR(value), labelX, sy, { width: innerW, align: 'right', lineBreak: false });
+					doc.text(isDiscount ? `- ${INR(-value)}` : INR(value), labelX, sy, { width: innerW, align: 'right', lineBreak: false });
 
 					// hairline between rows
 					if (!isGrandTotal) {
@@ -396,15 +420,26 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
 
 				y = sy + 10;
 			} else {
-				// No tax — simple grand total
-				doc.fillColor('#f1f5f9').roundedRect(350, y, 195, 28, 6).fill();
-				doc.fillColor('#0f172a')
-					.fontSize(10)
-					.font('Helvetica-Bold')
-					.text('Grand Total', 360, y + 8, { width: 90 });
-				doc.fontSize(11).text(INR(grandTotal), 360, y + 8, { width: 175, align: 'right' });
+				// No tax — simple summary
+				const noTaxRows: Array<[string, number]> = [['Subtotal', data.subtotal]];
+				if ((data.discountAmount ?? 0) > 0) noTaxRows.push(['Discount', -(data.discountAmount ?? 0)]);
+				if (data.roundOffAmount !== undefined && data.roundOffAmount !== 0) noTaxRows.push(['Round Off', data.roundOffAmount]);
+				noTaxRows.push(['Grand Total', grandTotal]);
 
-				y += 40;
+				const boxH = noTaxRows.length * 18 + 8;
+				doc.fillColor('#f1f5f9').roundedRect(350, y, 195, boxH, 6).fill();
+				let ry = y + 6;
+				noTaxRows.forEach(([label, value]) => {
+					const isTotal = label === 'Grand Total';
+					const isNeg = value < 0;
+					if (isTotal) doc.fillColor('#0f172a').fontSize(11).font('Helvetica-Bold');
+					else doc.fillColor(isNeg ? '#dc2626' : '#374151').fontSize(9).font('Helvetica');
+					doc.text(label, 360, ry, { width: 80 });
+					doc.text(isNeg ? `- ${INR(-value)}` : INR(value), 360, ry, { width: 175, align: 'right' });
+					ry += 18;
+				});
+
+				y += boxH + 8;
 			}
 
 			// ── GST component breakdown (INTRASTATE only, informational) ───────────
@@ -445,6 +480,29 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
 					.font('Helvetica')
 					.text(`Notes: ${data.notes}`, 62, y + 10, { width: 470 });
 				y += 34;
+			}
+
+			// ── Bank payment details ───────────────────────────────────────────────
+			const hasBankDetails = data.bankAccountNo && data.bankIfsc;
+			if (hasBankDetails) {
+				doc.fillColor('#eff6ff').roundedRect(pageLeft, y + 4, pageWidth, 32, 5).fill();
+				doc.fillColor('#1e3a8a').fontSize(8).font('Helvetica-Bold').text('Bank Details:', 62, y + 12, { width: 80 });
+				const bankLine = [
+					data.bankAccountHolder ? `A/c Holder: ${data.bankAccountHolder}` : null,
+					data.bankAccountNo ? `A/c No: ${data.bankAccountNo}` : null,
+					data.bankIfsc ? `IFSC: ${data.bankIfsc}` : null,
+					data.bankName ? `Bank: ${data.bankName}` : null,
+				].filter(Boolean).join('   |   ');
+				doc.fillColor('#1e3a8a').font('Helvetica').text(bankLine, 62, y + 24, { width: 430 });
+				y += 42;
+			}
+
+			// ── Terms & Conditions ────────────────────────────────────────────────
+			if (data.termsAndConditions) {
+				doc.fillColor('#fefce8').roundedRect(pageLeft, y + 2, pageWidth, 28, 5).fill();
+				doc.fillColor('#713f12').fontSize(8).font('Helvetica-Bold').text('Terms & Conditions:', 62, y + 10, { width: 110 });
+				doc.fillColor('#713f12').font('Helvetica').text(data.termsAndConditions, 172, y + 10, { width: 370 });
+				y += 36;
 			}
 
 			// ── Signature / declaration ────────────────────────────────────────────

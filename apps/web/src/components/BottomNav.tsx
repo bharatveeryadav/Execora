@@ -17,7 +17,7 @@ import { useState, useEffect } from "react";
 import InvoiceCreation from "@/components/InvoiceCreation";
 import GlobalSearch from "@/components/GlobalSearch";
 
-// ── More drawer items ─────────────────────────────────────────────────────────
+// More drawer items
 const MORE_ITEMS = [
   { emoji: "🧾", label: "New Bill", path: "__invoice__", icon: FileText },
   { emoji: "🎤", label: "Voice", path: "__voice__", icon: Mic },
@@ -30,24 +30,14 @@ const MORE_ITEMS = [
   { emoji: "💳", label: "Payments", path: "/payment", icon: Wallet },
   { emoji: "⚙️", label: "Settings", path: "/settings", icon: Settings },
   { emoji: "🔄", label: "Recurring", path: "/recurring", icon: BarChart3 },
-  {
-    emoji: "⚖️",
-    label: "Balance Sheet",
-    path: "/balance-sheet",
-    icon: BarChart3,
-  },
-  {
-    emoji: "🏦",
-    label: "Bank Recon",
-    path: "/bank-reconciliation",
-    icon: BarChart3,
-  },
+  { emoji: "⚖️", label: "Balance Sheet", path: "/balance-sheet", icon: BarChart3 },
+  { emoji: "🏦", label: "Bank Recon", path: "/bank-reconciliation", icon: BarChart3 },
   { emoji: "📥", label: "Import Data", path: "/import", icon: BarChart3 },
   { emoji: "🧾", label: "E-Invoice", path: "/einvoicing", icon: FileText },
   { emoji: "🧮", label: "GSTR-3B", path: "/gstr3b", icon: BarChart3 },
 ];
 
-// ── Main 5 nav items ──────────────────────────────────────────────────────────
+// Main 5 nav items
 const NAV_ITEMS = [
   { label: "Home", icon: Home, path: "/" },
   { label: "Customers", icon: Users, path: "/customers" },
@@ -56,12 +46,22 @@ const NAV_ITEMS = [
   { label: "More", icon: MoreHorizontal, path: "__more__" },
 ];
 
+function getAiEnabled(): boolean {
+  try {
+    const v = JSON.parse(localStorage.getItem("execora:bizprofile") ?? "{}").aiEnabled;
+    return v === false || v === "false" ? false : true;
+  } catch {
+    return true;
+  }
+}
+
 const BottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const aiEnabled = getAiEnabled();
 
   useEffect(() => {
     const handler = () => setInvoiceOpen(true);
@@ -69,18 +69,20 @@ const BottomNav = () => {
     return () => window.removeEventListener("shortcut:new-invoice", handler);
   }, []);
 
-  // Close More drawer when navigating
   useEffect(() => {
     setMoreOpen(false);
   }, [location.pathname]);
 
+  const visibleMoreItems = MORE_ITEMS.filter(
+    (item) => aiEnabled || item.path !== "__voice__"
+  );
+
   return (
     <>
-      {/* ── Bottom navigation bar ────────────────────────────────── */}
+      {/* Bottom navigation bar */}
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-sm md:hidden">
         <div className="grid grid-cols-5">
           {NAV_ITEMS.map((item) => {
-            // More → opens drawer
             if (item.path === "__more__") {
               return (
                 <button
@@ -122,15 +124,13 @@ const BottomNav = () => {
         </div>
       </div>
 
-      {/* ── More drawer (slide up) ────────────────────────────────── */}
+      {/* More drawer */}
       {moreOpen && (
         <>
-          {/* Backdrop */}
           <div
             className="fixed inset-0 z-40 bg-black/40 md:hidden"
             onClick={() => setMoreOpen(false)}
           />
-          {/* Sheet */}
           <div className="fixed bottom-[56px] left-0 right-0 z-50 rounded-t-2xl border-t bg-card p-4 shadow-2xl md:hidden animate-in slide-in-from-bottom-4 duration-200">
             <div className="mb-3 flex items-center justify-between">
               <p className="text-sm font-semibold">More Features</p>
@@ -142,7 +142,7 @@ const BottomNav = () => {
               </button>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              {MORE_ITEMS.map((item) => (
+              {visibleMoreItems.map((item) => (
                 <button
                   key={item.path}
                   onClick={() => {
@@ -168,17 +168,18 @@ const BottomNav = () => {
                 </button>
               ))}
             </div>
-            {/* Voice hint in drawer */}
-            <p className="mt-3 text-center text-[11px] text-muted-foreground">
-              🎤 Or just say it —{" "}
-              <span className="font-medium text-foreground">
-                "report dikhao"
-              </span>{" "}
-              ·{" "}
-              <span className="font-medium text-foreground">
-                "expenses check karo"
-              </span>
-            </p>
+            {aiEnabled && (
+              <p className="mt-3 text-center text-[11px] text-muted-foreground">
+                Or just say it &mdash;{" "}
+                <span className="font-medium text-foreground">
+                  &quot;report dikhao&quot;
+                </span>{" "}
+                &middot;{" "}
+                <span className="font-medium text-foreground">
+                  &quot;expenses check karo&quot;
+                </span>
+              </p>
+            )}
           </div>
         </>
       )}
