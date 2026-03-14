@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, Plus, ChevronRight, Package, Quote, Calendar, BarChart3, TrendingUp, Clock, AlertCircle } from "lucide-react";
+import { ArrowLeft, Search, Plus, ChevronRight, Package, Quote, Calendar, BarChart3, TrendingUp, Clock, AlertCircle, MoreVertical, ShoppingCart, FileText, Truck, Wallet, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,6 +11,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useInvoices, usePurchases } from "@/hooks/useQueries";
 import { useWsInvalidation } from "@/hooks/useWsInvalidation";
@@ -263,17 +269,54 @@ const Invoices = () => {
       {/* Header */}
       <header className="sticky top-0 z-20 border-b bg-card">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="min-h-10 min-w-10 touch-manipulation" aria-label="Go back">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="min-h-10 min-w-10 shrink-0 touch-manipulation" aria-label="Go back">
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <h1 className="text-base font-bold md:text-lg">🧾 Bills</h1>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground truncate">
               {docTypeTab === "purchase"
                 ? `${filteredPurchases.length} shown · ${formatCurrency(purchasesTotal)} total`
                 : `${filtered.length} shown · ${formatCurrency(totalValue)} total`}
             </p>
           </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="min-h-10 min-w-10 shrink-0 touch-manipulation" aria-label="More options">
+                <MoreVertical className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem onClick={() => navigate("/expenses")}>
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                Expenses
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/billing")}>
+                <FileText className="mr-2 h-4 w-4" />
+                Sales Order
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/purchases")}>
+                <Package className="mr-2 h-4 w-4" />
+                Purchase Order
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/einvoicing")}>
+                <Truck className="mr-2 h-4 w-4" />
+                E-Way Bills
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/payment")}>
+                <Wallet className="mr-2 h-4 w-4" />
+                Payments
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/reports")}>
+                <ArrowDownCircle className="mr-2 h-4 w-4" />
+                Credit Notes
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/reports")}>
+                <ArrowUpCircle className="mr-2 h-4 w-4" />
+                Debit Notes
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Doc type tabs: Sales | Purchase | Quotation */}
@@ -343,7 +386,9 @@ const Invoices = () => {
               placeholder={
                 docTypeTab === "purchase"
                   ? "Search by item, supplier, category…"
-                  : "Search by invoice # or customer…"
+                  : docTypeTab === "quotation"
+                    ? "Search by estimate # or customer…"
+                    : "Search by invoice # or customer…"
               }
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -427,40 +472,40 @@ const Invoices = () => {
           </div>
         )}
 
-        {/* Quick links — Reports, Analytics, Aging (invoice-related insights) */}
+        {/* Quick links — Reports, Analytics, Aging, Overdue — compact, single row, all devices */}
         {showInvoiceList && (
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-4 gap-1.5">
             <button
               type="button"
               onClick={() => navigate("/reports")}
-              className="flex items-center gap-1.5 rounded-lg border bg-card px-3 py-2 text-xs font-medium transition-colors hover:bg-muted/50 active:bg-muted"
+              className="flex min-w-0 items-center justify-center gap-1 rounded-md border bg-card px-2 py-1.5 text-[11px] font-medium transition-colors hover:bg-muted/50 active:bg-muted"
             >
-              <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
-              Reports
+              <BarChart3 className="h-3 w-3 shrink-0 text-muted-foreground" />
+              <span className="truncate">Reports</span>
             </button>
             <button
               type="button"
               onClick={() => navigate("/reports?tab=overview")}
-              className="flex items-center gap-1.5 rounded-lg border bg-card px-3 py-2 text-xs font-medium transition-colors hover:bg-muted/50 active:bg-muted"
+              className="flex min-w-0 items-center justify-center gap-1 rounded-md border bg-card px-2 py-1.5 text-[11px] font-medium transition-colors hover:bg-muted/50 active:bg-muted"
             >
-              <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
-              Analytics
+              <TrendingUp className="h-3 w-3 shrink-0 text-muted-foreground" />
+              <span className="truncate">Analytics</span>
             </button>
             <button
               type="button"
               onClick={() => navigate("/reports?tab=aging")}
-              className="flex items-center gap-1.5 rounded-lg border bg-card px-3 py-2 text-xs font-medium transition-colors hover:bg-muted/50 active:bg-muted"
+              className="flex min-w-0 items-center justify-center gap-1 rounded-md border bg-card px-2 py-1.5 text-[11px] font-medium transition-colors hover:bg-muted/50 active:bg-muted"
             >
-              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-              Aging
+              <Clock className="h-3 w-3 shrink-0 text-muted-foreground" />
+              <span className="truncate">Aging</span>
             </button>
             <button
               type="button"
               onClick={() => navigate("/overdue")}
-              className="flex items-center gap-1.5 rounded-lg border bg-card px-3 py-2 text-xs font-medium transition-colors hover:bg-muted/50 active:bg-muted"
+              className="flex min-w-0 items-center justify-center gap-1 rounded-md border bg-card px-2 py-1.5 text-[11px] font-medium transition-colors hover:bg-muted/50 active:bg-muted"
             >
-              <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
-              Overdue
+              <AlertCircle className="h-3 w-3 shrink-0 text-muted-foreground" />
+              <span className="truncate">Overdue</span>
             </button>
           </div>
         )}
@@ -615,11 +660,11 @@ const Invoices = () => {
             : navigate("/billing")
         }
         className="fixed bottom-24 right-4 z-[60] flex h-10 items-center gap-1.5 rounded-full bg-primary px-3 text-xs font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95 md:bottom-6 md:right-6 touch-manipulation"
-        aria-label={docTypeTab === "purchase" ? "Add purchase" : "Invoice"}
+        aria-label={docTypeTab === "purchase" ? "Add purchase" : docTypeTab === "quotation" ? "Estimate" : "Invoice"}
       >
         <Plus className="h-3.5 w-3.5 shrink-0" />
         <span>
-          {docTypeTab === "purchase" ? "Purchase" : "Invoice"}
+          {docTypeTab === "purchase" ? "Purchase" : docTypeTab === "quotation" ? "Estimate" : "Invoice"}
         </span>
       </button>
 
