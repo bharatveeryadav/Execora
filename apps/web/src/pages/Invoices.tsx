@@ -1,14 +1,115 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, Plus, ChevronRight, Package, Quote } from "lucide-react";
+import { ArrowLeft, Search, Plus, ChevronRight, Package, Quote, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { useInvoices, usePurchases } from "@/hooks/useQueries";
 import { useWsInvalidation } from "@/hooks/useWsInvalidation";
 import { formatCurrency, formatDate } from "@/lib/api";
 import { Invoice, Expense } from "@/lib/api";
 import InvoiceCreation from "@/components/InvoiceCreation";
 import BottomNav from "@/components/BottomNav";
+
+const DATE_FILTERS = [
+  "all",
+  "today",
+  "yesterday",
+  "this_week",
+  "this_month",
+  "last_month",
+  "this_year",
+  "last_year",
+  "last_quarter",
+  "custom",
+] as const;
+type DateFilter = (typeof DATE_FILTERS)[number];
+
+function getDateRange(filter: DateFilter, customFrom?: Date, customTo?: Date): { from: Date; to: Date } | null {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const toEnd = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+
+  if (filter === "all") return null;
+  if (filter === "custom" && customFrom && customTo) {
+    return { from: customFrom, to: toEnd(customTo) };
+  }
+
+  let from: Date;
+  let to: Date = toEnd(now);
+
+  switch (filter) {
+    case "today":
+      from = today;
+      break;
+    case "yesterday":
+      from = new Date(today);
+      from.setDate(from.getDate() - 1);
+      to = from;
+      break;
+    case "this_week":
+      from = new Date(today);
+      from.setDate(from.getDate() - from.getDay());
+      break;
+    case "this_month":
+      from = new Date(today.getFullYear(), today.getMonth(), 1);
+      break;
+    case "last_month":
+      from = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      to = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
+      break;
+    case "this_year":
+      from = new Date(today.getFullYear(), 0, 1);
+      break;
+    case "last_year":
+      from = new Date(today.getFullYear() - 1, 0, 1);
+      to = new Date(today.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
+      break;
+    case "last_quarter":
+      const q = Math.floor(now.getMonth() / 3) + 1;
+      const prevQ = q === 1 ? 4 : q - 1;
+      const prevYear = q === 1 ? now.getFullYear() - 1 : now.getFullYear();
+      from = new Date(prevYear, (prevQ - 1) * 3, 1);
+      to = new Date(prevYear, prevQ * 3, 0, 23, 59, 59, 999);
+      break;
+    default:
+      return null;
+  }
+  return { from, to };
+}
+
+function isInvoiceInRange(inv: Invoice, range: { from: Date; to: Date } | null): boolean {
+  if (!range) return true;
+  const d = inv.invoiceDate ?? inv.createdAt;
+  const invDate = new Date(d);
+  invDate.setHours(0, 0, 0, 0);
+  const from = new Date(range.from);
+  from.setHours(0, 0, 0, 0);
+  const to = new Date(range.to);
+  to.setHours(23, 59, 59, 999);
+  return invDate >= from && invDate <= to;
+}
+
+const DATE_FILTER_LABELS: Record<DateFilter, string> = {
+  all: "All dates",
+  today: "Today",
+  yesterday: "Yesterday",
+  this_week: "This week",
+  this_month: "This month",
+  last_month: "Last month",
+  this_year: "This year",
+  last_year: "Last year",
+  last_quarter: "Last quarter",
+  custom: "Custom",
+};
 
 const DOC_TYPE_TABS = [
   { id: "sales" as const, label: "Sales", icon: Plus },
@@ -62,6 +163,10 @@ const Invoices = () => {
   const [statusTab, setStatusTab] = useState<StatusTab>("All");
   const [search, setSearch] = useState("");
   const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  const [customFrom, setCustomFrom] = useState<Date | undefined>();
+  const [customTo, setCustomTo] = useState<Date | undefined>();
+  const [customOpen, setCustomOpen] = useState(false);
 
   const { data: invoices = [], isLoading } = useInvoices(200);
   const { data: purchasesData, isLoading: purchasesLoading } = usePurchases({});
@@ -77,7 +182,16 @@ const Invoices = () => {
     return [];
   }, [invoices, docTypeTab]);
 
-  const filtered = invoicesByDocType.filter((inv: Invoice) => {
+  const dateRange = useMemo(
+    () => getDateRange(dateFilter, customFrom, customTo),
+    [dateFilter, customFrom, customTo]
+  );
+
+  const invoicesByDate = useMemo(() => {
+    return invoicesByDocType.filter((inv) => isInvoiceInRange(inv, dateRange));
+  }, [invoicesByDocType, dateRange]);
+
+  const filtered = invoicesByDate.filter((inv: Invoice) => {
     const matchStatus =
       statusTab === "All" ||
       inv.status.toLowerCase() === statusTab.toLowerCase();
@@ -102,8 +216,8 @@ const Invoices = () => {
     );
   }, [purchases, search, docTypeTab]);
 
-  // Count per status for badges (from invoicesByDocType)
-  const counts = invoicesByDocType.reduce<Record<string, number>>((acc, inv) => {
+  // Count per status for badges (from invoicesByDate)
+  const counts = invoicesByDate.reduce<Record<string, number>>((acc, inv) => {
     acc[inv.status] = (acc[inv.status] ?? 0) + 1;
     return acc;
   }, {});
@@ -112,16 +226,36 @@ const Invoices = () => {
     (s, inv) => s + parseFloat(String(inv.total ?? 0)),
     0,
   );
+  const pendingAmount = filtered.reduce((s, inv) => {
+    if (inv.status === "paid" || inv.status === "cancelled") return s;
+    const total = parseFloat(String(inv.total ?? 0));
+    const paid = parseFloat(String(inv.paidAmount ?? 0));
+    return s + (total - paid);
+  }, 0);
   const purchasesTotal = filteredPurchases.reduce(
     (s, p) => s + Number(p.amount ?? 0),
     0,
   );
 
   const showInvoiceList = docTypeTab === "sales" || docTypeTab === "quotation";
+  const salesByDate = useMemo(
+    () =>
+      invoices
+        .filter((i: Invoice) => i.status !== "proforma")
+        .filter((i) => isInvoiceInRange(i, dateRange)),
+    [invoices, dateRange]
+  );
+  const quotationByDate = useMemo(
+    () =>
+      invoices
+        .filter((i: Invoice) => i.status === "proforma")
+        .filter((i) => isInvoiceInRange(i, dateRange)),
+    [invoices, dateRange]
+  );
   const docTypeCounts = {
-    sales: invoices.filter((i: Invoice) => i.status !== "proforma").length,
+    sales: salesByDate.length,
     purchase: purchases.length,
-    quotation: invoices.filter((i: Invoice) => i.status === "proforma").length,
+    quotation: quotationByDate.length,
   };
 
   return (
@@ -174,7 +308,7 @@ const Invoices = () => {
               {STATUS_TABS.map((tab) => {
                 const key = tab.toLowerCase();
                 const count =
-                  tab === "All" ? invoicesByDocType.length : (counts[key] ?? 0);
+                  tab === "All" ? invoicesByDate.length : (counts[key] ?? 0);
                 return (
                   <button
                     key={tab}
@@ -200,20 +334,98 @@ const Invoices = () => {
       </header>
 
       <main className="mx-auto max-w-3xl space-y-4 p-4 md:p-6">
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="pl-9"
-            placeholder={
-              docTypeTab === "purchase"
-                ? "Search by item, supplier, category…"
-                : "Search by invoice # or customer…"
-            }
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+        {/* Search bar — date filter on right, hidden when user is searching */}
+        <div className="flex items-center gap-2 rounded-lg border bg-background">
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="pl-9 pr-3 border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+              placeholder={
+                docTypeTab === "purchase"
+                  ? "Search by item, supplier, category…"
+                  : "Search by invoice # or customer…"
+              }
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          {showInvoiceList && !search.trim() && (
+            <div className="flex shrink-0 items-center pr-2">
+              <Select
+                value={dateFilter}
+                onValueChange={(v) => setDateFilter(v as DateFilter)}
+              >
+                <SelectTrigger className="h-8 w-[130px] border-0 bg-transparent shadow-none text-xs focus:ring-0">
+                  <Calendar className="h-3.5 w-3.5 mr-1 shrink-0" />
+                  <SelectValue placeholder="Date" />
+                </SelectTrigger>
+                <SelectContent align="end">
+                  {DATE_FILTERS.map((f) => (
+                    <SelectItem key={f} value={f} className="text-xs">
+                      {DATE_FILTER_LABELS[f]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {dateFilter === "custom" && (
+                <Popover open={customOpen} onOpenChange={setCustomOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 px-2 text-xs">
+                      {customFrom && customTo
+                        ? `${customFrom.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}–${customTo.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}`
+                        : "Pick"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <div className="flex flex-col sm:flex-row gap-2 p-3">
+                      <div>
+                        <p className="text-xs font-medium mb-1">From</p>
+                        <CalendarComponent
+                          mode="single"
+                          selected={customFrom}
+                          onSelect={setCustomFrom}
+                          disabled={(d) => d > (customTo ?? new Date())}
+                        />
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium mb-1">To</p>
+                        <CalendarComponent
+                          mode="single"
+                          selected={customTo}
+                          onSelect={setCustomTo}
+                          disabled={(d) => d < (customFrom ?? new Date(0))}
+                        />
+                      </div>
+                    </div>
+                    <div className="p-2 border-t">
+                      <Button
+                        size="sm"
+                        className="w-full"
+                        onClick={() => customFrom && customTo && setCustomOpen(false)}
+                      >
+                        Apply
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
+            </div>
+          )}
         </div>
+
+        {/* Total & Pending summary — when invoices shown */}
+        {showInvoiceList && filtered.length > 0 && (
+          <div className="flex gap-3 rounded-lg border bg-muted/30 p-3">
+            <div className="flex-1">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Total</p>
+              <p className="text-sm font-bold">{formatCurrency(totalValue)}</p>
+            </div>
+            <div className="flex-1 border-l pl-3">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Pending</p>
+              <p className="text-sm font-bold text-warning">{formatCurrency(pendingAmount)}</p>
+            </div>
+          </div>
+        )}
 
         {/* Purchase list */}
         {docTypeTab === "purchase" && (

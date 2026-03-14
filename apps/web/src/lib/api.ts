@@ -273,6 +273,7 @@ export interface Invoice {
   items?: InvoiceItem[];
   dueDate?: string | null;
   paidAt?: string | null;
+  invoiceDate?: string | null;
   createdAt: string;
   updatedAt: string;
 }
