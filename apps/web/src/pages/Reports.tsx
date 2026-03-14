@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowLeft,
   Download,
@@ -18,7 +18,7 @@ import {
 import VoiceBar from "@/components/VoiceBar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   AreaChart,
   Area,
@@ -2625,11 +2625,27 @@ function AgingTab() {
 
 // ── Main Reports page ─────────────────────────────────────────────────────────
 
+const TAB_FROM_PARAM: Record<string, (typeof TABS)[number]> = {
+  overview: "Overview",
+  "gstr-1": "GSTR-1",
+  gstr1: "GSTR-1",
+  pnl: "P&L",
+  aging: "Aging",
+};
+
 const Reports = () => {
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab")?.toLowerCase();
+  const initialTab = (tabParam && TAB_FROM_PARAM[tabParam]) ?? "Overview";
   const [activePeriod, setActivePeriod] = useState<string>("This Month");
-  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("Overview");
+  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>(initialTab);
   const navigate = useNavigate();
   useWsInvalidation(["summary", "invoices", "customers", "products"]);
+
+  useEffect(() => {
+    const t = tabParam && TAB_FROM_PARAM[tabParam];
+    if (t) setActiveTab(t);
+  }, [tabParam]);
 
   return (
     <div className="min-h-screen bg-background">

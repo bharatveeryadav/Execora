@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, Plus, ChevronRight, Package, Quote, Calendar } from "lucide-react";
+import { ArrowLeft, Search, Plus, ChevronRight, Package, Quote, Calendar, BarChart3, TrendingUp, Clock, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -424,6 +424,44 @@ const Invoices = () => {
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Pending</p>
               <p className="text-sm font-bold text-warning">{formatCurrency(pendingAmount)}</p>
             </div>
+          </div>
+        )}
+
+        {/* Quick links — Reports, Analytics, Aging (invoice-related insights) */}
+        {showInvoiceList && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => navigate("/reports")}
+              className="flex items-center gap-1.5 rounded-lg border bg-card px-3 py-2 text-xs font-medium transition-colors hover:bg-muted/50 active:bg-muted"
+            >
+              <BarChart3 className="h-3.5 w-3.5 text-muted-foreground" />
+              Reports
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/reports?tab=overview")}
+              className="flex items-center gap-1.5 rounded-lg border bg-card px-3 py-2 text-xs font-medium transition-colors hover:bg-muted/50 active:bg-muted"
+            >
+              <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+              Analytics
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/reports?tab=aging")}
+              className="flex items-center gap-1.5 rounded-lg border bg-card px-3 py-2 text-xs font-medium transition-colors hover:bg-muted/50 active:bg-muted"
+            >
+              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+              Aging
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/overdue")}
+              className="flex items-center gap-1.5 rounded-lg border bg-card px-3 py-2 text-xs font-medium transition-colors hover:bg-muted/50 active:bg-muted"
+            >
+              <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
+              Overdue
+            </button>
           </div>
         )}
 
