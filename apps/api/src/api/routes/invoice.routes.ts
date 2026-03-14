@@ -67,6 +67,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 						placeOfSupply: { type: 'string', maxLength: 2 },
 						recipientAddress: { type: 'string', maxLength: 500 },
 						reverseCharge: { type: 'boolean' },
+						overrideCreditLimit: { type: 'boolean' },
 						// Partial payment at billing
 						initialPayment: {
 							type: 'object',
@@ -96,6 +97,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 					placeOfSupply?: string;
 					recipientAddress?: string;
 					reverseCharge?: boolean;
+					overrideCreditLimit?: boolean;
 					initialPayment?: { amount: number; method: 'cash' | 'upi' | 'card' | 'other' };
 					overrideCreditLimit?: boolean;
 				};
