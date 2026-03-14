@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, Plus, ChevronRight, FileText, Package, Quote } from "lucide-react";
+import { ArrowLeft, Search, Plus, ChevronRight, Package, Quote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useInvoices, usePurchases } from "@/hooks/useQueries";
@@ -11,7 +11,7 @@ import InvoiceCreation from "@/components/InvoiceCreation";
 import BottomNav from "@/components/BottomNav";
 
 const DOC_TYPE_TABS = [
-  { id: "sales" as const, label: "Sales", icon: FileText },
+  { id: "sales" as const, label: "Sales", icon: Plus },
   { id: "purchase" as const, label: "Purchase", icon: Package },
   { id: "quotation" as const, label: "Quotation", icon: Quote },
 ] as const;
@@ -364,11 +364,11 @@ const Invoices = () => {
             ? navigate("/purchases")
             : navigate("/billing")
         }
-        className="fixed bottom-20 right-4 z-[60] flex h-14 items-center gap-2 rounded-full bg-primary px-5 text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95 md:bottom-6 md:right-6 touch-manipulation"
+        className="fixed bottom-24 right-4 z-[60] flex h-10 items-center gap-1.5 rounded-full bg-primary px-3 text-xs font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95 md:bottom-6 md:right-6 touch-manipulation"
         aria-label={docTypeTab === "purchase" ? "Add purchase" : "Invoice"}
       >
-        <FileText className="h-5 w-5 shrink-0" />
-        <span className="font-semibold">
+        <Plus className="h-3.5 w-3.5 shrink-0" />
+        <span>
           {docTypeTab === "purchase" ? "Purchase" : "Invoice"}
         </span>
       </button>
