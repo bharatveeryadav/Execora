@@ -1258,6 +1258,7 @@ export function InvoiceTemplatePreview({
         alignItems: "flex-start",
         margin: 0,
         padding: 0,
+        borderRadius: 12,
       }}
     >
       {template === "classic" && <ClassicPreview d={data} />}
