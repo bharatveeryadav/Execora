@@ -1254,7 +1254,10 @@ export function InvoiceTemplatePreview({
       style={{
         overflow: "hidden",
         display: "flex",
-        justifyContent: "center",
+        justifyContent: "flex-start",
+        alignItems: "flex-start",
+        margin: 0,
+        padding: 0,
       }}
     >
       {template === "classic" && <ClassicPreview d={data} />}

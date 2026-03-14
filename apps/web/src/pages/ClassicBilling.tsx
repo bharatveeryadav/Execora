@@ -31,6 +31,9 @@ import {
   MessageCircle,
   UserPlus,
   Printer,
+  Settings,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -333,13 +336,22 @@ export default function ClassicBilling() {
     setActiveSuggestRow(null);
   };
 
-  // ── Composition scheme flag — read from business settings (set in Settings page) ──
-  const compositionScheme = (() => {
+  // ── Billing setup (composition, round-off) — synced with localStorage ──
+  const readBizProfile = useCallback(() => {
     try {
-      const v = JSON.parse(localStorage.getItem("execora:bizprofile") ?? "{}").compositionScheme;
-      return v === true || v === "true";
-    } catch { return false; }
-  })();
+      return JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}") as Record<string, unknown>;
+    } catch { return {}; }
+  }, []);
+
+  const [compositionScheme, setCompositionScheme] = useState(() => {
+    const v = readBizProfile().compositionScheme;
+    return v === true || v === "true";
+  });
+  const persistComposition = useCallback((val: boolean) => {
+    const stored = readBizProfile();
+    stored.compositionScheme = val;
+    localStorage.setItem(BIZ_STORAGE_KEY, JSON.stringify(stored));
+  }, [readBizProfile]);
 
   // ── Billing options ───────────────────────────────────────────────────
   const [withGst, setWithGst] = useState(false);
@@ -359,7 +371,16 @@ export default function ClassicBilling() {
   const [recipientAddressOverride, setRecipientAddressOverride] = useState("");
   // ── New features ─────────────────────────────────────────────────────────────
   const [dueDate, setDueDate] = useState("");
-  const [roundOffEnabled, setRoundOffEnabled] = useState(false);
+  const [roundOffEnabled, setRoundOffEnabledState] = useState(() => {
+    const v = readBizProfile().roundOff;
+    return v === true || v === "true";
+  });
+  const setRoundOffEnabled = useCallback((val: boolean) => {
+    setRoundOffEnabledState(val);
+    const stored = readBizProfile();
+    stored.roundOff = val;
+    localStorage.setItem(BIZ_STORAGE_KEY, JSON.stringify(stored));
+  }, [readBizProfile]);
   const [showNewCustDialog, setShowNewCustDialog] = useState(false);
   const [newCustName, setNewCustName] = useState("");
   const [newCustPhone, setNewCustPhone] = useState("");
@@ -369,6 +390,23 @@ export default function ClassicBilling() {
     total: number;
   } | null>(null);
   const [draftBanner, setDraftBanner] = useState(false);
+  const [billingSetupExpanded, setBillingSetupExpanded] = useState(false);
+  const [invoiceStyleExpanded, setInvoiceStyleExpanded] = useState(false);
+
+  // Sync billing setup from localStorage when returning from Settings (e.g. visibility change)
+  useEffect(() => {
+    const onFocus = () => {
+      const stored = readBizProfile();
+      const comp = stored.compositionScheme === true || stored.compositionScheme === "true";
+      const round = stored.roundOff === true || stored.roundOff === "true";
+      const tpl = (stored.invoiceTemplate as TemplateId) ?? (localStorage.getItem("inv_template") as TemplateId);
+      setCompositionScheme(comp);
+      setRoundOffEnabledState(round);
+      if (tpl) setInvoiceTemplate(tpl);
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [readBizProfile]);
 
   // Split helpers
   const splitTotal = useMemo(
@@ -391,13 +429,21 @@ export default function ClassicBilling() {
 
   // ── Template ──────────────────────────────────────────────────────────
   const [invoiceTemplate, setInvoiceTemplate] = useState<TemplateId>(() => {
-    return (localStorage.getItem("inv_template") as TemplateId) ?? "classic";
+    const stored = (() => {
+      try { return JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}"); } catch { return {}; }
+    })();
+    return (stored.invoiceTemplate as TemplateId) ?? (localStorage.getItem("inv_template") as TemplateId) ?? "classic";
   });
   const [showPreview, setShowPreview] = useState(false);
 
   const handleTemplateChange = (t: TemplateId) => {
     setInvoiceTemplate(t);
     localStorage.setItem("inv_template", t);
+    const stored = (() => {
+      try { return JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}"); } catch { return {}; }
+    })();
+    stored.invoiceTemplate = t;
+    localStorage.setItem(BIZ_STORAGE_KEY, JSON.stringify(stored));
   };
 
   // ── Computed totals ───────────────────────────────────────────────────
@@ -884,6 +930,14 @@ export default function ClassicBilling() {
             <Eye className="h-3.5 w-3.5" />
             Preview
           </Button>
+          <button
+            onClick={() => navigate("/settings/billing")}
+            className="touch-target flex items-center justify-center rounded-lg p-2 -m-1 hover:bg-muted transition-colors"
+            aria-label="Billing settings"
+            title="Billing settings"
+          >
+            <Settings className="h-5 w-5" />
+          </button>
         </div>
       </div>
 
@@ -920,27 +974,103 @@ export default function ClassicBilling() {
             </button>
           </div>
         )}
-        {/* ── Invoice Template Selector ────────────────────────────── */}
-        <div className="space-y-2">
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-            <FileText className="h-3.5 w-3.5" />
-            Invoice Style
-          </label>
-          {/* horizontal-scroll on mobile, 4-col grid on sm+ */}
-          <div className="flex gap-2 overflow-x-auto pb-1 snap-x sm:grid sm:grid-cols-4 sm:overflow-visible sm:snap-none">
-            {TEMPLATES.map((t) => (
-              <div
-                key={t.id}
-                className="shrink-0 snap-start w-[23vw] min-w-[72px] sm:w-auto"
-              >
-                <TemplateThumbnail
-                  template={t}
-                  selected={invoiceTemplate === t.id}
-                  onClick={() => handleTemplateChange(t.id)}
+        {/* ── Billing setup (quick access to settings) ───────────────────── */}
+        <div className="rounded-xl border bg-card overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setBillingSetupExpanded((e) => !e)}
+            className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-muted/50 transition-colors"
+          >
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+              <Settings className="h-3.5 w-3.5" />
+              Billing setup
+            </span>
+            <span className="text-[11px] text-muted-foreground truncate max-w-[45%]">
+              {(() => {
+                const p = readBizProfile();
+                const name = (p.legalName ?? p.shopName ?? "") as string;
+                const gst = (p.gstin ?? "") as string;
+                return name || gst ? `${name || "Shop"}${gst ? ` · ${gst}` : ""}` : "Configure in Settings";
+              })()}
+            </span>
+            {billingSetupExpanded ? (
+              <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+            )}
+          </button>
+          {billingSetupExpanded && (
+            <div className="border-t px-3 py-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Composition scheme</span>
+                <Switch
+                  checked={compositionScheme}
+                  onCheckedChange={(v) => {
+                    setCompositionScheme(v);
+                    persistComposition(v);
+                  }}
                 />
               </div>
-            ))}
-          </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm">Round off total</span>
+                <Switch
+                  checked={roundOffEnabled}
+                  onCheckedChange={setRoundOffEnabled}
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full gap-2"
+                onClick={() => navigate("/settings/billing")}
+              >
+                <Settings className="h-3.5 w-3.5" />
+                Billing settings (GSTIN, address, bank…)
+              </Button>
+            </div>
+          )}
+        </div>
+        {/* ── Invoice Style (collapsible like Billing setup) ─────────────── */}
+        <div className="rounded-xl border bg-card overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setInvoiceStyleExpanded((e) => !e)}
+            className="w-full flex items-center justify-between px-3 py-2.5 text-left hover:bg-muted/50 transition-colors"
+          >
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+              <FileText className="h-3.5 w-3.5" />
+              My Store Invoice Style
+            </span>
+            <span className="text-[11px] text-muted-foreground truncate max-w-[45%]">
+              {TEMPLATES.find((t) => t.id === invoiceTemplate)?.label ?? "Classic"}
+            </span>
+            {invoiceStyleExpanded ? (
+              <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+            )}
+          </button>
+          {invoiceStyleExpanded && (
+            <div className="border-t px-3 py-3">
+              <p className="text-[11px] text-muted-foreground mb-2">
+                Tap to change — applies to all bills
+              </p>
+              <div className="flex gap-2 overflow-x-auto pb-1 snap-x sm:grid sm:grid-cols-4 sm:overflow-visible sm:snap-none">
+                {TEMPLATES.map((t) => (
+                  <div
+                    key={t.id}
+                    className="shrink-0 snap-start w-[23vw] min-w-[72px] sm:w-auto"
+                  >
+                    <TemplateThumbnail
+                      template={t}
+                      selected={invoiceTemplate === t.id}
+                      onClick={() => handleTemplateChange(t.id)}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── Customer Search ──────────────────────────────────────── */}
@@ -1705,7 +1835,8 @@ export default function ClassicBilling() {
                     setSupplyType("INTRASTATE");
                     setPlaceOfSupply("");
                     setDueDate("");
-                    setRoundOffEnabled(false);
+                    const stored = readBizProfile();
+                    setRoundOffEnabled(stored.roundOff === true || stored.roundOff === "true");
                   }}
                 >
                   New Invoice

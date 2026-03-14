@@ -21,6 +21,7 @@ import {
   Eye,
   EyeOff,
   Check,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,11 +46,13 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import {
+  InvoiceTemplatePreview,
   TemplateThumbnail,
   TEMPLATES,
   type TemplateId,
 } from "@/components/InvoiceTemplatePreview";
-import { useNavigate } from "react-router-dom";
+import { TemplateGalleryModal } from "@/components/TemplateGalleryModal";
+import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -67,6 +70,7 @@ const LANG_STORAGE_KEY = "execora:lang";
 
 const Settings = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
   const { data: me } = useMe();
@@ -279,9 +283,13 @@ const Settings = () => {
   const [lang, setLang] = useState(
     () => localStorage.getItem(LANG_STORAGE_KEY) ?? "english",
   );
-  const [invoiceTemplate, setInvoiceTemplate] = useState<TemplateId>(
-    () => (localStorage.getItem("inv_template") as TemplateId) ?? "classic",
-  );
+  const [invoiceTemplate, setInvoiceTemplate] = useState<TemplateId>(() => {
+    const stored = (() => {
+      try { return JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}"); } catch { return {}; }
+    })();
+    return (stored.invoiceTemplate as TemplateId) ?? (localStorage.getItem("inv_template") as TemplateId) ?? "classic";
+  });
+  const [templateGalleryOpen, setTemplateGalleryOpen] = useState(false);
 
   // Sync with me?.tenant once loaded — seeds from API if localStorage is empty
   useEffect(() => {
@@ -329,9 +337,20 @@ const Settings = () => {
         setAiEnabled(s.aiEnabled !== "false");
       if (stored.compositionScheme === undefined && s.compositionScheme !== undefined)
         setCompositionScheme(s.compositionScheme === "true");
+      if (s.invoiceTemplate) {
+        setInvoiceTemplate(s.invoiceTemplate as TemplateId);
+        localStorage.setItem("inv_template", s.invoiceTemplate);
+      }
     }
     if (me?.name && !profileName) setProfileName(me.name);
   }, [me]);
+
+  // Scroll to business-profile when navigated from Classic Billing
+  useEffect(() => {
+    if (location.hash === "#business-profile") {
+      document.getElementById("business-profile")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [location.hash]);
 
   const handleSave = async () => {
     // Always persist to localStorage for offline / PDF use
@@ -356,9 +375,11 @@ const Settings = () => {
         roundOff,
         aiEnabled,
         compositionScheme,
+        invoiceTemplate,
       }),
     );
     localStorage.setItem(LANG_STORAGE_KEY, lang);
+    localStorage.setItem("inv_template", invoiceTemplate);
 
     // Persist to backend — updates both user row and tenant row
     try {
@@ -385,6 +406,7 @@ const Settings = () => {
             roundOff: String(roundOff),
             aiEnabled: String(aiEnabled),
             compositionScheme: String(compositionScheme),
+            invoiceTemplate,
             ...(razorpaySecret
               ? { razorpayWebhookSecret: razorpaySecret }
               : {}),
@@ -461,8 +483,70 @@ const Settings = () => {
       </header>
 
       <main className="mx-auto max-w-3xl space-y-5 p-4 md:p-6">
+        {/* Document Templates — ~35% preview left, ~65% content right, minimal spacing */}
+        <Card
+          className="border rounded-xl cursor-pointer hover:bg-muted/50 transition-colors"
+          onClick={() => setTemplateGalleryOpen(true)}
+        >
+          <CardContent className="p-1 flex items-stretch gap-1.5">
+            <div className="w-[35%] min-w-0 flex shrink-0 overflow-hidden max-h-[90px]" style={{ minHeight: 0 }}>
+              <div style={{ transform: "scale(0.3)", transformOrigin: "top left", margin: 0, padding: 0 }}>
+                <InvoiceTemplatePreview
+                  template={invoiceTemplate}
+                  data={{
+                    invoiceNo: "INV-001",
+                    date: "14-Mar-2025",
+                    shopName: "My Store",
+                    customerName: "Sample Customer",
+                    supplierGstin: "07ABCDE1234F1Z5",
+                    supplierAddress: "123 Main St, Bangalore 560001",
+                    items: [
+                      { name: "Rice 1kg", qty: 5, unit: "pcs", rate: 80, discount: 0, amount: 400 },
+                      { name: "Dal 500g", qty: 2, unit: "pcs", rate: 120, discount: 5, amount: 228 },
+                    ],
+                    subtotal: 628,
+                    discountAmt: 31,
+                    cgst: 29.85,
+                    sgst: 29.85,
+                    total: 656.7,
+                    amountInWords: "Six Hundred Fifty Six Rupees Seventy Paise Only",
+                  }}
+                />
+              </div>
+            </div>
+            <div className="flex-1 min-w-0 flex flex-col justify-center py-0.5 pr-0.5">
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-semibold text-sm leading-tight">Invoice Templates</p>
+                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+              </div>
+              <p className="text-xs text-muted-foreground leading-tight mt-0.5">Choose from 7 ready templates.</p>
+              <span
+                className="text-sm font-medium mt-0.5"
+                style={{ color: TEMPLATES.find((t) => t.id === invoiceTemplate)?.color ?? "#22c55e" }}
+              >
+                {TEMPLATES.find((t) => t.id === invoiceTemplate)?.label ?? "Classic"}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <TemplateGalleryModal
+          open={templateGalleryOpen}
+          onOpenChange={setTemplateGalleryOpen}
+          selectedTemplate={invoiceTemplate}
+          onSelectTemplate={(id) => {
+            setInvoiceTemplate(id);
+            localStorage.setItem("inv_template", id);
+            const stored = (() => {
+              try { return JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}"); } catch { return {}; }
+            })();
+            stored.invoiceTemplate = id;
+            localStorage.setItem(BIZ_STORAGE_KEY, JSON.stringify(stored));
+          }}
+        />
+
         {/* Business Profile */}
-        <Card className="border-none shadow-sm">
+        <Card id="business-profile" className="border-none shadow-sm scroll-mt-20">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <Building2 className="h-4 w-4 text-muted-foreground" />
@@ -2012,13 +2096,12 @@ const Settings = () => {
           </CardContent>
         </Card>
 
-        {/* Invoice Template */}
+        {/* Invoice Template — My Store style */}
         <Card className="border-none shadow-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Invoice Template</CardTitle>
+            <CardTitle className="text-base">My Store Invoice Style</CardTitle>
             <p className="text-xs text-muted-foreground">
-              Choose how your printed and PDF invoices look. You can also switch
-              templates inside Classic Billing.
+              Choose how your invoices look. Saved per store — applies to all bills.
             </p>
           </CardHeader>
           <CardContent>
@@ -2031,6 +2114,11 @@ const Settings = () => {
                   onClick={() => {
                     setInvoiceTemplate(t.id);
                     localStorage.setItem("inv_template", t.id);
+                    const stored = (() => {
+                      try { return JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}"); } catch { return {}; }
+                    })();
+                    stored.invoiceTemplate = t.id;
+                    localStorage.setItem(BIZ_STORAGE_KEY, JSON.stringify(stored));
                   }}
                 />
               ))}

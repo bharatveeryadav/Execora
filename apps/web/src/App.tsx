@@ -6,6 +6,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import Index from "./pages/Index";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
+import BillingSettings from "./pages/BillingSettings";
 import Payment from "./pages/Payment";
 import Inventory from "./pages/Inventory";
 import Customers from "./pages/Customers";
@@ -79,6 +80,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Settings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings/billing"
+        element={
+          <ProtectedRoute>
+            <BillingSettings />
           </ProtectedRoute>
         }
       />
