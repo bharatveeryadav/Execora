@@ -62,6 +62,12 @@ export interface CustomerSearchResult {
   notes?: string | null;
   gstin?: string | null;
   creditLimit?: number | null;
+  /** B2B recipient address fields (for invoice preview) */
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pincode?: string | null;
 }
 
 // Invoice item

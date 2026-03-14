@@ -431,6 +431,10 @@ export default function InvoiceDetail() {
                 label: "Place of Supply",
                 value: invoice.placeOfSupply,
               },
+              invoice.reverseCharge && {
+                label: "Reverse Charge",
+                value: "Yes",
+              },
             ]
               .filter(Boolean)
               .map((row) => (

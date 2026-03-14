@@ -117,6 +117,11 @@ class CustomerService {
 				notes: true,
 				gstin: true,
 				creditLimit: true,
+				addressLine1: true,
+				addressLine2: true,
+				city: true,
+				state: true,
+				pincode: true,
 			},
 		});
 		return customers.map((c) => ({
@@ -132,6 +137,11 @@ class CustomerService {
 			notes: c.notes,
 			gstin: c.gstin,
 			creditLimit: c.creditLimit ? parseFloat(c.creditLimit.toString()) : null,
+			addressLine1: c.addressLine1 ?? undefined,
+			addressLine2: c.addressLine2 ?? undefined,
+			city: c.city ?? undefined,
+			state: c.state ?? undefined,
+			pincode: c.pincode ?? undefined,
 		}));
 	}
 
@@ -1126,6 +1136,11 @@ class CustomerService {
 				notes: c.notes,
 				gstin: c.gstin,
 				creditLimit: c.creditLimit ? parseFloat(c.creditLimit.toString()) : null,
+				addressLine1: c.addressLine1 ?? undefined,
+				addressLine2: c.addressLine2 ?? undefined,
+				city: c.city ?? undefined,
+				state: c.state ?? undefined,
+				pincode: c.pincode ?? undefined,
 				matchScore: this.calculateMatchScore(searchLower, {
 					id: c.id,
 					name: c.name,

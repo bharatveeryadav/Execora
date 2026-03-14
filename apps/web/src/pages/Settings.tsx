@@ -189,6 +189,21 @@ const Settings = () => {
       return "";
     }
   });
+  const [bizCity, setBizCity] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}").city ?? "";
+    } catch { return ""; }
+  });
+  const [bizState, setBizState] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}").state ?? "";
+    } catch { return ""; }
+  });
+  const [bizPincode, setBizPincode] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}").pincode ?? "";
+    } catch { return ""; }
+  });
   const [bizUpiVpa, setBizUpiVpa] = useState(() => {
     try {
       return (
@@ -286,6 +301,9 @@ const Settings = () => {
         setBizLegalName(me.tenant.legalName ?? me.tenant.name ?? "");
       if (!stored.phone && s.phone) setBizPhone(s.phone);
       if (!stored.address && s.address) setBizAddress(s.address);
+      if (!stored.city && s.city) setBizCity(s.city);
+      if (!stored.state && s.state) setBizState(s.state);
+      if (!stored.pincode && s.pincode) setBizPincode(s.pincode);
       if (!stored.upiVpa && s.upiVpa) setBizUpiVpa(s.upiVpa);
       if (s.razorpayWebhookSecret) setRazorpaySecret(s.razorpayWebhookSecret);
       if (s.phonepeWebhookSecret) setPhonepeSecret(s.phonepeWebhookSecret);
@@ -324,6 +342,9 @@ const Settings = () => {
         legalName: bizLegalName,
         phone: bizPhone,
         address: bizAddress,
+        city: bizCity,
+        state: bizState,
+        pincode: bizPincode,
         upiVpa: bizUpiVpa,
         autoSendEmail,
         autoSendWhatsApp,
@@ -350,6 +371,9 @@ const Settings = () => {
           settings: {
             phone: bizPhone,
             address: bizAddress,
+            city: bizCity,
+            state: bizState,
+            pincode: bizPincode,
             upiVpa: bizUpiVpa,
             autoSendEmail: String(autoSendEmail),
             autoSendWhatsApp: String(autoSendWhatsApp),
@@ -513,12 +537,38 @@ const Settings = () => {
                   type="tel"
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Business Address</Label>
+              <div className="space-y-1.5 md:col-span-2">
+                <Label className="text-xs">Business Address (Line 1)</Label>
                 <Input
                   value={bizAddress}
                   onChange={(e) => setBizAddress(e.target.value)}
-                  placeholder="Street, City, State, PIN"
+                  placeholder="Building, street, locality"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">City</Label>
+                <Input
+                  value={bizCity}
+                  onChange={(e) => setBizCity(e.target.value)}
+                  placeholder="e.g. Bangalore"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">State</Label>
+                <Input
+                  value={bizState}
+                  onChange={(e) => setBizState(e.target.value)}
+                  placeholder="e.g. Karnataka"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">PIN Code</Label>
+                <Input
+                  value={bizPincode}
+                  onChange={(e) => setBizPincode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="6-digit"
+                  maxLength={6}
+                  className="font-mono w-24"
                 />
               </div>
               <div className="space-y-1.5">

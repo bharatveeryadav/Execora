@@ -79,6 +79,14 @@ export interface PreviewData {
   date: string;
   shopName: string;
   customerName: string;
+  /** Supplier GSTIN (shown in header when available) */
+  supplierGstin?: string;
+  /** Supplier address (mandatory per GST) */
+  supplierAddress?: string;
+  /** Recipient billing address (B2B) */
+  recipientAddress?: string;
+  /** Composition scheme — show "Composition Taxable Person" */
+  compositionScheme?: boolean;
   items: PreviewItem[];
   subtotal: number;
   discountAmt: number;
@@ -91,7 +99,10 @@ export interface PreviewData {
   paymentMode?: string;
   notes?: string;
   upiId?: string;
+  /** Buyer GSTIN (Bill To) */
   gstin?: string;
+  /** Reverse Charge — show "Tax is payable on Reverse Charge" when true */
+  reverseCharge?: boolean;
 }
 
 // ── Indian ₹ formatter ───────────────────────────────────────────────────────
@@ -127,6 +138,15 @@ function ClassicPreview({ d }: { d: PreviewData }) {
         }}
       >
         <div style={{ fontSize: 18, fontWeight: 700 }}>{d.shopName}</div>
+        {d.supplierAddress && (
+          <div style={{ fontSize: 9, color: "#555" }}>{d.supplierAddress}</div>
+        )}
+        {d.supplierGstin && (
+          <div style={{ fontSize: 10, color: "#555" }}>GSTIN: {d.supplierGstin}</div>
+        )}
+        {d.compositionScheme && (
+          <div style={{ fontSize: 9, fontWeight: 600, color: "#b91c1c" }}>Composition Taxable Person</div>
+        )}
         <div style={{ fontSize: 11, color: "#555" }}>TAX INVOICE</div>
       </div>
       {/* Meta */}
@@ -139,6 +159,7 @@ function ClassicPreview({ d }: { d: PreviewData }) {
       >
         <div>
           <b>Bill To:</b> {d.customerName}
+          {d.recipientAddress && <div style={{ fontSize: 10 }}>{d.recipientAddress}</div>}
           {d.gstin && <div>GSTIN: {d.gstin}</div>}
         </div>
         <div style={{ textAlign: "right" }}>
@@ -225,6 +246,15 @@ function ModernPreview({ d }: { d: PreviewData }) {
       >
         <div>
           <div style={{ fontSize: 16, fontWeight: 700 }}>{d.shopName}</div>
+          {d.supplierAddress && (
+            <div style={{ fontSize: 9, opacity: 0.9 }}>{d.supplierAddress}</div>
+          )}
+          {d.supplierGstin && (
+            <div style={{ fontSize: 9, opacity: 0.9 }}>GSTIN: {d.supplierGstin}</div>
+          )}
+          {d.compositionScheme && (
+            <div style={{ fontSize: 9, fontWeight: 600, color: "#fef2f2" }}>Composition Taxable Person</div>
+          )}
           <div style={{ fontSize: 10, opacity: 0.85 }}>TAX INVOICE</div>
         </div>
         <div style={{ textAlign: "right", fontSize: 10 }}>
@@ -244,6 +274,11 @@ function ModernPreview({ d }: { d: PreviewData }) {
       >
         <span>
           <b>Customer:</b> {d.customerName}
+          {d.recipientAddress && (
+            <span style={{ display: "block", fontSize: 10, fontWeight: 400 }}>
+              {d.recipientAddress}
+            </span>
+          )}
         </span>
         {d.gstin && <span>GSTIN: {d.gstin}</span>}
       </div>
@@ -330,6 +365,15 @@ function VyapariPreview({ d }: { d: PreviewData }) {
         <div style={{ fontSize: 18, fontWeight: 900, letterSpacing: 1 }}>
           {d.shopName.toUpperCase()}
         </div>
+        {d.supplierAddress && (
+          <div style={{ fontSize: 9, marginTop: 2, opacity: 0.9 }}>{d.supplierAddress}</div>
+        )}
+        {d.supplierGstin && (
+          <div style={{ fontSize: 10, marginTop: 2, opacity: 0.9 }}>GSTIN: {d.supplierGstin}</div>
+        )}
+        {d.compositionScheme && (
+          <div style={{ fontSize: 9, fontWeight: 600, marginTop: 2 }}>Composition Taxable Person</div>
+        )}
         <div style={{ fontSize: 11, marginTop: 2 }}>
           GST TAX INVOICE / कर बीजक
         </div>
@@ -353,6 +397,10 @@ function VyapariPreview({ d }: { d: PreviewData }) {
         </span>
         <span>
           <b>Customer:</b> {d.customerName}
+          {d.recipientAddress && (
+            <span style={{ display: "block", fontSize: 9 }}>{d.recipientAddress}</span>
+          )}
+          {d.gstin && <span style={{ display: "block" }}>GSTIN: {d.gstin}</span>}
         </span>
       </div>
       {/* Items */}
@@ -553,6 +601,18 @@ function TotalsBlock({
           {d.amountInWords}
         </div>
       )}
+      {d.reverseCharge && (
+        <div
+          style={{
+            fontSize: 9,
+            fontWeight: 600,
+            color: "#b91c1c",
+            marginTop: 6,
+          }}
+        >
+          Tax is payable on Reverse Charge
+        </div>
+      )}
     </div>
   );
 }
@@ -583,6 +643,11 @@ function TotalsBlockThermal({ d }: { d: PreviewData }) {
       <div style={{ fontSize: 9, color: "#555", marginTop: 4 }}>
         {d.amountInWords}
       </div>
+      {d.reverseCharge && (
+        <div style={{ fontSize: 9, fontWeight: 600, color: "#b91c1c", marginTop: 4 }}>
+          Tax is payable on Reverse Charge
+        </div>
+      )}
     </>
   );
 }

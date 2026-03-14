@@ -65,6 +65,8 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 						// B2B
 						buyerGstin: { type: 'string', maxLength: 15 },
 						placeOfSupply: { type: 'string', maxLength: 2 },
+						recipientAddress: { type: 'string', maxLength: 500 },
+						reverseCharge: { type: 'boolean' },
 						// Partial payment at billing
 						initialPayment: {
 							type: 'object',
@@ -92,6 +94,8 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 					supplyType?: 'INTRASTATE' | 'INTERSTATE';
 					buyerGstin?: string;
 					placeOfSupply?: string;
+					recipientAddress?: string;
+					reverseCharge?: boolean;
 					initialPayment?: { amount: number; method: 'cash' | 'upi' | 'card' | 'other' };
 					overrideCreditLimit?: boolean;
 				};
@@ -172,6 +176,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 						supplyType: { type: 'string', enum: ['INTRASTATE', 'INTERSTATE'] },
 						buyerGstin: { type: 'string', maxLength: 15 },
 						placeOfSupply: { type: 'string', maxLength: 2 },
+						reverseCharge: { type: 'boolean' },
 					},
 					additionalProperties: false,
 				},
@@ -189,6 +194,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 					supplyType?: 'INTRASTATE' | 'INTERSTATE';
 					buyerGstin?: string;
 					placeOfSupply?: string;
+					reverseCharge?: boolean;
 				};
 			}>,
 			reply

@@ -30,6 +30,7 @@ import {
   Calendar,
   MessageCircle,
   UserPlus,
+  Printer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +44,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useMe } from "@/hooks/useQueries";
 import { customerApi, invoiceApi, productApi } from "@/lib/api";
+import { printThermalReceipt } from "@/lib/thermalReceipt";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Customer, Product } from "@/lib/api";
 import {
@@ -75,8 +78,14 @@ type SupplyType = "INTRASTATE" | "INTERSTATE";
 
 /** GSTIN format: 2-digit state + 10-char PAN + entity + Z + checksum (15 chars) */
 const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+/** Valid state codes: 01–28 (states), 29–38 (UTs and special) */
+const VALID_STATE_CODES = new Set(
+  Array.from({ length: 38 }, (_, i) => String(i + 1).padStart(2, "0")),
+);
 function isValidGstin(g: string): boolean {
-  return g.length === 15 && GSTIN_REGEX.test(g.toUpperCase());
+  if (g.length !== 15 || !GSTIN_REGEX.test(g.toUpperCase())) return false;
+  const stateCode = g.slice(0, 2);
+  return VALID_STATE_CODES.has(stateCode);
 }
 /** Extract state code (01-38) from GSTIN first 2 chars */
 function stateCodeFromGstin(gstin: string): string {
@@ -240,10 +249,13 @@ const DRAFT_KEY = "cb_billing_draft_v1";
 
 // ── Main component ───────────────────────────────────────────────────────────
 
+const BIZ_STORAGE_KEY = "execora:bizprofile";
+
 export default function ClassicBilling() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { data: me } = useMe();
 
   // ── Product catalog — preloaded once so ItemRow gets instant client results ──
   const { data: catalogData } = useQuery({
@@ -343,6 +355,8 @@ export default function ClassicBilling() {
   const [buyerGstin, setBuyerGstin] = useState("");
   const [supplyType, setSupplyType] = useState<SupplyType>("INTRASTATE");
   const [placeOfSupply, setPlaceOfSupply] = useState("");
+  const [reverseCharge, setReverseCharge] = useState(false);
+  const [recipientAddressOverride, setRecipientAddressOverride] = useState("");
   // ── New features ─────────────────────────────────────────────────────────────
   const [dueDate, setDueDate] = useState("");
   const [roundOffEnabled, setRoundOffEnabled] = useState(false);
@@ -468,12 +482,52 @@ export default function ClassicBilling() {
 
   const validItemCount = items.filter((it) => it.name.trim()).length;
 
+  // ── Supplier details from biz profile / tenant ─────────────────────────
+  const bizProfile = (() => {
+    try {
+      return JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}") as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+  })();
+  const shopName =
+    (bizProfile.legalName as string) ??
+    me?.tenant?.legalName ??
+    me?.tenant?.name ??
+    "My Shop";
+  const supplierGstin =
+    (bizProfile.gstin as string) ?? me?.tenant?.gstin ?? undefined;
+  const supplierAddressParts = [
+    bizProfile.address,
+    bizProfile.city,
+    bizProfile.state,
+    bizProfile.pincode,
+  ].filter(Boolean) as string[];
+  const supplierAddress = supplierAddressParts.length > 0 ? supplierAddressParts.join(", ") : undefined;
+  const recipientAddress = (recipientAddressOverride && recipientAddressOverride.trim()) ||
+    (selectedCustomer
+    ? [
+        selectedCustomer.addressLine1,
+        selectedCustomer.addressLine2,
+        selectedCustomer.city,
+        selectedCustomer.state,
+        selectedCustomer.pincode,
+      ]
+        .filter(Boolean)
+        .join(", ") || undefined
+    : undefined);
+
   // ── Preview data ──────────────────────────────────────────────────────
   const previewData: PreviewData = {
     invoiceNo: "DRAFT",
     date: new Date().toLocaleDateString("en-IN"),
-    shopName: "My Shop",
+    shopName,
     customerName: selectedCustomer?.name ?? "Walk-in Customer",
+    ...(supplierGstin && { supplierGstin }),
+    ...(supplierAddress && { supplierAddress }),
+    ...(recipientAddress && { recipientAddress }),
+    ...(compositionScheme && { compositionScheme: true }),
+    ...(reverseCharge && { reverseCharge: true }),
     items: items
       .filter((it) => it.name.trim())
       .map((it) => ({
@@ -559,6 +613,9 @@ export default function ClassicBilling() {
             : undefined,
         buyerGstin:
           withGst && buyerGstin.trim() ? buyerGstin.trim() : undefined,
+        recipientAddress:
+          withGst && recipientAddress ? recipientAddress.trim() : undefined,
+        reverseCharge: withGst && reverseCharge ? true : undefined,
         discountPercent:
           parseFloat(discountPct) > 0 ? parseFloat(discountPct) : undefined,
         discountAmount:
@@ -602,6 +659,49 @@ export default function ClassicBilling() {
         variant: "destructive",
       }),
   });
+
+  const handlePrintReceipt = () => {
+    const bizP = (() => {
+      try { return JSON.parse(localStorage.getItem("execora:bizprofile") ?? "{}") as Record<string, unknown>; }
+      catch { return {}; }
+    })();
+    printThermalReceipt({
+      shopName: (bizP.legalName as string) ?? shopName,
+      shopPhone: (bizP.phone as string) ?? undefined,
+      shopGstin: supplierGstin,
+      shopAddress: supplierAddress,
+      invoiceNo: savedInvoice?.no ?? "",
+      date: new Date().toLocaleDateString("en-IN"),
+      customerName: selectedCustomer?.name ?? "Walk-in Customer",
+      items: items
+        .filter((it) => it.name.trim())
+        .map((it) => ({
+          name: it.name,
+          qty: parseFloat(it.qty) || 1,
+          rate: parseFloat(it.rate) || 0,
+          discountPct: parseFloat(it.discount) || 0,
+          amount: it.amount,
+          gstRate: it.gstRate,
+        })),
+      subtotal,
+      discountAmt,
+      taxableAmt,
+      withGst,
+      compositionScheme,
+      compositionTax,
+      gstSlabs: gstGroups.map((g) => ({ rate: g.rate, taxable: g.taxable, cgst: g.cgst, sgst: g.sgst })),
+      totalGst: totalGstAmt,
+      grandTotal,
+      roundOff,
+      finalTotal,
+      amountInWords: grandTotalWords,
+      payments: splitEnabled
+        ? splits.filter((s) => parseFloat(s.amount) > 0).map((s) => ({ mode: s.mode, amount: parseFloat(s.amount) }))
+        : [{ mode: paymentMode, amount: finalTotal }],
+      notes: notes || undefined,
+      width: 80,
+    });
+  };
 
   const handleSubmit = async () => {
     if (validItemCount === 0) return;
@@ -675,6 +775,7 @@ export default function ClassicBilling() {
           buyerGstin,
           supplyType,
           placeOfSupply,
+          reverseCharge,
           dueDate,
           savedAt: Date.now(),
         }),
@@ -695,6 +796,7 @@ export default function ClassicBilling() {
     buyerGstin,
     supplyType,
     placeOfSupply,
+    reverseCharge,
     dueDate,
     validItemCount,
   ]);
@@ -727,6 +829,7 @@ export default function ClassicBilling() {
       if (d.buyerGstin) setBuyerGstin(String(d.buyerGstin));
       if (d.supplyType) setSupplyType(d.supplyType as SupplyType);
       if (d.placeOfSupply) setPlaceOfSupply(String(d.placeOfSupply));
+      if (d.reverseCharge !== undefined) setReverseCharge(Boolean(d.reverseCharge));
       if (d.dueDate) setDueDate(String(d.dueDate));
       if (d.customerName) {
         setSelectedCustomer({
@@ -1078,10 +1181,24 @@ export default function ClassicBilling() {
               />
               {buyerGstin.length === 15 && !isValidGstin(buyerGstin) && (
                 <p className="text-[10px] text-destructive">
-                  Invalid GSTIN format (15 chars: 2 state + 10 PAN + entity + Z + checksum)
+                  Invalid GSTIN (state code 01–38, PAN format, checksum)
                 </p>
               )}
             </div>
+            {buyerGstin && (
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                  Recipient Address (B2B — override if customer has none)
+                </label>
+                <Textarea
+                  value={recipientAddressOverride}
+                  onChange={(e) => setRecipientAddressOverride(e.target.value)}
+                  placeholder="Address, city, state, PIN"
+                  rows={2}
+                  className="text-sm resize-none"
+                />
+              </div>
+            )}
             <div className="flex items-center justify-between rounded-xl border px-4 py-3">
               <div>
                 <p className="text-sm font-semibold">Inter-state supply</p>
@@ -1115,6 +1232,18 @@ export default function ClassicBilling() {
                 />
               </div>
             )}
+            <div className="flex items-center justify-between rounded-xl border px-4 py-3">
+              <div>
+                <p className="text-sm font-semibold">Reverse Charge (RCM)</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Tax payable by recipient (e.g. unregistered supplier)
+                </p>
+              </div>
+              <Switch
+                checked={reverseCharge}
+                onCheckedChange={setReverseCharge}
+              />
+            </div>
           </div>
         )}
 
@@ -1539,6 +1668,14 @@ export default function ClassicBilling() {
                   Share on WhatsApp
                 </a>
               )}
+              <Button
+                variant="outline"
+                className="w-full gap-2"
+                onClick={handlePrintReceipt}
+              >
+                <Printer className="h-4 w-4" />
+                Print Receipt
+              </Button>
               <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant="outline"

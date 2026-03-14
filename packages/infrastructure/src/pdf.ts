@@ -125,6 +125,14 @@ export interface InvoicePdfData {
 	bankAccountHolder?: string;
 	// Terms printed at bottom
 	termsAndConditions?: string;
+	/** Composition scheme — show "Composition Taxable Person" when true */
+	compositionScheme?: boolean;
+	/** Recipient billing address (B2B) */
+	customerAddress?: string;
+	/** Place of supply state code (e.g. "29") */
+	placeOfSupply?: string;
+	/** Reverse charge — show declaration when true */
+	reverseCharge?: boolean;
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -234,11 +242,22 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
 			const pageRight = pageLeft + pageWidth;
 
 			// ── Header ─────────────────────────────────────────────────────────────
-			doc.fillColor('#0f172a').rect(pageLeft, 48, pageWidth, 78).fill();
+			const headerH = (data.shopAddress || data.shopGstin || data.shopPhone) ? 98 : 78;
+			doc.fillColor('#0f172a').rect(pageLeft, 48, pageWidth, headerH).fill();
 
 			doc.fillColor('#f8fafc').fontSize(20).font('Helvetica-Bold').text(data.shopName, 65, 64, { width: 280 });
-
-			doc.fontSize(9).font('Helvetica').fillColor('#cbd5e1').text('Thank you for your purchase', 65, 90);
+			let headerY = 88;
+			if (data.shopAddress) {
+				doc.fontSize(8).font('Helvetica').fillColor('#cbd5e1').text(data.shopAddress, 65, headerY, { width: 280 });
+				headerY += 12;
+			}
+			const gstPhone = [data.shopGstin && `GSTIN: ${data.shopGstin}`, data.shopPhone].filter(Boolean).join('  •  ');
+			if (gstPhone) {
+				doc.fontSize(8).font('Helvetica').fillColor('#94a3b8').text(gstPhone, 65, headerY, { width: 280 });
+				headerY += 10;
+			} else if (!data.shopAddress && !gstPhone) {
+				doc.fontSize(9).font('Helvetica').fillColor('#cbd5e1').text('Thank you for your purchase', 65, headerY, { width: 280 });
+			}
 
 			doc.fontSize(16)
 				.font('Helvetica-Bold')
@@ -252,9 +271,11 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
 				.text(`Date: ${dateStr}`, 350, 98, { width: 185, align: 'right' });
 
 			// ── Invoice meta cards ─────────────────────────────────────────────────
+			const hasBillToExtra = !!(data.customerAddress || data.customerGstin);
+			const billToH = hasBillToExtra ? 72 : 56;
 			const infoTop = 142;
-			doc.fillColor('#f8fafc').roundedRect(pageLeft, infoTop, 242, 56, 6).fill();
-			doc.fillColor('#f8fafc').roundedRect(303, infoTop, 242, 56, 6).fill();
+			doc.fillColor('#f8fafc').roundedRect(pageLeft, infoTop, 242, billToH, 6).fill();
+			doc.fillColor('#f8fafc').roundedRect(303, infoTop, 242, billToH, 6).fill();
 
 			doc.fillColor('#334155')
 				.fontSize(8)
@@ -266,6 +287,14 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
 				.fontSize(11)
 				.font('Helvetica-Bold')
 				.text(data.customerName, 62, infoTop + 23, { width: 220 });
+			let billToY = infoTop + 36;
+			if (data.customerAddress) {
+				doc.fillColor('#475569').fontSize(8).font('Helvetica').text(data.customerAddress, 62, billToY, { width: 220 });
+				billToY += 12;
+			}
+			if (data.customerGstin) {
+				doc.fillColor('#475569').fontSize(8).font('Helvetica').text(`GSTIN: ${data.customerGstin}`, 62, billToY, { width: 220 });
+			}
 
 			doc.fillColor('#0f172a')
 				.fontSize(8.5)
@@ -273,12 +302,17 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
 				.text(hasTax ? 'Type: GST Invoice' : 'Type: Retail Invoice', 315, infoTop + 23, { width: 220 });
 
 			if (hasTax) {
+				let invDetailY = infoTop + 37;
 				doc.text(
 					`Supply: ${isInterstate ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)'}`,
 					315,
-					infoTop + 37,
+					invDetailY,
 					{ width: 220 }
 				);
+				if (data.placeOfSupply) {
+					invDetailY += 12;
+					doc.text(`Place of Supply: ${data.placeOfSupply}`, 315, invDetailY, { width: 220 });
+				}
 			}
 
 			// ── Items table ─────────────────────────────────────────────────────────
@@ -458,8 +492,10 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
 			}
 
 			// ── Amount in words ──────────────────────────────────────────────────────
+			let wordsBoxH = 34;
+			if (data.compositionScheme || data.reverseCharge) wordsBoxH += 20;
 			doc.fillColor('#f8fafc')
-				.roundedRect(pageLeft, y + 2, pageWidth, 34, 6)
+				.roundedRect(pageLeft, y + 2, pageWidth, wordsBoxH, 6)
 				.fill();
 			doc.fillColor('#334155')
 				.fontSize(8)
@@ -468,7 +504,15 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
 			doc.fillColor('#0f172a')
 				.font('Helvetica')
 				.text(amountToWords(grandTotal), 150, y + 10, { width: 385 });
-			y += 42;
+			let declY = y + 28;
+			if (data.compositionScheme) {
+				doc.fillColor('#b91c1c').fontSize(8).font('Helvetica-Bold').text('Composition Taxable Person', 62, declY, { width: 400 });
+				declY += 12;
+			}
+			if (data.reverseCharge) {
+				doc.fillColor('#b91c1c').fontSize(8).font('Helvetica-Bold').text('Tax is payable on Reverse Charge', 62, declY, { width: 400 });
+			}
+			y += wordsBoxH + 8;
 
 			// ── Notes ────────────────────────────────────────────────────────────────
 			if (data.notes) {

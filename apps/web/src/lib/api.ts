@@ -154,6 +154,11 @@ export interface Customer {
   email?: string;
   nickname?: string | string[];
   landmark?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
   gstin?: string;
   notes?: string;
   balance: string | number;
@@ -263,6 +268,7 @@ export interface Invoice {
   paidAmount: string | number;
   buyerGstin?: string | null;
   placeOfSupply?: string | null;
+  reverseCharge?: boolean;
   notes?: string;
   items?: InvoiceItem[];
   dueDate?: string | null;
@@ -412,6 +418,8 @@ export interface InvoiceCreateOptions {
   supplyType?: "INTRASTATE" | "INTERSTATE";
   buyerGstin?: string;
   placeOfSupply?: string;
+  recipientAddress?: string;
+  reverseCharge?: boolean;
   initialPayment?: {
     amount: number;
     method: "cash" | "upi" | "card" | "other";

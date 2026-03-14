@@ -719,6 +719,7 @@ model Invoice {
   cess                Decimal        @default(0)
   placeOfSupply       String?        @map("place_of_supply")
   buyerGstin          String?        @map("buyer_gstin")
+  recipientAddress    String?        @map("recipient_address")
   reverseCharge       Boolean        @default(false) @map("reverse_charge")
   ewayBillNo          String?        @map("eway_bill_no")
   ewayBillGeneratedAt DateTime?      @map("eway_bill_generated_at")

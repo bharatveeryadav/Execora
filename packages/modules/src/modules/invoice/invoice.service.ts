@@ -53,6 +53,10 @@ export interface InvoiceOptions {
   buyerGstin?: string;
   /** State code for place of supply (e.g. "29" for Karnataka). Determines IGST eligibility. */
   placeOfSupply?: string;
+  /** Recipient billing address (B2B override when customer has no address). */
+  recipientAddress?: string;
+  /** Reverse Charge Mechanism — tax payable by recipient. */
+  reverseCharge?: boolean;
   /** If provided, immediately records a payment against this invoice (partial payment at billing). */
   initialPayment?: {
     amount: number;
@@ -423,6 +427,8 @@ class InvoiceService {
             status: "pending",
             buyerGstin: opts.buyerGstin ?? null,
             placeOfSupply: opts.placeOfSupply ?? null,
+            recipientAddress: opts.recipientAddress ?? null,
+            reverseCharge: opts.reverseCharge ?? false,
             notes,
             items: {
               create: resolvedItems.map((i) => ({
@@ -702,6 +708,8 @@ class InvoiceService {
             status: isProforma ? "proforma" : "pending",
             buyerGstin: opts.buyerGstin ?? null,
             placeOfSupply: opts.placeOfSupply ?? null,
+            recipientAddress: opts.recipientAddress ?? null,
+            reverseCharge: opts.reverseCharge ?? false,
             notes,
             items: {
               create: resolvedItems.map((i) => ({
@@ -1268,17 +1276,19 @@ class InvoiceService {
       // ── 2. Resolve tenant settings (shopName + upiVpa + bank + T&C) ──────
       const tenant = await prisma.tenant.findFirst({
         where: { id: invoice.tenantId },
-        select: { name: true, settings: true, gstin: true },
+        select: { name: true, legalName: true, settings: true, gstin: true },
       });
       const settings =
         (tenant?.settings as Record<string, string> | null) ?? {};
       const shopName =
         settings.shopName ||
+        tenant?.legalName ||
         process.env.SHOP_NAME ||
         tenant?.name ||
         "Execora Shop";
       const upiVpa = settings.upiVpa || undefined;
-      const shopAddress = settings.address || undefined;
+      const shopAddressParts = [settings.address, settings.city, settings.state, settings.pincode].filter(Boolean);
+      const shopAddress = shopAddressParts.length > 0 ? shopAddressParts.join(', ') : undefined;
       const shopPhone = settings.phone || undefined;
       const shopGstin = tenant?.gstin || undefined;
       const bankName = settings.bankName || undefined;
@@ -1287,6 +1297,13 @@ class InvoiceService {
       const bankAccountHolder = settings.bankAccountHolder || undefined;
       const termsAndConditions = settings.termsAndConditions || undefined;
       const roundOff = settings.roundOff === 'true';
+      const compositionScheme = settings.compositionScheme === 'true';
+
+      // ── Recipient address (invoice override or from customer) ─────────────
+      const invRecipient = (invoice as any).recipientAddress;
+      const cust = invoice.customer as { addressLine1?: string; addressLine2?: string; city?: string; state?: string; pincode?: string } | null;
+      const customerAddress = invRecipient
+        || (cust ? [cust.addressLine1, cust.addressLine2, cust.city, cust.state, cust.pincode].filter(Boolean).join(', ') || undefined : undefined);
 
       // ── Auto-delivery flags (default true → backward compat) ─────────────
       // 'false' string = off; anything else (undefined / 'true') = on
@@ -1332,11 +1349,15 @@ class InvoiceService {
           invoiceDate: invoice.invoiceDate ?? invoice.createdAt,
           customerName: invoice.customer?.name || "Customer",
           customerGstin: (invoice as any).buyerGstin || undefined,
+          customerAddress,
           shopName,
           shopAddress,
           shopPhone,
           shopGstin,
           supplyType: totalIgst > 0 ? "INTERSTATE" : "INTRASTATE",
+          placeOfSupply: (invoice as any).placeOfSupply || undefined,
+          reverseCharge: (invoice as any).reverseCharge || false,
+          compositionScheme,
           items: pdfItems,
           subtotal,
           discountAmount,
