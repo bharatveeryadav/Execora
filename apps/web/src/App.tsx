@@ -24,6 +24,7 @@ import OverduePage from "./pages/OverduePage";
 import ExpiryPage from "./pages/Expiry";
 import NotFound from "./pages/NotFound";
 import ComingSoon from "./pages/ComingSoon";
+import CreditNotes from "./pages/CreditNotes";
 import SettingsSection from "./pages/SettingsSection";
 import LoginPage from "./pages/LoginPage";
 import ClassicBilling from "./pages/ClassicBilling";
@@ -133,7 +134,7 @@ function AppRoutes() {
         <Route path="einvoicing" element={<EInvoicing />} />
         <Route path="gstr3b" element={<Gstr3b />} />
         {/* Placeholder routes for new sidebar items — coming soon */}
-        <Route path="credit-notes" element={<ComingSoon />} />
+        <Route path="credit-notes" element={<CreditNotes />} />
         <Route path="purchase-orders" element={<ComingSoon />} />
         <Route path="debit-orders" element={<ComingSoon />} />
         <Route path="delivery-challans" element={<ComingSoon />} />

@@ -1201,3 +1201,117 @@ export const draftApi = {
   discard: (id: string) =>
     request<{ ok: boolean }>(`/api/v1/drafts/${id}`, { method: "DELETE" }),
 };
+
+// ── Credit Notes ──────────────────────────────────────────────────────────────
+
+export type CreditNoteStatus = "draft" | "issued" | "cancelled";
+export type CreditNoteReason =
+  | "goods_returned"
+  | "price_adjustment"
+  | "discount"
+  | "damaged_goods"
+  | "short_supply"
+  | "other";
+
+export interface CreditNoteItem {
+  id: string;
+  creditNoteId: string;
+  productId?: string;
+  productName: string;
+  quantity: string | number;
+  unit: string;
+  unitPrice: string | number;
+  discount: string | number;
+  subtotal: string | number;
+  tax: string | number;
+  total: string | number;
+  hsnCode?: string;
+  gstRate: string | number;
+  cgst: string | number;
+  sgst: string | number;
+  igst: string | number;
+}
+
+export interface CreditNote {
+  id: string;
+  tenantId: string;
+  creditNoteNo: string;
+  invoiceId?: string;
+  customerId?: string;
+  reason: CreditNoteReason;
+  reasonNote?: string;
+  status: CreditNoteStatus;
+  subtotal: string | number;
+  tax: string | number;
+  cgst: string | number;
+  sgst: string | number;
+  igst: string | number;
+  total: string | number;
+  placeOfSupply?: string;
+  buyerGstin?: string;
+  reverseCharge: boolean;
+  notes?: string;
+  issuedAt?: string;
+  cancelledAt?: string;
+  cancelledReason?: string;
+  createdAt: string;
+  updatedAt: string;
+  customer?: { id: string; name: string; phone?: string };
+  invoice?: { id: string; invoiceNo: string };
+  items: CreditNoteItem[];
+}
+
+export interface CreateCreditNoteBody {
+  invoiceId?: string;
+  customerId?: string;
+  reason?: CreditNoteReason;
+  reasonNote?: string;
+  notes?: string;
+  placeOfSupply?: string;
+  buyerGstin?: string;
+  reverseCharge?: boolean;
+  items: {
+    productId?: string;
+    productName: string;
+    quantity: number;
+    unit?: string;
+    unitPrice: number;
+    discount?: number;
+    hsnCode?: string;
+    gstRate?: number;
+  }[];
+}
+
+export const creditNoteApi = {
+  list: (params?: { customerId?: string; invoiceId?: string; status?: string; limit?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.customerId) qs.set("customerId", params.customerId);
+    if (params?.invoiceId) qs.set("invoiceId", params.invoiceId);
+    if (params?.status) qs.set("status", params.status);
+    if (params?.limit) qs.set("limit", String(params.limit));
+    return request<{ creditNotes: CreditNote[] }>(`/api/v1/credit-notes?${qs.toString()}`);
+  },
+
+  get: (id: string) => request<{ creditNote: CreditNote }>(`/api/v1/credit-notes/${id}`),
+
+  create: (body: CreateCreditNoteBody) =>
+    request<{ creditNote: CreditNote }>("/api/v1/credit-notes", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  issue: (id: string) =>
+    request<{ creditNote: CreditNote }>(`/api/v1/credit-notes/${id}/issue`, {
+      method: "POST",
+      body: "{}",
+    }),
+
+  cancel: (id: string, reason?: string) =>
+    request<{ creditNote: CreditNote }>(`/api/v1/credit-notes/${id}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
+
+  delete: (id: string) =>
+    request<void>(`/api/v1/credit-notes/${id}`, { method: "DELETE" }),
+};

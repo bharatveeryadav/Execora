@@ -23,6 +23,7 @@ import { expenseRoutes } from './routes/expense.routes';
 import { aiRoutes } from './routes/ai.routes';
 import { draftRoutes } from './routes/draft.routes';
 import { portalRoutes } from './routes/portal.routes';
+import { creditNoteRoutes } from './routes/credit-note.routes';
 
 export async function registerRoutes(fastify: FastifyInstance) {
 	// ── BullMQ queue dashboard (/admin/queues) — protected by admin key ──────
@@ -91,6 +92,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
 		await scope.register(expenseRoutes);
 		await scope.register(aiRoutes); // Sprint 2 AI features
 		await scope.register(draftRoutes); // Draft/Staging system
+		await scope.register(creditNoteRoutes);
 	});
 
 	// ── Admin routes (platform-level, auth enforced inside via hook) ─────────

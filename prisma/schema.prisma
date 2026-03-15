@@ -78,6 +78,21 @@ enum StockMovementType {
   expired
 }
 
+enum CreditNoteStatus {
+  draft
+  issued
+  cancelled
+}
+
+enum CreditNoteReason {
+  goods_returned
+  price_adjustment
+  discount
+  damaged_goods
+  short_supply
+  other
+}
+
 enum ReminderType {
   payment_due
   payment_overdue
@@ -221,6 +236,7 @@ model Tenant {
   voiceRecordings        VoiceRecording[]
   expenses               Expense[]
   drafts                 Draft[]
+  creditNotes            CreditNote[]
 
   @@index([status, plan])
   @@index([createdAt])
@@ -361,6 +377,7 @@ model Customer {
   voiceRecordings VoiceRecording[]
   reminders       Reminder[]
   serialNumbers   SerialNumber[]
+  creditNotes     CreditNote[]
   messageLogs     MessageLog[]
 
   @@unique([tenantId, phone])
@@ -514,6 +531,7 @@ model Product {
   stockMovements StockMovement[]
   purchaseItems PurchaseOrderItem[]
   reminders     Reminder[]
+  creditNoteItems CreditNoteItem[]
 
   @@unique([tenantId, sku])
   @@unique([tenantId, barcode])
@@ -749,6 +767,7 @@ model Invoice {
   items    InvoiceItem[]
   payments Payment[]
   reminders Reminder[]
+  creditNotes CreditNote[]
 
   @@index([tenantId, invoiceDate(sort: Desc)])
   @@index([tenantId, customerId])
@@ -1474,4 +1493,78 @@ model Expense {
   @@index([tenantId, type])
   @@index([tenantId, category])
   @@map("expenses")
+}
+
+// =====================================================
+// MODEL: CREDIT NOTES
+// =====================================================
+model CreditNote {
+  id               String           @id @default(uuid())
+  tenantId         String           @map("tenant_id")
+  creditNoteNo     String           @unique(map: "credit_note_number_key") @map("credit_note_no")
+  invoiceId        String?          @map("invoice_id")
+  customerId       String?          @map("customer_id")
+  reason           CreditNoteReason @default(goods_returned)
+  reasonNote       String?          @map("reason_note")
+  status           CreditNoteStatus @default(draft)
+  subtotal         Decimal
+  discount         Decimal          @default(0)
+  tax              Decimal          @default(0)
+  cgst             Decimal          @default(0)
+  sgst             Decimal          @default(0)
+  igst             Decimal          @default(0)
+  total            Decimal
+  placeOfSupply    String?          @map("place_of_supply")
+  buyerGstin       String?          @map("buyer_gstin")
+  reverseCharge    Boolean          @default(false) @map("reverse_charge")
+  notes            String?
+  pdfObjectKey     String?          @map("pdf_object_key")
+  issuedAt         DateTime?        @map("issued_at")
+  cancelledAt      DateTime?        @map("cancelled_at")
+  cancelledReason  String?          @map("cancelled_reason")
+  createdBy        String?          @map("created_by")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+  deletedAt        DateTime?        @map("deleted_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoice  Invoice?  @relation(fields: [invoiceId], references: [id])
+  customer Customer? @relation(fields: [customerId], references: [id])
+  items    CreditNoteItem[]
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, customerId])
+  @@index([tenantId, invoiceId])
+  @@index([tenantId, status])
+  @@map("credit_notes")
+}
+
+// =====================================================
+// MODEL: CREDIT NOTE ITEMS
+// =====================================================
+model CreditNoteItem {
+  id             String   @id @default(uuid())
+  creditNoteId   String   @map("credit_note_id")
+  productId      String?  @map("product_id")
+  productName    String   @map("product_name")
+  quantity       Decimal
+  unit           String   @default("pcs")
+  unitPrice      Decimal  @map("unit_price")
+  discount       Decimal  @default(0)
+  subtotal       Decimal
+  tax            Decimal  @default(0)
+  total          Decimal
+  hsnCode        String?  @map("hsn_code")
+  gstRate        Decimal  @default(0) @map("gst_rate")
+  cgst           Decimal  @default(0)
+  sgst           Decimal  @default(0)
+  igst           Decimal  @default(0)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  creditNote CreditNote @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+  product    Product?   @relation(fields: [productId], references: [id])
+
+  @@index([creditNoteId])
+  @@index([productId])
+  @@map("credit_note_items")
 }
