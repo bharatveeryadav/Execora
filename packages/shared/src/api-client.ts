@@ -133,16 +133,11 @@ export async function apiFetch<T = unknown>(
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
 export const authApi = {
-  login: (phone: string, otp: string) =>
+  login: (email: string, password: string) =>
     apiFetch<{ accessToken: string; refreshToken: string; user: unknown }>(
       "/api/v1/auth/login",
-      { method: "POST", body: JSON.stringify({ phone, otp }) },
+      { method: "POST", body: JSON.stringify({ email, password }) },
     ),
-  sendOtp: (phone: string) =>
-    apiFetch<{ sent: boolean }>("/api/v1/auth/send-otp", {
-      method: "POST",
-      body: JSON.stringify({ phone }),
-    }),
   me: () => apiFetch<{ user: unknown }>("/api/v1/auth/me"),
 };
 
