@@ -16,7 +16,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Store, MapPin, CreditCard, ChevronRight, Check } from "lucide-react";
+import { Store, MapPin, CreditCard, ChevronRight, Check, Loader2 } from "lucide-react";
+import { authApi } from "@/lib/api";
+import { useNavigate } from "react-router-dom";
 
 const BIZ_STORAGE_KEY = "execora:bizprofile";
 const ONBOARDED_KEY   = "execora:onboarded";
@@ -44,8 +46,10 @@ interface WizardData {
 }
 
 export function OnboardingWizard() {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>(1);
+  const [saving, setSaving] = useState(false);
   const [data, setData] = useState<WizardData>({
     legalName:    "",
     phone:        "",
@@ -71,10 +75,9 @@ export function OnboardingWizard() {
     setData((d) => ({ ...d, [key]: value }));
   }
 
-  function save() {
-    const existing = JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}");
-    localStorage.setItem(BIZ_STORAGE_KEY, JSON.stringify({
-      ...existing,
+  async function save() {
+    setSaving(true);
+    const profile = {
       legalName:    data.legalName.trim(),
       phone:        data.phone.trim(),
       city:         data.city.trim(),
@@ -83,9 +86,34 @@ export function OnboardingWizard() {
       gstin:        data.gstin.trim().toUpperCase(),
       upiVpa:       data.upiVpa.trim(),
       businessType: data.businessType,
-    }));
+    };
+    // Persist to localStorage for immediate use by Settings page
+    const existing = JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}");
+    localStorage.setItem(BIZ_STORAGE_KEY, JSON.stringify({ ...existing, ...profile }));
     localStorage.setItem(ONBOARDED_KEY, "1");
+    // Persist to backend (best-effort — don't block on failure)
+    try {
+      await authApi.updateProfile({
+        tenant: {
+          legalName: profile.legalName,
+          gstin:     profile.gstin || undefined,
+          settings: {
+            shopName:     profile.legalName,
+            phone:        profile.phone,
+            city:         profile.city,
+            state:        profile.state,
+            address:      profile.address,
+            upiVpa:       profile.upiVpa || undefined,
+            businessType: profile.businessType,
+          },
+        },
+      });
+    } catch {
+      // Non-fatal — user can update in Settings
+    }
+    setSaving(false);
     setOpen(false);
+    navigate("/billing");
   }
 
   const canNext1 = data.legalName.trim().length >= 2;
@@ -278,9 +306,11 @@ export function OnboardingWizard() {
               Next <ChevronRight className="ml-1 h-4 w-4" />
             </Button>
           ) : (
-            <Button onClick={save} className="gap-2">
-              <Check className="h-4 w-4" />
-              Get Started
+            <Button onClick={() => void save()} disabled={saving} className="gap-2">
+              {saving
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <Check className="h-4 w-4" />}
+              {saving ? "Saving…" : "Get Started"}
             </Button>
           )}
         </div>
