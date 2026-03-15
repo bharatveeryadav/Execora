@@ -1,57 +1,45 @@
-import { useEffect, useRef, useState } from 'react';
-import { Camera, CameraOff, Video } from 'lucide-react';
+/**
+ * LiveFeedPanel — smart camera panel for /monitoring.
+ *
+ * Modes:
+ *   mode='sender'  — counter device: getUserMedia + AI detection (LiveStreamSender)
+ *   mode='viewer'  — owner device: WebRTC remote view (LiveStreamViewer)
+ *   ip camera      — MJPEG <img> stream
+ *   disabled       — placeholder
+ */
+import { useState } from 'react';
+import { Camera, CameraOff, MonitorSmartphone } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { monitoringApi } from '@/lib/api';
-import { Button } from '@/components/ui/button';
+import { LiveStreamSender } from './LiveStreamSender';
+import { LiveStreamViewer } from './LiveStreamViewer';
 
-export function LiveFeedPanel() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [webcamActive, setWebcamActive] = useState(false);
-  const [webcamError, setWebcamError] = useState('');
+interface Props {
+  mode?: 'sender' | 'viewer';
+}
+
+export function LiveFeedPanel({ mode = 'viewer' }: Props) {
+  const [localMode, setLocalMode] = useState<'sender' | 'viewer'>(mode);
 
   const { data } = useQuery({
     queryKey: ['monitoring', 'config'],
-    queryFn: () => monitoringApi.getConfig(),
+    queryFn:  () => monitoringApi.getConfig(),
+    staleTime: 5 * 60_000,
   });
 
   const config = data?.config;
-
-  // Webcam via getUserMedia
-  const startWebcam = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-        setWebcamActive(true);
-        setWebcamError('');
-      }
-    } catch (err: any) {
-      setWebcamError(err.message ?? 'Camera access denied');
-    }
-  };
-
-  const stopWebcam = () => {
-    if (videoRef.current?.srcObject) {
-      (videoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
-      videoRef.current.srcObject = null;
-    }
-    setWebcamActive(false);
-  };
-
-  useEffect(() => () => { stopWebcam(); }, []);
 
   if (!config?.cameraEnabled) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 h-48 border rounded-lg bg-muted/20 text-muted-foreground">
         <CameraOff className="h-8 w-8 opacity-40" />
         <p className="text-sm">Camera not configured</p>
-        <p className="text-xs opacity-60">Enable camera in Monitoring Settings</p>
+        <p className="text-xs opacity-60">Enable in Monitoring Settings</p>
       </div>
     );
   }
 
-  // MJPEG IP camera
+  // MJPEG IP camera — direct img tag, no WebRTC
   if (config.cameraSource === 'ip' && config.ipCameraUrl) {
     return (
       <div className="rounded-lg overflow-hidden border bg-black relative">
@@ -64,55 +52,48 @@ export function LiveFeedPanel() {
         <img
           src={config.ipCameraUrl}
           className="w-full aspect-video object-cover"
-          alt="Live camera feed"
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = 'none';
-          }}
+          alt="Live IP camera feed"
+          onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0.2'; }}
         />
       </div>
     );
   }
 
-  // Browser webcam
+  // Webcam — sender or viewer mode
   return (
-    <div className="rounded-lg overflow-hidden border bg-black relative">
-      {webcamActive && (
-        <div className="absolute top-2 left-2 z-10">
-          <span className="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-            LIVE
-          </span>
-        </div>
-      )}
+    <div className="space-y-2">
+      {/* Mode toggle */}
+      <div className="flex items-center gap-2 justify-end">
+        <span className="text-xs text-muted-foreground">Device:</span>
+        <button
+          onClick={() => setLocalMode('sender')}
+          className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${
+            localMode === 'sender'
+              ? 'bg-primary text-primary-foreground border-primary'
+              : 'border-muted-foreground/30 text-muted-foreground hover:border-primary'
+          }`}
+        >
+          <Camera className="h-3 w-3 inline mr-1" />Counter
+        </button>
+        <button
+          onClick={() => setLocalMode('viewer')}
+          className={`text-xs px-2 py-0.5 rounded-full border transition-colors ${
+            localMode === 'viewer'
+              ? 'bg-primary text-primary-foreground border-primary'
+              : 'border-muted-foreground/30 text-muted-foreground hover:border-primary'
+          }`}
+        >
+          <MonitorSmartphone className="h-3 w-3 inline mr-1" />Owner
+        </button>
+      </div>
 
-      <video
-        ref={videoRef}
-        className="w-full aspect-video object-cover"
-        muted
-        playsInline
-        style={{ display: webcamActive ? 'block' : 'none' }}
-      />
+      {localMode === 'sender' ? <LiveStreamSender /> : <LiveStreamViewer />}
 
-      {!webcamActive && (
-        <div className="flex flex-col items-center justify-center gap-3 h-48 text-white/60">
-          <Video className="h-8 w-8 opacity-40" />
-          {webcamError ? (
-            <p className="text-xs text-red-400">{webcamError}</p>
-          ) : (
-            <p className="text-sm">Counter webcam</p>
-          )}
-          <Button variant="secondary" size="sm" onClick={startWebcam}>
-            <Camera className="h-4 w-4 mr-1.5" />
-            Start Camera
-          </Button>
-        </div>
-      )}
-
-      {webcamActive && (
-        <div className="absolute bottom-2 right-2">
-          <Button variant="destructive" size="sm" onClick={stopWebcam}>Stop</Button>
-        </div>
-      )}
+      <p className="text-xs text-muted-foreground text-center opacity-70">
+        {localMode === 'sender'
+          ? 'Running on counter device — motion & face detection active'
+          : 'Viewing counter stream remotely'}
+      </p>
     </div>
   );
 }

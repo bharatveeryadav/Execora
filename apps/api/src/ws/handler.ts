@@ -10,10 +10,13 @@ import { prisma } from '@execora/infrastructure';
 import { tenantContext } from '@execora/infrastructure';
 import { Prisma } from '@prisma/client';
 import { WSMessage, WSMessageType } from '@execora/types';
+import { rtcRelay } from './rtc-relay';
+import { broadcaster } from './broadcaster';
 
 interface VoiceSession {
   ws: WebSocket;
   sessionId: string;
+  tenantId: string;
   dbSessionId?: string;   // ConversationSession.id in DB (set async after connect)
   transcript: string;
   isActive: boolean;
@@ -56,15 +59,25 @@ class WebSocketHandler {
     }
     // ─────────────────────────────────────────────────────────────────────────
 
+    const tenantId = (request as any).user?.tenantId ?? 'unknown';
+
     const session: VoiceSession = {
       ws: connection,
       sessionId,
+      tenantId,
       transcript: '',
       isActive: false,
     };
 
     this.sessions.set(sessionId, session);
-    logger.info({ sessionId, resumed }, 'WebSocket connected');
+
+    // Register with broadcaster (server → client push from REST routes)
+    broadcaster.register(tenantId, connection);
+
+    // Register with RTC relay (default viewer — upgraded to sender via rtc:register)
+    rtcRelay.register(tenantId, sessionId, connection, 'viewer');
+
+    logger.info({ sessionId, tenantId, resumed }, 'WebSocket connected');
 
     // Create DB conversation session (non-blocking — we just need it for ConversationTurn FK)
     voiceSessionService.createSession({}).then((s) => {
@@ -103,6 +116,7 @@ class WebSocketHandler {
         voiceSessionService.endSession(session.dbSessionId)
           .catch((err) => logger.warn({ err, sessionId }, 'Failed to end DB session on disconnect'));
       }
+      rtcRelay.unregister(tenantId, sessionId);
       this.sessions.delete(sessionId);
     });
 
@@ -158,6 +172,61 @@ class WebSocketHandler {
       // Client requests the current pending-invoice list on connect/resume.
       case 'pending:get':
         this.broadcastPendingInvoices();
+        break;
+
+      // ── WebRTC signalling relay ──────────────────────────────────────────
+      // rtc:register — mark this connection as counter sender or viewer
+      case 'rtc:register':
+        rtcRelay.setRole(session.tenantId, sessionId, message.data?.role === 'sender' ? 'sender' : 'viewer');
+        session.ws.send(JSON.stringify({ type: 'rtc:registered', role: message.data?.role ?? 'viewer' }));
+        // Notify all viewers how many senders exist
+        rtcRelay.relay(session.tenantId, '__none__', {
+          type: 'rtc:peer-update',
+          senderCount: rtcRelay.getSenders(session.tenantId).length,
+        });
+        break;
+
+      // rtc:offer — sender broadcasts offer to all viewers
+      case 'rtc:offer':
+        rtcRelay.relay(session.tenantId, sessionId, {
+          type:    'rtc:offer',
+          offer:   message.data?.offer,
+          fromId:  sessionId,
+        });
+        break;
+
+      // rtc:answer — viewer answers a specific sender
+      case 'rtc:answer': {
+        const toId = message.data?.toId as string | undefined;
+        if (toId) {
+          rtcRelay.send(session.tenantId, toId, {
+            type:    'rtc:answer',
+            answer:  message.data?.answer,
+            fromId:  sessionId,
+          });
+        }
+        break;
+      }
+
+      // rtc:ice — route ICE candidate to specific peer or broadcast
+      case 'rtc:ice': {
+        const iceTo = message.data?.toId as string | undefined;
+        const iceMsg = {
+          type:      'rtc:ice',
+          candidate: message.data?.candidate,
+          fromId:    sessionId,
+        };
+        if (iceTo) {
+          rtcRelay.send(session.tenantId, iceTo, iceMsg);
+        } else {
+          rtcRelay.relay(session.tenantId, sessionId, iceMsg);
+        }
+        break;
+      }
+
+      // rtc:end — sender is stopping stream
+      case 'rtc:end':
+        rtcRelay.relay(session.tenantId, sessionId, { type: 'rtc:end', fromId: sessionId });
         break;
 
       default:
