@@ -149,6 +149,31 @@ const LOAN_REPORTS: { label: string; path?: string }[] = [
   { label: "Loan Statements" },
 ];
 
+const REPORTS_SIDEBAR_PREF_KEY = "execora:reports:sidebarExpanded";
+
+function loadSidebarExpandedPref(): Set<string> {
+  try {
+    const raw = localStorage.getItem(REPORTS_SIDEBAR_PREF_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw) as string[];
+    if (Array.isArray(arr)) return new Set(arr);
+  } catch {
+    /* ignore */
+  }
+  return new Set();
+}
+
+function saveSidebarExpandedPref(expanded: Set<string>) {
+  try {
+    localStorage.setItem(
+      REPORTS_SIDEBAR_PREF_KEY,
+      JSON.stringify([...expanded]),
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
 // Section config for all-in-one view (id for scroll/jump)
 const REPORT_SECTIONS: {
   id: string;
@@ -2762,13 +2787,14 @@ const Reports = () => {
   const [mobileContentVisible, setMobileContentVisible] = useState(false);
   const [sidebarExpandedSections, setSidebarExpandedSections] = useState<
     Set<string>
-  >(new Set(REPORT_SECTIONS.map((s) => s.id)));
+  >(loadSidebarExpandedPref);
 
   const toggleSidebarSection = (id: string) => {
     setSidebarExpandedSections((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      saveSidebarExpandedPref(next);
       return next;
     });
   };
