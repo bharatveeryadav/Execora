@@ -1456,4 +1456,7 @@ export const monitoringApi = {
 
   listUsers: () =>
     request<{ users: { id: string; name: string; role: string }[] }>("/api/v1/users"),
+
+  getSnapUrl: (snapKey: string) =>
+    request<{ url: string }>(`/api/v1/monitoring/snap/${snapKey}`),
 };

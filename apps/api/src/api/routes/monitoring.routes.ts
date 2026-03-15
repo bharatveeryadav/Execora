@@ -201,4 +201,55 @@ export async function monitoringRoutes(fastify: FastifyInstance) {
 			return reply.code(201).send({ ok: true });
 		},
 	);
+
+	// ── POST /api/v1/monitoring/snap — upload JPEG snapshot ─────────────────
+	fastify.post('/api/v1/monitoring/snap', async (request, reply) => {
+		const { tenantId, userId } = request.user!;
+
+		const parts = request.parts();
+		let imageBuffer: Buffer | null = null;
+		let eventType = 'bill.created';
+		let entityType = 'invoice';
+		let entityId = 'unknown';
+		let description: string | undefined;
+
+		for await (const part of parts) {
+			if (part.type === 'file' && part.fieldname === 'snap') {
+				const chunks: Buffer[] = [];
+				for await (const chunk of part.file) chunks.push(chunk);
+				imageBuffer = Buffer.concat(chunks);
+			} else if (part.type === 'field') {
+				if (part.fieldname === 'eventType')   eventType   = String(part.value);
+				if (part.fieldname === 'entityType')  entityType  = String(part.value);
+				if (part.fieldname === 'entityId')    entityId    = String(part.value);
+				if (part.fieldname === 'description') description = String(part.value);
+			}
+		}
+
+		if (!imageBuffer || imageBuffer.length === 0) {
+			return reply.code(400).send({ error: 'No image data received' });
+		}
+
+		const result = await monitoringService.storeSnap(tenantId, userId, imageBuffer, {
+			eventType, entityType, entityId, description,
+		});
+
+		broadcaster.send(tenantId, 'monitoring:snap', { eventId: result.eventId, snapKey: result.snapKey });
+		return reply.code(201).send({ ok: true, snapKey: result.snapKey, eventId: result.eventId });
+	});
+
+	// ── GET /api/v1/monitoring/snap/:key — presigned URL ─────────────────────
+	fastify.get<{ Params: { '*': string } }>(
+		'/api/v1/monitoring/snap/*',
+		async (request, reply) => {
+			const { tenantId } = request.user!;
+			const snapKey = request.params['*'];
+			try {
+				const url = await monitoringService.getSnapPresignedUrl(tenantId, snapKey);
+				return { url };
+			} catch {
+				return reply.code(403).send({ error: 'Forbidden' });
+			}
+		},
+	);
 }

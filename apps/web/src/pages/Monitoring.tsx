@@ -2,11 +2,11 @@
  * /monitoring — Owner Security & Transaction Dashboard
  *
  * Sprint M2 — Dashboard UI
- * Sprint M3/M4 camera + live feed hooks are in LiveFeedPanel (stubs ready).
+ * Sprint M3 — Camera snapshots + browser notifications
  *
  * Access: owner + admin roles only.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Shield, Settings2, RefreshCw, Eye, EyeOff } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -26,6 +26,8 @@ import { ActivityTable } from '@/components/monitoring/ActivityTable';
 import { EmployeeSummary } from '@/components/monitoring/EmployeeSummary';
 import { LiveFeedPanel } from '@/components/monitoring/LiveFeedPanel';
 import { MonitoringSettings } from '@/components/monitoring/MonitoringSettings';
+import { CameraCapture } from '@/components/monitoring/CameraCapture';
+import { SnapGallery } from '@/components/monitoring/SnapGallery';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -143,6 +145,13 @@ export default function Monitoring() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [hideLive, setHideLive] = useState(false);
 
+  // Request browser notification permission once when owner opens the page
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
   // Access guard — redirect staff/viewer
   if (user && user.role !== 'owner' && user.role !== 'admin' && user.role !== 'manager') {
     return (
@@ -246,16 +255,21 @@ export default function Monitoring() {
         </div>
       </div>
 
-      {/* Tabbed section: full table + employee summary */}
+      {/* Tabbed section: full table + snapshots + employee summary */}
       <Tabs defaultValue="table">
         <TabsList>
           <TabsTrigger value="table">Activity Log</TabsTrigger>
+          <TabsTrigger value="snapshots">Snapshots</TabsTrigger>
           <TabsTrigger value="employees">Employee Summary</TabsTrigger>
         </TabsList>
 
         <TabsContent value="table" className="mt-4 space-y-3">
           <ActivityFilters filters={filters} onChange={setFilters} />
           <ActivityTable filters={filters} onEventClick={setSelectedEvent} />
+        </TabsContent>
+
+        <TabsContent value="snapshots" className="mt-4">
+          <SnapGallery from={filters.from} />
         </TabsContent>
 
         <TabsContent value="employees" className="mt-4">
@@ -268,6 +282,9 @@ export default function Monitoring() {
 
       {/* Settings dialog */}
       <MonitoringSettings open={settingsOpen} onOpenChange={setSettingsOpen} />
+
+      {/* Hidden camera capture component — runs on counter device */}
+      <CameraCapture />
     </div>
   );
 }

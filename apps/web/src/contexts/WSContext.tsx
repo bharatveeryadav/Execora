@@ -141,12 +141,24 @@ export function WSProvider({ children }: { children: ReactNode }) {
       wsClient.on("reminder:created", () => {
         qc.invalidateQueries({ queryKey: ["reminders"] });
       }),
-      wsClient.on("monitoring:event", () => {
+      wsClient.on("monitoring:event", (payload) => {
         qc.invalidateQueries({ queryKey: ["monitoring", "events"] });
         qc.invalidateQueries({ queryKey: ["monitoring", "unread"] });
+        // Browser notification for alert/warning severity when tab is in background
+        const p = payload as { severity?: string; description?: string; eventType?: string };
+        if (p.severity === "alert" || p.severity === "warning") {
+          if (Notification.permission === "granted" && document.visibilityState === "hidden") {
+            new Notification("⚠️ Monitoring Alert", {
+              body: p.description ?? p.eventType ?? "Alert",
+              icon: "/icon-192.png",
+              tag: "monitoring-alert",
+            });
+          }
+        }
       }),
       wsClient.on("monitoring:snap", () => {
         qc.invalidateQueries({ queryKey: ["monitoring", "events"] });
+        qc.invalidateQueries({ queryKey: ["monitoring", "snap-url"] });
       }),
     ];
 

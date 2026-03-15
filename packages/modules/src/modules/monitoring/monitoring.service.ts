@@ -1,5 +1,6 @@
-import { prisma } from '@execora/infrastructure';
+import { prisma, minioClient } from '@execora/infrastructure';
 import { Decimal } from '@prisma/client/runtime/library';
+import { randomUUID } from 'crypto';
 
 export interface RecordEventInput {
 	tenantId: string;
@@ -148,6 +149,71 @@ class MonitoringService {
 
 	async getConfig(tenantId: string) {
 		return prisma.monitoringConfig.findUnique({ where: { tenantId } });
+	}
+
+	/**
+	 * Store a JPEG snapshot to MinIO and attach it to the most recent matching
+	 * MonitoringEvent for this entity, or create a new snap-only event.
+	 */
+	async storeSnap(
+		tenantId: string,
+		userId: string | undefined,
+		imageBuffer: Buffer,
+		opts: {
+			eventType: string;
+			entityType: string;
+			entityId: string;
+			description?: string;
+		},
+	): Promise<{ snapKey: string; eventId: string }> {
+		const date = new Date().toISOString().slice(0, 10);
+		const snapKey = `monitoring-snaps/${tenantId}/${date}/${randomUUID()}.jpg`;
+
+		await minioClient.uploadFile(snapKey, imageBuffer, { contentType: 'image/jpeg' });
+
+		// Try to attach to existing event for this entity (created in last 60 s)
+		const since = new Date(Date.now() - 60_000);
+		const existing = await prisma.monitoringEvent.findFirst({
+			where: {
+				tenantId,
+				entityId: opts.entityId,
+				eventType: opts.eventType,
+				createdAt: { gte: since },
+				snapKey: null,
+			},
+			orderBy: { createdAt: 'desc' },
+		});
+
+		if (existing) {
+			await prisma.monitoringEvent.update({
+				where: { id: existing.id },
+				data: { snapKey },
+			});
+			return { snapKey, eventId: existing.id };
+		}
+
+		// No matching event — create a snap-only event
+		const event = await prisma.monitoringEvent.create({
+			data: {
+				tenantId,
+				userId,
+				eventType: opts.eventType,
+				entityType: opts.entityType,
+				entityId: opts.entityId,
+				description: opts.description ?? `Snapshot captured`,
+				snapKey,
+				severity: 'info',
+			},
+		});
+		return { snapKey, eventId: event.id };
+	}
+
+	async getSnapPresignedUrl(tenantId: string, snapKey: string): Promise<string> {
+		// Validate the key belongs to this tenant
+		if (!snapKey.startsWith(`monitoring-snaps/${tenantId}/`)) {
+			throw new Error('Forbidden');
+		}
+		return minioClient.getPresignedUrl(snapKey, 900); // 15 min TTL
 	}
 
 	async upsertConfig(tenantId: string, data: Partial<{
