@@ -19,6 +19,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useReportsEmbed } from "@/contexts/ReportsEmbedContext";
 import { useInvoices, useExpenses, useCashbook } from "@/hooks/useQueries";
 import { useWsInvalidation } from "@/hooks/useWsInvalidation";
 import { formatCurrency, formatDate } from "@/lib/api";
@@ -127,6 +128,7 @@ const TYPE_FILTERS: Array<{ key: TxType | "all"; label: string }> = [
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function DayBook() {
   const navigate = useNavigate();
+  const reportsEmbed = useReportsEmbed();
   const [period, setPeriod] = useState<Period>("Today");
   const [typeFilter, setTypeFilter] = useState<TxType | "all">("all");
   const [showEod, setShowEod] = useState(true);
@@ -291,7 +293,7 @@ export default function DayBook() {
         <div className="mx-auto max-w-3xl px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+              <Button variant="ghost" size="icon" onClick={() => reportsEmbed?.onBack?.() ?? navigate("/")}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>

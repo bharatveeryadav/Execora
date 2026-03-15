@@ -18,6 +18,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useReportsEmbed } from "@/contexts/ReportsEmbedContext";
 import VoiceBar from "@/components/VoiceBar";
 import { useCashbook } from "@/hooks/useQueries";
 import { useWsInvalidation } from "@/hooks/useWsInvalidation";
@@ -30,6 +31,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function CashBook() {
   const navigate = useNavigate();
+  const reportsEmbed = useReportsEmbed();
   const [from, setFrom] = useState(() => {
     const d = new Date();
     d.setDate(1);
@@ -60,7 +62,7 @@ export default function CashBook() {
       <header className="sticky top-0 z-30 border-b bg-card px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <Button variant="ghost" size="icon" onClick={() => reportsEmbed?.onBack?.() ?? navigate(-1)}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>

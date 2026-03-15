@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import VoiceBar from '@/components/VoiceBar';
+import { useReportsEmbed } from '@/contexts/ReportsEmbedContext';
 import { useToast } from '@/hooks/use-toast';
 import { useExpenses, useCreateExpense, useDeleteExpense } from '@/hooks/useQueries';
 import { useWsInvalidation } from '@/hooks/useWsInvalidation';
@@ -65,6 +66,7 @@ function tabDateRange(tab: Tab): { from?: string; to?: string } {
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function Expenses() {
 	const navigate = useNavigate();
+	const reportsEmbed = useReportsEmbed();
 	const { toast } = useToast();
 
 	const [filterTab, setFilterTab] = useState<Tab>('This Month');
@@ -150,7 +152,7 @@ export default function Expenses() {
 			<header className="sticky top-0 z-30 border-b bg-card px-4 py-3">
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-2">
-						<Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+						<Button variant="ghost" size="icon" onClick={() => reportsEmbed?.onBack?.() ?? navigate(-1)}>
 							<ArrowLeft className="h-4 w-4" />
 						</Button>
 						<div>

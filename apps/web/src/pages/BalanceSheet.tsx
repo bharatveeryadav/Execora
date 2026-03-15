@@ -17,6 +17,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useReportsEmbed } from "@/contexts/ReportsEmbedContext";
 import VoiceBar from "@/components/VoiceBar";
 import { useWsInvalidation } from "@/hooks/useWsInvalidation";
 import {
@@ -123,6 +124,7 @@ function BSSection({
 
 export default function BalanceSheet() {
   const navigate = useNavigate();
+  const reportsEmbed = useReportsEmbed();
   const [period, setPeriod] = useState<Period>("This Month");
 
   const range = getPeriodRange(period);
@@ -212,7 +214,7 @@ export default function BalanceSheet() {
       {/* Header */}
       <div className="sticky top-0 z-10 border-b bg-card/95 backdrop-blur">
         <div className="flex items-center gap-3 px-4 py-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+          <Button variant="ghost" size="icon" onClick={() => reportsEmbed?.onBack?.() ?? navigate(-1)}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex-1">

@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { Badge } from "@/components/ui/badge";
+import { useReportsEmbed } from "@/contexts/ReportsEmbedContext";
 import VoiceBar from "@/components/VoiceBar";
 import { useToast } from "@/hooks/use-toast";
 import { useSummaryRange, useExpenses } from "@/hooks/useQueries";
@@ -198,6 +199,7 @@ function TaxTable({
 
 export default function Gstr3b() {
   const navigate = useNavigate();
+  const reportsEmbed = useReportsEmbed();
   const { toast } = useToast();
 
   const [selMonth, setSelMonth] = useState<MonthOption>(MONTHS[0]);
@@ -323,7 +325,7 @@ export default function Gstr3b() {
       {/* Header */}
       <div className="sticky top-0 z-10 border-b bg-card/95 backdrop-blur">
         <div className="flex items-center gap-3 px-4 py-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+          <Button variant="ghost" size="icon" onClick={() => reportsEmbed?.onBack?.() ?? navigate(-1)}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex-1">

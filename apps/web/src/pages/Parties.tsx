@@ -21,6 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useReportsEmbed } from "@/contexts/ReportsEmbedContext";
 import { useCustomers, usePurchases } from "@/hooks/useQueries";
 import { formatCurrency, type Customer } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
@@ -106,6 +107,7 @@ function escapeHtml(s: string) {
 
 const Parties = () => {
   const navigate = useNavigate();
+  const reportsEmbed = useReportsEmbed();
   const { toast } = useToast();
   const [tab, setTab] = useState<Tab>("customers");
   const customersRef = useRef<CustomersRef>(null);
@@ -142,7 +144,7 @@ const Parties = () => {
       <header className="sticky top-0 z-20 border-b bg-card">
         <div className="mx-auto max-w-3xl px-4 py-3">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+            <Button variant="ghost" size="icon" onClick={() => reportsEmbed?.onBack?.() ?? navigate("/")}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <h1 className="flex-1 text-base font-bold">👥 Parties</h1>

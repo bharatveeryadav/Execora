@@ -16,6 +16,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useReportsEmbed } from "@/contexts/ReportsEmbedContext";
 import VoiceBar from "@/components/VoiceBar";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/api";
@@ -104,6 +105,7 @@ const STATUS_CFG: Record<
 
 export default function BankReconciliation() {
   const navigate = useNavigate();
+  const reportsEmbed = useReportsEmbed();
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -170,7 +172,7 @@ export default function BankReconciliation() {
       {/* Header */}
       <div className="sticky top-0 z-10 border-b bg-card/95 backdrop-blur">
         <div className="flex items-center gap-3 px-4 py-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+          <Button variant="ghost" size="icon" onClick={() => reportsEmbed?.onBack?.() ?? navigate(-1)}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex-1">

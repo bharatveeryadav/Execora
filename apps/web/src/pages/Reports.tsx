@@ -18,10 +18,6 @@ import {
   ChevronDown,
   PanelRightOpen,
   PanelRightClose,
-  LayoutGrid,
-  LayoutList,
-  Minus,
-  Plus,
 } from "lucide-react";
 import VoiceBar from "@/components/VoiceBar";
 import { Button } from "@/components/ui/button";
@@ -52,6 +48,18 @@ import {
 import { useWsInvalidation } from "@/hooks/useWsInvalidation";
 import { formatCurrency, reportApi, getToken } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
+import { ReportsEmbedContext } from "@/contexts/ReportsEmbedContext";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import Invoices from "./Invoices";
+import Parties from "./Parties";
+import DayBook from "./DayBook";
+import CashBook from "./CashBook";
+import BalanceSheet from "./BalanceSheet";
+import Inventory from "./Inventory";
+import Purchases from "./Purchases";
+import Expenses from "./Expenses";
+import BankReconciliation from "./BankReconciliation";
+import Gstr3b from "./Gstr3b";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -159,6 +167,13 @@ const REPORT_SECTIONS: {
   { id: "orders", title: "Sale / Purchase Orders", reports: SALE_PURCHASE_ORDER_REPORTS },
   { id: "loan", title: "Loan", reports: LOAN_REPORTS },
 ];
+
+// Map report key (inline or path without leading slash) to component for inline rendering
+function getReportKey(r: { path?: string; inline?: string }): string | null {
+  if (r.inline) return r.inline;
+  if (r.path) return r.path.replace(/^\//, "");
+  return null;
+}
 
 function getPeriodRange(period: string): { from: string; to: string } {
   const now = new Date();
@@ -2724,61 +2739,6 @@ function AgingTab() {
   );
 }
 
-// ── Report links grid (card per report) ──────────────────────────────────────
-
-function ReportLinksGrid({
-  reports,
-  onInlineSelect,
-  navigate,
-  vertical,
-}: {
-  reports: { label: string; path?: string; inline?: string }[];
-  onInlineSelect?: (key: string) => void;
-  navigate: (path: string) => void;
-  vertical?: boolean;
-}) {
-  return (
-    <div
-      className={
-        vertical
-          ? "flex flex-col gap-2"
-          : "grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-      }
-    >
-      {reports.map((r) => {
-        const hasAction = r.path || r.inline;
-        return (
-          <Card
-            key={r.label}
-            className={
-              hasAction
-                ? "cursor-pointer transition-all hover:border-primary/50 hover:bg-muted/30 active:scale-[0.99] min-h-[52px] flex"
-                : "opacity-75 min-h-[52px] flex"
-            }
-            onClick={() => {
-              if (r.path) navigate(r.path);
-              else if (r.inline) onInlineSelect?.(r.inline);
-            }}
-          >
-            <CardContent className="flex items-center justify-between p-4 w-full min-h-[52px]">
-              <span className="font-medium text-sm sm:text-base truncate pr-2">
-                {r.label}
-              </span>
-              {hasAction ? (
-                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-              ) : (
-                <Badge variant="secondary" className="text-[10px] shrink-0">
-                  Soon
-                </Badge>
-              )}
-            </CardContent>
-          </Card>
-        );
-      })}
-    </div>
-  );
-}
-
 // ── Main Reports page ─────────────────────────────────────────────────────────
 
 const INLINE_FROM_PARAM: Record<string, string> = {
@@ -2794,16 +2754,13 @@ const Reports = () => {
   const tabParam = searchParams.get("tab")?.toLowerCase();
   const inlineFromParam = tabParam && INLINE_FROM_PARAM[tabParam];
 
-  const [inlineReport, setInlineReport] = useState<string | null>(
-    inlineFromParam ?? null,
-  );
   const [activePeriod, setActivePeriod] = useState<string>("This Month");
   const [activeSectionId, setActiveSectionId] = useState<string>("transaction");
   const [rightSidebarOpen, setRightSidebarOpen] = useState<boolean>(true);
-  const [showAllTabs, setShowAllTabs] = useState<boolean>(false);
-  const [minimizedSections, setMinimizedSections] = useState<Set<string>>(
-    new Set(),
+  const [selectedReportKey, setSelectedReportKey] = useState<string | null>(
+    inlineFromParam ?? "overview",
   );
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [sidebarExpandedSections, setSidebarExpandedSections] = useState<
     Set<string>
   >(new Set(REPORT_SECTIONS.map((s) => s.id)));
@@ -2817,19 +2774,21 @@ const Reports = () => {
     });
   };
 
-  const toggleSectionMinimize = (id: string) => {
-    setMinimizedSections((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const handleReportSelect = (key: string) => {
+    setSelectedReportKey(key);
+    setSearchParams({ tab: key === "gstr1" ? "gstr1" : key });
   };
+
+  const handleReportBack = () => {
+    setSelectedReportKey("overview");
+    setSearchParams({ tab: "overview" });
+  };
+
   const navigate = useNavigate();
   useWsInvalidation(["summary", "invoices", "customers", "products"]);
 
   useEffect(() => {
-    if (inlineFromParam) setInlineReport(inlineFromParam);
+    if (inlineFromParam) setSelectedReportKey(inlineFromParam);
   }, [tabParam, inlineFromParam]);
 
   // Sync activeSectionId from URL tab param (for desktop)
@@ -2858,10 +2817,6 @@ const Reports = () => {
     if (id) setActiveSectionId(id);
   }, [tabParam]);
 
-  const handleInlineSelect = (key: string) => {
-    setInlineReport(key);
-    setSearchParams({ tab: key === "gstr1" ? "gstr1" : key });
-  };
 
   // Scroll to section when ?tab= is in URL
   useEffect(() => {
@@ -2892,135 +2847,10 @@ const Reports = () => {
     }
   }, [tabParam]);
 
-  // When showing inline report (GSTR1, P&L, Overview, Aging), render that content
-  if (inlineReport === "gstr1") {
-    return (
-      <div className="min-h-screen bg-background">
-        <header className="border-b bg-card px-4 py-3 md:px-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  setInlineReport(null);
-                  setSearchParams({ tab: "gst" });
-                }}
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <h1 className="text-lg font-bold tracking-tight md:text-xl">
-                🏛️ GSTR-1
-              </h1>
-            </div>
-          </div>
-          <VoiceBar
-            idleHint={
-              <>
-                <span className="font-medium text-foreground">
-                  "GSTR-1 report nikalo"
-                </span>
-              </>
-            }
-          />
-        </header>
-        <main className="mx-auto max-w-7xl p-4 md:p-6">
-          <Gstr1Tab />
-        </main>
-      </div>
-    );
-  }
-  if (inlineReport === "pnl") {
-    return (
-      <div className="min-h-screen bg-background">
-        <header className="border-b bg-card px-4 py-3 md:px-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  setInlineReport(null);
-                  setSearchParams({ tab: "transaction" });
-                }}
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <h1 className="text-lg font-bold tracking-tight md:text-xl">
-                📈 Profit & Loss
-              </h1>
-            </div>
-          </div>
-          <VoiceBar
-            idleHint={
-              <>
-                <span className="font-medium text-foreground">
-                  "is mahine ka P&L dikhao"
-                </span>
-              </>
-            }
-          />
-        </header>
-        <main className="mx-auto max-w-7xl p-4 md:p-6">
-          <PnlTab />
-        </main>
-      </div>
-    );
-  }
-  if (inlineReport === "overview" || inlineReport === "aging") {
-    return (
-      <div className="min-h-screen bg-background">
-        <header className="border-b bg-card px-4 py-3 md:px-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => {
-                  setInlineReport(null);
-                  setSearchParams({ tab: "transaction" });
-                }}
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <h1 className="text-lg font-bold tracking-tight md:text-xl">
-                {inlineReport === "aging" ? "⏰ Aging" : "📊 Overview"}
-              </h1>
-            </div>
-          </div>
-          {inlineReport === "overview" && (
-            <div className="mt-3 flex flex-nowrap gap-2 overflow-x-auto pb-1 scrollbar-hide">
-              {periods.map((p) => (
-                <Button
-                  key={p}
-                  variant={activePeriod === p ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setActivePeriod(p)}
-                  className="text-xs"
-                >
-                  {p}
-                </Button>
-              ))}
-            </div>
-          )}
-          <VoiceBar idleHint="Reports" />
-        </header>
-        <main className="mx-auto max-w-7xl p-4 md:p-6">
-          {inlineReport === "overview" && (
-            <OverviewTab period={activePeriod} />
-          )}
-          {inlineReport === "aging" && <AgingTab />}
-        </main>
-      </div>
-    );
-  }
-
   const handleSectionChange = (id: string) => {
     setActiveSectionId(id);
     setSearchParams({ tab: id === "item-stock" ? "item" : id });
   };
-
-  const activeSection = REPORT_SECTIONS.find((s) => s.id === activeSectionId);
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -3035,21 +2865,6 @@ const Reports = () => {
             </h1>
           </div>
           <div className="hidden lg:flex items-center gap-1 shrink-0">
-            {/* Show all tabs */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs"
-              onClick={() => setShowAllTabs((o) => !o)}
-              title={showAllTabs ? "Show single tab" : "Show all tabs"}
-            >
-              {showAllTabs ? (
-                <LayoutList className="h-4 w-4 mr-1" />
-              ) : (
-                <LayoutGrid className="h-4 w-4 mr-1" />
-              )}
-              {showAllTabs ? "Single" : "All"}
-            </Button>
             {/* Toggle left sidebar */}
             <Button
               variant="ghost"
@@ -3065,17 +2880,85 @@ const Reports = () => {
             </Button>
           </div>
         </div>
-        {/* Mobile: Jump to section pills */}
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1 lg:hidden">
-          {REPORT_SECTIONS.map((s) => (
-            <a
-              key={s.id}
-              href={`#${s.id}`}
-              className="shrink-0 px-3 py-1.5 rounded-full text-xs font-medium bg-muted/80 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {s.title}
-            </a>
-          ))}
+        {/* Mobile: Sidebar trigger */}
+        <div className="mt-3 lg:hidden">
+          <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm" className="w-full justify-start">
+                <Package className="h-4 w-4 mr-2" />
+                {selectedReportKey
+                  ? REPORT_SECTIONS.flatMap((s) => s.reports).find(
+                      (r) => getReportKey(r) === selectedReportKey,
+                    )?.label ?? "Select report"
+                  : "Select report"}
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-72 p-0">
+              <div className="p-3">
+                <p className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Reports
+                </p>
+                <nav className="mt-2 space-y-0.5">
+                  {REPORT_SECTIONS.map((section) => {
+                    const isExpanded = sidebarExpandedSections.has(section.id);
+                    return (
+                      <div key={section.id} className="space-y-0.5">
+                        <div className="flex items-center">
+                          <button
+                            onClick={() => toggleSidebarSection(section.id)}
+                            className="p-1 rounded hover:bg-muted shrink-0"
+                          >
+                            {isExpanded ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => handleSectionChange(section.id)}
+                            className={[
+                              "flex-1 text-left px-2 py-2 rounded-lg text-sm font-medium",
+                              activeSectionId === section.id
+                                ? "bg-primary/10 text-primary"
+                                : "text-muted-foreground",
+                            ].join(" ")}
+                          >
+                            {section.title}
+                          </button>
+                        </div>
+                        {isExpanded &&
+                          section.reports.map((r) => {
+                            const key = getReportKey(r);
+                            const hasAction = !!key;
+                            return (
+                              <button
+                                key={r.label}
+                                onClick={() => {
+                                  if (key) {
+                                    handleReportSelect(key);
+                                    setMobileSidebarOpen(false);
+                                  }
+                                }}
+                                className={[
+                                  "w-full text-left ml-5 pl-2 py-1.5 rounded text-sm",
+                                  hasAction
+                                    ? selectedReportKey === key
+                                      ? "bg-primary/10 text-primary font-medium"
+                                      : "text-muted-foreground"
+                                    : "text-muted-foreground/70",
+                                ].join(" ")}
+                              >
+                                {r.label}
+                              </button>
+                            );
+                          })}
+                      </div>
+                    );
+                  })}
+                </nav>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
         {/* Desktop: Horizontal tabs (shown only when left sidebar is closed) */}
         <div
@@ -3112,45 +2995,78 @@ const Reports = () => {
         />
       </header>
 
-      {/* Mobile: All reports in one scrollable view */}
-      <main className="flex-1 p-4 md:p-6 overflow-x-hidden lg:hidden">
-        <div className="space-y-6 max-w-4xl mx-auto">
-          {REPORT_SECTIONS.map((section) => {
-            const isMinimized = minimizedSections.has(section.id);
-            return (
-              <section
-                key={section.id}
-                id={section.id}
-                className="scroll-mt-24"
-              >
-                <button
-                  onClick={() => toggleSectionMinimize(section.id)}
-                  className="flex items-center justify-between w-full text-left sticky top-[120px] md:top-[100px] bg-background/95 backdrop-blur py-2 -mx-1 px-1 z-[1] group"
-                >
-                  <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                    {section.title}
-                  </h2>
-                  {isMinimized ? (
-                    <Plus className="h-4 w-4 text-muted-foreground group-hover:text-foreground shrink-0" />
-                  ) : (
-                    <Minus className="h-4 w-4 text-muted-foreground group-hover:text-foreground shrink-0" />
-                  )}
-                </button>
-                {!isMinimized && (
-                  <div className="mt-3">
-                    <ReportLinksGrid
-                      reports={section.reports}
-                      onInlineSelect={
-                        section.hasInline ? handleInlineSelect : undefined
-                      }
-                      navigate={navigate}
-                    />
-                  </div>
-                )}
-              </section>
-            );
-          })}
-        </div>
+      {/* Mobile: Same report content as desktop */}
+      <main className="flex-1 p-4 md:p-6 overflow-x-hidden overflow-y-auto lg:hidden">
+        <ReportsEmbedContext.Provider value={{ onBack: handleReportBack }}>
+          {selectedReportKey === "overview" && (
+            <div className="max-w-4xl mx-auto">
+              <div className="mb-4 flex flex-wrap gap-2">
+                {periods.map((p) => (
+                  <Button
+                    key={p}
+                    variant={activePeriod === p ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setActivePeriod(p)}
+                    className="text-xs"
+                  >
+                    {p}
+                  </Button>
+                ))}
+              </div>
+              <OverviewTab period={activePeriod} />
+            </div>
+          )}
+          {selectedReportKey === "aging" && (
+            <div className="max-w-4xl mx-auto">
+              <AgingTab />
+            </div>
+          )}
+          {selectedReportKey === "pnl" && (
+            <div className="max-w-4xl mx-auto">
+              <PnlTab />
+            </div>
+          )}
+          {selectedReportKey === "gstr1" && (
+            <div className="max-w-5xl mx-auto">
+              <Gstr1Tab />
+            </div>
+          )}
+          {selectedReportKey === "invoices" && <Invoices />}
+          {selectedReportKey === "purchases" && <Purchases />}
+          {selectedReportKey === "daybook" && <DayBook />}
+          {selectedReportKey === "cashbook" && <CashBook />}
+          {selectedReportKey === "balance-sheet" && <BalanceSheet />}
+          {selectedReportKey === "parties" && <Parties />}
+          {selectedReportKey === "inventory" && <Inventory />}
+          {selectedReportKey === "bank-reconciliation" && (
+            <BankReconciliation />
+          )}
+          {selectedReportKey === "expenses" && <Expenses />}
+          {selectedReportKey === "gstr3b" && <Gstr3b />}
+          {selectedReportKey &&
+            ![
+              "overview",
+              "aging",
+              "pnl",
+              "gstr1",
+              "invoices",
+              "purchases",
+              "daybook",
+              "cashbook",
+              "balance-sheet",
+              "parties",
+              "inventory",
+              "bank-reconciliation",
+              "expenses",
+              "gstr3b",
+            ].includes(selectedReportKey) && (
+              <div className="max-w-2xl mx-auto rounded-lg border bg-muted/30 p-8 text-center text-muted-foreground">
+                <Package className="mx-auto h-12 w-12 mb-3 opacity-50" />
+                <p className="font-medium">Coming soon</p>
+                <p className="text-sm mt-1">This report is under development.</p>
+              </div>
+            )}
+        </ReportsEmbedContext.Provider>
       </main>
 
       {/* Desktop: Left sidebar + main content */}
@@ -3200,19 +3116,20 @@ const Reports = () => {
                       {isExpanded && (
                         <div className="ml-5 pl-2 border-l border-muted/50 space-y-0.5">
                           {section.reports.map((r) => {
-                            const hasAction = r.path || r.inline;
+                            const key = getReportKey(r);
+                            const hasAction = !!key;
                             return (
                               <button
                                 key={r.label}
                                 onClick={() => {
-                                  if (r.path) navigate(r.path);
-                                  else if (r.inline && section.hasInline)
-                                    handleInlineSelect(r.inline);
+                                  if (key) handleReportSelect(key);
                                 }}
                                 className={[
                                   "w-full text-left px-2 py-1.5 rounded text-sm transition-colors truncate",
                                   hasAction
-                                    ? "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                    ? selectedReportKey === key
+                                      ? "bg-primary/10 text-primary font-medium"
+                                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                     : "text-muted-foreground/70 cursor-default",
                                 ].join(" ")}
                               >
@@ -3230,72 +3147,78 @@ const Reports = () => {
           )}
         </aside>
         <main className="flex-1 p-6 overflow-x-hidden overflow-y-auto min-w-0">
-          <div className="max-w-2xl">
-            {showAllTabs ? (
-              <div className="space-y-4">
-                {REPORT_SECTIONS.map((section) => {
-                  const isMinimized = minimizedSections.has(section.id);
-                  return (
-                    <section key={section.id} id={section.id}>
-                      <button
-                        onClick={() => toggleSectionMinimize(section.id)}
-                        className="flex items-center justify-between w-full text-left py-2 px-3 -mx-3 rounded-lg hover:bg-muted/50 transition-colors group"
-                      >
-                        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                          {section.title}
-                        </h2>
-                        {isMinimized ? (
-                          <Plus className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
-                        ) : (
-                          <Minus className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
-                        )}
-                      </button>
-                      {!isMinimized && (
-                        <div className="mt-2">
-                          <ReportLinksGrid
-                            reports={section.reports}
-                            onInlineSelect={
-                              section.hasInline ? handleInlineSelect : undefined
-                            }
-                            navigate={navigate}
-                            vertical
-                          />
-                        </div>
-                      )}
-                    </section>
-                  );
-                })}
+          <ReportsEmbedContext.Provider value={{ onBack: handleReportBack }}>
+            {selectedReportKey === "overview" && (
+              <div className="max-w-4xl">
+                <div className="mb-4 flex flex-wrap gap-2">
+                  {periods.map((p) => (
+                    <Button
+                      key={p}
+                      variant={activePeriod === p ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setActivePeriod(p)}
+                      className="text-xs"
+                    >
+                      {p}
+                    </Button>
+                  ))}
+                </div>
+                <OverviewTab period={activePeriod} />
               </div>
-            ) : (
-              activeSection && (
-                <>
-                  <button
-                    onClick={() => toggleSectionMinimize(activeSection.id)}
-                    className="flex items-center justify-between w-full text-left py-2 px-3 -mx-3 rounded-lg hover:bg-muted/50 transition-colors group mb-2"
-                  >
-                    <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                      {activeSection.title}
-                    </h2>
-                    {minimizedSections.has(activeSection.id) ? (
-                      <Plus className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
-                    ) : (
-                      <Minus className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
-                    )}
-                  </button>
-                  {!minimizedSections.has(activeSection.id) && (
-                    <ReportLinksGrid
-                      reports={activeSection.reports}
-                      onInlineSelect={
-                        activeSection.hasInline ? handleInlineSelect : undefined
-                      }
-                      navigate={navigate}
-                      vertical
-                    />
-                  )}
-                </>
-              )
             )}
-          </div>
+            {selectedReportKey === "aging" && (
+              <div className="max-w-4xl">
+                <AgingTab />
+              </div>
+            )}
+            {selectedReportKey === "pnl" && (
+              <div className="max-w-4xl">
+                <PnlTab />
+              </div>
+            )}
+            {selectedReportKey === "gstr1" && (
+              <div className="max-w-5xl">
+                <Gstr1Tab />
+              </div>
+            )}
+            {selectedReportKey === "invoices" && <Invoices />}
+            {selectedReportKey === "purchases" && <Purchases />}
+            {selectedReportKey === "daybook" && <DayBook />}
+            {selectedReportKey === "cashbook" && <CashBook />}
+            {selectedReportKey === "balance-sheet" && <BalanceSheet />}
+            {selectedReportKey === "parties" && <Parties />}
+            {selectedReportKey === "inventory" && <Inventory />}
+            {selectedReportKey === "bank-reconciliation" && (
+              <BankReconciliation />
+            )}
+            {selectedReportKey === "expenses" && <Expenses />}
+            {selectedReportKey === "gstr3b" && <Gstr3b />}
+            {selectedReportKey &&
+              ![
+                "overview",
+                "aging",
+                "pnl",
+                "gstr1",
+                "invoices",
+                "purchases",
+                "daybook",
+                "cashbook",
+                "balance-sheet",
+                "parties",
+                "inventory",
+                "bank-reconciliation",
+                "expenses",
+                "gstr3b",
+              ].includes(selectedReportKey) && (
+                <div className="max-w-2xl rounded-lg border bg-muted/30 p-8 text-center text-muted-foreground">
+                  <Package className="mx-auto h-12 w-12 mb-3 opacity-50" />
+                  <p className="font-medium">Coming soon</p>
+                  <p className="text-sm mt-1">
+                    This report is under development.
+                  </p>
+                </div>
+              )}
+          </ReportsEmbedContext.Provider>
         </main>
       </div>
     </div>

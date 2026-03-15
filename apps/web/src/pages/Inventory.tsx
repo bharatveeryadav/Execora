@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/table";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useReportsEmbed } from "@/contexts/ReportsEmbedContext";
 import {
   useProducts,
   useLowStockProducts,
@@ -119,6 +120,7 @@ function categoryIcon(category?: string | null): string {
 
 const Inventory = () => {
   const navigate = useNavigate();
+  const reportsEmbed = useReportsEmbed();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -577,7 +579,7 @@ const Inventory = () => {
       <header className="sticky top-0 z-30 border-b bg-card px-4 py-3">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+            <Button variant="ghost" size="icon" onClick={() => reportsEmbed?.onBack?.() ?? navigate("/")}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>

@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { useReportsEmbed } from "@/contexts/ReportsEmbedContext";
 import { useInvoices, usePurchases } from "@/hooks/useQueries";
 import { useWsInvalidation } from "@/hooks/useWsInvalidation";
 import { formatCurrency, formatDate } from "@/lib/api";
@@ -164,6 +165,7 @@ const AMOUNT_COLORS: Record<string, string> = {
 
 const Invoices = () => {
   const navigate = useNavigate();
+  const reportsEmbed = useReportsEmbed();
   const [docTypeTab, setDocTypeTab] = useState<DocTypeTab>("sales");
   const [statusTab, setStatusTab] = useState<StatusTab>("All");
   const [search, setSearch] = useState("");
@@ -268,7 +270,7 @@ const Invoices = () => {
       {/* Header */}
       <header className="sticky top-0 z-20 border-b bg-card">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="min-h-10 min-w-10 shrink-0 touch-manipulation" aria-label="Go back">
+          <Button variant="ghost" size="icon" onClick={() => reportsEmbed?.onBack?.() ?? navigate("/")} className="min-h-10 min-w-10 shrink-0 touch-manipulation" aria-label="Go back">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1 min-w-0">

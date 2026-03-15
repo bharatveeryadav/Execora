@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useReportsEmbed } from "@/contexts/ReportsEmbedContext";
 import {
   usePurchases,
   useCreatePurchase,
@@ -104,6 +105,7 @@ function tabDateRange(tab: Tab): { from?: string; to?: string } {
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function Purchases() {
   const navigate = useNavigate();
+  const reportsEmbed = useReportsEmbed();
   const { toast } = useToast();
 
   const [filterTab, setFilterTab] = useState<Tab>("This Month");
@@ -308,7 +310,7 @@ export default function Purchases() {
       <header className="sticky top-0 z-30 border-b bg-card px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <Button variant="ghost" size="icon" onClick={() => reportsEmbed?.onBack?.() ?? navigate(-1)}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <h1 className="text-lg font-semibold">Purchases</h1>
