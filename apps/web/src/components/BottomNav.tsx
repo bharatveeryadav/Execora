@@ -42,7 +42,7 @@ const MORE_ITEMS = [
 // Main 5 nav items
 const NAV_ITEMS = [
   { label: "Home", icon: Home, path: "/" },
-  { label: "Customers", icon: Users, path: "/customers" },
+  { label: "Parties", icon: Users, path: "/parties" },
   { label: "Items", icon: Package, path: "/inventory" },
   { label: "Bills", icon: FileText, path: "/invoices" },
   { label: "More", icon: MoreHorizontal, path: "__more__" },
@@ -104,8 +104,9 @@ const BottomNav = () => {
 
             const isActive =
               location.pathname === item.path ||
-              (item.path === "/customers" &&
-                location.pathname.startsWith("/customers")) ||
+              (item.path === "/parties" &&
+                (location.pathname.startsWith("/parties") ||
+                  location.pathname.startsWith("/customers"))) ||
               (item.path === "/inventory" &&
                 location.pathname.startsWith("/inventory")) ||
               (item.path === "/invoices" &&

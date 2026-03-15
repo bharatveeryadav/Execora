@@ -211,7 +211,7 @@ export default function CashBook() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => navigate("/customers")}
+                onClick={() => navigate("/parties")}
               >
                 Record Payment
               </Button>

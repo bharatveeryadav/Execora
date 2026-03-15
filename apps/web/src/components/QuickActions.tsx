@@ -56,10 +56,10 @@ const QuickActions = () => {
       onClick: () => navigate("/invoices"),
     },
     {
-      label: "Customers",
+      label: "Parties",
       icon: Users,
       primary: false,
-      onClick: () => navigate("/customers"),
+      onClick: () => navigate("/parties"),
     },
     {
       label: "Expenses",

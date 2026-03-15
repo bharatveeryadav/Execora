@@ -43,7 +43,7 @@ interface ImportConfig {
 const IMPORT_CONFIGS: Record<EntityType, ImportConfig> = {
   customers: {
     type: "customers",
-    label: "Customers",
+    label: "Parties",
     icon: Users,
     color: "text-blue-500",
     columns: [

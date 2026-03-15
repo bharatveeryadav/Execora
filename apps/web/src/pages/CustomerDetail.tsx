@@ -211,7 +211,7 @@ const CustomerDetail = () => {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4">
         <p className="text-muted-foreground">Customer not found</p>
-        <Button onClick={() => navigate("/customers")}>
+        <Button onClick={() => navigate("/parties")}>
           ← Back to Customers
         </Button>
       </div>
@@ -228,7 +228,7 @@ const CustomerDetail = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => navigate("/customers")}
+                onClick={() => navigate("/parties")}
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
@@ -802,7 +802,7 @@ const CustomerDetail = () => {
                                 title: `${customer?.name ?? "Customer"} deleted`,
                               });
                               setEditOpen(false);
-                              navigate("/customers");
+                              navigate("/parties");
                             },
                             onError: () =>
                               toast({

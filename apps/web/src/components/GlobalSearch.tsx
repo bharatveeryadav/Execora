@@ -32,7 +32,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 const QUICK_LINKS = [
   { icon: "🧾", label: "New Invoice", path: "/invoices", action: "invoice" },
-  { icon: "👥", label: "Customers", path: "/customers", action: "nav" },
+  { icon: "👥", label: "Parties", path: "/parties", action: "nav" },
   { icon: "📦", label: "Inventory", path: "/inventory", action: "nav" },
   { icon: "💵", label: "Cash Book", path: "/cashbook", action: "nav" },
   { icon: "📊", label: "Reports", path: "/reports", action: "nav" },
@@ -186,7 +186,7 @@ export default function GlobalSearch({
                 </p>
                 <button
                   className="text-[10px] text-primary hover:underline"
-                  onClick={() => go(`/customers`)}
+                  onClick={() => go(`/parties`)}
                 >
                   View all
                 </button>

@@ -10,6 +10,7 @@ import BillingSettings from "./pages/BillingSettings";
 import Payment from "./pages/Payment";
 import Inventory from "./pages/Inventory";
 import Customers from "./pages/Customers";
+import Parties from "./pages/Parties";
 import CustomerDetail from "./pages/CustomerDetail";
 import Invoices from "./pages/Invoices";
 import InvoiceDetail from "./pages/InvoiceDetail";
@@ -116,10 +117,18 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/parties"
+        element={
+          <ProtectedRoute>
+            <Parties />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/customers"
         element={
           <ProtectedRoute>
-            <Customers />
+            <Navigate to="/parties" replace />
           </ProtectedRoute>
         }
       />

@@ -11,7 +11,9 @@ import {
   TrendingUp,
   TrendingDown,
   RefreshCw,
-  Filter,
+  ChevronDown,
+  ChevronUp,
+  Wallet,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -128,6 +130,8 @@ export default function DayBook() {
   const navigate = useNavigate();
   const [period, setPeriod] = useState<Period>("Today");
   const [typeFilter, setTypeFilter] = useState<TxType | "all">("all");
+  const [showEod, setShowEod] = useState(true);
+  const [actualCash, setActualCash] = useState("");
 
   const { from, to } = getPeriodRange(period);
 
@@ -246,6 +250,30 @@ export default function DayBook() {
     .reduce((s, t) => s + t.amount, 0);
   const net = totalIn - totalOut;
 
+  // ── EOD Reconciliation ───────────────────────────────────────────────────────
+  // Uses ALL transactions (before type filter) so the totals are always complete
+  const EOD_KEY = `eod_opening_${from}`;
+  const [openingCash, setOpeningCashState] = useState<string>(
+    () => localStorage.getItem(EOD_KEY) ?? ""
+  );
+  const setOpeningCash = (v: string) => {
+    setOpeningCashState(v);
+    if (v) localStorage.setItem(EOD_KEY, v);
+    else localStorage.removeItem(EOD_KEY);
+  };
+
+  const eodIn = transactions
+    .filter((t) => t.sign === "credit")
+    .reduce((s, t) => s + t.amount, 0);
+  const eodOut = transactions
+    .filter((t) => t.sign === "debit")
+    .reduce((s, t) => s + t.amount, 0);
+  const eodOpening = parseFloat(openingCash) || 0;
+  const eodExpected = eodOpening + eodIn - eodOut;
+  const eodActual = parseFloat(actualCash) || 0;
+  const eodDiff = actualCash !== "" ? eodActual - eodExpected : null;
+  const showEodSection = period === "Today" || period === "Yesterday";
+
   // Group by date
   const grouped = useMemo(() => {
     const map = new Map<string, Transaction[]>();
@@ -337,6 +365,82 @@ export default function DayBook() {
             </CardContent>
           </Card>
         </div>
+
+        {/* ── EOD Cash Reconciliation ─────────────────────────────────── */}
+        {showEodSection && (
+          <div className="rounded-xl border bg-card overflow-hidden">
+            <button
+              className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold hover:bg-muted/30 transition-colors"
+              onClick={() => setShowEod((v) => !v)}
+            >
+              <span className="flex items-center gap-2">
+                <Wallet className="h-4 w-4 text-primary" />
+                Cash Close — {period}
+              </span>
+              {showEod ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            </button>
+            {showEod && (
+              <div className="border-t px-4 py-3 space-y-2 text-sm">
+                {/* Opening Balance */}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground shrink-0">Opening Cash Balance</span>
+                  <div className="relative w-36">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">₹</span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      value={openingCash}
+                      onChange={(e) => setOpeningCash(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full rounded-md border bg-muted/40 pl-6 pr-2 py-1 text-right text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                </div>
+                {/* Money In */}
+                <div className="flex items-center justify-between text-success">
+                  <span>+ Receipts ({period})</span>
+                  <span className="font-medium tabular-nums">₹{formatCurrency(eodIn)}</span>
+                </div>
+                {/* Money Out */}
+                <div className="flex items-center justify-between text-destructive">
+                  <span>− Outflows ({period})</span>
+                  <span className="font-medium tabular-nums">₹{formatCurrency(eodOut)}</span>
+                </div>
+                {/* Expected */}
+                <div className="flex items-center justify-between border-t pt-2 font-semibold">
+                  <span>Expected Cash in Hand</span>
+                  <span className="tabular-nums">₹{formatCurrency(eodExpected)}</span>
+                </div>
+                {/* Actual */}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground shrink-0">Actual Cash Counted</span>
+                  <div className="relative w-36">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">₹</span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      value={actualCash}
+                      onChange={(e) => setActualCash(e.target.value)}
+                      placeholder="Count & enter"
+                      className="w-full rounded-md border bg-muted/40 pl-6 pr-2 py-1 text-right text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                </div>
+                {/* Difference */}
+                {eodDiff !== null && (
+                  <div className={`flex items-center justify-between border-t pt-2 font-bold text-base ${eodDiff === 0 ? "text-success" : "text-destructive"}`}>
+                    <span>Difference</span>
+                    <span className="tabular-nums">
+                      {eodDiff === 0 ? "✓ Balanced" : `${eodDiff > 0 ? "+" : ""}₹${formatCurrency(eodDiff)}`}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Type filter chips */}
         <div className="flex gap-1.5 overflow-x-auto pb-1">

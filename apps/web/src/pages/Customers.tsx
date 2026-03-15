@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useImperativeHandle, forwardRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -13,6 +13,7 @@ import {
   AlertCircle,
   IndianRupee,
   Mail,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,16 +25,19 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useCustomers, useCreateCustomer } from "@/hooks/useQueries";
+import { useCustomers, useCreateCustomer, useInvoices } from "@/hooks/useQueries";
 import { useWsInvalidation } from "@/hooks/useWsInvalidation";
 import { Customer, formatCurrency } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
 
 const CUSTOMER_TAGS = ["VIP", "Wholesale", "Blacklist", "Regular"] as const;
-type FilterTab = "all" | "outstanding" | "clear";
+type FilterTab = "all" | "outstanding" | "clear" | "aging";
 
-const Customers = () => {
+export type CustomersRef = { openAdd: () => void };
+
+const Customers = forwardRef<CustomersRef, { embedded?: boolean }>(
+  ({ embedded = false }, ref) => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
@@ -53,6 +57,7 @@ const Customers = () => {
   const [newTags, setNewTags] = useState<string[]>([]);
 
   const { data: customers = [], isLoading } = useCustomers(search, 200);
+  const { data: invoices = [] } = useInvoices(1000);
   const createCustomer = useCreateCustomer();
   useWsInvalidation(["customers", "summary"]);
 
@@ -68,6 +73,63 @@ const Customers = () => {
   const clearCount = customers.filter(
     (c) => parseFloat(String(c.balance)) <= 0,
   ).length;
+
+  // ── Khata aging (GAP-11) ──────────────────────────────────────────────────
+  // For each customer with outstanding balance, find the oldest unpaid invoice
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const agingMap = new Map<string, number>(); // customerId → days since oldest unpaid
+  for (const inv of invoices) {
+    if (inv.status === "paid" || inv.status === "cancelled") continue;
+    const remaining =
+      parseFloat(String(inv.total)) - parseFloat(String(inv.paidAmount));
+    if (remaining <= 0) continue;
+    const invDate = new Date(inv.invoiceDate ?? inv.createdAt);
+    invDate.setHours(0, 0, 0, 0);
+    const days = Math.floor(
+      (today.getTime() - invDate.getTime()) / 86_400_000,
+    );
+    const existing = agingMap.get(inv.customerId);
+    if (existing === undefined || days > existing) {
+      agingMap.set(inv.customerId, days);
+    }
+  }
+
+  // Customers with outstanding balance, bucketed by days
+  const agingCustomers = customers
+    .filter((c) => parseFloat(String(c.balance)) > 0)
+    .map((c) => ({ ...c, ageDays: agingMap.get(c.id) ?? 0 }))
+    .sort((a, b) => b.ageDays - a.ageDays);
+
+  const agingBuckets = [
+    {
+      label: "60+ Days",
+      sublabel: "Very Overdue",
+      color: "text-destructive",
+      bg: "bg-destructive/10",
+      border: "border-destructive/30",
+      items: agingCustomers.filter((c) => c.ageDays >= 60),
+    },
+    {
+      label: "31–60 Days",
+      sublabel: "Overdue",
+      color: "text-orange-600 dark:text-orange-400",
+      bg: "bg-orange-500/10",
+      border: "border-orange-500/30",
+      items: agingCustomers.filter(
+        (c) => c.ageDays >= 31 && c.ageDays < 60,
+      ),
+    },
+    {
+      label: "0–30 Days",
+      sublabel: "Fresh",
+      color: "text-success",
+      bg: "bg-success/10",
+      border: "border-success/30",
+      items: agingCustomers.filter((c) => c.ageDays < 31),
+    },
+  ];
 
   const filtered = [...customers]
     .filter((c) => {
@@ -93,6 +155,8 @@ const Customers = () => {
     setNewTags([]);
     setAddOpen(true);
   }
+
+  useImperativeHandle(ref, () => ({ openAdd }), []);
 
   function handleAdd() {
     if (!newName.trim()) return;
@@ -130,60 +194,90 @@ const Customers = () => {
 
   return (
     <div className="min-h-screen bg-background pb-24 md:pb-0">
-      {/* ── Header ──────────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-20 border-b bg-card">
-        <div className="mx-auto max-w-3xl px-4 py-3">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="flex-1">
-              <h1 className="text-base font-bold">👥 Customers</h1>
-              <p className="text-xs text-muted-foreground">
-                {customers.length} total
-                {outCount > 0 && (
-                  <>
-                    {" "}
-                    ·{" "}
-                    <span className="text-destructive font-medium">
-                      {outCount} owe ₹{formatCurrency(outstanding)}
-                    </span>
-                  </>
-                )}
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                setSearchOpen((s) => !s);
-                if (searchOpen) setSearch("");
-              }}
-            >
-              <Search className="h-5 w-5" />
-            </Button>
-            <Button size="sm" className="gap-1" onClick={openAdd}>
-              <Plus className="h-4 w-4" /> Add
-            </Button>
-          </div>
-
-          {/* Inline search (toggleable) */}
-          {searchOpen && (
-            <div className="mt-2 pb-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  className="pl-9 h-9 text-sm"
-                  placeholder="Search by name or phone…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  autoFocus
-                />
+      {!embedded && (
+        <>
+          {/* ── Header ──────────────────────────────────────────────────────────────── */}
+          <header className="sticky top-0 z-20 border-b bg-card">
+            <div className="mx-auto max-w-3xl px-4 py-3">
+              <div className="flex items-center gap-3">
+                <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <div className="flex-1">
+                  <h1 className="text-base font-bold">👥 Customers</h1>
+                  <p className="text-xs text-muted-foreground">
+                    {customers.length} total
+                    {outCount > 0 && (
+                      <>
+                        {" "}
+                        ·{" "}
+                        <span className="text-destructive font-medium">
+                          {outCount} owe ₹{formatCurrency(outstanding)}
+                        </span>
+                      </>
+                    )}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setSearchOpen((s) => !s);
+                    if (searchOpen) setSearch("");
+                  }}
+                >
+                  <Search className="h-5 w-5" />
+                </Button>
+                <Button size="sm" className="gap-1" onClick={openAdd}>
+                  <Plus className="h-4 w-4" /> Add
+                </Button>
               </div>
+
+              {/* Inline search (toggleable) */}
+              {searchOpen && (
+                <div className="mt-2 pb-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      className="pl-9 h-9 text-sm"
+                      placeholder="Search by name or phone…"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </header>
+        </>
+      )}
+
+      {embedded && (
+        <div className="mx-auto max-w-3xl px-4 py-2 flex items-center gap-2 border-b bg-card">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              setSearchOpen((s) => !s);
+              if (searchOpen) setSearch("");
+            }}
+          >
+            <Search className="h-5 w-5" />
+          </Button>
+          {searchOpen && (
+            <div className="flex-1">
+              <Input
+                className="h-9 text-sm"
+                placeholder="Search by name or phone…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                autoFocus
+              />
             </div>
           )}
         </div>
-      </header>
+      )}
 
       <main className="mx-auto max-w-3xl space-y-3 p-4 md:p-6">
         {/* ── Summary strip ─────────────────────────────────────────────────── */}
@@ -241,6 +335,12 @@ const Customers = () => {
                 count: clearCount,
                 Icon: CheckCircle2,
               },
+              {
+                key: "aging",
+                label: "Aging",
+                count: agingCustomers.length,
+                Icon: Clock,
+              },
             ] as { key: FilterTab; label: string; count: number; Icon: any }[]
           ).map(({ key, label, count, Icon }) => (
             <button
@@ -258,7 +358,9 @@ const Customers = () => {
                     ? "text-destructive"
                     : key === "clear"
                       ? "text-success"
-                      : ""
+                      : key === "aging"
+                        ? "text-orange-500"
+                        : ""
                 }`}
               />
               {label}
@@ -275,8 +377,95 @@ const Customers = () => {
           ))}
         </div>
 
+        {/* ── Aging view ──────────────────────────────────────────────────────── */}
+        {filter === "aging" && (
+          <div className="space-y-3">
+            {agingCustomers.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 rounded-xl border bg-card py-14 text-center">
+                <CheckCircle2 className="h-10 w-10 text-success/40" />
+                <p className="text-sm text-muted-foreground">
+                  No outstanding balances
+                </p>
+              </div>
+            ) : (
+              agingBuckets.map((bucket) =>
+                bucket.items.length === 0 ? null : (
+                  <div key={bucket.label} className={`rounded-xl border ${bucket.border} overflow-hidden`}>
+                    {/* Bucket header */}
+                    <div className={`flex items-center justify-between px-4 py-2 ${bucket.bg}`}>
+                      <div className="flex items-center gap-2">
+                        <Clock className={`h-4 w-4 ${bucket.color}`} />
+                        <span className={`text-sm font-semibold ${bucket.color}`}>
+                          {bucket.label}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {bucket.sublabel}
+                        </span>
+                      </div>
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${bucket.bg} ${bucket.color}`}>
+                        {bucket.items.length}
+                      </span>
+                    </div>
+                    {/* Customers in bucket */}
+                    <div className="divide-y bg-card">
+                      {bucket.items.map((customer) => {
+                        const balance = parseFloat(String(customer.balance));
+                        return (
+                          <div
+                            key={customer.id}
+                            className="group flex cursor-pointer items-center gap-3 p-3 transition-colors hover:bg-muted/30"
+                            onClick={() => navigate(`/customers/${customer.id}`)}
+                          >
+                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${bucket.bg} ${bucket.color}`}>
+                              {customer.name?.charAt(0)?.toUpperCase() ?? "?"}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold">
+                                {customer.name}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {customer.ageDays === 0
+                                  ? "Today"
+                                  : `${customer.ageDays}d overdue`}
+                                {customer.phone ? ` · ${customer.phone}` : ""}
+                              </p>
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <p className={`text-sm font-bold ${bucket.color}`}>
+                                ₹{formatCurrency(balance)}
+                              </p>
+                            </div>
+                            <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                              {customer.phone && (
+                                <button
+                                  className="flex h-7 w-7 items-center justify-center rounded-full bg-success/10 text-success hover:bg-success/20"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    window.open(
+                                      `https://wa.me/91${customer.phone!.replace(/\D/g, "")}`,
+                                      "_blank",
+                                    );
+                                  }}
+                                  title="WhatsApp"
+                                >
+                                  <MessageCircle className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </div>
+                            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40" />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ),
+              )
+            )}
+          </div>
+        )}
+
         {/* Customer list */}
-        <div className="overflow-hidden rounded-xl border bg-card">
+        <div className={`overflow-hidden rounded-xl border bg-card ${filter === "aging" ? "hidden" : ""}`}>
           {isLoading ? (
             <div className="divide-y">
               {[...Array(5)].map((_, i) => (
@@ -398,9 +587,10 @@ const Customers = () => {
         </div>
       </main>
 
-      <BottomNav />
+      {!embedded && <BottomNav />}
 
       {/* ── FAB: Add Customer ────────────────────────────────────────────────────── */}
+      {!embedded && (
       <button
         onClick={openAdd}
         className="fixed bottom-20 right-4 z-[60] flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95 md:bottom-6 md:right-6"
@@ -408,6 +598,7 @@ const Customers = () => {
       >
         <Plus className="h-6 w-6" />
       </button>
+      )}
 
       {/* ── Add Customer Dialog ─────────────────────────────────────────────── */}
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
@@ -585,6 +776,8 @@ const Customers = () => {
       </Dialog>
     </div>
   );
-};
+});
+
+Customers.displayName = "Customers";
 
 export default Customers;
