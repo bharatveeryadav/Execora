@@ -198,7 +198,117 @@ async function main() {
 
   console.log(`\n✅ Done — ${created} products created, ${skipped} updated with GST data.`);
   console.log(`   Total products: ${await prisma.product.count({ where: { tenantId: TENANT_ID } })}`);
-  console.log('\nNote: Customers, invoices and ledger data were NOT modified.\n');
+
+  // ── Demo Customers ─────────────────────────────────────────────────────────
+  console.log('\n👥 Seeding demo customers...\n');
+
+  const demoCustomers = [
+    { name: 'Ramesh Kumar',   phone: '9876543210', area: 'Gandhi Nagar',   city: 'Delhi',    balance: 1450 },
+    { name: 'Suresh Sharma',  phone: '9812345678', area: 'Laxmi Nagar',    city: 'Delhi',    balance: 0    },
+    { name: 'Priya Verma',    phone: '9898989898', area: 'Saket',          city: 'Delhi',    balance: 720  },
+    { name: 'Mohan Das',      phone: '9765432100', area: 'Karol Bagh',     city: 'Delhi',    balance: 3200 },
+    { name: 'Sunita Devi',    phone: '9654321098', area: 'Rohini',         city: 'Delhi',    balance: 0    },
+    { name: 'Rajesh Gupta',   phone: '9543210987', area: 'Pitampura',      city: 'Delhi',    balance: 580  },
+    { name: 'Anita Singh',    phone: '9432109876', area: 'Dwarka',         city: 'Delhi',    balance: 0    },
+    { name: 'Vijay Yadav',    phone: '9321098765', area: 'Janakpuri',      city: 'Delhi',    balance: 1890 },
+    { name: 'Kavita Mishra',  phone: '9210987654', area: 'Uttam Nagar',    city: 'Delhi',    balance: 440  },
+    { name: 'Deepak Tiwari',  phone: '9109876543', area: 'Tilak Nagar',    city: 'Delhi',    balance: 0    },
+  ];
+
+  const customerIds: Record<string, string> = {};
+  let custCreated = 0;
+
+  for (const c of demoCustomers) {
+    const exists = await prisma.customer.findFirst({
+      where: { tenantId: TENANT_ID, phone: c.phone },
+    });
+    if (exists) {
+      customerIds[c.phone] = exists.id;
+      continue;
+    }
+    const customer = await prisma.customer.create({
+      data: {
+        tenantId:      TENANT_ID,
+        name:          c.name,
+        phone:         c.phone,
+        area:          c.area,
+        city:          c.city,
+        balance:       new Decimal(c.balance),
+        totalPurchases: new Decimal(c.balance),
+        visitCount:    Math.floor(Math.random() * 20) + 2,
+        firstVisit:    new Date(Date.now() - 90 * 86_400_000),
+        lastVisit:     new Date(Date.now() - Math.floor(Math.random() * 14) * 86_400_000),
+        loyaltyTier:   c.balance > 1000 ? 'silver' : 'bronze',
+      },
+    });
+    customerIds[c.phone] = customer.id;
+    custCreated++;
+    process.stdout.write(`  ✓ ${c.name.padEnd(20)} ₹${String(c.balance).padStart(5)} balance\n`);
+  }
+  console.log(`\n  ${custCreated} customers created.`);
+
+  // ── Demo Invoices (outstanding balances) ───────────────────────────────────
+  console.log('\n🧾 Seeding demo invoices...\n');
+
+  // Only seed invoices if none exist yet
+  const existingInvoices = await prisma.invoice.count({ where: { tenantId: TENANT_ID } });
+  if (existingInvoices > 0) {
+    console.log(`  Skipped — ${existingInvoices} invoices already exist.\n`);
+    return;
+  }
+
+  // Customers who have outstanding balances get pending invoices
+  const invoiceDemos = [
+    { phone: '9876543210', daysAgo: 45, amount: 1450, paid: 0,    items: [{ name: 'Chawal', qty: 10, price: 80, unit: 'kg' }, { name: 'Arhar Dal', qty: 2, price: 130, unit: 'kg' }] },
+    { phone: '9898989898', daysAgo: 12, amount: 720,  paid: 0,    items: [{ name: 'Doodh', qty: 5, price: 62, unit: 'litre' }, { name: 'Dahi', qty: 3, price: 55, unit: 'kg' }, { name: 'Anda', qty: 30, price: 7, unit: 'piece' }] },
+    { phone: '9765432100', daysAgo: 72, amount: 3200, paid: 0,    items: [{ name: 'Sarso Tel', qty: 10, price: 170, unit: 'litre' }, { name: 'Aata', qty: 20, price: 40, unit: 'kg' }, { name: 'Cheeni', qty: 10, price: 45, unit: 'kg' }] },
+    { phone: '9543210987', daysAgo: 8,  amount: 580,  paid: 0,    items: [{ name: 'Biscuit', qty: 5, price: 25, unit: 'packet' }, { name: 'Chai Patti', qty: 1, price: 250, unit: 'kg' }, { name: 'Namkeen', qty: 3, price: 50, unit: 'packet' }] },
+    { phone: '9321098765', daysAgo: 35, amount: 1890, paid: 500,  items: [{ name: 'Detergent', qty: 5, price: 85, unit: 'kg' }, { name: 'Sabun', qty: 10, price: 45, unit: 'piece' }, { name: 'Shampoo', qty: 20, price: 3, unit: 'piece' }, { name: 'Toothpaste', qty: 5, price: 50, unit: 'piece' }] },
+    { phone: '9210987654', daysAgo: 18, amount: 440,  paid: 0,    items: [{ name: 'Desi Ghee', qty: 0.5, price: 600, unit: 'kg' }, { name: 'Elaichi', qty: 0.1, price: 1200, unit: 'kg' }] },
+    // Paid invoices for customers with balance=0
+    { phone: '9812345678', daysAgo: 20, amount: 630,  paid: 630,  items: [{ name: 'Chawal', qty: 5, price: 80, unit: 'kg' }, { name: 'Arhar Dal', qty: 2, price: 130, unit: 'kg' }, { name: 'Namak', qty: 2, price: 20, unit: 'kg' }] },
+    { phone: '9654321098', daysAgo: 5,  amount: 480,  paid: 480,  items: [{ name: 'Doodh', qty: 4, price: 62, unit: 'litre' }, { name: 'Paneer', qty: 0.5, price: 320, unit: 'kg' }, { name: 'Butter', qty: 0.2, price: 550, unit: 'kg' }] },
+  ];
+
+  let invCreated = 0;
+  for (let i = 0; i < invoiceDemos.length; i++) {
+    const inv = invoiceDemos[i];
+    const customerId = customerIds[inv.phone];
+    if (!customerId) continue;
+
+    const invoiceDate = new Date(Date.now() - inv.daysAgo * 86_400_000);
+    const invoiceNo   = `INV-DEMO-${String(i + 1).padStart(3, '0')}`;
+    const status      = inv.paid >= inv.amount ? 'paid' : inv.paid > 0 ? 'partial' : 'pending';
+
+    await prisma.invoice.create({
+      data: {
+        tenantId:    TENANT_ID,
+        invoiceNo,
+        customerId,
+        subtotal:    new Decimal(inv.amount),
+        total:       new Decimal(inv.amount),
+        paidAmount:  new Decimal(inv.paid),
+        status:      status as any,
+        paymentMethod: inv.paid > 0 ? 'cash' : null,
+        invoiceDate,
+        paidAt:      inv.paid >= inv.amount ? invoiceDate : null,
+        items: {
+          create: inv.items.map(item => ({
+            productName: item.name,
+            quantity:    new Decimal(item.qty),
+            unit:        item.unit,
+            unitPrice:   new Decimal(item.price),
+            subtotal:    new Decimal(item.qty * item.price),
+            total:       new Decimal(item.qty * item.price),
+          })),
+        },
+      },
+    });
+
+    invCreated++;
+    process.stdout.write(`  ✓ ${invoiceNo}  ₹${inv.amount} [${status}]  ${inv.daysAgo}d ago\n`);
+  }
+  console.log(`\n  ${invCreated} invoices created.\n`);
 }
 
 main()

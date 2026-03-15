@@ -18,7 +18,7 @@ import {
   CreditCard,
   RefreshCw,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -199,13 +199,22 @@ function Stepper({ step }: { step: Step }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+const VALID_ENTITY_TYPES: EntityType[] = ["customers", "products", "invoices", "expenses"];
+
 export default function ImportData() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const typeParam = searchParams.get("type");
+  const initialType: EntityType =
+    typeParam && VALID_ENTITY_TYPES.includes(typeParam as EntityType)
+      ? (typeParam as EntityType)
+      : "customers";
+
   const [step, setStep] = useState<Step>(1);
-  const [entityType, setEntityType] = useState<EntityType>("customers");
+  const [entityType, setEntityType] = useState<EntityType>(initialType);
   const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [fileName, setFileName] = useState("");

@@ -224,10 +224,11 @@ const CustomerDetail = () => {
         {/* Header */}
         <header className="sticky top-0 z-20 border-b bg-card">
           <div className="mx-auto max-w-3xl px-4 py-3">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 min-w-0">
               <Button
                 variant="ghost"
                 size="icon"
+                className="shrink-0"
                 onClick={() => navigate("/parties")}
               >
                 <ArrowLeft className="h-5 w-5" />
@@ -242,16 +243,16 @@ const CustomerDetail = () => {
               >
                 {customer.name?.charAt(0)?.toUpperCase() ?? "?"}
               </div>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 overflow-hidden">
                 <h1 className="truncate text-base font-bold">
                   {customer.name}
                 </h1>
-                <p className="text-xs text-muted-foreground">
+                <p className="truncate text-xs text-muted-foreground">
                   {customer.phone ?? "No phone"}
                 </p>
               </div>
               {/* Actions */}
-              <div className="flex gap-1">
+              <div className="flex shrink-0 gap-0.5">
                 {customer.phone && (
                   <Button variant="ghost" size="icon" asChild title="WhatsApp">
                     <a
@@ -297,7 +298,7 @@ const CustomerDetail = () => {
                 <button
                   key={t}
                   onClick={() => setTab(t)}
-                  className={`flex-1 border-b-2 px-2 py-2 text-xs font-medium transition-colors ${
+                  className={`flex-1 min-w-0 border-b-2 px-2 py-2.5 text-xs font-medium transition-colors truncate ${
                     tab === t
                       ? "border-primary text-primary"
                       : "border-transparent text-muted-foreground hover:text-foreground"
@@ -326,40 +327,41 @@ const CustomerDetail = () => {
                   Outstanding Balance
                 </p>
                 <p
-                  className={`mt-1 text-3xl font-extrabold ${balance > 0 ? "text-destructive" : "text-success"}`}
+                  className={`mt-1 text-3xl font-extrabold tabular-nums ${balance > 0 ? "text-destructive" : "text-success"}`}
                 >
                   {formatCurrency(balance)}
                 </p>
                 {balance > 0 && (
                   <Button
                     size="sm"
-                    className="mt-3"
+                    className="mt-3 gap-1.5"
                     onClick={() =>
                       navigate(`/payment?customerId=${customer.id}`)
                     }
                   >
-                    💰 Record Payment
+                    <CreditCard className="h-4 w-4" />
+                    Record Payment
                   </Button>
                 )}
               </div>
 
               {/* Stats row */}
               <div className="grid grid-cols-3 gap-3">
-                <div className="rounded-xl border bg-card p-3 text-center">
-                  <TrendingUp className="mx-auto mb-1 h-4 w-4 text-muted-foreground" />
-                  <p className="text-lg font-bold">
+                <div className="rounded-xl border bg-card p-3 text-center min-w-0">
+                  <TrendingUp className="mx-auto mb-1 h-4 w-4 text-muted-foreground shrink-0" />
+                  <p className="text-lg font-bold tabular-nums break-all">
                     {formatCurrency(totalBilled)}
                   </p>
                   <p className="text-xs text-muted-foreground">Total Billed</p>
                 </div>
-                <div className="rounded-xl border bg-card p-3 text-center">
-                  <FileText className="mx-auto mb-1 h-4 w-4 text-muted-foreground" />
-                  <p className="text-lg font-bold">{invoices.length}</p>
-                  <p className="text-xs text-muted-foreground">Invoices</p>
+                <div className="rounded-xl border bg-card p-3 text-center min-w-0">
+                  <FileText className="mx-auto mb-1 h-4 w-4 text-muted-foreground shrink-0" />
+                  <p className="text-lg font-bold tabular-nums">{invoices.length}</p>
+                  <p className="text-xs text-muted-foreground truncate">Invoices</p>
                 </div>
-                <div className="rounded-xl border bg-card p-3 text-center">
-                  <CreditCard className="mx-auto mb-1 h-4 w-4 text-muted-foreground" />
-                  <p className="text-lg font-bold">{paidInvoices}</p>
+                <div className="rounded-xl border bg-card p-3 text-center min-w-0">
+                  <CreditCard className="mx-auto mb-1 h-4 w-4 text-muted-foreground shrink-0" />
+                  <p className="text-lg font-bold tabular-nums">{paidInvoices}</p>
                   <p className="text-xs text-muted-foreground">Paid</p>
                 </div>
               </div>

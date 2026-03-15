@@ -314,7 +314,7 @@ const Customers = forwardRef<CustomersRef, { embedded?: boolean }>(
         </div>
 
         {/* Filter tabs */}
-        <div className="flex rounded-xl border bg-muted/50 p-1 gap-1">
+        <div className="flex rounded-xl border bg-muted/50 p-1 gap-1 min-w-0 overflow-x-auto">
           {(
             [
               {
@@ -346,7 +346,7 @@ const Customers = forwardRef<CustomersRef, { embedded?: boolean }>(
             <button
               key={key}
               onClick={() => setFilter(key)}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-medium transition-colors ${
+              className={`flex flex-1 min-w-0 items-center justify-center gap-1 rounded-lg py-1.5 text-xs font-medium transition-colors ${
                 filter === key
                   ? "bg-card text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -413,7 +413,7 @@ const Customers = forwardRef<CustomersRef, { embedded?: boolean }>(
                         return (
                           <div
                             key={customer.id}
-                            className="group flex cursor-pointer items-center gap-3 p-3 transition-colors hover:bg-muted/30"
+                            className="group flex cursor-pointer items-center gap-2 sm:gap-3 p-3 transition-colors hover:bg-muted/30 min-w-0"
                             onClick={() => navigate(`/customers/${customer.id}`)}
                           >
                             <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${bucket.bg} ${bucket.color}`}>
@@ -430,12 +430,12 @@ const Customers = forwardRef<CustomersRef, { embedded?: boolean }>(
                                 {customer.phone ? ` · ${customer.phone}` : ""}
                               </p>
                             </div>
-                            <div className="shrink-0 text-right">
-                              <p className={`text-sm font-bold ${bucket.color}`}>
+                            <div className="shrink-0 text-right min-w-[4rem]">
+                              <p className={`text-sm font-bold whitespace-nowrap tabular-nums ${bucket.color}`}>
                                 ₹{formatCurrency(balance)}
                               </p>
                             </div>
-                            <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                            <div className="flex shrink-0 gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                               {customer.phone && (
                                 <button
                                   className="flex h-7 w-7 items-center justify-center rounded-full bg-success/10 text-success hover:bg-success/20"
@@ -500,7 +500,7 @@ const Customers = forwardRef<CustomersRef, { embedded?: boolean }>(
                 return (
                   <div
                     key={customer.id}
-                    className="group flex cursor-pointer items-center gap-3 p-3 transition-colors hover:bg-muted/30"
+                    className="group flex cursor-pointer items-center gap-2 sm:gap-3 p-3 transition-colors hover:bg-muted/30 min-w-0"
                     onClick={() => navigate(`/customers/${customer.id}`)}
                   >
                     {/* Avatar */}
@@ -537,20 +537,20 @@ const Customers = forwardRef<CustomersRef, { embedded?: boolean }>(
                     </div>
 
                     {/* Balance */}
-                    <div className="shrink-0 text-right">
+                    <div className="shrink-0 text-right min-w-[4rem]">
                       {hasOutstanding ? (
-                        <p className="text-sm font-bold text-destructive">
+                        <p className="text-sm font-bold text-destructive whitespace-nowrap tabular-nums">
                           ₹{formatCurrency(balance)}
                         </p>
                       ) : (
-                        <span className="inline-flex items-center gap-0.5 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">
-                          <CheckCircle2 className="h-3 w-3" /> Clear
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success whitespace-nowrap">
+                          <CheckCircle2 className="h-3 w-3 shrink-0" /> Clear
                         </span>
                       )}
                     </div>
 
-                    {/* Quick actions (hover) */}
-                    <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    {/* Quick actions - visible on mobile, hover on desktop */}
+                    <div className="flex shrink-0 gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                       {customer.phone && (
                         <button
                           className="flex h-7 w-7 items-center justify-center rounded-full bg-success/10 text-success hover:bg-success/20"

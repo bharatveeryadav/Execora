@@ -35,6 +35,7 @@ import { WSProvider } from "@/contexts/WSContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ConfettiOverlay } from "@/components/ConfettiOverlay";
 import { PaymentSoundBox } from "@/components/PaymentSoundBox";
+import { OnboardingWizard } from "@/components/OnboardingWizard";
 
 const queryClient = new QueryClient();
 
@@ -53,7 +54,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />;
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <OnboardingWizard />
+      {children}
+    </>
+  );
 }
 
 function AppRoutes() {
