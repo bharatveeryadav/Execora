@@ -1,6 +1,11 @@
 import dotenv from 'dotenv';
+import path from 'path';
 
-// Load environment variables
+// Load .env from repo root regardless of cwd (works when run via Turborepo from apps/api/)
+// __dirname = packages/infrastructure/src/ (tsx) or packages/infrastructure/dist/ (compiled)
+// 3 levels up → repo root
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+// Fallback: also try cwd-relative (works when run from repo root directly)
 dotenv.config();
 
 export const config = {
