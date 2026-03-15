@@ -9,6 +9,9 @@ export * from './modules/reminder/reminder.service';
 export * from './modules/gst/gst.service';
 export * from './modules/gst/gstr1.service';
 
+// Monitoring
+export * from './modules/monitoring/monitoring.service';
+
 // Sprint 2 — AI Differentiators
 export * from './modules/ai/ai.service';
 

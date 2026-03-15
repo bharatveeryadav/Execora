@@ -237,6 +237,8 @@ model Tenant {
   expenses               Expense[]
   drafts                 Draft[]
   creditNotes            CreditNote[]
+  monitoringEvents       MonitoringEvent[]
+  monitoringConfig       MonitoringConfig?
 
   @@index([status, plan])
   @@index([createdAt])
@@ -274,6 +276,7 @@ model User {
   gstFilings              GstReminder[]
   gstAuditApprovals       GstAudit[]              @relation("GstAuditApprover")
   gstAuditCreations       GstAudit[]              @relation("GstAuditCreator")
+  monitoringEvents        MonitoringEvent[]
 
   @@unique([tenantId, email])
   @@unique([tenantId, phone])
@@ -1567,4 +1570,56 @@ model CreditNoteItem {
   @@index([creditNoteId])
   @@index([productId])
   @@map("credit_note_items")
+}
+
+// =====================================================
+// MODEL: MONITORING EVENT
+// =====================================================
+model MonitoringEvent {
+  id           String   @id @default(uuid())
+  tenantId     String   @map("tenant_id")
+  userId       String?  @map("user_id")
+  eventType    String   @map("event_type")
+  entityType   String   @map("entity_type")
+  entityId     String   @map("entity_id")
+  amount       Decimal?
+  description  String
+  meta         Json     @default("{}")
+  snapKey      String?  @map("snap_key")
+  severity     String   @default("info")
+  isRead       Boolean  @default(false) @map("is_read")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id])
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, severity, isRead])
+  @@index([tenantId, eventType])
+  @@index([tenantId, userId])
+  @@map("monitoring_events")
+}
+
+// =====================================================
+// MODEL: MONITORING CONFIG
+// =====================================================
+model MonitoringConfig {
+  tenantId           String   @id @map("tenant_id")
+  enabled            Boolean  @default(true)
+  snapsOnBills       Boolean  @default(true) @map("snaps_on_bills")
+  snapsOnPayments    Boolean  @default(true) @map("snaps_on_payments")
+  alertDiscountAbove Decimal  @default(20) @map("alert_discount_above")
+  alertCancelAbove   Decimal  @default(2000) @map("alert_cancel_above")
+  alertBillAbove     Decimal? @map("alert_bill_above")
+  ownerPhoneAlert    Boolean  @default(true) @map("owner_phone_alert")
+  cameraEnabled      Boolean  @default(false) @map("camera_enabled")
+  cameraSource       String   @default("webcam") @map("camera_source")
+  ipCameraUrl        String?  @map("ip_camera_url")
+  retentionDays      Int      @default(30) @map("retention_days")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("monitoring_config")
 }

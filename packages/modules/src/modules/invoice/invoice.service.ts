@@ -9,6 +9,7 @@ import { InvoiceItemInput } from "@execora/types";
 import { Decimal } from "@prisma/client/runtime/library";
 import { invoiceOperations } from "@execora/infrastructure";
 import { gstService, type SupplyType } from "../gst/gst.service";
+import { monitoringService } from "../monitoring/monitoring.service";
 
 /**
  * Generate a GST-compliant sequential invoice number per financial year.
@@ -820,6 +821,31 @@ class InvoiceService {
         });
 
         return { invoice, autoCreatedProducts };
+      }).then(async (result) => {
+        // Fire monitoring event outside the transaction so it never blocks billing
+        if (!opts.isProforma) {
+          const { tenantId, userId } = tenantContext.get();
+          const customerName = (result.invoice as any).customer?.name;
+          const total = parseFloat(result.invoice.total.toString());
+          const disc  = parseFloat(result.invoice.discount?.toString() ?? '0');
+          void monitoringService.recordEvent({
+            tenantId,
+            userId,
+            eventType:   'bill.created',
+            entityType:  'invoice',
+            entityId:    result.invoice.id,
+            amount:      total,
+            description: `Bill ${result.invoice.invoiceNo} ₹${total} created${customerName ? ` for ${customerName}` : ''}`,
+            meta: {
+              invoiceNo:    result.invoice.invoiceNo,
+              customerName: customerName ?? null,
+              itemCount:    items.length,
+              discountAmt:  disc,
+              autoCreated:  result.autoCreatedProducts,
+            },
+          });
+        }
+        return result;
       });
     } catch (error) {
       logger.error(
