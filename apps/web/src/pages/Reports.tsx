@@ -15,17 +15,17 @@ import {
   Activity,
   Package,
   ChevronRight,
+  ChevronDown,
+  PanelRightOpen,
+  PanelRightClose,
+  LayoutGrid,
+  LayoutList,
+  Minus,
+  Plus,
 } from "lucide-react";
 import VoiceBar from "@/components/VoiceBar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   AreaChart,
@@ -65,30 +65,6 @@ const periods = [
   "This FY",
   "Custom",
 ] as const;
-const MAIN_TABS = [
-  "Transaction Report",
-  "Party Report",
-  "GST Reports",
-  "Item/Stock Reports",
-  "Business Status",
-  "Taxes",
-  "Expense Reports",
-  "Sale/Purchase Order Reports",
-  "Loan Reports",
-] as const;
-
-// Tab labels for UI (short for mobile select, full for sidebar)
-const TAB_LABELS: Record<(typeof MAIN_TABS)[number], string> = {
-  "Transaction Report": "Transaction",
-  "Party Report": "Party",
-  "GST Reports": "GST",
-  "Item/Stock Reports": "Item/Stock",
-  "Business Status": "Business Status",
-  Taxes: "Taxes",
-  "Expense Reports": "Expense",
-  "Sale/Purchase Order Reports": "Orders",
-  "Loan Reports": "Loan",
-};
 
 // ── Report definitions (path = route to navigate; empty = coming soon) ─────────
 const TRANSACTION_REPORTS: { label: string; path?: string; inline?: string }[] = [
@@ -164,6 +140,24 @@ const SALE_PURCHASE_ORDER_REPORTS: { label: string; path?: string }[] = [
 
 const LOAN_REPORTS: { label: string; path?: string }[] = [
   { label: "Loan Statements" },
+];
+
+// Section config for all-in-one view (id for scroll/jump)
+const REPORT_SECTIONS: {
+  id: string;
+  title: string;
+  reports: { label: string; path?: string; inline?: string }[];
+  hasInline?: boolean;
+}[] = [
+  { id: "transaction", title: "Transaction", reports: TRANSACTION_REPORTS, hasInline: true },
+  { id: "party", title: "Party", reports: PARTY_REPORTS },
+  { id: "gst", title: "GST", reports: GST_REPORTS, hasInline: true },
+  { id: "item-stock", title: "Item / Stock", reports: ITEM_STOCK_REPORTS },
+  { id: "business", title: "Business Status", reports: BUSINESS_STATUS_REPORTS },
+  { id: "taxes", title: "Taxes", reports: TAXES_REPORTS, hasInline: true },
+  { id: "expense", title: "Expense", reports: EXPENSE_REPORTS },
+  { id: "orders", title: "Sale / Purchase Orders", reports: SALE_PURCHASE_ORDER_REPORTS },
+  { id: "loan", title: "Loan", reports: LOAN_REPORTS },
 ];
 
 function getPeriodRange(period: string): { from: string; to: string } {
@@ -2736,13 +2730,21 @@ function ReportLinksGrid({
   reports,
   onInlineSelect,
   navigate,
+  vertical,
 }: {
   reports: { label: string; path?: string; inline?: string }[];
   onInlineSelect?: (key: string) => void;
   navigate: (path: string) => void;
+  vertical?: boolean;
 }) {
   return (
-    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+    <div
+      className={
+        vertical
+          ? "flex flex-col gap-2"
+          : "grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+      }
+    >
       {reports.map((r) => {
         const hasAction = r.path || r.inline;
         return (
@@ -2779,19 +2781,6 @@ function ReportLinksGrid({
 
 // ── Main Reports page ─────────────────────────────────────────────────────────
 
-const TAB_FROM_PARAM: Record<string, (typeof MAIN_TABS)[number]> = {
-  transaction: "Transaction Report",
-  party: "Party Report",
-  gst: "GST Reports",
-  item: "Item/Stock Reports",
-  stock: "Item/Stock Reports",
-  business: "Business Status",
-  status: "Business Status",
-  taxes: "Taxes",
-  expense: "Expense Reports",
-  order: "Sale/Purchase Order Reports",
-  loan: "Loan Reports",
-};
 const INLINE_FROM_PARAM: Record<string, string> = {
   "gstr-1": "gstr1",
   gstr1: "gstr1",
@@ -2803,52 +2792,105 @@ const INLINE_FROM_PARAM: Record<string, string> = {
 const Reports = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab")?.toLowerCase();
-  const mainTabFromParam = tabParam && TAB_FROM_PARAM[tabParam];
   const inlineFromParam = tabParam && INLINE_FROM_PARAM[tabParam];
 
-  const [activeMainTab, setActiveMainTab] = useState<
-    (typeof MAIN_TABS)[number]
-  >(mainTabFromParam ?? "Transaction Report");
   const [inlineReport, setInlineReport] = useState<string | null>(
     inlineFromParam ?? null,
   );
   const [activePeriod, setActivePeriod] = useState<string>("This Month");
+  const [activeSectionId, setActiveSectionId] = useState<string>("transaction");
+  const [rightSidebarOpen, setRightSidebarOpen] = useState<boolean>(true);
+  const [showAllTabs, setShowAllTabs] = useState<boolean>(false);
+  const [minimizedSections, setMinimizedSections] = useState<Set<string>>(
+    new Set(),
+  );
+  const [sidebarExpandedSections, setSidebarExpandedSections] = useState<
+    Set<string>
+  >(new Set(REPORT_SECTIONS.map((s) => s.id)));
+
+  const toggleSidebarSection = (id: string) => {
+    setSidebarExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSectionMinimize = (id: string) => {
+    setMinimizedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
   const navigate = useNavigate();
   useWsInvalidation(["summary", "invoices", "customers", "products"]);
 
   useEffect(() => {
-    if (mainTabFromParam) setActiveMainTab(mainTabFromParam);
     if (inlineFromParam) setInlineReport(inlineFromParam);
-  }, [tabParam, mainTabFromParam, inlineFromParam]);
+  }, [tabParam, inlineFromParam]);
+
+  // Sync activeSectionId from URL tab param (for desktop)
+  useEffect(() => {
+    if (!tabParam) return;
+    const id =
+      tabParam === "transaction"
+        ? "transaction"
+        : tabParam === "party"
+          ? "party"
+          : tabParam === "gst"
+            ? "gst"
+            : tabParam === "item" || tabParam === "stock"
+              ? "item-stock"
+              : tabParam === "business" || tabParam === "status"
+                ? "business"
+                : tabParam === "taxes"
+                  ? "taxes"
+                  : tabParam === "expense"
+                    ? "expense"
+                    : tabParam === "order"
+                      ? "orders"
+                      : tabParam === "loan"
+                        ? "loan"
+                        : null;
+    if (id) setActiveSectionId(id);
+  }, [tabParam]);
 
   const handleInlineSelect = (key: string) => {
     setInlineReport(key);
     setSearchParams({ tab: key === "gstr1" ? "gstr1" : key });
   };
 
-  const handleMainTabChange = (tab: (typeof MAIN_TABS)[number]) => {
-    setActiveMainTab(tab);
-    setInlineReport(null);
-    const tabSlug =
-      tab === "Transaction Report"
+  // Scroll to section when ?tab= is in URL
+  useEffect(() => {
+    if (!tabParam) return;
+    const sectionId =
+      tabParam === "transaction"
         ? "transaction"
-        : tab === "Party Report"
+        : tabParam === "party"
           ? "party"
-          : tab === "GST Reports"
+          : tabParam === "gst"
             ? "gst"
-            : tab === "Item/Stock Reports"
-              ? "item"
-              : tab === "Business Status"
+            : tabParam === "item" || tabParam === "stock"
+              ? "item-stock"
+              : tabParam === "business" || tabParam === "status"
                 ? "business"
-                : tab === "Taxes"
+                : tabParam === "taxes"
                   ? "taxes"
-                  : tab === "Expense Reports"
+                  : tabParam === "expense"
                     ? "expense"
-                    : tab === "Sale/Purchase Order Reports"
-                      ? "order"
-                      : "loan";
-    setSearchParams({ tab: tabSlug });
-  };
+                    : tabParam === "order"
+                      ? "orders"
+                      : tabParam === "loan"
+                        ? "loan"
+                        : null;
+    if (sectionId) {
+      const el = document.getElementById(sectionId);
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [tabParam]);
 
   // When showing inline report (GSTR1, P&L, Overview, Aging), render that content
   if (inlineReport === "gstr1") {
@@ -2973,36 +3015,89 @@ const Reports = () => {
     );
   }
 
+  const handleSectionChange = (id: string) => {
+    setActiveSectionId(id);
+    setSearchParams({ tab: id === "item-stock" ? "item" : id });
+  };
+
+  const activeSection = REPORT_SECTIONS.find((s) => s.id === activeSectionId);
+
   return (
-    <div className="min-h-screen bg-background flex flex-col lg:flex-row">
-      {/* Mobile: header with category dropdown */}
-      <header className="border-b bg-card px-4 py-3 md:px-6 lg:hidden shrink-0">
+    <div className="min-h-screen bg-background flex flex-col">
+      <header className="border-b bg-card px-4 py-3 md:px-6 shrink-0 sticky top-0 z-10">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
               <ArrowLeft className="h-5 w-5 shrink-0" />
             </Button>
-            <h1 className="text-lg font-bold tracking-tight truncate">
-              📊 Reports
+            <h1 className="text-lg font-bold tracking-tight md:text-xl truncate">
+              📊 Reports & Analytics
             </h1>
           </div>
-          <Select
-            value={activeMainTab}
-            onValueChange={(v) =>
-              handleMainTabChange(v as (typeof MAIN_TABS)[number])
-            }
-          >
-            <SelectTrigger className="w-[140px] sm:w-[160px] shrink-0">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {MAIN_TABS.map((tab) => (
-                <SelectItem key={tab} value={tab}>
-                  {TAB_LABELS[tab]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="hidden lg:flex items-center gap-1 shrink-0">
+            {/* Show all tabs */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs"
+              onClick={() => setShowAllTabs((o) => !o)}
+              title={showAllTabs ? "Show single tab" : "Show all tabs"}
+            >
+              {showAllTabs ? (
+                <LayoutList className="h-4 w-4 mr-1" />
+              ) : (
+                <LayoutGrid className="h-4 w-4 mr-1" />
+              )}
+              {showAllTabs ? "Single" : "All"}
+            </Button>
+            {/* Toggle left sidebar */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setRightSidebarOpen((o) => !o)}
+              title={rightSidebarOpen ? "Close categories" : "Open categories"}
+            >
+                {rightSidebarOpen ? (
+                <PanelRightClose className="h-5 w-5" />
+              ) : (
+                <PanelRightOpen className="h-5 w-5" />
+              )}
+            </Button>
+          </div>
+        </div>
+        {/* Mobile: Jump to section pills */}
+        <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1 lg:hidden">
+          {REPORT_SECTIONS.map((s) => (
+            <a
+              key={s.id}
+              href={`#${s.id}`}
+              className="shrink-0 px-3 py-1.5 rounded-full text-xs font-medium bg-muted/80 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {s.title}
+            </a>
+          ))}
+        </div>
+        {/* Desktop: Horizontal tabs (shown only when left sidebar is closed) */}
+        <div
+          className={[
+            "mt-3 gap-0 border-b -mb-px",
+            rightSidebarOpen ? "hidden lg:hidden" : "hidden lg:flex",
+          ].join(" ")}
+        >
+          {REPORT_SECTIONS.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => handleSectionChange(s.id)}
+              className={[
+                "px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap",
+                activeSectionId === s.id
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              ].join(" ")}
+            >
+              {s.title}
+            </button>
+          ))}
         </div>
         <VoiceBar
           idleHint={
@@ -3017,147 +3112,190 @@ const Reports = () => {
         />
       </header>
 
-      {/* Desktop: sidebar */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-52 xl:w-56 lg:border-r lg:bg-card shrink-0">
-        <div className="p-4 border-b">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start gap-2"
-            onClick={() => navigate("/")}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span className="truncate">Back</span>
-          </Button>
+      {/* Mobile: All reports in one scrollable view */}
+      <main className="flex-1 p-4 md:p-6 overflow-x-hidden lg:hidden">
+        <div className="space-y-6 max-w-4xl mx-auto">
+          {REPORT_SECTIONS.map((section) => {
+            const isMinimized = minimizedSections.has(section.id);
+            return (
+              <section
+                key={section.id}
+                id={section.id}
+                className="scroll-mt-24"
+              >
+                <button
+                  onClick={() => toggleSectionMinimize(section.id)}
+                  className="flex items-center justify-between w-full text-left sticky top-[120px] md:top-[100px] bg-background/95 backdrop-blur py-2 -mx-1 px-1 z-[1] group"
+                >
+                  <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                    {section.title}
+                  </h2>
+                  {isMinimized ? (
+                    <Plus className="h-4 w-4 text-muted-foreground group-hover:text-foreground shrink-0" />
+                  ) : (
+                    <Minus className="h-4 w-4 text-muted-foreground group-hover:text-foreground shrink-0" />
+                  )}
+                </button>
+                {!isMinimized && (
+                  <div className="mt-3">
+                    <ReportLinksGrid
+                      reports={section.reports}
+                      onInlineSelect={
+                        section.hasInline ? handleInlineSelect : undefined
+                      }
+                      navigate={navigate}
+                    />
+                  </div>
+                )}
+              </section>
+            );
+          })}
         </div>
-        <nav className="flex-1 overflow-y-auto p-2">
-          <p className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Categories
-          </p>
-          {MAIN_TABS.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => handleMainTabChange(tab)}
-              className={[
-                "w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                activeMainTab === tab
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
-              ].join(" ")}
-            >
-              {TAB_LABELS[tab]}
-            </button>
-          ))}
-        </nav>
-        <div className="p-2 border-t">
-          <VoiceBar idleHint={<span className="text-xs">"GSTR-1 nikalo"</span>} />
-        </div>
-      </aside>
+      </main>
 
-      {/* Main content area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <div className="hidden lg:block border-b bg-card px-6 py-3 shrink-0">
-          <h1 className="text-xl font-bold tracking-tight">
-            📊 Reports & Analytics
-          </h1>
-        </div>
-        <main className="flex-1 p-4 md:p-6 overflow-x-hidden">
-        {activeMainTab === "Transaction Report" && (
-          <div className="space-y-4">
-            <h2 className="text-base font-semibold text-muted-foreground">
-              Transaction reports
-            </h2>
-            <ReportLinksGrid
-              reports={TRANSACTION_REPORTS}
-              onInlineSelect={handleInlineSelect}
-              navigate={navigate}
-            />
+      {/* Desktop: Left sidebar + main content */}
+      <div className="hidden lg:flex flex-1 min-h-0 overflow-hidden">
+        {/* Left sidebar — report categories */}
+        <aside
+          className={[
+            "flex flex-col border-r bg-card shrink-0 transition-all duration-200 overflow-hidden",
+            rightSidebarOpen ? "w-56 xl:w-64" : "w-0 border-0",
+          ].join(" ")}
+        >
+          {rightSidebarOpen && (
+            <div className="p-3 overflow-y-auto">
+              <p className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Reports
+              </p>
+              <nav className="mt-2 space-y-0.5">
+                {REPORT_SECTIONS.map((section) => {
+                  const isExpanded = sidebarExpandedSections.has(section.id);
+                  const isActive = activeSectionId === section.id;
+                  return (
+                    <div key={section.id} className="space-y-0.5">
+                      <div className="flex items-center">
+                        <button
+                          onClick={() => toggleSidebarSection(section.id)}
+                          className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground shrink-0"
+                          title={isExpanded ? "Collapse" : "Expand"}
+                        >
+                          {isExpanded ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleSectionChange(section.id)}
+                          className={[
+                            "flex-1 text-left px-2 py-2 rounded-lg text-sm font-medium transition-colors truncate",
+                            isActive
+                              ? "bg-primary/10 text-primary"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                          ].join(" ")}
+                        >
+                          {section.title}
+                        </button>
+                      </div>
+                      {isExpanded && (
+                        <div className="ml-5 pl-2 border-l border-muted/50 space-y-0.5">
+                          {section.reports.map((r) => {
+                            const hasAction = r.path || r.inline;
+                            return (
+                              <button
+                                key={r.label}
+                                onClick={() => {
+                                  if (r.path) navigate(r.path);
+                                  else if (r.inline && section.hasInline)
+                                    handleInlineSelect(r.inline);
+                                }}
+                                className={[
+                                  "w-full text-left px-2 py-1.5 rounded text-sm transition-colors truncate",
+                                  hasAction
+                                    ? "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                    : "text-muted-foreground/70 cursor-default",
+                                ].join(" ")}
+                              >
+                                {r.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </nav>
+            </div>
+          )}
+        </aside>
+        <main className="flex-1 p-6 overflow-x-hidden overflow-y-auto min-w-0">
+          <div className="max-w-2xl">
+            {showAllTabs ? (
+              <div className="space-y-4">
+                {REPORT_SECTIONS.map((section) => {
+                  const isMinimized = minimizedSections.has(section.id);
+                  return (
+                    <section key={section.id} id={section.id}>
+                      <button
+                        onClick={() => toggleSectionMinimize(section.id)}
+                        className="flex items-center justify-between w-full text-left py-2 px-3 -mx-3 rounded-lg hover:bg-muted/50 transition-colors group"
+                      >
+                        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                          {section.title}
+                        </h2>
+                        {isMinimized ? (
+                          <Plus className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
+                        ) : (
+                          <Minus className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
+                        )}
+                      </button>
+                      {!isMinimized && (
+                        <div className="mt-2">
+                          <ReportLinksGrid
+                            reports={section.reports}
+                            onInlineSelect={
+                              section.hasInline ? handleInlineSelect : undefined
+                            }
+                            navigate={navigate}
+                            vertical
+                          />
+                        </div>
+                      )}
+                    </section>
+                  );
+                })}
+              </div>
+            ) : (
+              activeSection && (
+                <>
+                  <button
+                    onClick={() => toggleSectionMinimize(activeSection.id)}
+                    className="flex items-center justify-between w-full text-left py-2 px-3 -mx-3 rounded-lg hover:bg-muted/50 transition-colors group mb-2"
+                  >
+                    <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                      {activeSection.title}
+                    </h2>
+                    {minimizedSections.has(activeSection.id) ? (
+                      <Plus className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
+                    ) : (
+                      <Minus className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
+                    )}
+                  </button>
+                  {!minimizedSections.has(activeSection.id) && (
+                    <ReportLinksGrid
+                      reports={activeSection.reports}
+                      onInlineSelect={
+                        activeSection.hasInline ? handleInlineSelect : undefined
+                      }
+                      navigate={navigate}
+                      vertical
+                    />
+                  )}
+                </>
+              )
+            )}
           </div>
-        )}
-        {activeMainTab === "Party Report" && (
-          <div className="space-y-4">
-            <h2 className="text-base font-semibold text-muted-foreground">
-              Party reports
-            </h2>
-            <ReportLinksGrid
-              reports={PARTY_REPORTS}
-              navigate={navigate}
-            />
-          </div>
-        )}
-        {activeMainTab === "GST Reports" && (
-          <div className="space-y-4">
-            <h2 className="text-base font-semibold text-muted-foreground">
-              GST reports
-            </h2>
-            <ReportLinksGrid
-              reports={GST_REPORTS}
-              onInlineSelect={handleInlineSelect}
-              navigate={navigate}
-            />
-          </div>
-        )}
-        {activeMainTab === "Item/Stock Reports" && (
-          <div className="space-y-4">
-            <h2 className="text-base font-semibold text-muted-foreground">
-              Item & stock reports
-            </h2>
-            <ReportLinksGrid reports={ITEM_STOCK_REPORTS} navigate={navigate} />
-          </div>
-        )}
-        {activeMainTab === "Business Status" && (
-          <div className="space-y-4">
-            <h2 className="text-base font-semibold text-muted-foreground">
-              Business status reports
-            </h2>
-            <ReportLinksGrid
-              reports={BUSINESS_STATUS_REPORTS}
-              navigate={navigate}
-            />
-          </div>
-        )}
-        {activeMainTab === "Taxes" && (
-          <div className="space-y-4">
-            <h2 className="text-base font-semibold text-muted-foreground">
-              Tax reports
-            </h2>
-            <ReportLinksGrid
-              reports={TAXES_REPORTS}
-              onInlineSelect={handleInlineSelect}
-              navigate={navigate}
-            />
-          </div>
-        )}
-        {activeMainTab === "Expense Reports" && (
-          <div className="space-y-4">
-            <h2 className="text-base font-semibold text-muted-foreground">
-              Expense reports
-            </h2>
-            <ReportLinksGrid
-              reports={EXPENSE_REPORTS}
-              navigate={navigate}
-            />
-          </div>
-        )}
-        {activeMainTab === "Sale/Purchase Order Reports" && (
-          <div className="space-y-4">
-            <h2 className="text-base font-semibold text-muted-foreground">
-              Sale / Purchase order reports
-            </h2>
-            <ReportLinksGrid
-              reports={SALE_PURCHASE_ORDER_REPORTS}
-              navigate={navigate}
-            />
-          </div>
-        )}
-        {activeMainTab === "Loan Reports" && (
-          <div className="space-y-4">
-            <h2 className="text-base font-semibold text-muted-foreground">
-              Loan reports
-            </h2>
-            <ReportLinksGrid reports={LOAN_REPORTS} navigate={navigate} />
-          </div>
-        )}
         </main>
       </div>
     </div>

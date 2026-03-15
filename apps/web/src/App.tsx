@@ -70,7 +70,16 @@ function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       {/* Public customer-facing portal — no auth required */}
       <Route path="/pub/:id/:token" element={<InvoicePortal />} />
-      {/* Protected routes with AppLayout (desktop: sidebar, mobile: bottom nav per page) */}
+      {/* Reports: full-page standalone (no app sidebar) — all report tabs */}
+      <Route
+        path="/reports"
+        element={
+          <ProtectedRoute>
+            <Reports />
+          </ProtectedRoute>
+        }
+      />
+      {/* Protected routes with AppLayout (desktop: sidebar, mobile: bottom nav) */}
       <Route
         path="/"
         element={
@@ -80,7 +89,6 @@ function AppRoutes() {
         }
       >
         <Route index element={<Index />} />
-        <Route path="reports" element={<Reports />} />
         <Route path="settings" element={<Settings />} />
         <Route path="settings/billing" element={<BillingSettings />} />
         <Route path="payment" element={<Payment />} />
