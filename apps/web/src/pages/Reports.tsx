@@ -19,6 +19,13 @@ import {
 import VoiceBar from "@/components/VoiceBar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   AreaChart,
@@ -69,6 +76,19 @@ const MAIN_TABS = [
   "Sale/Purchase Order Reports",
   "Loan Reports",
 ] as const;
+
+// Tab labels for UI (short for mobile select, full for sidebar)
+const TAB_LABELS: Record<(typeof MAIN_TABS)[number], string> = {
+  "Transaction Report": "Transaction",
+  "Party Report": "Party",
+  "GST Reports": "GST",
+  "Item/Stock Reports": "Item/Stock",
+  "Business Status": "Business Status",
+  Taxes: "Taxes",
+  "Expense Reports": "Expense",
+  "Sale/Purchase Order Reports": "Orders",
+  "Loan Reports": "Loan",
+};
 
 // ── Report definitions (path = route to navigate; empty = coming soon) ─────────
 const TRANSACTION_REPORTS: { label: string; path?: string; inline?: string }[] = [
@@ -2722,7 +2742,7 @@ function ReportLinksGrid({
   navigate: (path: string) => void;
 }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
       {reports.map((r) => {
         const hasAction = r.path || r.inline;
         return (
@@ -2730,20 +2750,22 @@ function ReportLinksGrid({
             key={r.label}
             className={
               hasAction
-                ? "cursor-pointer transition-colors hover:border-primary/50 hover:bg-muted/30"
-                : "opacity-75"
+                ? "cursor-pointer transition-all hover:border-primary/50 hover:bg-muted/30 active:scale-[0.99] min-h-[52px] flex"
+                : "opacity-75 min-h-[52px] flex"
             }
             onClick={() => {
               if (r.path) navigate(r.path);
               else if (r.inline) onInlineSelect?.(r.inline);
             }}
           >
-            <CardContent className="flex items-center justify-between p-4">
-              <span className="font-medium">{r.label}</span>
+            <CardContent className="flex items-center justify-between p-4 w-full min-h-[52px]">
+              <span className="font-medium text-sm sm:text-base truncate pr-2">
+                {r.label}
+              </span>
               {hasAction ? (
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
               ) : (
-                <Badge variant="secondary" className="text-[10px]">
+                <Badge variant="secondary" className="text-[10px] shrink-0">
                   Soon
                 </Badge>
               )}
@@ -2952,53 +2974,36 @@ const Reports = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card px-4 py-3 md:px-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-background flex flex-col lg:flex-row">
+      {/* Mobile: header with category dropdown */}
+      <header className="border-b bg-card px-4 py-3 md:px-6 lg:hidden shrink-0">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
             <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-5 w-5 shrink-0" />
             </Button>
-            <h1 className="text-lg font-bold tracking-tight md:text-xl">
-              📊 Reports & Analytics
+            <h1 className="text-lg font-bold tracking-tight truncate">
+              📊 Reports
             </h1>
           </div>
+          <Select
+            value={activeMainTab}
+            onValueChange={(v) =>
+              handleMainTabChange(v as (typeof MAIN_TABS)[number])
+            }
+          >
+            <SelectTrigger className="w-[140px] sm:w-[160px] shrink-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {MAIN_TABS.map((tab) => (
+                <SelectItem key={tab} value={tab}>
+                  {TAB_LABELS[tab]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-
-        {/* Main tab nav */}
-        <div className="mt-3 flex gap-0 border-b overflow-x-auto">
-          {MAIN_TABS.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => handleMainTabChange(tab)}
-              className={[
-                "px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap",
-                activeMainTab === tab
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
-              ].join(" ")}
-            >
-              {tab === "Transaction Report"
-                ? "📋 Transaction"
-                : tab === "Party Report"
-                  ? "👥 Party"
-                  : tab === "GST Reports"
-                    ? "🏛️ GST"
-                    : tab === "Item/Stock Reports"
-                      ? "📦 Item/Stock"
-                      : tab === "Business Status"
-                        ? "📊 Business Status"
-                        : tab === "Taxes"
-                          ? "🧾 Taxes"
-                          : tab === "Expense Reports"
-                            ? "💰 Expense"
-                            : tab === "Sale/Purchase Order Reports"
-                              ? "📑 Orders"
-                              : "🏦 Loan"}
-            </button>
-          ))}
-        </div>
-
         <VoiceBar
           idleHint={
             <>
@@ -3006,15 +3011,57 @@ const Reports = () => {
                 "GSTR-1 report nikalo"
               </span>
               {" · "}
-              <span>"is mahine ka P&L dikhao"</span>
-              {" · "}
-              <span>"GST report bhejo"</span>
+              <span>"P&L dikhao"</span>
             </>
           }
         />
       </header>
 
-      <main className="mx-auto max-w-7xl p-4 md:p-6">
+      {/* Desktop: sidebar */}
+      <aside className="hidden lg:flex lg:flex-col lg:w-52 xl:w-56 lg:border-r lg:bg-card shrink-0">
+        <div className="p-4 border-b">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start gap-2"
+            onClick={() => navigate("/")}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span className="truncate">Back</span>
+          </Button>
+        </div>
+        <nav className="flex-1 overflow-y-auto p-2">
+          <p className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Categories
+          </p>
+          {MAIN_TABS.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => handleMainTabChange(tab)}
+              className={[
+                "w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                activeMainTab === tab
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              ].join(" ")}
+            >
+              {TAB_LABELS[tab]}
+            </button>
+          ))}
+        </nav>
+        <div className="p-2 border-t">
+          <VoiceBar idleHint={<span className="text-xs">"GSTR-1 nikalo"</span>} />
+        </div>
+      </aside>
+
+      {/* Main content area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="hidden lg:block border-b bg-card px-6 py-3 shrink-0">
+          <h1 className="text-xl font-bold tracking-tight">
+            📊 Reports & Analytics
+          </h1>
+        </div>
+        <main className="flex-1 p-4 md:p-6 overflow-x-hidden">
         {activeMainTab === "Transaction Report" && (
           <div className="space-y-4">
             <h2 className="text-base font-semibold text-muted-foreground">
@@ -3111,7 +3158,8 @@ const Reports = () => {
             <ReportLinksGrid reports={LOAN_REPORTS} navigate={navigate} />
           </div>
         )}
-      </main>
+        </main>
+      </div>
     </div>
   );
 };
