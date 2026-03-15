@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { request } from '@/lib/api';
+import { monitoringApi } from '@/lib/api';
 
 export interface Filters {
   eventType?: string;
@@ -64,7 +64,7 @@ export function ActivityFilters({ filters, onChange }: Props) {
   // Fetch employees for the dropdown
   const { data: usersData } = useQuery({
     queryKey: ['users', 'list'],
-    queryFn: () => request<{ users: { id: string; name: string; role: string }[] }>('/api/v1/users'),
+    queryFn: () => monitoringApi.listUsers(),
   });
 
   const handlePreset = (v: string) => {

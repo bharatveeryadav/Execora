@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { monitoringApi } from '@/lib/api';
-import { request } from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
 
 const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
@@ -24,7 +23,7 @@ export function EmployeeSummary({ from, to }: Props) {
 
   const { data: usersData } = useQuery({
     queryKey: ['users', 'list'],
-    queryFn: () => request<{ users: { id: string; name: string; role: string }[] }>('/api/v1/users'),
+    queryFn: () => monitoringApi.listUsers(),
     staleTime: 5 * 60_000,
   });
 

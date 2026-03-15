@@ -1453,4 +1453,7 @@ export const monitoringApi = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+
+  listUsers: () =>
+    request<{ users: { id: string; name: string; role: string }[] }>("/api/v1/users"),
 };
