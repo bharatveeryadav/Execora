@@ -100,7 +100,7 @@ export function LoginScreen({ onLogin }: { onLogin: () => void }) {
               <TextInput
                 value={otp}
                 onChangeText={setOtp}
-                placeholder="6-digit OTP"
+                placeholder="OTP"
                 placeholderTextColor="#94a3b8"
                 keyboardType="number-pad"
                 maxLength={6}
@@ -109,8 +109,8 @@ export function LoginScreen({ onLogin }: { onLogin: () => void }) {
               />
               <TouchableOpacity
                 onPress={() => void login.mutateAsync()}
-                disabled={otp.length !== 6 || isLoading}
-                className={`h-14 rounded-2xl items-center justify-center ${otp.length === 6 ? "bg-indigo-600" : "bg-slate-300"}`}
+                disabled={otp.length < 4 || isLoading}
+                className={`h-14 rounded-2xl items-center justify-center ${otp.length >= 4 ? "bg-indigo-600" : "bg-slate-300"}`}
               >
                 {isLoading ? (
                   <ActivityIndicator color="#fff" />
