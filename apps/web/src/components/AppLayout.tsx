@@ -3,7 +3,7 @@
  * Per PRODUCT_STRATEGY_2026.md: "Desktop parity" with sidebar for full-fledged app on desktop.
  */
 import { useState, useEffect } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useNavigate, NavLink } from "react-router-dom";
 import {
   Home,
   Users,
@@ -20,6 +20,17 @@ import {
   Truck,
   Receipt,
   Search,
+  ChevronDown,
+  ChevronRight,
+  Store,
+  CreditCard,
+  PieChart,
+  FileCheck,
+  MessageCircle,
+  Plus,
+  FolderOpen,
+  HelpCircle,
+  MapPin,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -35,39 +46,97 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarSeparator,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import InvoiceCreation from "@/components/InvoiceCreation";
 import GlobalSearch from "@/components/GlobalSearch";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import BottomNav from "@/components/BottomNav";
 
-const SIDEBAR_NAV: { label: string; path: string; icon: React.ElementType; action?: "invoice" }[] = [
+type NavItem = { label: string; path?: string; icon: React.ElementType; action?: "invoice" };
+type NavGroup = { label: string; icon: React.ElementType; items: NavItem[] };
+
+const SIDEBAR_NAV_GROUPS: (NavItem | NavGroup)[] = [
   { label: "Home", path: "/", icon: Home },
-  { label: "New Bill", path: "__invoice__", icon: FileText, action: "invoice" },
-  { label: "Parties", path: "/parties", icon: Users },
-  { label: "Items", path: "/inventory", icon: Package },
-  { label: "Bills", path: "/invoices", icon: FileText },
-  { label: "Classic Bill", path: "/billing", icon: ClipboardList },
-  { label: "Record Payment", path: "/payment", icon: Wallet },
+  {
+    label: "Sales",
+    icon: FileText,
+    items: [
+      { label: "Invoices", path: "/invoices", icon: FileText },
+      { label: "Credit Notes", path: "/credit-notes", icon: FileCheck },
+      { label: "E-Invoices", path: "/einvoicing", icon: FileText },
+    ],
+  },
+  {
+    label: "Purchases",
+    icon: Truck,
+    items: [
+      { label: "Purchases", path: "/purchases", icon: Truck },
+      { label: "Purchase Order", path: "/purchase-orders", icon: ClipboardList },
+      { label: "Debit Order", path: "/debit-orders", icon: FileCheck },
+    ],
+  },
+  {
+    label: "Quotation",
+    icon: ClipboardList,
+    items: [
+      { label: "Quotation", path: "/invoices", icon: ClipboardList },
+      { label: "Sales Order", path: "/billing", icon: ClipboardList },
+      { label: "Pro Forma Invoices", path: "/invoices", icon: FileText },
+      { label: "Delivery Challans", path: "/delivery-challans", icon: Truck },
+      { label: "Packaging Lists", path: "/packaging-lists", icon: Package },
+    ],
+  },
+  {
+    label: "Expenses",
+    icon: ShoppingCart,
+    items: [
+      { label: "Expense", path: "/expenses", icon: ShoppingCart },
+      { label: "Indirect Income", path: "/indirect-income", icon: Receipt },
+    ],
+  },
+  { label: "Product & Service", path: "/inventory", icon: Package },
+  {
+    label: "Payments",
+    icon: Wallet,
+    items: [
+      { label: "Payment Links", path: "/payment", icon: CreditCard },
+      { label: "Journals", path: "/journals", icon: BookOpen },
+      { label: "Bank Reconciliation", path: "/bank-reconciliation", icon: BookOpen },
+    ],
+  },
+  {
+    label: "Parties",
+    icon: Users,
+    items: [
+      { label: "Customers", path: "/parties", icon: Users },
+      { label: "Vendors", path: "/parties", icon: Users },
+    ],
+  },
+  { label: "Insights", path: "/", icon: PieChart },
+  { label: "Reports", path: "/reports", icon: BarChart3 },
+  { label: "Online Store", path: "/online-store", icon: Store },
+  { label: "E-Way Bill", path: "/einvoicing", icon: MapPin },
+  {
+    label: "More",
+    icon: Plus,
+    items: [
+      { label: "Add-ons", path: "/addons", icon: Plus },
+      { label: "MyDrive", path: "/mydrive", icon: FolderOpen },
+      { label: "Tutorial", path: "/tutorial", icon: HelpCircle },
+      { label: "Feedback", path: "/feedback", icon: MessageCircle },
+    ],
+  },
 ];
 
-const SIDEBAR_REPORTS: { label: string; path: string; icon: React.ElementType }[] = [
-  { label: "Reports", path: "/reports", icon: BarChart3 },
-  { label: "Overdue", path: "/overdue", icon: AlertCircle },
-  { label: "Day Book", path: "/daybook", icon: BookOpen },
-  { label: "Cash Book", path: "/cashbook", icon: BookOpen },
-  { label: "Expenses", path: "/expenses", icon: ShoppingCart },
-  { label: "Purchases", path: "/purchases", icon: Truck },
-  { label: "Expiry", path: "/expiry", icon: Clock },
-  { label: "Recurring", path: "/recurring", icon: Receipt },
-  { label: "Balance Sheet", path: "/balance-sheet", icon: BarChart3 },
-  { label: "Bank Recon", path: "/bank-reconciliation", icon: BookOpen },
-  { label: "Import Data", path: "/import", icon: FileText },
-  { label: "E-Invoice", path: "/einvoicing", icon: FileText },
-  { label: "GSTR-3B", path: "/gstr3b", icon: BarChart3 },
-];
+function isNavGroup(item: NavItem | NavGroup): item is NavGroup {
+  return "items" in item && Array.isArray((item as NavGroup).items);
+}
 
 function AppLayoutSidebar({
   onSearchOpen,
@@ -79,14 +148,17 @@ function AppLayoutSidebar({
   const location = useLocation();
   const navigate = useNavigate();
 
-  const isActive = (path: string) => {
+  const isActive = (path?: string) => {
+    if (!path) return false;
     if (path === "/") return location.pathname === "/";
     if (path === "/parties")
       return location.pathname.startsWith("/parties") || location.pathname.startsWith("/customers");
-    if (path === "/inventory") return location.pathname.startsWith("/inventory");
-    if (path === "/invoices") return location.pathname.startsWith("/invoices");
-    if (path === "/billing") return location.pathname === "/billing";
     return location.pathname.startsWith(path);
+  };
+
+  const handleNav = (item: NavItem) => {
+    if (item.action === "invoice") onNewInvoice?.();
+    else if (item.path) navigate(item.path);
   };
 
   return (
@@ -113,45 +185,55 @@ function AppLayoutSidebar({
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Main</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {SIDEBAR_NAV.map((item) => (
-                <SidebarMenuItem key={item.path}>
-                  <SidebarMenuButton
-                    isActive={item.action !== "invoice" && isActive(item.path)}
-                    onClick={() =>
-                      item.action === "invoice"
-                        ? onNewInvoice?.()
-                        : navigate(item.path)
-                    }
-                    tooltip={item.label}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.label}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        <SidebarSeparator />
-        <SidebarGroup>
-          <SidebarGroupLabel>Reports & More</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {SIDEBAR_REPORTS.map((item) => (
-                <SidebarMenuItem key={item.path}>
-                  <SidebarMenuButton
-                    isActive={isActive(item.path)}
-                    onClick={() => navigate(item.path)}
-                    tooltip={item.label}
-                  >
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.label}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {SIDEBAR_NAV_GROUPS.map((item, idx) => {
+                if (isNavGroup(item)) {
+                  const hasActiveChild = item.items.some((i) => i.path && isActive(i.path));
+                  return (
+                    <Collapsible key={item.label} defaultOpen={hasActiveChild} className="group/collapsible">
+                      <SidebarMenuItem>
+                        <CollapsibleTrigger asChild>
+                          <SidebarMenuButton
+                            isActive={hasActiveChild}
+                            tooltip={item.label}
+                          >
+                            <item.icon className="h-4 w-4" />
+                            <span>{item.label}</span>
+                            <ChevronRight className="ml-auto h-4 w-4 shrink-0 transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                          </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <SidebarMenuSub>
+                            {item.items.map((sub) => (
+                              <SidebarMenuSubItem key={sub.label}>
+                                <SidebarMenuSubButton
+                                  asChild
+                                  isActive={sub.path ? isActive(sub.path) : false}
+                                >
+                                  <NavLink to={sub.path ?? "#"}>{sub.label}</NavLink>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      </SidebarMenuItem>
+                    </Collapsible>
+                  );
+                }
+                return (
+                  <SidebarMenuItem key={item.path ?? item.label ?? idx}>
+                    <SidebarMenuButton
+                      isActive={item.path ? isActive(item.path) : false}
+                      onClick={() => handleNav(item)}
+                      tooltip={item.label}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

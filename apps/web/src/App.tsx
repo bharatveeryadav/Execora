@@ -111,6 +111,19 @@ function AppRoutes() {
         <Route path="import" element={<ImportData />} />
         <Route path="einvoicing" element={<EInvoicing />} />
         <Route path="gstr3b" element={<Gstr3b />} />
+        {/* Placeholder routes for new sidebar items — redirect to closest existing */}
+        <Route path="credit-notes" element={<Navigate to="/invoices" replace />} />
+        <Route path="purchase-orders" element={<Navigate to="/purchases" replace />} />
+        <Route path="debit-orders" element={<Navigate to="/purchases" replace />} />
+        <Route path="delivery-challans" element={<Navigate to="/billing" replace />} />
+        <Route path="packaging-lists" element={<Navigate to="/inventory" replace />} />
+        <Route path="indirect-income" element={<Navigate to="/expenses" replace />} />
+        <Route path="journals" element={<Navigate to="/daybook" replace />} />
+        <Route path="online-store" element={<Navigate to="/" replace />} />
+        <Route path="addons" element={<Navigate to="/settings" replace />} />
+        <Route path="mydrive" element={<Navigate to="/settings" replace />} />
+        <Route path="tutorial" element={<Navigate to="/settings" replace />} />
+        <Route path="feedback" element={<Navigate to="/settings" replace />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
