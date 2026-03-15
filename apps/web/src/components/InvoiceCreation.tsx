@@ -54,6 +54,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import BarcodeScanner from "@/components/BarcodeScanner";
 import { useToast } from "@/hooks/use-toast";
+import { isValidGstin, getGstinValidationError } from "@execora/shared";
 
 type SpeechWindow = Window & {
   SpeechRecognition?: new () => {
@@ -776,6 +777,18 @@ const InvoiceCreation = ({
           : undefined,
     };
 
+    if (opts.withGst && opts.buyerGstin) {
+      const gstErr = getGstinValidationError(opts.buyerGstin);
+      if (gstErr) {
+        toast({
+          title: "Invalid GSTIN",
+          description: gstErr,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     try {
       let res: { invoice?: { invoiceNo?: string } };
       if (isProforma) {
@@ -800,12 +813,21 @@ const InvoiceCreation = ({
       const e = err as {
         body?: {
           error?: string;
+          message?: string;
           customerName?: string;
           limit?: number;
           currentBalance?: number;
           invoiceAmount?: number;
         };
       };
+      if (e?.body?.error === "INVALID_GSTIN") {
+        toast({
+          title: "Invalid GSTIN",
+          description: e.body.message ?? "Verify the GST number",
+          variant: "destructive",
+        });
+        return;
+      }
       if (e?.body?.error === "CREDIT_LIMIT_EXCEEDED") {
         const lim = e.body.limit ?? 0;
         const bal = e.body.currentBalance ?? 0;
@@ -1079,12 +1101,21 @@ const InvoiceCreation = ({
       const e = err as {
         body?: {
           error?: string;
+          message?: string;
           customerName?: string;
           limit?: number;
           currentBalance?: number;
           invoiceAmount?: number;
         };
       };
+      if (e?.body?.error === "INVALID_GSTIN") {
+        toast({
+          title: "Invalid GSTIN",
+          description: e.body.message ?? "Verify the GST number",
+          variant: "destructive",
+        });
+        return;
+      }
       if (e?.body?.error === "CREDIT_LIMIT_EXCEEDED") {
         const lim = e.body.limit ?? 0;
         const bal = e.body.currentBalance ?? 0;
@@ -1244,15 +1275,22 @@ const InvoiceCreation = ({
               </div>
 
               {/* B2B GSTIN */}
-              <div className="flex items-center gap-2">
-                <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <input
-                  placeholder="Buyer GSTIN (B2B, optional)"
-                  value={buyerGstin}
-                  onChange={(e) => setBuyerGstin(e.target.value.toUpperCase())}
-                  maxLength={15}
-                  className="flex-1 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                />
+              <div className="flex flex-col gap-0.5">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <input
+                    placeholder="Buyer GSTIN (B2B, optional)"
+                    value={buyerGstin}
+                    onChange={(e) =>
+                      setBuyerGstin(e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, ""))
+                    }
+                    maxLength={15}
+                    className={`flex-1 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary ${
+                      buyerGstin.length === 15 && !isValidGstin(buyerGstin)
+                        ? "border-destructive"
+                        : ""
+                    }`}
+                  />
                 {withGst && (
                   <input
                     placeholder="State code"
@@ -1261,6 +1299,12 @@ const InvoiceCreation = ({
                     maxLength={2}
                     className="w-20 rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
                   />
+                )}
+                </div>
+                {buyerGstin.length === 15 && !isValidGstin(buyerGstin) && (
+                  <p className="text-[10px] text-destructive pl-6">
+                    {getGstinValidationError(buyerGstin) ?? "Invalid GSTIN"}
+                  </p>
                 )}
               </div>
 

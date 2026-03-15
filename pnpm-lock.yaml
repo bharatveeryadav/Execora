@@ -39,6 +39,9 @@ importers:
       '@execora/modules':
         specifier: workspace:*
         version: link:../../packages/modules
+      '@execora/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@execora/types':
         specifier: workspace:*
         version: link:../../packages/types

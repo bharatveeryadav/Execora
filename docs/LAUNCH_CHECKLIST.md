@@ -21,17 +21,17 @@
 - [ ] Remove `allowedHosts` tailscale hostname from `apps/web/vite.config.ts`
 - [ ] Enable Helmet CSP (at minimum `default-src 'self'`)
 - [ ] Add `tenantId` filter audit: scan all `prisma.*` calls in `packages/modules/src/` to verify `tenantId` is in every `where` clause
-- [ ] GSTIN checksum validation: reject B2B invoices with malformed GSTINs at the API layer (2h)
+- [x] ~~GSTIN checksum validation~~ **FIXED 2026-03**: Reject B2B invoices with malformed GSTIN at API; Luhn mod 36 checksum in `packages/shared/src/gstin.ts`; UI red border + message in ClassicBilling + InvoiceCreation
 
 ---
 
 ## STABILITY (Week 2)
 
-- [ ] Add React ErrorBoundary to `apps/web/src/App.tsx` wrapping `<AppRoutes />`
+- [x] ~~Add React ErrorBoundary~~ **FIXED 2026-03**: `ErrorBoundary.tsx` wraps AppRoutes; fallback UI with retry on render errors
 - [ ] Integrate Sentry: `@sentry/node` in API + `@sentry/react` in web; Slack alert on error rate spike
 - [ ] Fix `listAllCustomers`: replace JS-level `slice(offset, offset+limit)` with DB-level `take/skip` in Prisma query
 - [ ] Configure log rotation for `logs/app.log` (logrotate or Pino transport maxSize)
-- [ ] Add GSTIN checksum validation UI feedback in InvoiceCreation form (show red border + message on invalid format)
+- [x] ~~Add GSTIN checksum validation UI feedback~~ **FIXED 2026-03**: Red border + message in InvoiceCreation and ClassicBilling; pre-submit validation; API returns 400 INVALID_GSTIN
 - [ ] Pre-register WhatsApp message templates with Meta before enabling auto-send (templates must be approved before use)
 - [ ] Verify Redis AOF (Append-Only File) persistence is enabled — voice session draft loss on Redis restart is a P0 UX failure
 
@@ -79,7 +79,7 @@
 ## P0 FEATURE GAPS (must build before paid launch)
 
 - [x] ~~**Item-level discount — API route schema fix**~~ **FIXED 2026-03-13**: `lineDiscountPercent` + `hsnCode` added to items schema in all 3 routes (POST, proforma, PATCH) in `invoice.routes.ts`. UI in `ClassicBilling.tsx` and voice `ADD_DISCOUNT` intent can now flow end-to-end.
-- [ ] UPDATE_STOCK voice intent: wire `executeUpdateStock` handler into engine switch + add LLM prompt examples (3h — S10-02)
+- [x] ~~UPDATE_STOCK voice intent~~ **CONFIRMED BUILT**: `executeUpdateStock` in product.handler.ts; engine switch in engine/index.ts; prompts in prompts.ts
 - [x] ~~WhatsApp auto-send invoice PDF~~ **CONFIRMED BUILT**: `dispatchInvoicePdfEmail()` reads `autoSendWhatsApp` from Tenant.settings → `whatsappService.sendDocumentMessage()`. Just set `WHATSAPP_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID` env vars.
 - [ ] Mobile-responsive web layout: bottom nav at ≤768px, touch targets ≥44px, no horizontal scroll on 375px (2 days — S10-03)
 - [ ] Mobile ClassicBillingScreen (React Native): single-screen counter billing, walk-in default, sticky total bar (3 days)
@@ -97,7 +97,7 @@
 - [ ] True Agent Mode (Mode 3): LLM tool-calling, two-agent pattern (Conversation + Task); planned Q3 2026 (3 weeks)
 - [ ] Push notifications for payment reminders (mobile): FCM integration for RN app (2 days)
 - [ ] PWA "Quick Bill" home screen shortcut: `manifest.json` shortcut + auto-focus product search on ClassicBilling load (2h)
-- [ ] React ErrorBoundary in App.tsx (1h)
+- [x] ~~React ErrorBoundary in App.tsx~~ **FIXED 2026-03** (1h)
 - [ ] Barcode scan (React Native) — if not done as P0 (1 day)
 - [ ] Mobile dashboard charts (DashboardScreen has layout but no charts) (2 days)
 - [ ] WhatsApp delivery failure → email fallback chain (2h)
@@ -114,14 +114,14 @@
 ### 🔴 Must Build Before SME Paid Launch (Top 10, ordered by impact)
 
 - [ ] **Credit note / debit note** — No model, route, or UI. Mandatory for B2B returns; GST compliance requires CN/DN with original invoice reference. Est: 3 days
-- [ ] **Bank account details — Settings + Invoice PDF** — Add `bankAccount` field to Tenant model; show in Settings; print IFSC/Account# on PDF footer. Est: 2h schema + 4h UI + 2h PDF
+- [x] ~~**Bank account details — Settings + Invoice PDF**~~ **CONFIRMED BUILT**: `bankAccountNo`, `bankIfsc`, `bankAccountHolder` in tenant.settings; Settings UI; PDF footer in `packages/infrastructure/src/pdf.ts`
 - [ ] **GSTR-3B output tax summary** — `Gstr3b.tsx` is a placeholder reading from `useSummaryRange` only. Build backend: aggregate IGST/CGST/SGST from confirmed invoices + ITC from purchases. Est: 3 days
 - [ ] **Input tax credit (ITC) tracking** — No model or route. Add `gstPaid` field to purchases; build ITC summary endpoint; wire into GSTR-3B. Est: 3 days
 - [ ] **Customer statement / ledger export** — Add `GET /api/v1/customers/:id/statement?from=&to=` returning PDF + CSV. CAs require this weekly. Est: 1 day
 - [ ] **GSTR-1 JSON in official GSTN schema** — Current report is CSV. Build JSON export matching GSTN's official schema (B2B/B2CS/CDNR/HSN sections). Required for GST portal upload. Est: 2 days
 - [ ] **Round-off on invoice total** — Add `roundOff` boolean to invoice; calculate and store `roundOffAmount`; print on PDF. Est: 2h
 - [ ] **Amount in words on PDF** — `ClassicBilling.tsx` shows amount-in-words in UI but `generateInvoicePdf()` does not print it. Add to PDF template. Est: 4h
-- [ ] **Terms & conditions on invoice** — Add `termsAndConditions` field to Tenant; show in Settings; print on PDF footer. Est: 4h settings + 2h PDF
+- [x] ~~**Terms & conditions on invoice**~~ **CONFIRMED BUILT**: `termsAndConditions` in tenant.settings; Settings UI; PDF footer in `packages/infrastructure/src/pdf.ts`
 - [x] ~~WhatsApp auto-send invoice~~ — **CONFIRMED BUILT** (see P0 section above). Just needs Meta env vars.
 
 ### 🟡 Important (Build Week 2–4 Post SME Launch)

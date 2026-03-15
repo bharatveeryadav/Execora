@@ -60,6 +60,7 @@ import {
   type PreviewData,
 } from "@/components/InvoiceTemplatePreview";
 import BottomNav from "@/components/BottomNav";
+import { isValidGstin, getGstinValidationError } from "@execora/shared";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -79,17 +80,6 @@ interface BillingItem {
 type PaymentMode = "cash" | "upi" | "card" | "credit";
 type SupplyType = "INTRASTATE" | "INTERSTATE";
 
-/** GSTIN format: 2-digit state + 10-char PAN + entity + Z + checksum (15 chars) */
-const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
-/** Valid state codes: 01–28 (states), 29–38 (UTs and special) */
-const VALID_STATE_CODES = new Set(
-  Array.from({ length: 38 }, (_, i) => String(i + 1).padStart(2, "0")),
-);
-function isValidGstin(g: string): boolean {
-  if (g.length !== 15 || !GSTIN_REGEX.test(g.toUpperCase())) return false;
-  const stateCode = g.slice(0, 2);
-  return VALID_STATE_CODES.has(stateCode);
-}
 /** Extract state code (01-38) from GSTIN first 2 chars */
 function stateCodeFromGstin(gstin: string): string {
   if (gstin.length >= 2) return gstin.slice(0, 2);
@@ -752,6 +742,17 @@ export default function ClassicBilling() {
 
   const handleSubmit = async () => {
     if (validItemCount === 0) return;
+    if (withGst && buyerGstin.trim()) {
+      const gstErr = getGstinValidationError(buyerGstin.trim());
+      if (gstErr) {
+        toast({
+          title: "Invalid GSTIN",
+          description: gstErr,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     let customerId = selectedCustomer?.id;
     if (!customerId) {
       const walkIn = await createWalkIn.mutateAsync();
@@ -1312,7 +1313,7 @@ export default function ClassicBilling() {
               />
               {buyerGstin.length === 15 && !isValidGstin(buyerGstin) && (
                 <p className="text-[10px] text-destructive">
-                  Invalid GSTIN (state code 01–38, PAN format, checksum)
+                  {getGstinValidationError(buyerGstin) ?? "Invalid GSTIN"}
                 </p>
               )}
             </div>

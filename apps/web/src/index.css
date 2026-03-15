@@ -42,13 +42,13 @@
     --info: 210 68% 47%;
     --info-foreground: 0 0% 100%;
 
-    --sidebar-background: 222 20% 16%;
-    --sidebar-foreground: 220 20% 92%;
+    --sidebar-background: 220 14% 96%;
+    --sidebar-foreground: 224 31% 12%;
     --sidebar-primary: 24 84% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 16% 24%;
-    --sidebar-accent-foreground: 220 20% 92%;
-    --sidebar-border: 222 12% 30%;
+    --sidebar-accent: 220 14% 90%;
+    --sidebar-accent-foreground: 224 31% 12%;
+    --sidebar-border: 220 13% 88%;
     --sidebar-ring: 24 84% 50%;
   }
 

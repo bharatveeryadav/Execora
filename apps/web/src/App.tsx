@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { AppLayout } from "@/components/AppLayout";
 import Index from "./pages/Index";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
@@ -36,6 +37,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ConfettiOverlay } from "@/components/ConfettiOverlay";
 import { PaymentSoundBox } from "@/components/PaymentSoundBox";
 import { OnboardingWizard } from "@/components/OnboardingWizard";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -66,200 +68,42 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      {/* Public customer-facing portal — no auth required */}
+      <Route path="/pub/:id/:token" element={<InvoicePortal />} />
+      {/* Protected routes with AppLayout (desktop: sidebar, mobile: bottom nav per page) */}
       <Route
         path="/"
         element={
           <ProtectedRoute>
-            <Index />
+            <AppLayout />
           </ProtectedRoute>
         }
-      />
-      <Route
-        path="/reports"
-        element={
-          <ProtectedRoute>
-            <Reports />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/settings"
-        element={
-          <ProtectedRoute>
-            <Settings />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/settings/billing"
-        element={
-          <ProtectedRoute>
-            <BillingSettings />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/payment"
-        element={
-          <ProtectedRoute>
-            <Payment />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/overdue"
-        element={
-          <ProtectedRoute>
-            <OverduePage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/inventory"
-        element={
-          <ProtectedRoute>
-            <Inventory />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/parties"
-        element={
-          <ProtectedRoute>
-            <Parties />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/customers"
-        element={
-          <ProtectedRoute>
-            <Navigate to="/parties" replace />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/customers/:id"
-        element={
-          <ProtectedRoute>
-            <CustomerDetail />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/invoices"
-        element={
-          <ProtectedRoute>
-            <Invoices />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/invoices/:id"
-        element={
-          <ProtectedRoute>
-            <InvoiceDetail />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/expenses"
-        element={
-          <ProtectedRoute>
-            <Expenses />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/purchases"
-        element={
-          <ProtectedRoute>
-            <Purchases />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/cashbook"
-        element={
-          <ProtectedRoute>
-            <CashBook />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/daybook"
-        element={
-          <ProtectedRoute>
-            <DayBook />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/billing"
-        element={
-          <ProtectedRoute>
-            <ClassicBilling />
-          </ProtectedRoute>
-        }
-      />{" "}
-      <Route
-        path="/expiry"
-        element={
-          <ProtectedRoute>
-            <ExpiryPage />
-          </ProtectedRoute>
-        }
-      />{" "}
-      <Route
-        path="/recurring"
-        element={
-          <ProtectedRoute>
-            <RecurringBilling />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/balance-sheet"
-        element={
-          <ProtectedRoute>
-            <BalanceSheet />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/bank-reconciliation"
-        element={
-          <ProtectedRoute>
-            <BankReconciliation />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/import"
-        element={
-          <ProtectedRoute>
-            <ImportData />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/einvoicing"
-        element={
-          <ProtectedRoute>
-            <EInvoicing />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/gstr3b"
-        element={
-          <ProtectedRoute>
-            <Gstr3b />
-          </ProtectedRoute>
-        }
-      />
-      {/* Public customer-facing portal — no auth required */}
-      <Route path="/pub/:id/:token" element={<InvoicePortal />} />
+      >
+        <Route index element={<Index />} />
+        <Route path="reports" element={<Reports />} />
+        <Route path="settings" element={<Settings />} />
+        <Route path="settings/billing" element={<BillingSettings />} />
+        <Route path="payment" element={<Payment />} />
+        <Route path="overdue" element={<OverduePage />} />
+        <Route path="inventory" element={<Inventory />} />
+        <Route path="parties" element={<Parties />} />
+        <Route path="customers" element={<Navigate to="/parties" replace />} />
+        <Route path="customers/:id" element={<CustomerDetail />} />
+        <Route path="invoices" element={<Invoices />} />
+        <Route path="invoices/:id" element={<InvoiceDetail />} />
+        <Route path="expenses" element={<Expenses />} />
+        <Route path="purchases" element={<Purchases />} />
+        <Route path="cashbook" element={<CashBook />} />
+        <Route path="daybook" element={<DayBook />} />
+        <Route path="billing" element={<ClassicBilling />} />
+        <Route path="expiry" element={<ExpiryPage />} />
+        <Route path="recurring" element={<RecurringBilling />} />
+        <Route path="balance-sheet" element={<BalanceSheet />} />
+        <Route path="bank-reconciliation" element={<BankReconciliation />} />
+        <Route path="import" element={<ImportData />} />
+        <Route path="einvoicing" element={<EInvoicing />} />
+        <Route path="gstr3b" element={<Gstr3b />} />
+      </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
@@ -279,9 +123,11 @@ const App = () => (
                 v7_relativeSplatPath: true,
               }}
             >
-              <AppRoutes />
-              <ConfettiOverlay />
-              <PaymentSoundBox />
+              <ErrorBoundary>
+                <AppRoutes />
+                <ConfettiOverlay />
+                <PaymentSoundBox />
+              </ErrorBoundary>
             </BrowserRouter>
           </TooltipProvider>
         </WSProvider>

@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { invoiceService, ledgerService } from '@execora/modules';
+import { getGstinValidationError } from '@execora/shared';
 import { broadcaster } from '../../ws/broadcaster';
 import { makePortalToken } from '@execora/infrastructure';
 
@@ -99,12 +100,21 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 					reverseCharge?: boolean;
 					overrideCreditLimit?: boolean;
 					initialPayment?: { amount: number; method: 'cash' | 'upi' | 'card' | 'other' };
-					overrideCreditLimit?: boolean;
 				};
 			}>,
 			reply
 		) => {
 			const { customerId, items, notes, ...opts } = request.body;
+			// S11-08: Reject B2B invoices with malformed GSTIN at API
+			if (opts.withGst && opts.buyerGstin?.trim()) {
+				const err = getGstinValidationError(opts.buyerGstin.trim());
+				if (err) {
+					return reply.code(400).send({
+						error: 'INVALID_GSTIN',
+						message: err,
+					});
+				}
+			}
 			try {
 				const result = await invoiceService.createInvoice(customerId, items, notes, opts);
 				const tid = request.user!.tenantId;
@@ -202,6 +212,15 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 			reply
 		) => {
 			const { customerId, items, notes, ...opts } = request.body;
+			if (opts.withGst && opts.buyerGstin?.trim()) {
+				const err = getGstinValidationError(opts.buyerGstin.trim());
+				if (err) {
+					return reply.code(400).send({
+						error: 'INVALID_GSTIN',
+						message: err,
+					});
+				}
+			}
 			const result = await invoiceService.createInvoice(customerId, items, notes, { ...opts, isProforma: true });
 			return reply.code(201).send({ invoice: result.invoice });
 		}
@@ -281,9 +300,18 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 					placeOfSupply?: string;
 				};
 			}>,
-			_reply
+			reply
 		) => {
 			const { items, notes, ...optsRaw } = request.body;
+			if (optsRaw.withGst && optsRaw.buyerGstin?.trim()) {
+				const err = getGstinValidationError(optsRaw.buyerGstin.trim());
+				if (err) {
+					return reply.code(400).send({
+						error: 'INVALID_GSTIN',
+						message: err,
+					});
+				}
+			}
 			const invoice = await invoiceService.updateInvoice(request.params.id, { items, notes, opts: optsRaw });
 			const tid = request.user!.tenantId;
 			if (tid) broadcaster.send(tid, 'invoice:updated', { invoiceId: invoice.id });
