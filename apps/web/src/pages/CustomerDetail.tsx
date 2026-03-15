@@ -41,7 +41,6 @@ import { useWsInvalidation } from "@/hooks/useWsInvalidation";
 import { LedgerEntry, Customer, invoiceApi } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import BottomNav from "@/components/BottomNav";
 import InvoiceCreation from "@/components/InvoiceCreation";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -843,7 +842,6 @@ const CustomerDetail = () => {
           </DialogContent>
         </Dialog>
 
-        <BottomNav />
 
         {/* Notification Prefs Dialog */}
         <Dialog open={prefsOpen} onOpenChange={setPrefsOpen}>

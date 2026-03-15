@@ -54,7 +54,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import BottomNav from "@/components/BottomNav";
 import { Wallet } from "lucide-react";
 import {
   Dialog,
@@ -723,7 +722,6 @@ export default function InvoiceDetail() {
         </div>
       )}
 
-      <BottomNav />
 
       {/* Cancel confirmation */}
       <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>

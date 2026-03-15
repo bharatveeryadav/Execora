@@ -9,7 +9,6 @@ import AiAgentFeed from "@/components/AiAgentFeed";
 import DashboardLowStock from "@/components/DashboardLowStock";
 import DashboardExpiryAlert from "@/components/DashboardExpiryAlert";
 import RecentActivity from "@/components/RecentActivity";
-import BottomNav from "@/components/BottomNav";
 import { wsClient } from "@/lib/ws";
 import { toast } from "@/hooks/use-toast";
 import { fireConfetti } from "@/components/ConfettiOverlay";
@@ -74,7 +73,6 @@ const Index = () => {
         {/* 10 ── Expiry alerts ─────────────────────────────────── */}
         <DashboardExpiryAlert />
       </main>
-      <BottomNav />
     </div>
   );
 };

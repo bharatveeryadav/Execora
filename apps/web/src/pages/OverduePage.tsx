@@ -46,7 +46,6 @@ import {
 } from "@/hooks/useQueries";
 import { formatCurrency, type Customer, type Reminder } from "@/lib/api";
 import { fireConfetti } from "@/components/ConfettiOverlay";
-import BottomNav from "@/components/BottomNav";
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -1290,7 +1289,6 @@ const OverduePage = () => {
         />
       )}
 
-      <BottomNav />
     </div>
   );
 };

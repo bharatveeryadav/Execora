@@ -29,7 +29,6 @@ import { useCustomers, useCreateCustomer, useInvoices } from "@/hooks/useQueries
 import { useWsInvalidation } from "@/hooks/useWsInvalidation";
 import { Customer, formatCurrency } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
-import BottomNav from "@/components/BottomNav";
 
 const CUSTOMER_TAGS = ["VIP", "Wholesale", "Blacklist", "Regular"] as const;
 type FilterTab = "all" | "outstanding" | "clear" | "aging";
@@ -587,7 +586,6 @@ const Customers = forwardRef<CustomersRef, { embedded?: boolean }>(
         </div>
       </main>
 
-      {!embedded && <BottomNav />}
 
       {/* ── FAB: Add Customer ────────────────────────────────────────────────────── */}
       {!embedded && (

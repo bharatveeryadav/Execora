@@ -9,6 +9,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { bootApi, setAuthExpiredHandler } from "./lib/api";
+import { tokenStorage } from "./lib/storage";
 import { RootNavigator } from "./navigation";
 
 // Boot the API client once (token storage injected)
@@ -23,7 +24,7 @@ const queryClient = new QueryClient({
 
 export default function App() {
   const navRef = useRef<NavigationContainerRef<any>>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(true); // TODO: read from MMKV on mount
+  const [isLoggedIn, setIsLoggedIn] = useState(() => !!tokenStorage.getToken());
 
   const handleAuthExpired = useCallback(() => {
     queryClient.clear();

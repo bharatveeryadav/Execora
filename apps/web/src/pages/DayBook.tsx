@@ -22,7 +22,6 @@ import { Badge } from "@/components/ui/badge";
 import { useInvoices, useExpenses, useCashbook } from "@/hooks/useQueries";
 import { useWsInvalidation } from "@/hooks/useWsInvalidation";
 import { formatCurrency, formatDate } from "@/lib/api";
-import BottomNav from "@/components/BottomNav";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type TxType = "invoice" | "payment" | "expense" | "cash_in" | "cash_out";
@@ -566,7 +565,6 @@ export default function DayBook() {
         })}
       </main>
 
-      <BottomNav />
     </div>
   );
 }

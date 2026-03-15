@@ -25,7 +25,6 @@ import { useCustomers, usePurchases } from "@/hooks/useQueries";
 import { formatCurrency, type Customer } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import Customers, { type CustomersRef } from "./Customers";
-import BottomNav from "@/components/BottomNav";
 
 type Tab = "customers" | "vendors";
 
@@ -317,7 +316,6 @@ const Parties = () => {
         </button>
       )}
 
-      <BottomNav />
     </div>
   );
 };

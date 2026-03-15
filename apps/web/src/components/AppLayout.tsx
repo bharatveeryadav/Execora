@@ -40,6 +40,8 @@ import {
 } from "@/components/ui/sidebar";
 import InvoiceCreation from "@/components/InvoiceCreation";
 import GlobalSearch from "@/components/GlobalSearch";
+import { OfflineBanner } from "@/components/OfflineBanner";
+import BottomNav from "@/components/BottomNav";
 
 const SIDEBAR_NAV: { label: string; path: string; icon: React.ElementType; action?: "invoice" }[] = [
   { label: "Home", path: "/", icon: Home },
@@ -184,7 +186,15 @@ export function AppLayout() {
   }, []);
 
   if (isMobile) {
-    return <Outlet />;
+    return (
+      <div className="flex flex-col min-h-svh">
+        <OfflineBanner />
+        <div className="flex-1 pt-safe pb-[56px]">
+          <Outlet />
+        </div>
+        <BottomNav />
+      </div>
+    );
   }
 
   return (
@@ -196,6 +206,7 @@ export function AppLayout() {
         />
       </Sidebar>
       <SidebarInset>
+        <OfflineBanner />
         <div className="flex flex-1 flex-col min-h-svh">
           <Outlet />
         </div>

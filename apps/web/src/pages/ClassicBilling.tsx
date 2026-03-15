@@ -59,7 +59,6 @@ import {
   type TemplateId,
   type PreviewData,
 } from "@/components/InvoiceTemplatePreview";
-import BottomNav from "@/components/BottomNav";
 import { isValidGstin, getGstinValidationError } from "@execora/shared";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -1214,6 +1213,7 @@ export default function ClassicBilling() {
                 onDismiss={() => setActiveSuggestRow(null)}
                 onRemove={() => removeItem(item.id)}
                 isLast={items[items.length - 1].id === item.id}
+                isFirst={items[0].id === item.id}
               />
             ))}
 
@@ -1848,7 +1848,6 @@ export default function ClassicBilling() {
         </Dialog>
       )}
 
-      <BottomNav />
 
       {/* ── New Customer Dialog ────────────────────────────────────── */}
       <Dialog open={showNewCustDialog} onOpenChange={setShowNewCustDialog}>
@@ -1923,6 +1922,7 @@ function ItemRow({
   onDismiss,
   onRemove,
   isLast,
+  isFirst,
 }: {
   item: BillingItem;
   catalog: Product[];
@@ -1934,6 +1934,7 @@ function ItemRow({
   onDismiss: () => void;
   onRemove: () => void;
   isLast: boolean;
+  isFirst?: boolean;
 }) {
   // ── Recently-used products ────────────────────────────────────────────────
   const [recentIds, setRecentIds] = useState<string[]>(() => getRecentIds());
@@ -2035,6 +2036,7 @@ function ItemRow({
             onKeyDown={handleKeyDown}
             placeholder="Product name…"
             className="h-11 text-base"
+            autoFocus={isFirst && item.name === ""}
           />
           {showSuggest && (
             <ProductDropdown
@@ -2151,7 +2153,7 @@ function ItemRow({
             onKeyDown={handleKeyDown}
             placeholder="Product name…"
             className="h-8 text-sm border-0 bg-transparent focus-visible:ring-1 px-1"
-            autoFocus={isLast && item.name === ""}
+            autoFocus={(isFirst || isLast) && item.name === ""}
           />
           {showSuggest && (
             <ProductDropdown

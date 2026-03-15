@@ -55,7 +55,6 @@ import {
   type OcrJob,
 } from "@/lib/api";
 import { DraftConfirmDialog } from "@/components/DraftConfirmDialog";
-import BottomNav from "@/components/BottomNav";
 import {
   Dialog,
   DialogContent,
@@ -65,6 +64,7 @@ import {
 } from "@/components/ui/dialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { ReplenishmentBanner } from "@/components/ReplenishmentBanner";
+import DashboardExpiryAlert from "@/components/DashboardExpiryAlert";
 
 const voiceCommands = [
   "Show low stock",
@@ -663,6 +663,7 @@ const Inventory = () => {
 
         {/* Replenishment Banner — AI stock advisor */}
         <ReplenishmentBanner />
+        <DashboardExpiryAlert />
 
         {/* Inventory Summary */}
         <div>
@@ -2167,7 +2168,6 @@ const Inventory = () => {
         onDiscarded={() => setPendingDraft(null)}
       />
 
-      <BottomNav />
     </div>
   );
 };

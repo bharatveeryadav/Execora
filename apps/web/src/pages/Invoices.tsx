@@ -23,7 +23,6 @@ import { useWsInvalidation } from "@/hooks/useWsInvalidation";
 import { formatCurrency, formatDate } from "@/lib/api";
 import { Invoice, Expense } from "@/lib/api";
 import InvoiceCreation from "@/components/InvoiceCreation";
-import BottomNav from "@/components/BottomNav";
 
 const DATE_FILTERS = [
   "all",
@@ -669,7 +668,6 @@ const Invoices = () => {
       </button>
 
       <InvoiceCreation open={invoiceOpen} onOpenChange={setInvoiceOpen} />
-      <BottomNav />
     </div>
   );
 };
