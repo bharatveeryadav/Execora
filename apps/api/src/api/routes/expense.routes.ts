@@ -165,6 +165,8 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 						unit: { type: 'string' },
 						ratePerUnit: { type: 'number', minimum: 0 },
 						note: { type: 'string' },
+						batchNo: { type: 'string' },
+						expiryDate: { type: 'string' },
 						date: { type: 'string' },
 					},
 					additionalProperties: false,
@@ -182,13 +184,15 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 					unit?: string;
 					ratePerUnit?: number;
 					note?: string;
+					batchNo?: string;
+					expiryDate?: string;
 					date?: string;
 				};
 			}>,
 			reply
 		) => {
 			const tenantId = request.user!.tenantId;
-			const { category, amount, itemName, vendor, quantity, unit, ratePerUnit, note, date } = request.body;
+			const { category, amount, itemName, vendor, quantity, unit, ratePerUnit, note, batchNo, expiryDate, date } = request.body;
 			const purchase = await prisma.expense.create({
 				data: {
 					tenantId,
@@ -201,6 +205,8 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 					unit: unit || null,
 					ratePerUnit: ratePerUnit != null ? new Decimal(ratePerUnit) : null,
 					note: note || null,
+					batchNo: batchNo || null,
+					expiryDate: expiryDate ? new Date(expiryDate) : null,
 					date: date ? new Date(date) : new Date(),
 				},
 			});

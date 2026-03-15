@@ -1423,7 +1423,8 @@ class InvoiceService {
       const invoiceRef =
         (invoice as any).invoiceNo || invoice.id.slice(-8).toUpperCase();
 
-      if (customerEmail && autoSendEmail) {
+      const sendEmailIfEnabled = async () => {
+        if (!customerEmail || !autoSendEmail) return false;
         try {
           await emailService.sendInvoiceEmail(
             customerEmail,
@@ -1440,24 +1441,23 @@ class InvoiceService {
             { customerEmail, durationMs: Date.now() - start },
             "invoice.pdf.email.sent",
           );
+          return true;
         } catch (err) {
           log.error({ err, customerEmail }, "invoice.pdf.email.failed");
+          return false;
         }
-      } else if (customerEmail && !autoSendEmail) {
-        log.info(
-          { customerEmail },
-          "invoice.email.skipped — autoSendEmail disabled",
-        );
-      }
+      };
 
-      // ── 7. Send WhatsApp document ──────────────────────────────────────
-      if (
+      // ── 7. WhatsApp first; fallback to email if undelivered (S12-10) ────────
+      const tryWhatsApp =
         customerPhone &&
         pdfUrl &&
         autoSendWhatsApp &&
-        whatsappService.isConfigured()
-      ) {
+        whatsappService.isConfigured();
+
+      if (tryWhatsApp) {
         const invoiceCaption = `${shopName} — Invoice ${invoiceRef}\n₹${grandTotal.toFixed(2)} | Please find your invoice attached.`;
+        let waDelivered = false;
         try {
           const waResult = await whatsappService.sendDocumentMessage(
             customerPhone,
@@ -1465,6 +1465,7 @@ class InvoiceService {
             invoiceCaption,
             `invoice-${invoiceRef}.pdf`,
           );
+          waDelivered = waResult.success;
           log.info(
             {
               customerPhone,
@@ -1476,6 +1477,21 @@ class InvoiceService {
         } catch (err) {
           log.error({ err, customerPhone }, "invoice.pdf.whatsapp.failed");
         }
+        // Fallback to email when WhatsApp undelivered and customer has email
+        if (!waDelivered && customerEmail && autoSendEmail) {
+          log.info(
+            { customerPhone, customerEmail },
+            "invoice.pdf.whatsapp.fallback — sending via email",
+          );
+          await sendEmailIfEnabled();
+        }
+      } else if (customerEmail && autoSendEmail) {
+        await sendEmailIfEnabled();
+      } else if (customerEmail && !autoSendEmail) {
+        log.info(
+          { customerEmail },
+          "invoice.email.skipped — autoSendEmail disabled",
+        );
       }
     } catch (err) {
       log.error({ err }, "dispatchInvoicePdfEmail: unexpected error");

@@ -45,6 +45,8 @@ async function executeDraft(draft: { id: string; type: string; data: unknown; te
 					unit: data.unit ?? null,
 					ratePerUnit: data.ratePerUnit != null ? new Decimal(data.ratePerUnit) : null,
 					note: data.note ?? null,
+					batchNo: data.batchNo ?? null,
+					expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
 					date: data.date ? new Date(data.date) : new Date(),
 				},
 			});

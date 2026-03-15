@@ -61,7 +61,7 @@
 | S11-03 | **Settings persistence** | 1d | ⚠️ | Business profile (name, address, GSTIN, logo, UPI VPA) wired to backend; role/permission UI functional. |
 | S11-04 | **Walk-in billing UX audit** | 2h | ⚠️ | Verify 375px flow: no scroll, adequate touch targets. |
 | S11-05 | **Classic billing mobile audit** | 2h | ⚠️ | Verify ClassicBilling touch-friendly on mobile. |
-| S11-06 | **Offline mode (PWA)** | 5d | 🔴 | vite-plugin-pwa, manifest, IndexedDB outbox, "Offline — X queued" banner, voice STT disabled offline. |
+| S11-06 | **Offline mode (PWA)** | 5d | ✅ | vite-plugin-pwa, manifest, IndexedDB outbox, "Offline — X queued" banner, voice STT disabled offline. |
 | S11-07 | **React ErrorBoundary** | 1h | ✅ | Wrap `<AppRoutes />` in ErrorBoundary. |
 | S11-08 | **GSTIN checksum validation** | 2h | ✅ | Reject B2B invoices with malformed GSTIN at API; UI red border + message. |
 
@@ -75,16 +75,16 @@
 
 | # | Story | Est. | Priority | Acceptance Criteria |
 |---|-------|------|----------|---------------------|
-| S12-01 | **Pharmacy: batch/expiry frontend** | 1d | P1 | Batch entry in Purchase form, expiry alert on Inventory, batch selector on invoice rows. |
-| S12-02 | **Customer portal (read-only)** | 1d | P1 | Signed public URL; HTML page with invoice + payment status + UPI QR. |
+| S12-01 | **Pharmacy: batch/expiry frontend** | 1d | ✅ | Batch entry in Purchase form, expiry alert on Inventory, batch selector on invoice rows. |
+| S12-02 | **Customer portal (read-only)** | 1d | ✅ | Signed public URL; HTML page with invoice + payment status + UPI QR. |
 | S12-03 | **Guided onboarding** | 3d | P1 | Business profile → first invoice < 5 min; new tenants don't land on empty dashboard. |
-| S12-04 | **Customer portal UPI link** | 1d | P1 | "Pay Now" UPI deep link in `/pub/:id/:token`. |
+| S12-04 | **Customer portal UPI link** | 1d | ✅ | "Pay Now" UPI deep link in `/pub/:id/:token`. |
 | S12-05 | **Invoice template customisation** | 2d | P1 | 3–4 variants (thermal, A4, branded), logo, colour themes. |
 | S12-06 | **Multiple price tiers** | 2d | P1 | `wholesalePrice`, `priceTier2`, `priceTier3` on Product; voice "wholesale price do". |
 | S12-07 | **Recurring billing** | 3d | P1 | Invoice templates, scheduler, confirmation flow ("Aaj Sharma ji ka monthly bill ready hai — confirm?"). |
 | S12-08 | **True Agent Mode (Mode 3)** | 1w | P1 | Tool-calling LLM, two-agent pattern (Conversation + Task), agent-runner.ts. |
-| S12-09 | **PWA Quick Bill shortcut** | 2h | P1 | manifest.json shortcut; auto-focus product search on ClassicBilling load. |
-| S12-10 | **WhatsApp delivery → email fallback** | 2h | P1 | If WhatsApp undelivered, fallback to email. |
+| S12-09 | **PWA Quick Bill shortcut** | 2h | ✅ | manifest.json shortcut; auto-focus product search on ClassicBilling load. |
+| S12-10 | **WhatsApp delivery → email fallback** | 2h | ✅ | If WhatsApp undelivered, fallback to email. |
 | S12-11 | **Referral program** | 2d | P1 | "Invite 3 friends → 3 months free" tracking. |
 
 ---
@@ -200,9 +200,9 @@
 | GSTIN checksum validation | ✅ | S11 |
 | React ErrorBoundary | ✅ | S11 |
 | Mobile layout polish | ⚠️ | S11 |
-| Offline mode (PWA) | 🔴 | S11 |
-| Batch/expiry frontend | ⚠️ | S12 |
-| Customer portal | 🔴 | S12 |
+| Offline mode (PWA) | ✅ | S11 |
+| Batch/expiry frontend | ✅ | S12 |
+| Customer portal | ✅ | S12 |
 | E-invoicing | 🔴 | S13 |
 | E-Way Bill | 🔴 | S13 |
 | Credit/Debit note | 🔴 | S14 |

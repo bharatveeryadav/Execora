@@ -86,6 +86,9 @@ const DEFAULT_HINT = (
 
 const VoiceBar = ({ idleHint = DEFAULT_HINT }: VoiceBarProps) => {
 	const { isConnected } = useWS();
+	const [isOnline, setIsOnline] = useState(
+		typeof navigator !== 'undefined' ? navigator.onLine : true,
+	);
 
 	const [voiceState, setVoiceState] = useState<VoiceState>('idle');
 	const [liveText, setLiveText] = useState<ReactNode>(null);
@@ -399,8 +402,21 @@ const VoiceBar = ({ idleHint = DEFAULT_HINT }: VoiceBarProps) => {
 
 	useEffect(() => () => stopAll(), [stopAll]);
 
+	// S11-06: disable voice when offline (STT requires network)
+	useEffect(() => {
+		const onOnline = () => setIsOnline(true);
+		const onOffline = () => setIsOnline(false);
+		window.addEventListener('online', onOnline);
+		window.addEventListener('offline', onOffline);
+		return () => {
+			window.removeEventListener('online', onOnline);
+			window.removeEventListener('offline', onOffline);
+		};
+	}, []);
+
 	// ── Start voice session ───────────────────────────────────────────────────
 	const startVoice = useCallback(async () => {
+		if (!navigator.onLine) return;
 		// Ensure WS connected
 		if (!wsClient.isConnected) {
 			wsClient.connect();
@@ -651,6 +667,7 @@ const VoiceBar = ({ idleHint = DEFAULT_HINT }: VoiceBarProps) => {
 
 	// ── Dot / mic click ───────────────────────────────────────────────────────
 	const handleClick = () => {
+		if (!isOnline) return;
 		if (voiceState === 'listening') {
 			stopAll();
 		} else if (voiceState === 'processing') {
@@ -704,9 +721,15 @@ const VoiceBar = ({ idleHint = DEFAULT_HINT }: VoiceBarProps) => {
 			<button
 				type="button"
 				onClick={handleClick}
-				disabled={isProcessing}
-				className="flex shrink-0 cursor-pointer items-center gap-2 disabled:cursor-wait"
-				title={isListening ? 'Tap to stop' : 'Tap to talk to AI agent'}
+				disabled={isProcessing || !isOnline}
+				className="flex shrink-0 cursor-pointer items-center gap-2 disabled:cursor-wait disabled:opacity-60"
+				title={
+					!isOnline
+						? 'Offline — voice unavailable'
+						: isListening
+							? 'Tap to stop'
+							: 'Tap to talk to AI agent'
+				}
 			>
 				{isListening ? (
 					/* Animated waveform bars */

@@ -1,6 +1,12 @@
 // ── Execora API client ────────────────────────────────────────────────────────
 // Fetch-based client that reads JWT from localStorage automatically.
 
+import {
+  addToOutbox,
+  isMutation,
+  isNetworkError,
+} from "./offline-outbox";
+
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 const TOKEN_KEY = "execora_token";
 const REFRESH_KEY = "execora_refresh";
@@ -81,6 +87,7 @@ async function request<T>(
   retried = false,
 ): Promise<T> {
   const token = getToken();
+  const method = (options.method ?? "GET").toUpperCase();
   const headers: Record<string, string> = {
     // Only set Content-Type when there's a body — Fastify 400s on DELETE/GET with Content-Type but no body
     ...(options.body != null ? { "Content-Type": "application/json" } : {}),
@@ -88,7 +95,23 @@ async function request<T>(
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  } catch (err) {
+    // S11-06: queue mutations when offline for later replay
+    if (isNetworkError(err) && isMutation(method)) {
+      try {
+        await addToOutbox(method, path, options.body as string | null, headers);
+      } catch {
+        /* outbox write failed */
+      }
+      throw new Error(
+        "You're offline. This action has been queued and will sync when you're back online.",
+      );
+    }
+    throw err;
+  }
 
   if (res.status === 401 && !retried) {
     const newAccessToken = await refreshAccessToken();
@@ -895,6 +918,8 @@ export interface Expense {
   quantity?: number;
   unit?: string;
   ratePerUnit?: number;
+  batchNo?: string;
+  expiryDate?: string;
   date: string;
   createdAt: string;
 }
@@ -969,6 +994,8 @@ export const purchaseApi = {
     unit?: string;
     ratePerUnit?: number;
     note?: string;
+    batchNo?: string;
+    expiryDate?: string;
     date?: string;
   }) =>
     request<{ purchase: Expense }>("/api/v1/purchases", {

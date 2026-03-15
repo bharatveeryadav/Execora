@@ -1459,6 +1459,8 @@ model Expense {
   quantity     Decimal?
   unit         String?
   ratePerUnit  Decimal?  @map("rate_per_unit")
+  batchNo      String?   @map("batch_no")   // S12-01: batch/lot for purchase entries
+  expiryDate   DateTime? @map("expiry_date") // S12-01: expiry for purchase entries
   date         DateTime  @default(now())
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt      @map("updated_at")

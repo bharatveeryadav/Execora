@@ -126,6 +126,27 @@ function PurchaseFields({
           onChange={(e) => set("date", e.target.value)}
         />
       </div>
+      <div>
+        <Label>Batch No.</Label>
+        <Input
+          value={String(data.batchNo ?? "")}
+          onChange={(e) => set("batchNo", e.target.value)}
+          placeholder="e.g. B2024-01"
+        />
+      </div>
+      <div>
+        <Label>Expiry Date</Label>
+        <Input
+          type="date"
+          value={String(
+            data.expiryDate
+              ? new Date(data.expiryDate as string).toISOString().split("T")[0]
+              : "",
+          )}
+          onChange={(e) => set("expiryDate", e.target.value || undefined)}
+          placeholder="Optional"
+        />
+      </div>
     </div>
   );
 }

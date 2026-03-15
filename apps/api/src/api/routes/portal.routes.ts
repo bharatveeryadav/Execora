@@ -5,9 +5,8 @@
  * GET /pub/invoice/:id/:token          — invoice data (JSON)
  * GET /pub/invoice/:id/:token/pdf      — redirect to fresh MinIO presigned URL
  */
-import { FastifyInstance, FastifyRequest } from 'fastify';
-import { invoiceService } from '@execora/modules';
-import { verifyPortalToken, minioClient } from '@execora/infrastructure';
+import { FastifyInstance } from 'fastify';
+import { verifyPortalToken, minioClient, prisma } from '@execora/infrastructure';
 
 type PortalParams = { id: string; token: string };
 
@@ -22,39 +21,52 @@ export async function portalRoutes(fastify: FastifyInstance) {
         return reply.code(403).send({ error: 'Invalid or expired link' });
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const invoice = await invoiceService.getInvoiceById(id) as any;
+      // Portal: fetch by id only (token is auth). invoiceService.getInvoiceById uses tenantContext.
+      const invoice = await prisma.invoice.findFirst({
+        where: { id },
+        include: { customer: true, items: true },
+      });
       if (!invoice) return reply.code(404).send({ error: 'Invoice not found' });
 
-      // Return a sanitised subset — no internal tenant IDs
+      // S12-04: Fetch tenant settings for UPI Pay Now link
+      const tenant = await prisma.tenant.findFirst({
+        where: { id: invoice.tenantId },
+        select: { name: true, legalName: true, settings: true },
+      });
+      const settings = (tenant?.settings as Record<string, string> | null) ?? {};
+      const upiVpa = settings.upiVpa || undefined;
+      const shopName =
+        settings.shopName ||
+        tenant?.legalName ||
+        tenant?.name ||
+        'Execora Shop';
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const inv = invoice as any;
       return {
         invoice: {
-          id: invoice.id,
-          invoiceNo: invoice.invoiceNo,
-          status: invoice.status,
-          isProforma: invoice.isProforma,
-          createdAt: invoice.createdAt,
-          dueDate: invoice.dueDate,
-          notes: invoice.notes,
-          // Totals
-          subtotal: invoice.subtotal,
-          discountAmount: invoice.discountAmount,
-          taxAmount: invoice.taxAmount,
-          totalAmount: invoice.totalAmount,
-          paidAmount: invoice.paidAmount,
-          // Customer
-          customer: invoice.customer
+          id: inv.id,
+          invoiceNo: inv.invoiceNo,
+          status: inv.status,
+          isProforma: inv.isProforma,
+          createdAt: inv.createdAt,
+          dueDate: inv.dueDate,
+          notes: inv.notes,
+          subtotal: inv.subtotal,
+          discountAmount: inv.discountAmount,
+          taxAmount: inv.taxAmount,
+          totalAmount: inv.totalAmount,
+          paidAmount: inv.paidAmount,
+          customer: inv.customer
             ? {
-                name: invoice.customer.name,
-                phone: invoice.customer.phone,
-                email: invoice.customer.email,
-                address: invoice.customer.address,
-                gstin: invoice.customer.gstin,
+                name: inv.customer.name,
+                phone: inv.customer.phone,
+                email: inv.customer.email,
+                address: inv.customer.address,
+                gstin: inv.customer.gstin,
               }
             : null,
-          // Line items
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          items: invoice.items.map((item: any) => ({
+          items: inv.items.map((item: any) => ({
             productName: item.productName,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
@@ -64,8 +76,9 @@ export async function portalRoutes(fastify: FastifyInstance) {
             sgst: item.sgst,
             igst: item.igst,
           })),
-          // PDF availability flag
-          hasPdf: !!invoice.pdfObjectKey,
+          hasPdf: !!inv.pdfObjectKey,
+          upiVpa,
+          shopName,
         },
       };
     }
@@ -81,7 +94,7 @@ export async function portalRoutes(fastify: FastifyInstance) {
         return reply.code(403).send({ error: 'Invalid or expired link' });
       }
 
-      const invoice = await invoiceService.getInvoiceById(id);
+      const invoice = await prisma.invoice.findFirst({ where: { id } });
       if (!invoice) return reply.code(404).send({ error: 'Invoice not found' });
 
       if (!invoice.pdfObjectKey) {
@@ -89,7 +102,7 @@ export async function portalRoutes(fastify: FastifyInstance) {
       }
 
       // Fresh 1-hour presigned URL — avoids serving a stored (possibly expired) URL
-      const url = await minioClient.getPresignedUrl(invoice.pdfObjectKey, 3600);
+      const url = await minioClient.getPresignedUrl(invoice.pdfObjectKey!, 3600);
       return reply.redirect(url);
     }
   );

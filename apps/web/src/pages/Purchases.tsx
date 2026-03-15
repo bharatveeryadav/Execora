@@ -451,6 +451,16 @@ export default function Purchases() {
                               <span className="text-xs text-muted-foreground">
                                 {p.date?.slice(0, 10)}
                               </span>
+                              {p.batchNo && (
+                                <span className="inline-flex items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-400">
+                                  Batch {p.batchNo}
+                                </span>
+                              )}
+                              {p.expiryDate && (
+                                <span className="inline-flex items-center rounded-full bg-red-500/15 px-2 py-0.5 text-xs text-red-700 dark:text-red-400">
+                                  Exp: {p.expiryDate.slice(0, 10)}
+                                </span>
+                              )}
                             </div>
                             {p.note && (
                               <p className="mt-1 text-xs text-muted-foreground italic">

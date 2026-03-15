@@ -5,7 +5,7 @@
  */
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Clock, XCircle, Download, AlertCircle } from "lucide-react";
+import { CheckCircle2, Clock, XCircle, Download, AlertCircle, Smartphone } from "lucide-react";
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 
@@ -24,6 +24,8 @@ interface PortalInvoice {
   taxAmount: number;
   totalAmount: number;
   paidAmount: number;
+  upiVpa?: string;
+  shopName?: string;
   customer: {
     name: string;
     phone?: string;
@@ -212,11 +214,22 @@ export default function InvoicePortal() {
             )}
           </div>
 
-          {/* Amount due banner */}
+          {/* Amount due banner + Pay Now UPI (S12-04) */}
           {pending > 0 && invoice.status !== "cancelled" && (
-            <div className="mt-4 rounded-xl bg-amber-50 border border-amber-200 p-3 flex justify-between items-center">
-              <span className="text-sm font-semibold text-amber-700">Amount Due</span>
-              <span className="text-lg font-black text-amber-700">₹{inr(pending)}</span>
+            <div className="mt-4 space-y-2">
+              <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 flex justify-between items-center">
+                <span className="text-sm font-semibold text-amber-700">Amount Due</span>
+                <span className="text-lg font-black text-amber-700">₹{inr(pending)}</span>
+              </div>
+              {invoice.upiVpa && (
+                <a
+                  href={`upi://pay?pa=${encodeURIComponent(invoice.upiVpa)}&pn=${encodeURIComponent(invoice.shopName ?? "Execora")}&am=${pending.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Invoice ${invoice.invoiceNo}`)}`}
+                  className="flex items-center justify-center gap-2 w-full rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 transition-colors"
+                >
+                  <Smartphone className="h-5 w-5" />
+                  Pay Now (UPI)
+                </a>
+              )}
             </div>
           )}
           {pending === 0 && invoice.status === "paid" && (
