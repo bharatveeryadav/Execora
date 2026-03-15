@@ -33,6 +33,7 @@ export enum IntentType {
   EXPORT_GSTR1 = "EXPORT_GSTR1", // "GSTR-1 nikalo", "GST report bhejo"
   EXPORT_PNL = "EXPORT_PNL", // "P&L report bhejo", "is mahine ka P&L"
   UPDATE_STOCK = "UPDATE_STOCK", // "50 kg aata aaya" — inbound stock receipt
+  SET_PRICE_TIER = "SET_PRICE_TIER", // S12-06: "wholesale price do", "dealer price do"
 }
 
 // Intent extraction response

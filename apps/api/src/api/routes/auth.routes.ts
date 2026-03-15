@@ -175,7 +175,20 @@ export async function authRoutes(fastify: FastifyInstance) {
 					preferences: true,
 					lastLogin: true,
 					createdAt: true,
-					tenant: { select: { id: true, name: true, plan: true, features: true, status: true } },
+					tenant: {
+						select: {
+							id: true,
+							name: true,
+							plan: true,
+							features: true,
+							status: true,
+							gstin: true,
+							legalName: true,
+							tradeName: true,
+							settings: true,
+							logoUrl: true,
+						},
+					},
 				},
 			});
 
@@ -211,6 +224,7 @@ export async function authRoutes(fastify: FastifyInstance) {
 								language: { type: 'string', maxLength: 16 },
 								dateFormat: { type: 'string', maxLength: 32 },
 								settings: { type: 'object', additionalProperties: true },
+								logoUrl: { type: 'string', maxLength: 2048 },
 							},
 							additionalProperties: false,
 						},
@@ -235,6 +249,7 @@ export async function authRoutes(fastify: FastifyInstance) {
 						language?: string;
 						dateFormat?: string;
 						settings?: Record<string, unknown>;
+						logoUrl?: string;
 					};
 				};
 			}>,
@@ -265,6 +280,7 @@ export async function authRoutes(fastify: FastifyInstance) {
 				if (tenantBody.timezone !== undefined) tenantData.timezone = tenantBody.timezone;
 				if (tenantBody.language !== undefined) tenantData.language = tenantBody.language;
 				if (tenantBody.dateFormat !== undefined) tenantData.dateFormat = tenantBody.dateFormat;
+				if (tenantBody.logoUrl !== undefined) tenantData.logoUrl = tenantBody.logoUrl || null;
 
 				if (tenantBody.settings !== undefined) {
 					const existing = await prisma.tenant.findUnique({
@@ -286,6 +302,7 @@ export async function authRoutes(fastify: FastifyInstance) {
 						id: true, name: true, plan: true, features: true, status: true,
 						gstin: true, legalName: true, tradeName: true, currency: true,
 						timezone: true, language: true, dateFormat: true, settings: true,
+						logoUrl: true,
 					},
 				},
 			} as const;

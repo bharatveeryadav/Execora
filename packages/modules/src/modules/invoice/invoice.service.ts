@@ -1273,10 +1273,10 @@ class InvoiceService {
         return;
       }
 
-      // ── 2. Resolve tenant settings (shopName + upiVpa + bank + T&C) ──────
+      // ── 2. Resolve tenant settings (shopName + upiVpa + bank + T&C + S12-05 template/logo) ─
       const tenant = await prisma.tenant.findFirst({
         where: { id: invoice.tenantId },
-        select: { name: true, legalName: true, settings: true, gstin: true },
+        select: { name: true, legalName: true, settings: true, gstin: true, logoUrl: true },
       });
       const settings =
         (tenant?.settings as Record<string, string> | null) ?? {};
@@ -1298,6 +1298,26 @@ class InvoiceService {
       const termsAndConditions = settings.termsAndConditions || undefined;
       const roundOff = settings.roundOff === 'true';
       const compositionScheme = settings.compositionScheme === 'true';
+      const invoiceTemplate = (settings.invoiceTemplate as string) || 'classic';
+
+      // S12-05: Template accent colours (match pdf.ts TEMPLATE_COLORS)
+      const TEMPLATE_COLORS: Record<string, string> = {
+        classic: '#374151', modern: '#1e40af', vyapari: '#c2410c', thermal: '#111827',
+        ecom: '#ff9900', flipkart: '#2874f0', minimal: '#6d28d9',
+      };
+      const accentColor = TEMPLATE_COLORS[invoiceTemplate] ?? '#374151';
+
+      // S12-05: Fetch logo for PDF when tenant has logoUrl
+      let logoBuffer: Buffer | undefined;
+      const logoUrl = tenant?.logoUrl;
+      if (logoUrl) {
+        try {
+          const res = await fetch(logoUrl);
+          if (res.ok) logoBuffer = Buffer.from(await res.arrayBuffer());
+        } catch {
+          /* non-fatal: PDF will render without logo */
+        }
+      }
 
       // ── Recipient address (invoice override or from customer) ─────────────
       const invRecipient = (invoice as any).recipientAddress;
@@ -1358,6 +1378,9 @@ class InvoiceService {
           placeOfSupply: (invoice as any).placeOfSupply || undefined,
           reverseCharge: (invoice as any).reverseCharge || false,
           compositionScheme,
+          template: invoiceTemplate,
+          accentColor,
+          logoBuffer,
           items: pdfItems,
           subtotal,
           discountAmount,
@@ -1455,32 +1478,34 @@ class InvoiceService {
         autoSendWhatsApp &&
         whatsappService.isConfigured();
 
-      if (tryWhatsApp) {
+      if (tryWhatsApp && customerPhone && pdfUrl) {
+        const phone = customerPhone;
+        const url = pdfUrl;
         const invoiceCaption = `${shopName} — Invoice ${invoiceRef}\n₹${grandTotal.toFixed(2)} | Please find your invoice attached.`;
         let waDelivered = false;
         try {
           const waResult = await whatsappService.sendDocumentMessage(
-            customerPhone,
-            pdfUrl,
+            phone,
+            url,
             invoiceCaption,
             `invoice-${invoiceRef}.pdf`,
           );
           waDelivered = waResult.success;
           log.info(
             {
-              customerPhone,
+              customerPhone: phone,
               success: waResult.success,
               durationMs: Date.now() - start,
             },
             "invoice.pdf.whatsapp.sent",
           );
         } catch (err) {
-          log.error({ err, customerPhone }, "invoice.pdf.whatsapp.failed");
+          log.error({ err, customerPhone: phone }, "invoice.pdf.whatsapp.failed");
         }
         // Fallback to email when WhatsApp undelivered and customer has email
         if (!waDelivered && customerEmail && autoSendEmail) {
           log.info(
-            { customerPhone, customerEmail },
+            { customerPhone: phone, customerEmail },
             "invoice.pdf.whatsapp.fallback — sending via email",
           );
           await sendEmailIfEnabled();

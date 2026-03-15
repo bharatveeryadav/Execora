@@ -133,7 +133,24 @@ export interface InvoicePdfData {
 	placeOfSupply?: string;
 	/** Reverse charge — show declaration when true */
 	reverseCharge?: boolean;
+	/** S12-05: Template ID for layout/theme (classic, thermal, minimal, etc.) */
+	template?: string;
+	/** S12-05: Accent colour for header (hex e.g. #1e40af) */
+	accentColor?: string;
+	/** S12-05: Logo image buffer — when set, shown in header */
+	logoBuffer?: Buffer;
 }
+
+// ── S12-05: Template accent colours (match InvoiceTemplatePreview.tsx) ────────
+const TEMPLATE_COLORS: Record<string, string> = {
+	classic: '#374151',
+	modern: '#1e40af',
+	vyapari: '#c2410c',
+	thermal: '#111827',
+	ecom: '#ff9900',
+	flipkart: '#2874f0',
+	minimal: '#6d28d9',
+};
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 const INR = (n: number) => `INR ${n.toFixed(2)}`;
@@ -241,11 +258,24 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
 			const pageWidth = 495;
 			const pageRight = pageLeft + pageWidth;
 
+			// S12-05: Accent colour from template or default
+			const headerColor = data.accentColor ?? TEMPLATE_COLORS[data.template ?? 'classic'] ?? '#0f172a';
+
 			// ── Header ─────────────────────────────────────────────────────────────
 			const headerH = (data.shopAddress || data.shopGstin || data.shopPhone) ? 98 : 78;
-			doc.fillColor('#0f172a').rect(pageLeft, 48, pageWidth, headerH).fill();
+			doc.fillColor(headerColor).rect(pageLeft, 48, pageWidth, headerH).fill();
 
-			doc.fillColor('#f8fafc').fontSize(20).font('Helvetica-Bold').text(data.shopName, 65, 64, { width: 280 });
+			let shopNameX = 65;
+			const shopNameW = 280;
+			if (data.logoBuffer) {
+				try {
+					doc.image(data.logoBuffer, pageLeft + 8, 52, { width: 40, height: 40 });
+					shopNameX = 58;
+				} catch {
+					/* logo embed failed */
+				}
+			}
+			doc.fillColor('#f8fafc').fontSize(20).font('Helvetica-Bold').text(data.shopName, shopNameX, 64, { width: shopNameW });
 			let headerY = 88;
 			if (data.shopAddress) {
 				doc.fontSize(8).font('Helvetica').fillColor('#cbd5e1').text(data.shopAddress, 65, headerY, { width: 280 });

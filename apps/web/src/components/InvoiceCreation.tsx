@@ -92,6 +92,7 @@ const DEFAULT_PRICE_TIERS = [
   { name: "Retail", disc: 0 },
   { name: "Wholesale", disc: 15 },
   { name: "Dealer", disc: 25 },
+  { name: "Tier 3", disc: 30 },
 ];
 
 function loadPriceTiers(): typeof DEFAULT_PRICE_TIERS {
@@ -217,6 +218,16 @@ const InvoiceCreation = ({
   const lookupByBarcode = useProductByBarcode();
   const [invoiceScannerOpen, setInvoiceScannerOpen] = useState(false);
 
+  /** S12-06: Effective price from product based on selected price tier */
+  const getProductPrice = (p: { price?: string | number; wholesalePrice?: string | number | null; priceTier2?: string | number | null; priceTier3?: string | number | null }) => {
+    const base = parseFloat(String(p.price ?? 0));
+    const tier = priceTiers[priceTierIdx ?? 0];
+    if (priceTierIdx === 1 && p.wholesalePrice != null) return parseFloat(String(p.wholesalePrice));
+    if (priceTierIdx === 2 && p.priceTier2 != null) return parseFloat(String(p.priceTier2));
+    if (priceTierIdx === 3 && p.priceTier3 != null) return parseFloat(String(p.priceTier3));
+    return tier?.disc ? base * (1 - tier.disc / 100) : base;
+  };
+
   /** Scan barcode → look up product → add row to invoice items */
   const handleInvoiceBarcodeScan = async (code: string) => {
     setInvoiceScannerOpen(false);
@@ -224,7 +235,7 @@ const InvoiceCreation = ({
       const res = await lookupByBarcode.mutateAsync(code);
       if (res?.product) {
         const p = res.product;
-        const price = parseFloat(String(p.price));
+        const price = getProductPrice(p);
         setItems((prev) => {
           // If item already in list, increment qty
           const existingIdx = prev.findIndex((it) => it.name === p.name);
@@ -347,6 +358,7 @@ const InvoiceCreation = ({
                 discountPercent?: number;
                 withGst?: boolean;
                 supplyType?: string;
+                priceTier?: number;
                 invoiceNo?: string;
                 invoiceId?: string;
               };
@@ -378,6 +390,12 @@ const InvoiceCreation = ({
         if (intent === "SET_SUPPLY_TYPE") {
           if (execData.supplyType)
             setSupplyType(execData.supplyType as SupplyType);
+          return;
+        }
+        if (intent === "SET_PRICE_TIER") {
+          const tier = execData.priceTier;
+          if (typeof tier === "number" && tier >= 0 && tier <= 3)
+            setPriceTierIdx(tier);
           return;
         }
         // Belt-and-suspenders: advance to final if invoice:confirmed was missed

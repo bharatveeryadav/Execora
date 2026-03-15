@@ -90,6 +90,7 @@ Available intents:
 - EXPORT_GSTR1: User wants GSTR-1 report / GST filing report — entities.fy (optional, e.g. "2025-26"), entities.from/to (optional dates), entities.email (optional)
 - EXPORT_PNL: User wants P&L / Profit & Loss report — entities.month (optional, e.g. "march"), entities.from/to (optional dates), entities.email (optional)
 - ADD_DISCOUNT: Apply a discount to the pending invoice. For the whole bill: entities.discountPercent or entities.discountAmount. For a specific item: also set entities.product (the item name in Roman/English)
+- SET_PRICE_TIER: Switch billing price tier. "wholesale price do", "dealer price do", "retail price do" → entities.tier: 1=wholesale, 2=dealer, 0=retail, 3=tier3
 - UPDATE_STOCK: Record inbound stock arrival — "X kg/pcs PRODUCT aaya/mili/add karo". entities: product (name), quantity (number), unit (optional: kg/pcs/litre), operation always 'add'
 - UNKNOWN: Cannot determine intent
 
@@ -273,6 +274,15 @@ Critical extraction rules for Indian voice patterns:
    - "5 dozen anda aaya" → UPDATE_STOCK, product=anda, quantity=5, unit=dozen
    - Example: "50 kilo aata aaya" → {"intent":"UPDATE_STOCK","entities":{"product":"aata","quantity":50,"unit":"kg"},"confidence":0.95}
    - Example: "100 Maggi ka stock add karo" → {"intent":"UPDATE_STOCK","entities":{"product":"Maggi","quantity":100},"confidence":0.94}
+
+26) Recognize SET_PRICE_TIER — user wants to switch billing price tier (wholesale/dealer/retail):
+   - "wholesale price do", "wholesale rate lagao", "wholesale pe banao" → SET_PRICE_TIER, entities.tier=1
+   - "dealer price do", "dealer rate lagao", "dealer pe banao" → SET_PRICE_TIER, entities.tier=2
+   - "retail price do", "retail rate", "normal price" → SET_PRICE_TIER, entities.tier=0
+   - "tier 3 price", "tier 3 rate" → SET_PRICE_TIER, entities.tier=3
+   - Example: "wholesale price do" → {"intent":"SET_PRICE_TIER","entities":{"tier":1},"confidence":0.95}
+   - Example: "dealer price lagao" → {"intent":"SET_PRICE_TIER","entities":{"tier":2},"confidence":0.94}
+   - Example: "retail price do" → {"intent":"SET_PRICE_TIER","entities":{"tier":0},"confidence":0.93}
 
 Also include a "normalized" field: a cleaned version of the input transcript — remove filler words (um, uh, acha suno, haan ji), fix obvious ASR errors, convert spoken numbers to digits. Keep meaning identical.
 

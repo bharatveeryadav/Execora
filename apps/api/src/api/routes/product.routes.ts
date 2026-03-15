@@ -169,6 +169,9 @@ export async function productRoutes(fastify: FastifyInstance) {
             category: { type: "string", maxLength: 100 },
             barcode: { type: "string", maxLength: 100 },
             sku: { type: "string", maxLength: 100 },
+            wholesalePrice: { type: "number", minimum: 0 },
+            priceTier2: { type: "number", minimum: 0 },
+            priceTier3: { type: "number", minimum: 0 },
           },
           additionalProperties: false,
         },
@@ -185,6 +188,9 @@ export async function productRoutes(fastify: FastifyInstance) {
           category?: string;
           barcode?: string;
           sku?: string;
+          wholesalePrice?: number;
+          priceTier2?: number;
+          priceTier3?: number;
         };
       }>,
       reply,
@@ -207,6 +213,9 @@ export async function productRoutes(fastify: FastifyInstance) {
       barcode?: string;
       sku?: string;
       minStock?: number;
+      wholesalePrice?: number;
+      priceTier2?: number;
+      priceTier3?: number;
     };
   }>(
     "/api/v1/products/:id",
@@ -224,6 +233,9 @@ export async function productRoutes(fastify: FastifyInstance) {
             barcode: { type: "string", maxLength: 100 },
             sku: { type: "string", maxLength: 100 },
             minStock: { type: "integer", minimum: 0 },
+            wholesalePrice: { type: "number", minimum: 0 },
+            priceTier2: { type: "number", minimum: 0 },
+            priceTier3: { type: "number", minimum: 0 },
           },
           additionalProperties: false,
         },

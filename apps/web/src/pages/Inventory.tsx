@@ -140,6 +140,9 @@ const Inventory = () => {
   const [editPrice, setEditPrice] = useState("");
   const [editCategory, setEditCategory] = useState("");
   const [editMinStock, setEditMinStock] = useState("");
+  const [editWholesalePrice, setEditWholesalePrice] = useState("");
+  const [editPriceTier2, setEditPriceTier2] = useState("");
+  const [editPriceTier3, setEditPriceTier3] = useState("");
 
   // ── Stock adjust state ─────────────────────────────────────────────────────
   const [adjustingProduct, setAdjustingProduct] = useState<Product | null>(
@@ -175,6 +178,9 @@ const Inventory = () => {
   const [addGstRate, setAddGstRate] = useState("0");
   const [addMrp, setAddMrp] = useState("");
   const [addCostPrice, setAddCostPrice] = useState("");
+  const [addWholesalePrice, setAddWholesalePrice] = useState("");
+  const [addPriceTier2, setAddPriceTier2] = useState("");
+  const [addPriceTier3, setAddPriceTier3] = useState("");
 
   // Draft review state for the confirm dialog
   const [pendingDraft, setPendingDraft] = useState<Draft | null>(null);
@@ -263,6 +269,9 @@ const Inventory = () => {
     setAddGstRate("0");
     setAddMrp("");
     setAddCostPrice("");
+    setAddWholesalePrice("");
+    setAddPriceTier2("");
+    setAddPriceTier3("");
   };
 
   // ── Inline stock quick-edit ─────────────────────────────────────────────────
@@ -313,6 +322,9 @@ const Inventory = () => {
     setEditPrice(String(parseFloat(String(p.price))));
     setEditCategory(p.category ?? "");
     setEditMinStock(p.minStock != null ? String(p.minStock) : "");
+    setEditWholesalePrice(p.wholesalePrice != null ? String(p.wholesalePrice) : "");
+    setEditPriceTier2(p.priceTier2 != null ? String(p.priceTier2) : "");
+    setEditPriceTier3(p.priceTier3 != null ? String(p.priceTier3) : "");
   };
 
   const handleSaveEdit = async () => {
@@ -323,6 +335,9 @@ const Inventory = () => {
       price: editPrice ? parseFloat(editPrice) : undefined,
       category: editCategory || undefined,
       minStock: editMinStock !== "" ? parseInt(editMinStock, 10) : undefined,
+      wholesalePrice: editWholesalePrice ? parseFloat(editWholesalePrice) : undefined,
+      priceTier2: editPriceTier2 ? parseFloat(editPriceTier2) : undefined,
+      priceTier3: editPriceTier3 ? parseFloat(editPriceTier3) : undefined,
     });
     toast({ title: "✅ Product updated" });
     setEditingProduct(null);
@@ -535,6 +550,9 @@ const Inventory = () => {
           gstRate: parseFloat(addGstRate) || 0,
           mrp: addMrp ? parseFloat(addMrp) : undefined,
           cost: addCostPrice ? parseFloat(addCostPrice) : undefined,
+          wholesalePrice: addWholesalePrice ? parseFloat(addWholesalePrice) : undefined,
+          priceTier2: addPriceTier2 ? parseFloat(addPriceTier2) : undefined,
+          priceTier3: addPriceTier3 ? parseFloat(addPriceTier3) : undefined,
         },
         `New product: ${addName.trim()}`,
       );
@@ -1685,6 +1703,50 @@ const Inventory = () => {
                   Alert when stock falls below this level
                 </p>
               </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">
+                    Wholesale (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    placeholder="—"
+                    value={editWholesalePrice}
+                    onChange={(e) => setEditWholesalePrice(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">
+                    Tier 2 (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    placeholder="—"
+                    value={editPriceTier2}
+                    onChange={(e) => setEditPriceTier2(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">
+                    Tier 3 (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    placeholder="—"
+                    value={editPriceTier3}
+                    onChange={(e) => setEditPriceTier3(e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
             <div className="mt-4 flex gap-2">
               <Button
@@ -1986,6 +2048,50 @@ const Inventory = () => {
                     placeholder="0.00"
                     value={addCostPrice}
                     onChange={(e) => setAddCostPrice(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">
+                    Wholesale (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    placeholder="—"
+                    value={addWholesalePrice}
+                    onChange={(e) => setAddWholesalePrice(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">
+                    Tier 2 (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    placeholder="—"
+                    value={addPriceTier2}
+                    onChange={(e) => setAddPriceTier2(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">
+                    Tier 3 (₹)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    placeholder="—"
+                    value={addPriceTier3}
+                    onChange={(e) => setAddPriceTier3(e.target.value)}
                   />
                 </div>
               </div>

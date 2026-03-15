@@ -249,6 +249,9 @@ export interface Product {
   minStock?: number;
   barcode?: string | null;
   sku?: string | null;
+  wholesalePrice?: string | number | null;
+  priceTier2?: string | number | null;
+  priceTier3?: string | number | null;
   isActive: boolean;
   createdAt: string;
 }
@@ -569,6 +572,9 @@ export const productApi = {
     description?: string;
     barcode?: string;
     sku?: string;
+    wholesalePrice?: number;
+    priceTier2?: number;
+    priceTier3?: number;
   }) =>
     request<{ product: Product }>("/api/v1/products", {
       method: "POST",
@@ -586,6 +592,9 @@ export const productApi = {
       barcode?: string;
       sku?: string;
       minStock?: number;
+      wholesalePrice?: number;
+      priceTier2?: number;
+      priceTier3?: number;
     },
   ) =>
     request<{ product: Product }>(`/api/v1/products/${id}`, {
@@ -680,6 +689,7 @@ export const authApi = {
       language?: string;
       dateFormat?: string;
       settings?: Record<string, unknown>;
+      logoUrl?: string;
     };
   }) =>
     request<{ user: AppUser }>("/api/v1/auth/me/profile", {

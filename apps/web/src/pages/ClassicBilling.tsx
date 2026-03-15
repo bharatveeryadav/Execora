@@ -303,8 +303,32 @@ export default function ClassicBilling() {
     );
   }, []);
 
+  // S12-06: Price tier — Retail, Wholesale, Dealer use product tier prices when set
+  const [priceTierIdx, setPriceTierIdx] = useState<number | null>(() => {
+    try {
+      const v = parseInt(localStorage.getItem("execora:priceTierIdx") ?? "-1", 10);
+      return v >= 0 ? v : null;
+    } catch { return null; }
+  });
+  const PRICE_TIERS = [
+    { name: "Retail", key: 0 },
+    { name: "Wholesale", key: 1 },
+    { name: "Dealer", key: 2 },
+    { name: "Tier 3", key: 3 },
+  ];
+  const getEffectivePrice = (p: Product): number => {
+    const base = parseFloat(String(p.price ?? 0));
+    if (priceTierIdx === 1 && p.wholesalePrice != null)
+      return parseFloat(String(p.wholesalePrice));
+    if (priceTierIdx === 2 && p.priceTier2 != null)
+      return parseFloat(String(p.priceTier2));
+    if (priceTierIdx === 3 && p.priceTier3 != null)
+      return parseFloat(String(p.priceTier3));
+    return base;
+  };
+
   const applyProduct = (id: number, product: Product) => {
-    const rate = String(parseFloat(product.price?.toString() ?? "0"));
+    const rate = String(getEffectivePrice(product));
     updateItem(id, {
       name: product.name,
       rate,
@@ -1071,6 +1095,31 @@ export default function ClassicBilling() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* ── Price Tier (S12-06) ──────────────────────────────────────── */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-muted-foreground shrink-0">Price list</span>
+          <div className="flex gap-1 flex-wrap">
+            {PRICE_TIERS.map((tier, idx) => (
+              <button
+                key={tier.key}
+                type="button"
+                onClick={() => {
+                  const next = priceTierIdx === idx ? null : idx;
+                  setPriceTierIdx(next);
+                  localStorage.setItem("execora:priceTierIdx", String(next ?? -1));
+                }}
+                className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                  priceTierIdx === idx
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border text-muted-foreground hover:border-primary/50"
+                }`}
+              >
+                {tier.name}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* ── Customer Search ──────────────────────────────────────── */}

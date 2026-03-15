@@ -168,6 +168,14 @@ const BillingSettings = () => {
     }
   });
 
+  const [logoUrl, setLogoUrl] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(BIZ_STORAGE_KEY) ?? "{}").logoUrl ?? "";
+    } catch {
+      return "";
+    }
+  });
+
   const [templateGalleryOpen, setTemplateGalleryOpen] = useState(false);
   const [invoiceTemplate, setInvoiceTemplate] = useState<TemplateId>(() => {
     const stored = (() => {
@@ -211,6 +219,8 @@ const BillingSettings = () => {
       setAutoSendEmail(s.autoSendEmail !== "false");
     if (stored.autoSendWhatsApp === undefined && s.autoSendWhatsApp !== undefined)
       setAutoSendWhatsApp(s.autoSendWhatsApp !== "false");
+    if (stored.logoUrl === undefined && (me.tenant as { logoUrl?: string }).logoUrl)
+      setLogoUrl((me.tenant as { logoUrl?: string }).logoUrl ?? "");
     if (s.invoiceTemplate) setInvoiceTemplate(s.invoiceTemplate as TemplateId);
   }, [me]);
 
@@ -226,6 +236,7 @@ const BillingSettings = () => {
       state: bizState,
       pincode: bizPincode,
       upiVpa: bizUpiVpa,
+      logoUrl,
       bankName,
       bankAccountNo,
       bankIfsc,
@@ -267,6 +278,7 @@ const BillingSettings = () => {
         tenant: {
           legalName: bizLegalName || undefined,
           gstin: bizGstin || undefined,
+          logoUrl: logoUrl.trim() || undefined,
           settings,
         },
       });
@@ -463,6 +475,19 @@ const BillingSettings = () => {
                 />
                 <p className="text-[11px] text-muted-foreground">
                   Customers can scan this QR to pay directly on the invoice.
+                </p>
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
+                <Label className="text-xs">Logo URL (for invoice header)</Label>
+                <Input
+                  value={logoUrl}
+                  onChange={(e) => setLogoUrl(e.target.value.trim())}
+                  placeholder="https://… (image URL for invoice PDF)"
+                  type="url"
+                  className="font-mono text-sm"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Optional. Paste a direct image URL — shown on invoice PDF header.
                 </p>
               </div>
             </div>

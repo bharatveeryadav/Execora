@@ -475,6 +475,9 @@ model Product {
   price               Decimal
   mrp                 Decimal?
   cost                Decimal?
+  wholesalePrice      Decimal?           @map("wholesale_price")   // S12-06: wholesale tier
+  priceTier2          Decimal?           @map("price_tier2")      // S12-06: dealer/tier2
+  priceTier3          Decimal?           @map("price_tier3")       // S12-06: tier3
   unit                String
   baseUnit            String?           @map("base_unit")
   baseUnitQuantity    Decimal?          @map("base_unit_quantity")

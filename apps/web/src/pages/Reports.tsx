@@ -14,6 +14,7 @@ import {
   TrendingDown,
   Activity,
   Package,
+  ChevronRight,
 } from "lucide-react";
 import VoiceBar from "@/components/VoiceBar";
 import { Button } from "@/components/ui/button";
@@ -57,7 +58,93 @@ const periods = [
   "This FY",
   "Custom",
 ] as const;
-const TABS = ["Overview", "GSTR-1", "P&L", "Aging"] as const;
+const MAIN_TABS = [
+  "Transaction Report",
+  "Party Report",
+  "GST Reports",
+  "Item/Stock Reports",
+  "Business Status",
+  "Taxes",
+  "Expense Reports",
+  "Sale/Purchase Order Reports",
+  "Loan Reports",
+] as const;
+
+// ── Report definitions (path = route to navigate; empty = coming soon) ─────────
+const TRANSACTION_REPORTS: { label: string; path?: string; inline?: string }[] = [
+  { label: "Overview", inline: "overview" },
+  { label: "Aging", inline: "aging" },
+  { label: "Sale", path: "/invoices" },
+  { label: "Purchase", path: "/purchases" },
+  { label: "Daybook", path: "/daybook" },
+  { label: "All Transaction", path: "/daybook" },
+  { label: "Profit Loss", inline: "pnl" },
+  { label: "Bill Wise Profit" },
+  { label: "Cash Flow", path: "/cashbook" },
+  { label: "Trial Report" },
+  { label: "Balance Sheet", path: "/balance-sheet" },
+];
+
+const PARTY_REPORTS: { label: string; path?: string }[] = [
+  { label: "Party Statement", path: "/parties" },
+  { label: "Party Wise Profit and Loss" },
+  { label: "All Parties", path: "/parties" },
+  { label: "Party Report by Item" },
+  { label: "Sale Purchase by Party" },
+  { label: "Sale Purchase by Party Group" },
+];
+
+const GST_REPORTS: { label: string; path?: string; inline?: string }[] = [
+  { label: "GSTR-1", inline: "gstr1" },
+  { label: "GSTR-2" },
+  { label: "GSTR-3B", path: "/gstr3b" },
+  { label: "GSTR-9" },
+  { label: "Sale Summary" },
+  { label: "By HSN SAC Report" },
+];
+
+const ITEM_STOCK_REPORTS: { label: string; path?: string }[] = [
+  { label: "Stock Summary Report", path: "/inventory" },
+  { label: "Item Report by Party" },
+  { label: "Itemwise Profit & Loss" },
+  { label: "Low Stock Summary Report", path: "/inventory" },
+  { label: "Item Details Report", path: "/inventory" },
+  { label: "Stock Detail Report" },
+  { label: "Sale / Purchase by Item Category" },
+  { label: "Stock Summary by Item Category" },
+  { label: "Item Batch Report" },
+  { label: "Item Serial Report" },
+  { label: "Item Wise Report" },
+];
+
+const BUSINESS_STATUS_REPORTS: { label: string; path?: string }[] = [
+  { label: "Bank Statement", path: "/bank-reconciliation" },
+  { label: "Discount Statement" },
+];
+
+const TAXES_REPORTS: { label: string; path?: string; inline?: string }[] = [
+  { label: "GST Report", inline: "gstr1" },
+  { label: "GST Rate Report" },
+  { label: "Form No. 27EQ" },
+  { label: "TCS Receivable" },
+  { label: "TDS Payable" },
+  { label: "TDS Receivable" },
+];
+
+const EXPENSE_REPORTS: { label: string; path?: string }[] = [
+  { label: "Expense Transaction Report", path: "/expenses" },
+  { label: "Expense Category Report" },
+  { label: "Expense Item Report" },
+];
+
+const SALE_PURCHASE_ORDER_REPORTS: { label: string; path?: string }[] = [
+  { label: "Sale / Purchase Order Transaction Reports" },
+  { label: "Sale / Purchase Order by Item Report" },
+];
+
+const LOAN_REPORTS: { label: string; path?: string }[] = [
+  { label: "Loan Statements" },
+];
 
 function getPeriodRange(period: string): { from: string; to: string } {
   const now = new Date();
@@ -2623,29 +2710,246 @@ function AgingTab() {
   );
 }
 
+// ── Report links grid (card per report) ──────────────────────────────────────
+
+function ReportLinksGrid({
+  reports,
+  onInlineSelect,
+  navigate,
+}: {
+  reports: { label: string; path?: string; inline?: string }[];
+  onInlineSelect?: (key: string) => void;
+  navigate: (path: string) => void;
+}) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {reports.map((r) => {
+        const hasAction = r.path || r.inline;
+        return (
+          <Card
+            key={r.label}
+            className={
+              hasAction
+                ? "cursor-pointer transition-colors hover:border-primary/50 hover:bg-muted/30"
+                : "opacity-75"
+            }
+            onClick={() => {
+              if (r.path) navigate(r.path);
+              else if (r.inline) onInlineSelect?.(r.inline);
+            }}
+          >
+            <CardContent className="flex items-center justify-between p-4">
+              <span className="font-medium">{r.label}</span>
+              {hasAction ? (
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <Badge variant="secondary" className="text-[10px]">
+                  Soon
+                </Badge>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Main Reports page ─────────────────────────────────────────────────────────
 
-const TAB_FROM_PARAM: Record<string, (typeof TABS)[number]> = {
-  overview: "Overview",
-  "gstr-1": "GSTR-1",
-  gstr1: "GSTR-1",
-  pnl: "P&L",
-  aging: "Aging",
+const TAB_FROM_PARAM: Record<string, (typeof MAIN_TABS)[number]> = {
+  transaction: "Transaction Report",
+  party: "Party Report",
+  gst: "GST Reports",
+  item: "Item/Stock Reports",
+  stock: "Item/Stock Reports",
+  business: "Business Status",
+  status: "Business Status",
+  taxes: "Taxes",
+  expense: "Expense Reports",
+  order: "Sale/Purchase Order Reports",
+  loan: "Loan Reports",
+};
+const INLINE_FROM_PARAM: Record<string, string> = {
+  "gstr-1": "gstr1",
+  gstr1: "gstr1",
+  pnl: "pnl",
+  overview: "overview",
+  aging: "aging",
 };
 
 const Reports = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab")?.toLowerCase();
-  const initialTab = (tabParam && TAB_FROM_PARAM[tabParam]) ?? "Overview";
+  const mainTabFromParam = tabParam && TAB_FROM_PARAM[tabParam];
+  const inlineFromParam = tabParam && INLINE_FROM_PARAM[tabParam];
+
+  const [activeMainTab, setActiveMainTab] = useState<
+    (typeof MAIN_TABS)[number]
+  >(mainTabFromParam ?? "Transaction Report");
+  const [inlineReport, setInlineReport] = useState<string | null>(
+    inlineFromParam ?? null,
+  );
   const [activePeriod, setActivePeriod] = useState<string>("This Month");
-  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>(initialTab);
   const navigate = useNavigate();
   useWsInvalidation(["summary", "invoices", "customers", "products"]);
 
   useEffect(() => {
-    const t = tabParam && TAB_FROM_PARAM[tabParam];
-    if (t) setActiveTab(t);
-  }, [tabParam]);
+    if (mainTabFromParam) setActiveMainTab(mainTabFromParam);
+    if (inlineFromParam) setInlineReport(inlineFromParam);
+  }, [tabParam, mainTabFromParam, inlineFromParam]);
+
+  const handleInlineSelect = (key: string) => {
+    setInlineReport(key);
+    setSearchParams({ tab: key === "gstr1" ? "gstr1" : key });
+  };
+
+  const handleMainTabChange = (tab: (typeof MAIN_TABS)[number]) => {
+    setActiveMainTab(tab);
+    setInlineReport(null);
+    const tabSlug =
+      tab === "Transaction Report"
+        ? "transaction"
+        : tab === "Party Report"
+          ? "party"
+          : tab === "GST Reports"
+            ? "gst"
+            : tab === "Item/Stock Reports"
+              ? "item"
+              : tab === "Business Status"
+                ? "business"
+                : tab === "Taxes"
+                  ? "taxes"
+                  : tab === "Expense Reports"
+                    ? "expense"
+                    : tab === "Sale/Purchase Order Reports"
+                      ? "order"
+                      : "loan";
+    setSearchParams({ tab: tabSlug });
+  };
+
+  // When showing inline report (GSTR1, P&L, Overview, Aging), render that content
+  if (inlineReport === "gstr1") {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b bg-card px-4 py-3 md:px-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setInlineReport(null);
+                  setSearchParams({ tab: "gst" });
+                }}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <h1 className="text-lg font-bold tracking-tight md:text-xl">
+                🏛️ GSTR-1
+              </h1>
+            </div>
+          </div>
+          <VoiceBar
+            idleHint={
+              <>
+                <span className="font-medium text-foreground">
+                  "GSTR-1 report nikalo"
+                </span>
+              </>
+            }
+          />
+        </header>
+        <main className="mx-auto max-w-7xl p-4 md:p-6">
+          <Gstr1Tab />
+        </main>
+      </div>
+    );
+  }
+  if (inlineReport === "pnl") {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b bg-card px-4 py-3 md:px-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setInlineReport(null);
+                  setSearchParams({ tab: "transaction" });
+                }}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <h1 className="text-lg font-bold tracking-tight md:text-xl">
+                📈 Profit & Loss
+              </h1>
+            </div>
+          </div>
+          <VoiceBar
+            idleHint={
+              <>
+                <span className="font-medium text-foreground">
+                  "is mahine ka P&L dikhao"
+                </span>
+              </>
+            }
+          />
+        </header>
+        <main className="mx-auto max-w-7xl p-4 md:p-6">
+          <PnlTab />
+        </main>
+      </div>
+    );
+  }
+  if (inlineReport === "overview" || inlineReport === "aging") {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b bg-card px-4 py-3 md:px-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setInlineReport(null);
+                  setSearchParams({ tab: "transaction" });
+                }}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <h1 className="text-lg font-bold tracking-tight md:text-xl">
+                {inlineReport === "aging" ? "⏰ Aging" : "📊 Overview"}
+              </h1>
+            </div>
+          </div>
+          {inlineReport === "overview" && (
+            <div className="mt-3 flex flex-nowrap gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              {periods.map((p) => (
+                <Button
+                  key={p}
+                  variant={activePeriod === p ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setActivePeriod(p)}
+                  className="text-xs"
+                >
+                  {p}
+                </Button>
+              ))}
+            </div>
+          )}
+          <VoiceBar idleHint="Reports" />
+        </header>
+        <main className="mx-auto max-w-7xl p-4 md:p-6">
+          {inlineReport === "overview" && (
+            <OverviewTab period={activePeriod} />
+          )}
+          {inlineReport === "aging" && <AgingTab />}
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -2661,46 +2965,39 @@ const Reports = () => {
           </div>
         </div>
 
-        {/* Tab nav */}
-        <div className="mt-3 flex gap-0 border-b">
-          {TABS.map((tab) => (
+        {/* Main tab nav */}
+        <div className="mt-3 flex gap-0 border-b overflow-x-auto">
+          {MAIN_TABS.map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
+              onClick={() => handleMainTabChange(tab)}
               className={[
-                "px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px",
-                activeTab === tab
+                "px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap",
+                activeMainTab === tab
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground",
               ].join(" ")}
             >
-              {tab === "GSTR-1"
-                ? "🏛️ GSTR-1"
-                : tab === "P&L"
-                  ? "📈 P&L"
-                  : tab === "Aging"
-                    ? "⏰ Aging"
-                    : "📊 Overview"}
+              {tab === "Transaction Report"
+                ? "📋 Transaction"
+                : tab === "Party Report"
+                  ? "👥 Party"
+                  : tab === "GST Reports"
+                    ? "🏛️ GST"
+                    : tab === "Item/Stock Reports"
+                      ? "📦 Item/Stock"
+                      : tab === "Business Status"
+                        ? "📊 Business Status"
+                        : tab === "Taxes"
+                          ? "🧾 Taxes"
+                          : tab === "Expense Reports"
+                            ? "💰 Expense"
+                            : tab === "Sale/Purchase Order Reports"
+                              ? "📑 Orders"
+                              : "🏦 Loan"}
             </button>
           ))}
         </div>
-
-        {/* Period selector — Overview only */}
-        {activeTab === "Overview" && (
-          <div className="mt-3 flex flex-nowrap gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            {periods.map((p) => (
-              <Button
-                key={p}
-                variant={activePeriod === p ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActivePeriod(p)}
-                className="text-xs"
-              >
-                {p}
-              </Button>
-            ))}
-          </div>
-        )}
 
         <VoiceBar
           idleHint={
@@ -2718,10 +3015,102 @@ const Reports = () => {
       </header>
 
       <main className="mx-auto max-w-7xl p-4 md:p-6">
-        {activeTab === "Overview" && <OverviewTab period={activePeriod} />}
-        {activeTab === "GSTR-1" && <Gstr1Tab />}
-        {activeTab === "P&L" && <PnlTab />}
-        {activeTab === "Aging" && <AgingTab />}
+        {activeMainTab === "Transaction Report" && (
+          <div className="space-y-4">
+            <h2 className="text-base font-semibold text-muted-foreground">
+              Transaction reports
+            </h2>
+            <ReportLinksGrid
+              reports={TRANSACTION_REPORTS}
+              onInlineSelect={handleInlineSelect}
+              navigate={navigate}
+            />
+          </div>
+        )}
+        {activeMainTab === "Party Report" && (
+          <div className="space-y-4">
+            <h2 className="text-base font-semibold text-muted-foreground">
+              Party reports
+            </h2>
+            <ReportLinksGrid
+              reports={PARTY_REPORTS}
+              navigate={navigate}
+            />
+          </div>
+        )}
+        {activeMainTab === "GST Reports" && (
+          <div className="space-y-4">
+            <h2 className="text-base font-semibold text-muted-foreground">
+              GST reports
+            </h2>
+            <ReportLinksGrid
+              reports={GST_REPORTS}
+              onInlineSelect={handleInlineSelect}
+              navigate={navigate}
+            />
+          </div>
+        )}
+        {activeMainTab === "Item/Stock Reports" && (
+          <div className="space-y-4">
+            <h2 className="text-base font-semibold text-muted-foreground">
+              Item & stock reports
+            </h2>
+            <ReportLinksGrid reports={ITEM_STOCK_REPORTS} navigate={navigate} />
+          </div>
+        )}
+        {activeMainTab === "Business Status" && (
+          <div className="space-y-4">
+            <h2 className="text-base font-semibold text-muted-foreground">
+              Business status reports
+            </h2>
+            <ReportLinksGrid
+              reports={BUSINESS_STATUS_REPORTS}
+              navigate={navigate}
+            />
+          </div>
+        )}
+        {activeMainTab === "Taxes" && (
+          <div className="space-y-4">
+            <h2 className="text-base font-semibold text-muted-foreground">
+              Tax reports
+            </h2>
+            <ReportLinksGrid
+              reports={TAXES_REPORTS}
+              onInlineSelect={handleInlineSelect}
+              navigate={navigate}
+            />
+          </div>
+        )}
+        {activeMainTab === "Expense Reports" && (
+          <div className="space-y-4">
+            <h2 className="text-base font-semibold text-muted-foreground">
+              Expense reports
+            </h2>
+            <ReportLinksGrid
+              reports={EXPENSE_REPORTS}
+              navigate={navigate}
+            />
+          </div>
+        )}
+        {activeMainTab === "Sale/Purchase Order Reports" && (
+          <div className="space-y-4">
+            <h2 className="text-base font-semibold text-muted-foreground">
+              Sale / Purchase order reports
+            </h2>
+            <ReportLinksGrid
+              reports={SALE_PURCHASE_ORDER_REPORTS}
+              navigate={navigate}
+            />
+          </div>
+        )}
+        {activeMainTab === "Loan Reports" && (
+          <div className="space-y-4">
+            <h2 className="text-base font-semibold text-muted-foreground">
+              Loan reports
+            </h2>
+            <ReportLinksGrid reports={LOAN_REPORTS} navigate={navigate} />
+          </div>
+        )}
       </main>
     </div>
   );

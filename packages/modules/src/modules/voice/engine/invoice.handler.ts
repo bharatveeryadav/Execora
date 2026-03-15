@@ -2,7 +2,7 @@
  * Invoice intent handlers.
  * Covers: CREATE_INVOICE, CONFIRM_INVOICE, CANCEL_INVOICE,
  *         SHOW_PENDING_INVOICE, TOGGLE_GST, PROVIDE_EMAIL / SEND_INVOICE,
- *         ADD_DISCOUNT, SET_SUPPLY_TYPE
+ *         ADD_DISCOUNT, SET_SUPPLY_TYPE, SET_PRICE_TIER
  */
 import { logger } from '@execora/infrastructure';
 import { invoiceService } from '../../invoice/invoice.service';
@@ -581,6 +581,21 @@ export async function executeSetSupplyType(
 		success: true,
 		message: `${supplyType === 'INTERSTATE' ? 'Inter-state' : 'Intra-state'} billing set ho gaya (${taxLabel}). Total ₹${preview.grandTotal}. Confirm karna hai?`,
 		data: { ...preview, supplyType, withGst, customerId: draft.customerId, customerName: draft.customerName },
+	};
+}
+
+// ── SET_PRICE_TIER ─────────────────────────────────────────────────────────────
+// S12-06: "wholesale price do", "dealer price do" — UI-only; frontend sets priceTierIdx
+// entities.tier: 0=retail, 1=wholesale, 2=dealer/tier2, 3=tier3
+
+export async function executeSetPriceTier(entities: Record<string, any>): Promise<ExecutionResult> {
+	const raw = entities?.tier ?? entities?.priceTier ?? entities?.tierIndex;
+	const tier = typeof raw === 'number' ? Math.max(0, Math.min(3, Math.round(raw))) : 1;
+	const labels = ['retail', 'wholesale', 'dealer', 'tier3'];
+	return {
+		success: true,
+		message: `${labels[tier]} price set ho gaya. Ab naye items is price pe add honge.`,
+		data: { priceTier: tier },
 	};
 }
 

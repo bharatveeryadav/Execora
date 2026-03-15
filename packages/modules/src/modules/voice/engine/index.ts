@@ -29,6 +29,7 @@ import {
   executeProvideEmail,
   executeAddDiscount,
   executeSetSupplyType,
+  executeSetPriceTier,
   executeRecordMixedPayment,
 } from "./invoice.handler";
 import {
@@ -88,6 +89,8 @@ class BusinessEngine {
           return executeAddDiscount(e, id);
         case IntentType.SET_SUPPLY_TYPE:
           return executeSetSupplyType(e, id);
+        case IntentType.SET_PRICE_TIER:
+          return executeSetPriceTier(e);
         case IntentType.RECORD_MIXED_PAYMENT:
           return executeRecordMixedPayment(e, id);
 

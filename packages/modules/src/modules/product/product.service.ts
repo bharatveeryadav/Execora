@@ -16,6 +16,9 @@ class ProductService {
 		category?: string;
 		barcode?: string;
 		sku?: string;
+		wholesalePrice?: number;
+		priceTier2?: number;
+		priceTier3?: number;
 	}) {
 		try {
 			if (!data.name || typeof data.name !== 'string' || !data.name.trim()) {
@@ -39,6 +42,9 @@ class ProductService {
 					unit: data.unit || 'piece',
 					barcode: data.barcode || null,
 					sku: data.sku || null,
+					wholesalePrice: data.wholesalePrice != null ? new Decimal(data.wholesalePrice) : null,
+					priceTier2: data.priceTier2 != null ? new Decimal(data.priceTier2) : null,
+					priceTier3: data.priceTier3 != null ? new Decimal(data.priceTier3) : null,
 				},
 			});
 
@@ -196,6 +202,9 @@ class ProductService {
 			barcode?: string;
 			sku?: string;
 			minStock?: number;
+			wholesalePrice?: number;
+			priceTier2?: number;
+			priceTier3?: number;
 		}
 	) {
 		const updateData: Record<string, unknown> = {};
@@ -208,6 +217,9 @@ class ProductService {
 		if (data.barcode !== undefined) updateData.barcode = data.barcode || null;
 		if (data.sku !== undefined) updateData.sku = data.sku || null;
 		if (data.minStock !== undefined) updateData.minStock = data.minStock;
+		if (data.wholesalePrice !== undefined) updateData.wholesalePrice = data.wholesalePrice != null ? new Decimal(data.wholesalePrice) : null;
+		if (data.priceTier2 !== undefined) updateData.priceTier2 = data.priceTier2 != null ? new Decimal(data.priceTier2) : null;
+		if (data.priceTier3 !== undefined) updateData.priceTier3 = data.priceTier3 != null ? new Decimal(data.priceTier3) : null;
 
 		const { tenantId } = tenantContext.get();
 		const existing = await prisma.product.findFirst({ where: { id: productId, tenantId } });
