@@ -125,6 +125,14 @@
   .touch-manipulation {
     touch-action: manipulation;
   }
+  /* Hide scrollbar for horizontal scroll areas (mobile) */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @keyframes confetti-fall {

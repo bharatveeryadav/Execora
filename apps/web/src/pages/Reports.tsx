@@ -49,7 +49,6 @@ import { useWsInvalidation } from "@/hooks/useWsInvalidation";
 import { formatCurrency, reportApi, getToken } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { ReportsEmbedContext } from "@/contexts/ReportsEmbedContext";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import Invoices from "./Invoices";
 import Parties from "./Parties";
 import DayBook from "./DayBook";
@@ -789,8 +788,8 @@ function OverviewTab({ period }: { period: string }) {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="overflow-x-auto scrollbar-hide touch-pan-x">
+              <table className="w-full text-sm min-w-[420px]">
                 <thead>
                   <tr className="border-b bg-muted/30">
                     <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
@@ -1084,11 +1083,11 @@ function Gstr1Tab() {
         </div>
       </div>
 
-      {/* Month selector tabs */}
-      <div className="flex flex-nowrap gap-1 overflow-x-auto pb-1">
+      {/* Month selector tabs — scrollable on mobile */}
+      <div className="flex flex-nowrap gap-1 overflow-x-auto pb-1 scrollbar-hide touch-pan-x">
         <button
           onClick={() => setGstrMonth("all")}
-          className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${gstrMonth === "all" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
+          className={`shrink-0 rounded-lg px-3 py-2.5 min-h-[44px] text-xs font-semibold transition-colors touch-manipulation ${gstrMonth === "all" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70 active:bg-muted"}`}
         >
           Full FY
         </button>
@@ -1096,7 +1095,7 @@ function Gstr1Tab() {
           <button
             key={m.value}
             onClick={() => setGstrMonth(m.value)}
-            className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${gstrMonth === m.value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"}`}
+            className={`shrink-0 rounded-lg px-3 py-2.5 min-h-[44px] text-xs font-semibold transition-colors touch-manipulation ${gstrMonth === m.value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70 active:bg-muted"}`}
           >
             {m.label}
           </button>
@@ -1238,8 +1237,8 @@ function Gstr1Tab() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
+            <div className="overflow-x-auto scrollbar-hide touch-pan-x">
+              <table className="w-full text-xs min-w-[400px]">
                 <thead>
                   <tr className="border-b bg-muted/30">
                     {[
@@ -1307,8 +1306,8 @@ function Gstr1Tab() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
+            <div className="overflow-x-auto scrollbar-hide touch-pan-x">
+              <table className="w-full text-xs min-w-[400px]">
                 <thead>
                   <tr className="border-b bg-muted/30">
                     {[
@@ -1377,8 +1376,8 @@ function Gstr1Tab() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
+            <div className="overflow-x-auto scrollbar-hide touch-pan-x">
+              <table className="w-full text-xs min-w-[400px]">
                 <thead>
                   <tr className="border-b bg-muted/30">
                     {[
@@ -1465,8 +1464,8 @@ function Gstr1Tab() {
                 Auto-computed from invoices. Verify EXP / NIL / RCM amounts on
                 GST portal before filing GSTR-3B.
               </p>
-              <div className="overflow-x-auto rounded-lg border">
-                <table className="w-full text-xs">
+              <div className="overflow-x-auto rounded-lg border scrollbar-hide touch-pan-x">
+                <table className="w-full text-xs min-w-[400px]">
                   <thead>
                     <tr className="border-b bg-muted/30">
                       {[
@@ -1763,7 +1762,7 @@ function PnlTab() {
   return (
     <div className="space-y-5">
       {/* Indian FY Period Presets */}
-      <div className="flex flex-nowrap gap-1.5 overflow-x-auto pb-1">
+      <div className="flex flex-nowrap gap-1.5 overflow-x-auto pb-1 scrollbar-hide touch-pan-x">
         {PL_PRESETS.map((p) => (
           <button
             key={p.label}
@@ -1771,20 +1770,20 @@ function PnlTab() {
               setFrom(p.from);
               setTo(p.to);
             }}
-            className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+            className={`shrink-0 rounded-lg px-3 py-2.5 min-h-[44px] text-xs font-semibold transition-colors touch-manipulation ${
               activePreset === p.label
                 ? "bg-primary text-primary-foreground"
-                : "bg-muted text-muted-foreground hover:bg-muted/70"
+                : "bg-muted text-muted-foreground hover:bg-muted/70 active:bg-muted"
             }`}
           >
             {p.label}
           </button>
         ))}
         <button
-          className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+          className={`shrink-0 rounded-lg px-3 py-2.5 min-h-[44px] text-xs font-semibold transition-colors touch-manipulation ${
             activePreset === "Custom"
               ? "bg-primary text-primary-foreground"
-              : "bg-muted text-muted-foreground hover:bg-muted/70"
+              : "bg-muted text-muted-foreground hover:bg-muted/70 active:bg-muted"
           }`}
         >
           Custom
@@ -1943,8 +1942,8 @@ function PnlTab() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="overflow-x-auto scrollbar-hide touch-pan-x">
+              <table className="w-full text-sm min-w-[420px]">
                 <thead>
                   <tr className="border-b bg-muted/30">
                     <th className="px-4 py-2 text-left font-semibold text-muted-foreground">
@@ -2089,8 +2088,8 @@ function PnlTab() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
+            <div className="overflow-x-auto scrollbar-hide touch-pan-x">
+              <table className="w-full text-xs min-w-[400px]">
                 <thead>
                   <tr className="border-b bg-muted/30">
                     {[
@@ -2760,7 +2759,7 @@ const Reports = () => {
   const [selectedReportKey, setSelectedReportKey] = useState<string | null>(
     inlineFromParam ?? "overview",
   );
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [mobileContentVisible, setMobileContentVisible] = useState(false);
   const [sidebarExpandedSections, setSidebarExpandedSections] = useState<
     Set<string>
   >(new Set(REPORT_SECTIONS.map((s) => s.id)));
@@ -2777,11 +2776,13 @@ const Reports = () => {
   const handleReportSelect = (key: string) => {
     setSelectedReportKey(key);
     setSearchParams({ tab: key === "gstr1" ? "gstr1" : key });
+    setMobileContentVisible(true);
   };
 
   const handleReportBack = () => {
     setSelectedReportKey("overview");
     setSearchParams({ tab: "overview" });
+    setMobileContentVisible(false);
   };
 
   const navigate = useNavigate();
@@ -2853,24 +2854,35 @@ const Reports = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col min-h-[100dvh]">
       <header className="border-b bg-card px-4 py-3 md:px-6 shrink-0 sticky top-0 z-10">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() =>
+                mobileContentVisible ? handleReportBack() : navigate("/")
+              }
+              className="min-h-11 min-w-11 touch-manipulation -ml-1"
+              aria-label={
+                mobileContentVisible ? "Back to report list" : "Go back"
+              }
+            >
               <ArrowLeft className="h-5 w-5 shrink-0" />
             </Button>
-            <h1 className="text-lg font-bold tracking-tight md:text-xl truncate">
+            <h1 className="text-base font-bold tracking-tight sm:text-lg md:text-xl truncate">
               📊 Reports & Analytics
             </h1>
           </div>
           <div className="hidden lg:flex items-center gap-1 shrink-0">
-            {/* Toggle left sidebar */}
+            {/* Toggle left sidebar (desktop only; mobile uses back for list) */}
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setRightSidebarOpen((o) => !o)}
               title={rightSidebarOpen ? "Close categories" : "Open categories"}
+              className="min-h-11 min-w-11 touch-manipulation"
             >
                 {rightSidebarOpen ? (
                 <PanelRightClose className="h-5 w-5" />
@@ -2880,91 +2892,11 @@ const Reports = () => {
             </Button>
           </div>
         </div>
-        {/* Mobile: Sidebar trigger */}
-        <div className="mt-3 lg:hidden">
-          <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="sm" className="w-full justify-start">
-                <Package className="h-4 w-4 mr-2" />
-                {selectedReportKey
-                  ? REPORT_SECTIONS.flatMap((s) => s.reports).find(
-                      (r) => getReportKey(r) === selectedReportKey,
-                    )?.label ?? "Select report"
-                  : "Select report"}
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-72 p-0">
-              <div className="p-3">
-                <p className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  Reports
-                </p>
-                <nav className="mt-2 space-y-0.5">
-                  {REPORT_SECTIONS.map((section) => {
-                    const isExpanded = sidebarExpandedSections.has(section.id);
-                    return (
-                      <div key={section.id} className="space-y-0.5">
-                        <div className="flex items-center">
-                          <button
-                            onClick={() => toggleSidebarSection(section.id)}
-                            className="p-1 rounded hover:bg-muted shrink-0"
-                          >
-                            {isExpanded ? (
-                              <ChevronDown className="h-4 w-4" />
-                            ) : (
-                              <ChevronRight className="h-4 w-4" />
-                            )}
-                          </button>
-                          <button
-                            onClick={() => handleSectionChange(section.id)}
-                            className={[
-                              "flex-1 text-left px-2 py-2 rounded-lg text-sm font-medium",
-                              activeSectionId === section.id
-                                ? "bg-primary/10 text-primary"
-                                : "text-muted-foreground",
-                            ].join(" ")}
-                          >
-                            {section.title}
-                          </button>
-                        </div>
-                        {isExpanded &&
-                          section.reports.map((r) => {
-                            const key = getReportKey(r);
-                            const hasAction = !!key;
-                            return (
-                              <button
-                                key={r.label}
-                                onClick={() => {
-                                  if (key) {
-                                    handleReportSelect(key);
-                                    setMobileSidebarOpen(false);
-                                  }
-                                }}
-                                className={[
-                                  "w-full text-left ml-5 pl-2 py-1.5 rounded text-sm",
-                                  hasAction
-                                    ? selectedReportKey === key
-                                      ? "bg-primary/10 text-primary font-medium"
-                                      : "text-muted-foreground"
-                                    : "text-muted-foreground/70",
-                                ].join(" ")}
-                              >
-                                {r.label}
-                              </button>
-                            );
-                          })}
-                      </div>
-                    );
-                  })}
-                </nav>
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
-        {/* Desktop: Horizontal tabs (shown only when left sidebar is closed) */}
+        {/* Horizontal tabs (shown when left sidebar is closed) */}
         <div
           className={[
-            "mt-3 gap-0 border-b -mb-px",
-            rightSidebarOpen ? "hidden lg:hidden" : "hidden lg:flex",
+            "mt-3 gap-0 border-b -mb-px overflow-x-auto scrollbar-hide",
+            rightSidebarOpen ? "hidden" : "flex",
           ].join(" ")}
         >
           {REPORT_SECTIONS.map((s) => (
@@ -2972,10 +2904,10 @@ const Reports = () => {
               key={s.id}
               onClick={() => handleSectionChange(s.id)}
               className={[
-                "px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap",
+                "px-3 sm:px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap shrink-0 touch-manipulation",
                 activeSectionId === s.id
                   ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
+                  : "border-transparent text-muted-foreground hover:text-foreground active:bg-muted/50",
               ].join(" ")}
             >
               {s.title}
@@ -2995,91 +2927,22 @@ const Reports = () => {
         />
       </header>
 
-      {/* Mobile: Same report content as desktop */}
-      <main className="flex-1 p-4 md:p-6 overflow-x-hidden overflow-y-auto lg:hidden">
-        <ReportsEmbedContext.Provider value={{ onBack: handleReportBack }}>
-          {selectedReportKey === "overview" && (
-            <div className="max-w-4xl mx-auto">
-              <div className="mb-4 flex flex-wrap gap-2">
-                {periods.map((p) => (
-                  <Button
-                    key={p}
-                    variant={activePeriod === p ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setActivePeriod(p)}
-                    className="text-xs"
-                  >
-                    {p}
-                  </Button>
-                ))}
-              </div>
-              <OverviewTab period={activePeriod} />
-            </div>
-          )}
-          {selectedReportKey === "aging" && (
-            <div className="max-w-4xl mx-auto">
-              <AgingTab />
-            </div>
-          )}
-          {selectedReportKey === "pnl" && (
-            <div className="max-w-4xl mx-auto">
-              <PnlTab />
-            </div>
-          )}
-          {selectedReportKey === "gstr1" && (
-            <div className="max-w-5xl mx-auto">
-              <Gstr1Tab />
-            </div>
-          )}
-          {selectedReportKey === "invoices" && <Invoices />}
-          {selectedReportKey === "purchases" && <Purchases />}
-          {selectedReportKey === "daybook" && <DayBook />}
-          {selectedReportKey === "cashbook" && <CashBook />}
-          {selectedReportKey === "balance-sheet" && <BalanceSheet />}
-          {selectedReportKey === "parties" && <Parties />}
-          {selectedReportKey === "inventory" && <Inventory />}
-          {selectedReportKey === "bank-reconciliation" && (
-            <BankReconciliation />
-          )}
-          {selectedReportKey === "expenses" && <Expenses />}
-          {selectedReportKey === "gstr3b" && <Gstr3b />}
-          {selectedReportKey &&
-            ![
-              "overview",
-              "aging",
-              "pnl",
-              "gstr1",
-              "invoices",
-              "purchases",
-              "daybook",
-              "cashbook",
-              "balance-sheet",
-              "parties",
-              "inventory",
-              "bank-reconciliation",
-              "expenses",
-              "gstr3b",
-            ].includes(selectedReportKey) && (
-              <div className="max-w-2xl mx-auto rounded-lg border bg-muted/30 p-8 text-center text-muted-foreground">
-                <Package className="mx-auto h-12 w-12 mb-3 opacity-50" />
-                <p className="font-medium">Coming soon</p>
-                <p className="text-sm mt-1">This report is under development.</p>
-              </div>
-            )}
-        </ReportsEmbedContext.Provider>
-      </main>
-
-      {/* Desktop: Left sidebar + main content */}
-      <div className="hidden lg:flex flex-1 min-h-0 overflow-hidden">
-        {/* Left sidebar — report categories */}
+      {/* Unified layout: sidebar + content */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Left sidebar — full page on mobile when list view, hidden when content view */}
         <aside
           className={[
             "flex flex-col border-r bg-card shrink-0 transition-all duration-200 overflow-hidden",
-            rightSidebarOpen ? "w-56 xl:w-64" : "w-0 border-0",
+            mobileContentVisible
+              ? "hidden lg:flex " +
+                (rightSidebarOpen ? "lg:w-56 xl:w-64" : "lg:w-0 lg:border-0")
+              : rightSidebarOpen
+                ? "flex-1 min-w-0 lg:flex-none lg:w-56 xl:w-64"
+                : "w-0 border-0",
           ].join(" ")}
         >
           {rightSidebarOpen && (
-            <div className="p-3 overflow-y-auto">
+            <div className="p-4 sm:p-3 overflow-y-auto flex-1 min-h-0">
               <p className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Reports
               </p>
@@ -3092,7 +2955,7 @@ const Reports = () => {
                       <div className="flex items-center">
                         <button
                           onClick={() => toggleSidebarSection(section.id)}
-                          className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground shrink-0"
+                          className="p-2 -m-1 rounded-lg hover:bg-muted active:bg-muted text-muted-foreground hover:text-foreground shrink-0 touch-manipulation"
                           title={isExpanded ? "Collapse" : "Expand"}
                         >
                           {isExpanded ? (
@@ -3104,10 +2967,10 @@ const Reports = () => {
                         <button
                           onClick={() => handleSectionChange(section.id)}
                           className={[
-                            "flex-1 text-left px-2 py-2 rounded-lg text-sm font-medium transition-colors truncate",
+                            "flex-1 text-left px-2 py-2.5 rounded-lg text-sm font-medium transition-colors truncate touch-manipulation min-h-[44px] flex items-center",
                             isActive
                               ? "bg-primary/10 text-primary"
-                              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground active:bg-muted/50",
                           ].join(" ")}
                         >
                           {section.title}
@@ -3125,11 +2988,11 @@ const Reports = () => {
                                   if (key) handleReportSelect(key);
                                 }}
                                 className={[
-                                  "w-full text-left px-2 py-1.5 rounded text-sm transition-colors truncate",
+                                  "w-full text-left px-2 py-2.5 rounded-lg text-sm transition-colors truncate touch-manipulation min-h-[44px] flex items-center",
                                   hasAction
                                     ? selectedReportKey === key
                                       ? "bg-primary/10 text-primary font-medium"
-                                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                      : "text-muted-foreground hover:bg-muted hover:text-foreground active:bg-muted/50"
                                     : "text-muted-foreground/70 cursor-default",
                                 ].join(" ")}
                               >
@@ -3146,7 +3009,12 @@ const Reports = () => {
             </div>
           )}
         </aside>
-        <main className="flex-1 p-6 overflow-x-hidden overflow-y-auto min-w-0">
+        <main
+          className={[
+            "flex-1 p-4 sm:p-6 overflow-x-hidden overflow-y-auto min-w-0 pb-24 sm:pb-6",
+            mobileContentVisible ? "flex" : "hidden lg:flex",
+          ].join(" ")}
+        >
           <ReportsEmbedContext.Provider value={{ onBack: handleReportBack }}>
             {selectedReportKey === "overview" && (
               <div className="max-w-4xl">
