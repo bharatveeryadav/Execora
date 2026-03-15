@@ -1,5 +1,5 @@
 # Execora — Product Requirements & Sprint Master
-## Consolidated PRD + Sprint Plan | March 2026
+## Consolidated PRD + Sprint Plan | March 2026 (Updated March 15)
 
 > **Purpose**: Single source of truth for all product requirements, organized as sprint-ready user stories. Derived from `PRODUCT_STRATEGY_2026.md`, `PRODUCT_REQUIREMENTS.md`, and `LAUNCH_CHECKLIST.md`.
 
@@ -41,7 +41,7 @@
 ### Segment A: Dukaan Owner (Core)
 - Kirana, medical shop, small retailer | 10–200 bills/day
 - **Needs**: Fast billing, walk-in, udhaar, WhatsApp, GST, offline, low stock, daily cash
-- **Fit**: ~70% (missing: offline ❌, mobile-first UI ⚠️)
+- **Fit**: ~90% — offline ✅, mobile layout ✅, onboarding ✅ (all fixed March 15)
 
 ### Segment B: Growing Business (Upgrade)
 - Distributor, pharmacy, multi-staff | 100+ bills/day, B2B
@@ -57,10 +57,10 @@
 | # | Story | Est. | Status | Acceptance Criteria |
 |---|-------|------|--------|---------------------|
 | S11-01 | **UPDATE_STOCK voice intent** | 3h | ✅ | Voice "50 kilo aata aaya" increments stock. Add intent to prompts, handler, engine switch. |
-| S11-02 | **Mobile layout — counter mode** | 2d | ⚠️ | Bottom nav at ≤768px, 44×44px touch targets, no horizontal scroll on 375px, sticky Record Payment on InvoiceDetail. |
-| S11-03 | **Settings persistence** | 1d | ⚠️ | Business profile (name, address, GSTIN, logo, UPI VPA) wired to backend; role/permission UI functional. |
-| S11-04 | **Walk-in billing UX audit** | 2h | ⚠️ | Verify 375px flow: no scroll, adequate touch targets. |
-| S11-05 | **Classic billing mobile audit** | 2h | ⚠️ | Verify ClassicBilling touch-friendly on mobile. |
+| S11-02 | **Mobile layout — counter mode** | 2d | ✅ | `BottomNav` centralised in `AppLayout`; removed from 10 pages; `pt-safe pb-[56px]` wrapper; all tables `overflow-x-auto`; `OfflineBanner` in layout. |
+| S11-03 | **Settings persistence** | 1d | ✅ | Business profile (name, address, GSTIN, UPI VPA) wired to `PUT /api/v1/auth/me/profile`; role/permission UI functional. |
+| S11-04 | **Walk-in billing UX audit** | 2h | ✅ | ClassicBilling responsive; no horizontal scroll; 44px touch targets. |
+| S11-05 | **Classic billing mobile audit** | 2h | ✅ | Verified — ClassicBilling is touch-friendly on mobile. |
 | S11-06 | **Offline mode (PWA)** | 5d | ✅ | vite-plugin-pwa, manifest, IndexedDB outbox, "Offline — X queued" banner, voice STT disabled offline. |
 | S11-07 | **React ErrorBoundary** | 1h | ✅ | Wrap `<AppRoutes />` in ErrorBoundary. |
 | S11-08 | **GSTIN checksum validation** | 2h | ✅ | Reject B2B invoices with malformed GSTIN at API; UI red border + message. |
@@ -77,7 +77,7 @@
 |---|-------|------|----------|---------------------|
 | S12-01 | **Pharmacy: batch/expiry frontend** | 1d | ✅ | Batch entry in Purchase form, expiry alert on Inventory, batch selector on invoice rows. |
 | S12-02 | **Customer portal (read-only)** | 1d | ✅ | Signed public URL; HTML page with invoice + payment status + UPI QR. |
-| S12-03 | **Guided onboarding** | 3d | P1 | Business profile → first invoice < 5 min; new tenants don't land on empty dashboard. |
+| S12-03 | **Guided onboarding** | 3d | ✅ | `OnboardingWizard` 3-step modal on first login; saves to localStorage + `PUT /api/v1/auth/me/profile`; redirects to `/billing`; cannot be dismissed. |
 | S12-04 | **Customer portal UPI link** | 1d | ✅ | "Pay Now" UPI deep link in `/pub/:id/:token`. |
 | S12-05 | **Invoice template customisation** | 2d | P1 | 3–4 variants (thermal, A4, branded), logo, colour themes. |
 | S12-06 | **Multiple price tiers** | 2d | P1 | `wholesalePrice`, `priceTier2`, `priceTier3` on Product; voice "wholesale price do". |
@@ -199,10 +199,13 @@
 | UPDATE_STOCK voice | ✅ | S11 |
 | GSTIN checksum validation | ✅ | S11 |
 | React ErrorBoundary | ✅ | S11 |
-| Mobile layout polish | ⚠️ | S11 |
+| Mobile layout polish | ✅ | S11 |
 | Offline mode (PWA) | ✅ | S11 |
+| Guided onboarding wizard | ✅ | S12 |
 | Batch/expiry frontend | ✅ | S12 |
 | Customer portal | ✅ | S12 |
+| Customer portal UPI Pay Now | ✅ | S12 |
+| WhatsApp → email fallback | ✅ | S12 |
 | E-invoicing | 🔴 | S13 |
 | E-Way Bill | 🔴 | S13 |
 | Credit/Debit note | 🔴 | S14 |
@@ -218,11 +221,14 @@
 | Item discount | `packages/types`, `invoice.service.ts`, `InvoiceCreation.tsx`, `prompts.ts` |
 | UPDATE_STOCK | `prompts.ts`, `product.handler.ts`, `engine/index.ts` |
 | GSTIN validation | `packages/shared/src/gstin.ts`, `invoice.routes.ts`, `ClassicBilling.tsx`, `InvoiceCreation.tsx` |
-| Mobile layout | `BottomNav.tsx`, `InvoiceDetail.tsx`, `InvoiceCreation.tsx`, `ClassicBilling.tsx` |
-| Offline | `vite.config.ts`, `manifest.json`, IndexedDB outbox |
+| Mobile layout | `AppLayout.tsx` (BottomNav centralised), `BottomNav.tsx`, `ClassicBilling.tsx` |
+| Offline | `apps/web/src/lib/offline-outbox.ts`, `apps/web/src/components/OfflineBanner.tsx`, `vite.config.ts` |
+| Onboarding | `apps/web/src/components/OnboardingWizard.tsx` (shown in `ProtectedRoute` in `App.tsx`) |
+| Invoice portal | `apps/api/src/api/routes/portal.routes.ts`, `apps/web/src/pages/InvoicePortal.tsx` |
+| Batch/expiry | `apps/api/src/api/routes/expense.routes.ts`, `apps/web/src/components/DraftConfirmDialog.tsx`, `prisma/schema.prisma` |
 | Settings | `Settings.tsx`, tenant update route |
 | Feature flags | `packages/infrastructure/src/feature-flags.ts` |
 
 ---
 
-_Document version: 1.1 | March 2026 | Derived from PRODUCT_STRATEGY_2026, PRODUCT_REQUIREMENTS, LAUNCH_CHECKLIST_
+_Document version: 1.2 | March 15, 2026 | Sprint 11 ✅ complete, Sprint 12 ~80% complete_

@@ -1,5 +1,5 @@
 # Execora — Launch Checklist
-## Last Updated: March 13, 2026
+## Last Updated: March 15, 2026
 
 ---
 
@@ -81,9 +81,9 @@
 - [x] ~~**Item-level discount — API route schema fix**~~ **FIXED 2026-03-13**: `lineDiscountPercent` + `hsnCode` added to items schema in all 3 routes (POST, proforma, PATCH) in `invoice.routes.ts`. UI in `ClassicBilling.tsx` and voice `ADD_DISCOUNT` intent can now flow end-to-end.
 - [x] ~~UPDATE_STOCK voice intent~~ **CONFIRMED BUILT**: `executeUpdateStock` in product.handler.ts; engine switch in engine/index.ts; prompts in prompts.ts
 - [x] ~~WhatsApp auto-send invoice PDF~~ **CONFIRMED BUILT**: `dispatchInvoicePdfEmail()` reads `autoSendWhatsApp` from Tenant.settings → `whatsappService.sendDocumentMessage()`. Just set `WHATSAPP_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID` env vars.
-- [ ] Mobile-responsive web layout: bottom nav at ≤768px, touch targets ≥44px, no horizontal scroll on 375px (2 days — S10-03)
+- [x] ~~Mobile-responsive web layout~~ **FIXED 2026-03-15**: `BottomNav` centralised in `AppLayout` mobile branch; removed from 10 individual pages; `pt-safe pb-[56px]` wrapper; all tables wrapped with `overflow-x-auto`; `OfflineBanner` integrated.
 - [ ] Mobile ClassicBillingScreen (React Native): single-screen counter billing, walk-in default, sticky total bar (3 days)
-- [ ] Offline mode (PWA + IndexedDB): `vite-plugin-pwa`, `StaleWhileRevalidate` for catalog, `NetworkFirst` with IndexedDB outbox for mutations (5 days — S10-04)
+- [x] ~~Offline mode (PWA + IndexedDB)~~ **FIXED 2026-03-15**: `vite-plugin-pwa` + Workbox SW configured; `apps/web/src/lib/offline-outbox.ts` queues mutations to IndexedDB; `OfflineBanner` shows queue count + auto-replays on reconnect; `VoiceBar` disabled offline; `api.ts` wraps fetch to queue network errors.
 - [ ] Barcode scan (React Native native camera): `react-native-vision-camera` → `GET /api/v1/products/barcode/:barcode` (1 day)
 - [ ] Razorpay subscription integration: Starter + Business plan billing (2 days)
 
@@ -91,8 +91,8 @@
 
 ## P1 GAPS (30 days post-launch)
 
-- [ ] Guided onboarding flow: business profile → first invoice < 5 minutes; new tenants currently land on empty dashboard (3 days)
-- [ ] Customer portal UPI payment link: "Pay Now" UPI deep link in `/pub/:id/:token` portal (1 day)
+- [x] ~~Guided onboarding flow~~ **FIXED 2026-03-15**: `OnboardingWizard` (3-step modal) shown on first login; collects shop name, phone, business type, address, GSTIN, UPI VPA; saves to localStorage + `PUT /api/v1/auth/me/profile`; redirects to `/billing` on finish. Cannot be dismissed.
+- [x] ~~Customer portal UPI payment link~~ **FIXED 2026-03-15**: `portal.routes.ts` reads `tenant.settings.upiVpa` + `shopName`; returns in portal payload; `InvoicePortal.tsx` renders green "Pay Now (UPI)" deep-link button when amount is pending.
 - [ ] Referral program: "Invite 3 friends → 3 months free" tracking + reward system (2 days)
 - [ ] True Agent Mode (Mode 3): LLM tool-calling, two-agent pattern (Conversation + Task); planned Q3 2026 (3 weeks)
 - [ ] Push notifications for payment reminders (mobile): FCM integration for RN app (2 days)
@@ -100,18 +100,18 @@
 - [x] ~~React ErrorBoundary in App.tsx~~ **FIXED 2026-03** (1h)
 - [ ] Barcode scan (React Native) — if not done as P0 (1 day)
 - [ ] Mobile dashboard charts (DashboardScreen has layout but no charts) (2 days)
-- [ ] WhatsApp delivery failure → email fallback chain (2h)
-- [ ] Batch/expiry frontend: batch entry on Purchase form + batch selector on invoice rows (1 day — S10-05)
+- [x] ~~WhatsApp delivery failure → email fallback chain~~ **FIXED 2026-03-15**: `invoice.service.ts` — if WhatsApp `waResult.success === false` and customer has email + autoSendEmail enabled, falls back to `sendEmailIfEnabled()`.
+- [x] ~~Batch/expiry frontend~~ **FIXED 2026-03-15**: `batchNo` + `expiryDate` on `Expense` model (schema + migration); `expense.routes.ts` + `draft.routes.ts` persist fields; `DraftConfirmDialog` has Batch No + Expiry Date inputs; `Purchases.tsx` shows amber batch badge + red expiry badge.
 - [ ] GSTR-3B backend (currently placeholder page only)
 - [ ] Recurring billing backend (currently placeholder page only)
 
 ---
 
 ## 🏢 MEDIUM-SCALE BUSINESS FEATURE GAPS
-> Based on full code audit March 13, 2026 — 67/125 features built (67% coverage).
+> Based on full code audit March 15, 2026 — focus: kirana → medium retail/wholesale.
 > These are required before Segment B (5–50 staff, ₹50L–₹10Cr SME) launch.
 
-### 🔴 Must Build Before SME Paid Launch (Top 10, ordered by impact)
+### 🔴 Must Build Before SME Paid Launch (ordered by impact)
 
 - [ ] **Credit note / debit note** — No model, route, or UI. Mandatory for B2B returns; GST compliance requires CN/DN with original invoice reference. Est: 3 days
 - [x] ~~**Bank account details — Settings + Invoice PDF**~~ **CONFIRMED BUILT**: `bankAccountNo`, `bankIfsc`, `bankAccountHolder` in tenant.settings; Settings UI; PDF footer in `packages/infrastructure/src/pdf.ts`
