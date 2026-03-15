@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import { VitePWA } from "vite-plugin-pwa";
 import { componentTagger } from "lovable-tagger";
 import { visualizer } from "rollup-plugin-visualizer";
 
@@ -31,6 +32,56 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
+    VitePWA({
+      registerType: "autoUpdate",
+      manifest: false, // use public/manifest.webmanifest directly
+      workbox: {
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        skipWaiting: true,
+        clientsClaim: true,
+        runtimeCaching: [
+          {
+            // Products — stale-while-revalidate, cache 24h
+            urlPattern: /^\/api\/v1\/(products|items)/,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "api-products",
+              expiration: { maxEntries: 500, maxAgeSeconds: 86400 },
+            },
+          },
+          {
+            // Customers / parties — stale-while-revalidate, cache 1h
+            urlPattern: /^\/api\/v1\/(customers|parties)/,
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "api-customers",
+              expiration: { maxEntries: 200, maxAgeSeconds: 3600 },
+            },
+          },
+          {
+            // Invoices — network-first (must be fresh), 5s timeout
+            urlPattern: /^\/api\/v1\/invoices/,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "api-invoices",
+              networkTimeoutSeconds: 5,
+              expiration: { maxEntries: 200, maxAgeSeconds: 3600 },
+            },
+          },
+          {
+            // All other API calls — network-first
+            urlPattern: /^\/api\//,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "api-general",
+              networkTimeoutSeconds: 5,
+              expiration: { maxEntries: 100, maxAgeSeconds: 300 },
+            },
+          },
+        ],
+      },
+      devOptions: { enabled: false },
+    }),
     mode === "development" && componentTagger(),
     mode === "analyze" &&
       visualizer({
