@@ -25,7 +25,12 @@ import ExpiryPage from "./pages/Expiry";
 import NotFound from "./pages/NotFound";
 import ComingSoon from "./pages/ComingSoon";
 import CreditNotes from "./pages/CreditNotes";
+import Monitoring from "./pages/Monitoring";
 import SettingsSection from "./pages/SettingsSection";
+import SettingsProfileUser from "./pages/settings/SettingsProfileUser";
+import SettingsProfileUsers from "./pages/settings/SettingsProfileUsers";
+import SettingsBanksBanks from "./pages/settings/SettingsBanksBanks";
+import SettingsBanksWallet from "./pages/settings/SettingsBanksWallet";
 import LoginPage from "./pages/LoginPage";
 import ClassicBilling from "./pages/ClassicBilling";
 import InvoicePortal from "./pages/InvoicePortal";
@@ -96,8 +101,8 @@ function AppRoutes() {
         <Route path="settings" element={<SettingsLayout />}>
           <Route index element={<Navigate to="/settings/profile/company" replace />} />
           <Route path="profile/company" element={<Settings />} />
-          <Route path="profile/user" element={<SettingsSection />} />
-          <Route path="profile/users" element={<SettingsSection />} />
+          <Route path="profile/user" element={<SettingsProfileUser />} />
+          <Route path="profile/users" element={<SettingsProfileUsers />} />
           <Route path="general/preferences" element={<SettingsSection />} />
           <Route path="general/thermal-print" element={<SettingsSection />} />
           <Route path="general/barcode" element={<SettingsSection />} />
@@ -106,8 +111,8 @@ function AppRoutes() {
           <Route path="general/terms" element={<SettingsSection />} />
           <Route path="general/auto-reminders" element={<SettingsSection />} />
           <Route path="general/other" element={<SettingsSection />} />
-          <Route path="banks/banks" element={<SettingsSection />} />
-          <Route path="banks/wallet" element={<SettingsSection />} />
+          <Route path="banks/banks" element={<SettingsBanksBanks />} />
+          <Route path="banks/wallet" element={<SettingsBanksWallet />} />
           <Route path="banks/other" element={<SettingsSection />} />
           <Route path="payment-gateway/api" element={<SettingsSection />} />
           <Route path="more" element={<SettingsSection />} />
@@ -135,6 +140,7 @@ function AppRoutes() {
         <Route path="gstr3b" element={<Gstr3b />} />
         {/* Placeholder routes for new sidebar items — coming soon */}
         <Route path="credit-notes" element={<CreditNotes />} />
+        <Route path="monitoring" element={<Monitoring />} />
         <Route path="purchase-orders" element={<ComingSoon />} />
         <Route path="debit-orders" element={<ComingSoon />} />
         <Route path="delivery-challans" element={<ComingSoon />} />

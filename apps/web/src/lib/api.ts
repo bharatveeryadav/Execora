@@ -696,6 +696,14 @@ export const authApi = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
+  changePassword: (data: {
+    currentPassword: string;
+    newPassword: string;
+  }) =>
+    request<{ success: boolean }>("/api/v1/auth/me/password", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
 };
 
 export const usersApi = {
@@ -842,6 +850,19 @@ export interface PnlReport {
   }>;
 }
 
+export interface ItemwisePnlEntry {
+  productName: string;
+  totalSales: number;
+  totalCost: number;
+  grossProfit: number;
+  marginPct: number;
+}
+
+export interface ItemwisePnlReport {
+  period: { from: string; to: string };
+  items: ItemwisePnlEntry[];
+}
+
 // ── Report API ─────────────────────────────────────────────────────────────────
 
 export interface ReportParams {
@@ -863,6 +884,11 @@ export const reportApi = {
   getGstr1: (params: ReportParams = {}) =>
     request<{ report: Gstr1Report }>(
       `/api/v1/reports/gstr1${buildReportQs(params)}`,
+    ),
+
+  getItemwisePnl: (params: ReportParams = {}) =>
+    request<{ report: ItemwisePnlReport }>(
+      `/api/v1/reports/itemwise-pnl${buildReportQs(params)}`,
     ),
 
   getPnl: (
@@ -1314,4 +1340,117 @@ export const creditNoteApi = {
 
   delete: (id: string) =>
     request<void>(`/api/v1/credit-notes/${id}`, { method: "DELETE" }),
+};
+
+// ── Monitoring API ─────────────────────────────────────────────────────────────
+
+export type MonitoringEventSeverity = "info" | "warning" | "alert";
+
+export interface MonitoringUser {
+  id: string;
+  name: string;
+  role: string;
+}
+
+export interface MonitoringEventItem {
+  id: string;
+  tenantId: string;
+  userId?: string;
+  eventType: string;
+  entityType: string;
+  entityId: string;
+  amount?: string | number;
+  description: string;
+  meta: Record<string, unknown>;
+  snapKey?: string;
+  severity: MonitoringEventSeverity;
+  isRead: boolean;
+  createdAt: string;
+  user?: MonitoringUser;
+}
+
+export interface MonitoringConfig {
+  tenantId: string;
+  enabled: boolean;
+  snapsOnBills: boolean;
+  snapsOnPayments: boolean;
+  alertDiscountAbove: string | number;
+  alertCancelAbove: string | number;
+  alertBillAbove?: string | number | null;
+  ownerPhoneAlert: boolean;
+  cameraEnabled: boolean;
+  cameraSource: "webcam" | "ip" | "phone";
+  ipCameraUrl?: string | null;
+  retentionDays: number;
+}
+
+export interface MonitoringStats {
+  byType: Record<string, number>;
+  byEmployee: Record<string, { bills: number; payments: number; cancellations: number; totalAmount: number }>;
+  total: number;
+}
+
+export const monitoringApi = {
+  listEvents: (params?: {
+    limit?: number;
+    offset?: number;
+    eventType?: string;
+    severity?: string;
+    userId?: string;
+    from?: string;
+    to?: string;
+    unreadOnly?: boolean;
+  }) => {
+    const qs = new URLSearchParams();
+    if (params?.limit)     qs.set("limit",     String(params.limit));
+    if (params?.offset)    qs.set("offset",    String(params.offset));
+    if (params?.eventType) qs.set("eventType", params.eventType);
+    if (params?.severity)  qs.set("severity",  params.severity);
+    if (params?.userId)    qs.set("userId",    params.userId);
+    if (params?.from)      qs.set("from",      params.from);
+    if (params?.to)        qs.set("to",        params.to);
+    if (params?.unreadOnly) qs.set("unreadOnly", "true");
+    return request<{ events: MonitoringEventItem[]; total: number }>(
+      `/api/v1/monitoring/events?${qs.toString()}`
+    );
+  },
+
+  unreadCount: () =>
+    request<{ count: number }>("/api/v1/monitoring/events/unread"),
+
+  readAll: () =>
+    request<void>("/api/v1/monitoring/events/read-all", { method: "POST", body: "{}" }),
+
+  readOne: (id: string) =>
+    request<void>(`/api/v1/monitoring/events/${id}/read`, { method: "POST", body: "{}" }),
+
+  stats: (from?: string, to?: string) => {
+    const qs = new URLSearchParams();
+    if (from) qs.set("from", from);
+    if (to)   qs.set("to",   to);
+    return request<MonitoringStats>(`/api/v1/monitoring/stats?${qs.toString()}`);
+  },
+
+  getConfig: () =>
+    request<{ config: MonitoringConfig }>("/api/v1/monitoring/config"),
+
+  updateConfig: (data: Partial<MonitoringConfig>) =>
+    request<{ config: MonitoringConfig }>("/api/v1/monitoring/config", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  postEvent: (body: {
+    eventType: string;
+    entityType: string;
+    entityId: string;
+    description: string;
+    amount?: number;
+    meta?: Record<string, unknown>;
+    severity?: MonitoringEventSeverity;
+  }) =>
+    request<{ ok: true }>("/api/v1/monitoring/events", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 };

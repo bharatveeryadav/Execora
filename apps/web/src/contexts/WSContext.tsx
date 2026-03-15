@@ -141,6 +141,13 @@ export function WSProvider({ children }: { children: ReactNode }) {
       wsClient.on("reminder:created", () => {
         qc.invalidateQueries({ queryKey: ["reminders"] });
       }),
+      wsClient.on("monitoring:event", () => {
+        qc.invalidateQueries({ queryKey: ["monitoring", "events"] });
+        qc.invalidateQueries({ queryKey: ["monitoring", "unread"] });
+      }),
+      wsClient.on("monitoring:snap", () => {
+        qc.invalidateQueries({ queryKey: ["monitoring", "events"] });
+      }),
     ];
 
     return () => {
