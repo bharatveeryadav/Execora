@@ -116,7 +116,7 @@
 
 | # | Story | Est. | Acceptance Criteria |
 |---|-------|------|---------------------|
-| S14-01 | **Credit note / debit note** | 3d | Model, route, UI; CN/DN with original invoice reference. |
+| S14-01 | **Credit note / debit note** | 3d | ✅ Schema (CreditNote+CreditNoteItem+enums); API routes (CRUD+issue+cancel); full UI page at /credit-notes; CN/FY/SEQ numbering; CGST/SGST/IGST per line. |
 | S14-02 | **Bank account — Settings + PDF** | 4h | ✅ `bankAccount` on Tenant; IFSC/Account# on PDF footer. |
 | S14-03 | **GSTR-3B output tax** | 3d | Aggregate IGST/CGST/SGST from invoices + ITC from purchases. |
 | S14-04 | **ITC tracking** | 3d | `gstPaid` on purchases; ITC summary endpoint; wire to GSTR-3B. |
@@ -208,7 +208,7 @@
 | WhatsApp → email fallback | ✅ | S12 |
 | E-invoicing | 🔴 | S13 |
 | E-Way Bill | 🔴 | S13 |
-| Credit/Debit note | 🔴 | S14 |
+| Credit note | ✅ | S14 |
 | GSTR-3B backend | 🔴 | S14 |
 | Bank reconciliation | 🔴 | S14+ |
 
@@ -231,4 +231,4 @@
 
 ---
 
-_Document version: 1.2 | March 15, 2026 | Sprint 11 ✅ complete, Sprint 12 ~80% complete_
+_Document version: 1.3 | March 15, 2026 | Sprint 11 ✅ complete, Sprint 12 ✅ complete, S14-01 Credit Notes ✅_

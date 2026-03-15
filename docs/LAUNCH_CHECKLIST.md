@@ -113,7 +113,7 @@
 
 ### 🔴 Must Build Before SME Paid Launch (ordered by impact)
 
-- [ ] **Credit note / debit note** — No model, route, or UI. Mandatory for B2B returns; GST compliance requires CN/DN with original invoice reference. Est: 3 days
+- [x] ~~**Credit note / debit note**~~ **FIXED 2026-03-15**: `CreditNote` + `CreditNoteItem` schema with `CreditNoteStatus`/`CreditNoteReason` enums; `/api/v1/credit-notes` CRUD + issue + cancel routes; full UI at `/credit-notes` (list + create dialog + detail dialog); auto-generates CN/FY/SEQ numbers; CGST/SGST/IGST computed per line
 - [x] ~~**Bank account details — Settings + Invoice PDF**~~ **CONFIRMED BUILT**: `bankAccountNo`, `bankIfsc`, `bankAccountHolder` in tenant.settings; Settings UI; PDF footer in `packages/infrastructure/src/pdf.ts`
 - [ ] **GSTR-3B output tax summary** — `Gstr3b.tsx` is a placeholder reading from `useSummaryRange` only. Build backend: aggregate IGST/CGST/SGST from confirmed invoices + ITC from purchases. Est: 3 days
 - [ ] **Input tax credit (ITC) tracking** — No model or route. Add `gstPaid` field to purchases; build ITC summary endpoint; wire into GSTR-3B. Est: 3 days

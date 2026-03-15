@@ -32,7 +32,7 @@
 Home
 Sales
   ├─ Invoices           → /invoices         ✅ built
-  ├─ Credit Notes       → /credit-notes     🔲 ComingSoon
+  ├─ Credit Notes       → /credit-notes     ✅ Built (March 15)
   └─ E-Invoices         → /einvoicing       ⚠️ partial
 Purchases
   ├─ Purchases          → /purchases        ✅ built
@@ -153,66 +153,35 @@ Payment split (Cash/UPI/Card/Credit). 4 invoice templates.
 
 ## 3. INVOICE & SALES PAGES
 
-### `/credit-notes` — Credit Notes 🔲 ComingSoon → ❌ Not Built
+### `/credit-notes` — Credit Notes ✅ Built (March 15, 2026)
 
 **What it is:** Document issued to reduce amount owed by customer — for returns, pricing errors, or allowances. Mandatory for GST compliance on B2B returns.
 
-**Why critical:** Without credit notes, GST returns (GSTR-1) cannot show returns/amendments. Businesses legally required for B2B.
+**BUILT:** Full schema + API + UI shipped March 15.
 
-**Data model needed:**
-```prisma
-model CreditNote {
-  id              String    @id @default(cuid())
-  tenantId        String
-  creditNoteNo    String    // CN/2025-26/001
-  invoiceId       String?   // original invoice reference (optional)
-  customerId      String
-  reason          String    // RETURN | PRICING_ERROR | DISCOUNT | OTHER
-  status          String    // draft | issued | cancelled
-  items           CreditNoteItem[]
-  subtotal        Decimal
-  discountAmount  Decimal   @default(0)
-  taxAmount       Decimal
-  totalAmount     Decimal
-  notes           String?
-  issuedAt        DateTime?
-  createdAt       DateTime  @default(now())
-}
+**Schema:** `CreditNote` + `CreditNoteItem` models with `CreditNoteStatus` (draft/issued/cancelled) and `CreditNoteReason` (goods_returned/price_adjustment/discount/damaged_goods/short_supply/other) enums. Relations on Tenant, Customer, Invoice, Product.
 
-model CreditNoteItem {
-  id            String    @id @default(cuid())
-  creditNoteId  String
-  productName   String
-  hsnCode       String?
-  quantity      Decimal
-  unitPrice     Decimal
-  gstRate       Decimal
-  cgst          Decimal
-  sgst          Decimal
-  igst          Decimal
-  amount        Decimal
-}
+**API routes live:**
 ```
-
-**API routes needed:**
+POST   /api/v1/credit-notes             — create draft (line-level GST: CGST/SGST intrastate, IGST interstate)
+GET    /api/v1/credit-notes             — list with status/customerId/invoiceId filters
+GET    /api/v1/credit-notes/:id         — detail with items + customer + invoice
+POST   /api/v1/credit-notes/:id/issue   — issue (draft → issued, stamps issuedAt)
+POST   /api/v1/credit-notes/:id/cancel  — cancel with reason
+DELETE /api/v1/credit-notes/:id         — soft-delete draft only
 ```
-POST   /api/v1/credit-notes             — create credit note
-GET    /api/v1/credit-notes             — list (filters: status, customerId, date)
-GET    /api/v1/credit-notes/:id         — single
-PATCH  /api/v1/credit-notes/:id         — update draft
-POST   /api/v1/credit-notes/:id/issue   — issue (finalise)
-POST   /api/v1/credit-notes/:id/cancel  — cancel
-GET    /api/v1/credit-notes/:id/pdf     — generate PDF
-```
+Auto-generates `CN/2025-26/SEQ` numbering per FY per tenant.
 
-**UI page features:**
-- List view: credit note #, customer, original invoice #, amount, status, date
-- Create form: similar to ClassicBilling — select customer, link original invoice (optional), add items with qty/rate/GST
-- Auto-fill items from original invoice (for return flow)
-- Issue → generate PDF → WhatsApp/Email share
-- GSTR-1 CDNR section auto-populated from issued credit notes
+**UI features built:**
+- List with status filter cards (all/draft/issued/cancelled) + issued credit total
+- Create dialog: customer + invoice selector, reason, multi-row item editor, live totals, GST rate selector
+- Detail dialog: full breakdown, CGST/SGST/IGST totals, Issue + Cancel actions
+- Soft-delete drafts from dropdown
 
-**Estimate:** 3 days (schema + routes + UI)
+**Pending (next steps):**
+- ❌ PDF generation for credit notes
+- ❌ WhatsApp/Email share of issued CN
+- ❌ GSTR-1 CDNR auto-population from issued CNs
 
 ---
 
@@ -970,7 +939,7 @@ Items Swipe does well that Execora must also implement:
 | Category | Total Pages | ✅ Built | ⚠️ Partial | 🔲 ComingSoon |
 |----------|------------|---------|-----------|--------------|
 | Billing | 3 | 2 | 1 | 0 |
-| Sales/Invoice | 3 | 2 | 1 | 1 |
+| Sales/Invoice | 3 | 3 | 1 | 0 |
 | Customer/Party | 3 | 3 | 0 | 0 |
 | Inventory | 2 | 1 | 1 | 0 |
 | Purchase/Expense | 5 | 2 | 1 | 2 |
@@ -979,12 +948,12 @@ Items Swipe does well that Execora must also implement:
 | GST | 2 | 0 | 2 | 0 |
 | Settings | 14 | 1 | 1 | 12 |
 | Other | 5 | 0 | 0 | 5 |
-| **Total** | **46** | **15 (33%)** | **10 (22%)** | **21 (45%)** |
+| **Total** | **46** | **16 (35%)** | **10 (22%)** | **20 (43%)** |
 
-**Overall app: ~55% production-ready**
-**For kirana + small retail: ~90% ready (the 45% ComingSoon are advanced/optional features)**
-**For medium business: ~60% ready (needs B2B, Credit Notes, PO, GSTR-3B)**
+**Overall app: ~57% production-ready**
+**For kirana + small retail: ~90% ready**
+**For medium business: ~63% ready (needs B2B ClassicBilling fields, PO, GSTR-3B backend)**
 
 ---
 
-_Last updated: March 15, 2026 | Derived from full page audit + agent exploration_
+_Last updated: March 15, 2026 | Credit Notes shipped (schema + API + UI)_
