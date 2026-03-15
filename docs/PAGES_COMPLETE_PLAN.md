@@ -910,6 +910,61 @@ model Order {
 
 ---
 
+## 14. SWIPE COMPETITOR — FEATURE PARITY GAPS
+
+> Source: `docs/PRODUCT_STRATEGY_2026.md` Section 8 — Competitor Analysis
+> Swipe Billing (swipe.pe) is the closest B2B SaaS competitor (₹7,199/year).
+> Where Swipe WINS over current Execora, we must close the gap.
+
+### Where Swipe Beats Execora (Gaps to Close)
+
+| Swipe Feature | Swipe Status | Execora Status | Action Required |
+|---|---|---|---|
+| E-invoicing (IRN + QR) | ✅ NIC/GSP integration | ⚠️ UI only | Build NIC/GSP API — 5d |
+| B2B invoice template | ✅ Clean, professional | ⚠️ Present but B2B fields hidden | Expose buyerGSTIN in form — 1d |
+| Multi-user team | ✅ | ✅ | Parity achieved |
+| Bank reconciliation | ❌ Not in Swipe | ⚠️ Mock only | We'll beat them — 3d |
+
+### Where Execora Beats Swipe (Defend These Advantages)
+
+| Feature | Swipe | Execora | Notes |
+|---|---|---|---|
+| Voice billing | ❌ Zero | ✅ 27 intents | Core differentiator — protect |
+| Offline mode | ❌ Cloud-only | ✅ PWA + IndexedDB | Just built |
+| Native mobile | ❌ PWA-only | ✅ React Native | Ship hardened app |
+| WhatsApp auto-send | Manual | ✅ Automatic | Unique |
+| Payment Sound Box | ❌ | ✅ Free built-in | Unique |
+| Real-time WebSocket | ❌ | ✅ | Unique |
+| Customer portal | ✅ | ✅ | Parity |
+| Hindi UI + voice | ❌ | ✅ | Differentiator |
+| Dark mode | ❌ | ✅ | UX advantage |
+| Price | ₹7,199/yr | ₹999/mo → ₹3,588/q | More flexible |
+
+### UX Quality Checklist (from PRODUCT_STRATEGY_2026 §8.8)
+Items Swipe does well that Execora must also implement:
+
+**Desktop UX:**
+- [ ] Keyboard shortcuts: `N` = new invoice, `B` = quick bill, `P` = payment, `G` = GSTR-1, `?` = shortcut help
+- [ ] Bulk select + bulk export on Invoice and Customer tables
+- [ ] Sticky table header on scroll
+- [ ] Loading skeletons on all async data loads (no blank flashes)
+- [ ] Empty states with CTA on all list pages (no blank tables)
+- [ ] All modals closable with `Escape` / all forms submittable with `Ctrl+Enter`
+- [ ] Print/PDF preview before download on all PDF exports
+
+**Mobile UX:**
+- [ ] FAB (Quick Bill) floating button visible on Dashboard and Invoice list
+- [ ] Swipe-to-delete on invoice items in billing screen (react-native-gesture-handler)
+- [ ] Pull-to-refresh on all list screens (`RefreshControl`)
+- [ ] Quick-fill chips on Payment screen: ₹200 / ₹500 / ₹1000 / Full Amount
+- [ ] Haptic feedback on payment confirm and invoice create
+- [ ] Voice mic button visible from any screen (floating or in header)
+- [ ] Large numeric input on Payment screen (₹ amount = 32px font, full-width)
+
+**Effort to implement all UX items:** 3 days (desktop + mobile combined)
+
+---
+
 ## SUMMARY COUNTS
 
 | Category | Total Pages | ✅ Built | ⚠️ Partial | 🔲 ComingSoon |

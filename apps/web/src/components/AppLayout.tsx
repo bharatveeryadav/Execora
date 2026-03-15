@@ -242,7 +242,7 @@ function AppLayoutSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              isActive={location.pathname === "/settings"}
+              isActive={location.pathname.startsWith("/settings")}
               onClick={() => navigate("/settings")}
               tooltip="Settings"
             >
