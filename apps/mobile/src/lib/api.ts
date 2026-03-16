@@ -40,6 +40,22 @@ export const invoiceExtApi = {
 // ── Extended customer API ─────────────────────────────────────────────────────
 
 export const customerExtApi = {
+  create: (data: {
+    name: string;
+    phone?: string;
+    email?: string;
+    nickname?: string;
+    landmark?: string;
+    notes?: string;
+    openingBalance?: number;
+    creditLimit?: number;
+    tags?: string[];
+  }) =>
+    apiFetch<{ customer: unknown }>("/api/v1/customers", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
   delete: (id: string) =>
     apiFetch<{ success: boolean }>(`/api/v1/customers/${id}`, { method: 'DELETE' }),
 
@@ -137,6 +153,40 @@ export const cashbookApi = {
       balance: number;
     }>(`/api/v1/cashbook${s ? `?${s}` : ""}`);
   },
+};
+
+// ── Suppliers (Vendors) API ───────────────────────────────────────────────────
+
+export const supplierApi = {
+  list: (params?: { q?: string; limit?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.q) q.set("q", params.q);
+    if (params?.limit) q.set("limit", String(params.limit ?? 100));
+    const s = q.toString();
+    return apiFetch<{
+      suppliers: Array<{
+        id: string;
+        name: string;
+        companyName?: string | null;
+        phone?: string | null;
+        email?: string | null;
+        address?: string | null;
+        gstin?: string | null;
+      }>;
+    }>(`/api/v1/suppliers${s ? `?${s}` : ""}`);
+  },
+  create: (data: {
+    name: string;
+    companyName?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+    gstin?: string;
+  }) =>
+    apiFetch<{ supplier: unknown }>("/api/v1/suppliers", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 };
 
 // ── Purchases API ─────────────────────────────────────────────────────────────

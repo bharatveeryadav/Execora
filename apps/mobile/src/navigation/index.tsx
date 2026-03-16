@@ -8,7 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { DashboardScreen } from "../screens/DashboardScreen";
 import { BillingScreen } from "../screens/BillingScreen";
-import { CustomersScreen } from "../screens/CustomersScreen";
+import { PartiesScreen } from "../screens/PartiesScreen";
 import { InvoiceListScreen } from "../screens/InvoiceListScreen";
 import { LoginScreen } from "../screens/LoginScreen";
 import { InvoiceDetailScreen } from "../screens/InvoiceDetailScreen";
@@ -26,6 +26,7 @@ import { RecurringScreen } from "../screens/RecurringScreen";
 import { MonitoringScreen } from "../screens/MonitoringScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { ComingSoonScreen } from "../screens/ComingSoonScreen";
+import { ImportScreen } from "../screens/ImportScreen";
 import { FeedbackScreen } from "../screens/FeedbackScreen";
 import { PubInvoiceScreen } from "../screens/PubInvoiceScreen";
 import { SettingsThermalScreen } from "../screens/SettingsThermalScreen";
@@ -79,7 +80,7 @@ export type MoreStackParams = {
   Gstr: undefined;
   CreditNotes: undefined;
   PurchaseOrders: undefined;
-  Import: { title?: string };
+  Import: { title?: string; type?: "customers" | "vendors" };
   EInvoicing: { title?: string };
   IndirectIncome: undefined;
   DebitOrders: { title?: string };
@@ -184,7 +185,7 @@ function CustomersNavigator() {
         headerShown: false,
       }}
     >
-      <CustomersStack.Screen name="CustomerList" component={CustomersScreen} />
+      <CustomersStack.Screen name="CustomerList" component={PartiesScreen} />
       <CustomersStack.Screen
         name="CustomerDetail"
         component={CustomerDetailScreen}
@@ -230,9 +231,11 @@ function MoreNavigator() {
       <MoreStack.Screen name="PurchaseOrders" component={PurchaseOrdersScreen} options={{ title: "Purchase Orders" }} />
       <MoreStack.Screen
         name="Import"
-        component={ComingSoonScreen}
-        initialParams={{ title: "Import" }}
-        options={{ title: "Import" }}
+        component={ImportScreen}
+        options={({ route }) => {
+          const p = (route.params as { type?: string }) ?? {};
+          return { title: p.type === "vendors" ? "Import Vendors" : "Import Customers" };
+        }}
       />
       <MoreStack.Screen
         name="EInvoicing"
@@ -345,7 +348,7 @@ function MainTabs() {
       <Tab.Screen
         name="CustomersTab"
         component={CustomersNavigator}
-        options={{ tabBarLabel: "Customers" }}
+        options={{ tabBarLabel: "Parties" }}
       />
       <Tab.Screen
         name="InvoicesTab"
