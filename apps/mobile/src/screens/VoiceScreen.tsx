@@ -26,6 +26,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { tokenStorage } from "../lib/storage";
+import { getApiBaseUrl } from "../lib/api";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -39,11 +40,7 @@ interface ChatMessage {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const API_URL =
-  (process.env.EXPO_PUBLIC_API_URL ?? "http://10.0.2.2:3006").replace(
-    /^http/,
-    "ws",
-  );
+const API_URL = getApiBaseUrl().replace(/^http/, "ws");
 const WS_URL = `${API_URL}/ws`;
 
 let _sessionId: string | null = null;

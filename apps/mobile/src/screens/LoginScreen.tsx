@@ -13,8 +13,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useMutation } from "@tanstack/react-query";
 import { authApi } from "../lib/api";
 import { tokenStorage } from "../lib/storage";
+import { useAuth, type AuthUser } from "../contexts/AuthContext";
 
-export function LoginScreen({ onLogin }: { onLogin: () => void }) {
+export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
+  const { loginWithUser } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -22,9 +24,25 @@ export function LoginScreen({ onLogin }: { onLogin: () => void }) {
     mutationFn: () => authApi.login(email.trim(), password),
     onSuccess: (data) => {
       tokenStorage.setTokens(data.accessToken, data.refreshToken);
-      onLogin();
+      const u = data.user as AuthUser | undefined;
+      if (u?.id) loginWithUser(u);
+      else onLogin?.();
     },
-    onError: (err: Error) => Alert.alert("Login failed", err.message),
+    onError: (err: Error) => {
+      const msg = err.message;
+      const isNetworkError =
+        msg.includes("Network") ||
+        msg.includes("fetch") ||
+        msg.includes("Failed to fetch") ||
+        msg.includes("Connection") ||
+        msg.includes("ECONNREFUSED") ||
+        msg.includes("timeout");
+      const title = isNetworkError ? "Cannot reach backend" : "Login failed";
+      const body = isNetworkError
+        ? "Check:\n\n1) API is running (pnpm dev)\n2) EXPO_PUBLIC_API_URL in .env points to your machine\n3) On physical phone: use your PC's LAN IP (e.g. http://192.168.1.x:3006)\n4) On emulator: use http://10.0.2.2:3006"
+        : msg;
+      Alert.alert(title, body);
+    },
   });
 
   const canSubmit = email.includes("@") && password.length >= 1;

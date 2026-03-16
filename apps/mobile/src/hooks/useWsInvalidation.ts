@@ -8,6 +8,7 @@ import { wsClient } from "../lib/ws";
 
 export const WS_EVENT_QUERIES: Record<string, string[][]> = {
   "invoice:created": [["invoices"], ["summary"], ["customers"]],
+  "invoice:draft": [["invoices"], ["summary"]],
   "invoice:confirmed": [["invoices"], ["summary"], ["customers"]],
   "invoice:updated": [["invoices"]],
   "invoice:cancelled": [["invoices"], ["summary"], ["customers"]],
@@ -20,7 +21,7 @@ export const WS_EVENT_QUERIES: Record<string, string[][]> = {
   "reminders:updated": [["reminders"]],
   "stock:updated": [["products"], ["lowStock"]],
   "product:created": [["products"], ["lowStock"]],
-  "product:updated": [["products"], ["lowStock"]],
+  "product:updated": [["products"], ["lowStock"], ["expiringBatches"]],
   "expense:created": [["expenses"], ["incomes"], ["cashbook"]],
   "expense:deleted": [["expenses"], ["incomes"], ["cashbook"]],
   "purchase:created": [["purchases"], ["cashbook"]],

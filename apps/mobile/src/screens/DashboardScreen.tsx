@@ -1,25 +1,38 @@
 /**
- * DashboardScreen — Sprint 3: Home with KPIs, quick actions, low stock.
- * Mirrors web Index.tsx structure. Icons match web QuickActions.
+ * DashboardScreen — Full parity with web Index.tsx.
+ * Order: Greeting → BusinessHealthScore → AiAgentFeed → QuickActions → KPICards → RecentActivity → LowStock → ExpiryAlert
  */
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Modal,
+  Pressable,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { invoiceApi, customerApi, summaryApi, productExtApi } from "../lib/api";
+import {
+  invoiceApi,
+  customerApi,
+  summaryApi,
+  productExtApi,
+  reminderApi,
+} from "../lib/api";
 import { inr } from "@execora/shared";
 import { useWsInvalidation } from "../hooks/useWsInvalidation";
+import { useAuth } from "../contexts/AuthContext";
+import { useWS } from "../hooks/useWS";
+import { wsClient } from "../lib/ws";
 import { PressableCard } from "../components/ui/Card";
 import { Skeleton } from "../components/ui/Skeleton";
 import { formatCurrency } from "../lib/utils";
+import { TYPO } from "../lib/typography";
 
 const ACTION_COLORS: Record<string, string> = {
   primary: "#e67e22",
@@ -37,33 +50,77 @@ const QUICK_ACTIONS: Array<{
 }> = [
   { label: "Quick Sale", icon: "flash", primary: true, route: "BillingForm", color: "#ffffff" },
   { label: "New Bill", icon: "receipt", primary: false, route: "BillingForm", color: ACTION_COLORS.primary },
+  { label: "Classic Bill", icon: "clipboard", primary: false, route: "BillingForm", color: ACTION_COLORS.primary },
   { label: "Payment", icon: "card", primary: false, route: "Payment", color: ACTION_COLORS.success },
   { label: "Stock", icon: "cube", primary: false, route: "Items", color: ACTION_COLORS.secondary },
   { label: "Invoices", icon: "document-text", primary: false, route: "InvoicesTab", color: ACTION_COLORS.primary },
   { label: "Parties", icon: "people", primary: false, route: "CustomersTab", color: ACTION_COLORS.secondary },
   { label: "Expenses", icon: "cart", primary: false, route: "Expenses", color: ACTION_COLORS.warning },
+  { label: "Purchases", icon: "basket", primary: false, route: "Purchases", color: ACTION_COLORS.secondary },
   { label: "Reports", icon: "bar-chart", primary: false, route: "Reports", color: ACTION_COLORS.secondary },
 ];
 
-export function DashboardScreen() {
-  const navigation = useNavigation<any>();
-  useWsInvalidation(["invoices", "customers", "summary", "products", "lowStock"]);
+const COMMAND_HINTS = [
+  { cat: "💰 Sales", text: "Ramesh ka invoice banao 3 rice 50kg" },
+  { cat: "💸 Payment", text: "Ramesh ne 500 diya" },
+  { cat: "📦 Stock", text: "Rice kitna bacha?" },
+  { cat: "👥 Customers", text: "Ramesh ka balance batao" },
+  { cat: "📊 Reports", text: "Aaj ki sale kitni hui?" },
+];
 
-  const { data: summary, isLoading: isLoadingSummary } = useQuery({
+function useSecondsAgo(ts: number) {
+  const [secs, setSecs] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setSecs(Math.round((Date.now() - ts) / 1000)), 1000);
+    return () => clearInterval(t);
+  }, [ts]);
+  return secs;
+}
+
+function daysUntil(dateStr: string): number {
+  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000);
+}
+
+function daysLabel(days: number) {
+  if (days <= 0) return "EXPIRED";
+  if (days === 1) return "1d left";
+  return `${days}d left`;
+}
+
+const SECTION_GAP = 16;
+const HORIZONTAL_PADDING = 16;
+const MAX_CONTENT_WIDTH = 480;
+
+export function DashboardScreen() {
+  const { width: screenWidth } = useWindowDimensions();
+  const navigation = useNavigation<any>();
+  const { user } = useAuth();
+  const { isConnected } = useWS();
+  useWsInvalidation(["invoices", "customers", "summary", "products", "lowStock", "reminders", "expiringBatches"]);
+
+  const padding = Math.max(HORIZONTAL_PADDING, Math.min(screenWidth * 0.04, 24));
+  const contentWidth = Math.min(screenWidth - padding * 2, MAX_CONTENT_WIDTH);
+
+  const { data: summary, isLoading: isLoadingSummary, dataUpdatedAt: sumAt } = useQuery({
     queryKey: ["summary", "daily"],
     queryFn: () => summaryApi.daily(),
     staleTime: 60_000,
   });
 
-  const { data: invoices, refetch: refetchInvoices, isFetching: loadingInvoices } = useQuery({
+  const {
+    data: invoices,
+    refetch: refetchInvoices,
+    isFetching: loadingInvoices,
+    dataUpdatedAt: invAt,
+  } = useQuery({
     queryKey: ["invoices", "dashboard"],
-    queryFn: () => invoiceApi.list(1, 5),
+    queryFn: () => invoiceApi.list(1, 20),
     staleTime: 60_000,
   });
 
-  const { data: customers, isFetching: loadingCustomers } = useQuery({
-    queryKey: ["customers", "dashboard"],
-    queryFn: () => customerApi.list(1, 5),
+  const { data: customersData } = useQuery({
+    queryKey: ["customers", "health"],
+    queryFn: () => customerApi.list(1, 200),
     staleTime: 60_000,
   });
 
@@ -73,15 +130,97 @@ export function DashboardScreen() {
     staleTime: 60_000,
   });
 
-  const refreshing = loadingInvoices || loadingCustomers;
+  const { data: remindersData } = useQuery({
+    queryKey: ["reminders"],
+    queryFn: () => reminderApi.list(),
+    staleTime: 60_000,
+  });
+
+  const { data: expiringData } = useQuery({
+    queryKey: ["expiringBatches", 30],
+    queryFn: () => productExtApi.expiringBatches(30),
+    staleTime: 300_000,
+  });
+
+  const refreshing = loadingInvoices;
   const todayInvoices = invoices?.invoices ?? [];
   const totalToday = summary?.summary?.totalSales ?? todayInvoices.reduce((s, i) => s + (i.total ?? 0), 0);
   const dailySummary = summary?.summary;
   const lowStock = lowStockData?.products ?? [];
+  const batches = expiringData?.batches ?? [];
+  const customers = customersData?.customers ?? [];
+  const reminders = (remindersData?.reminders ?? []) as Array<{
+    id: string;
+    status: string;
+    scheduledTime: string;
+    customer?: { name?: string };
+    amount?: number | string;
+    notes?: string;
+  }>;
+
   const collectionRate =
     dailySummary && dailySummary.totalSales > 0
-      ? Math.round((dailySummary.totalPayments / dailySummary.totalSales) * 100)
+      ? Math.min(100, Math.round((dailySummary.totalPayments / dailySummary.totalSales) * 100))
       : 0;
+  const overdueCount = customers.filter((c) => parseFloat(String(c.balance ?? 0)) > 0).length;
+  const stockScore = Math.max(0, 100 - lowStock.length * 15);
+  const overdueScore = Math.max(0, 100 - overdueCount * 10);
+  const overall = Math.round((collectionRate + stockScore + overdueScore) / 3);
+  const overallColor = overall >= 70 ? "#1a9248" : overall >= 50 ? "#e6a319" : "#dc2626";
+  const overallLabel = overall >= 70 ? "Good" : overall >= 50 ? "Needs Work" : "Critical";
+
+  const upcomingReminders = reminders
+    .filter((r) => r.status === "pending")
+    .sort((a, b) => new Date(a.scheduledTime).getTime() - new Date(b.scheduledTime).getTime())
+    .slice(0, 6);
+
+  const overdueList = customers
+    .filter((c) => parseFloat(String(c.balance ?? 0)) > 0)
+    .sort((a, b) => parseFloat(String(b.balance)) - parseFloat(String(a.balance)));
+
+  const lastUpdated = Math.max(sumAt ?? 0, invAt ?? 0) || Date.now();
+  const secsAgo = useSecondsAgo(lastUpdated);
+
+  const [cmdIdx, setCmdIdx] = useState(0);
+  const [expirySelected, setExpirySelected] = useState<{
+    id: string;
+    batchNo: string;
+    expiryDate: string;
+    quantity: number;
+    product: { name: string; unit: string };
+  } | null>(null);
+  const [feed, setFeed] = useState<Array<{ id: number; icon: string; text: string; subtext?: string; at: number }>>([]);
+  const feedId = useRef(1);
+
+  useEffect(() => {
+    const t = setInterval(() => setCmdIdx((i) => (i + 1) % COMMAND_HINTS.length), 4000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    const push = (icon: string, text: string, subtext?: string) =>
+      setFeed((prev) => [{ id: feedId.current++, icon, text, subtext, at: Date.now() }, ...prev].slice(0, 15));
+
+    const offs = [
+      wsClient.on("invoice:confirmed", (p: unknown) => {
+        const d = p as { customerName?: string; invoiceNo?: string; total?: number };
+        push("🧾", `Invoice — ${d.customerName ?? "Customer"}`, d.invoiceNo);
+      }),
+      wsClient.on("payment:recorded", (p: unknown) => {
+        const d = p as { customerName?: string; amount?: number };
+        push("💰", `Payment from ${d.customerName ?? "Customer"}`, d.amount ? formatCurrency(d.amount) : undefined);
+      }),
+      wsClient.on("customer:updated", (p: unknown) => {
+        const d = p as { name?: string };
+        push("👤", `Customer updated — ${d.name ?? ""}`);
+      }),
+      wsClient.on("product:updated", (p: unknown) => {
+        const d = p as { name?: string };
+        push("📦", `Stock updated — ${d.name ?? "Product"}`);
+      }),
+    ];
+    return () => offs.forEach((o) => o());
+  }, []);
 
   const handleQuickAction = (route: string) => {
     if (route === "BillingForm") return navigation.navigate("Billing", { screen: "BillingForm" });
@@ -91,235 +230,426 @@ export function DashboardScreen() {
     if (route === "CustomersTab") return navigation.navigate("CustomersTab");
     if (route === "Expenses") return navigation.navigate("MoreTab", { screen: "Expenses" });
     if (route === "Reports") return navigation.navigate("MoreTab", { screen: "Reports" });
+    if (route === "Purchases") return navigation.navigate("MoreTab", { screen: "Purchases" });
   };
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning ☀️" : hour < 17 ? "Good afternoon 🙏" : "Good evening 🌙";
+  const firstName = user?.name?.split(" ")[0] ?? "there";
+  const dateStr = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" });
+  const hint = COMMAND_HINTS[cmdIdx];
 
   return (
     <SafeAreaView className="flex-1 bg-background">
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+        contentContainerStyle={{
+          paddingHorizontal: padding,
+          paddingBottom: 32,
+          paddingTop: SECTION_GAP,
+          alignItems: "center",
+        }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refetchInvoices} />
         }
       >
-        {/* Header — matches web DashboardGreeting */}
-        <View className="flex-row items-center justify-between mb-1">
-          <View className="flex-row items-center gap-2">
-            <Text className="text-lg font-semibold text-slate-800">
-              {(() => {
-                const h = new Date().getHours();
-                const g = h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
-                return `${g}, there!`;
-              })()}
+        <View style={{ width: "100%", maxWidth: contentWidth }}>
+        {/* 1 — Greeting (matches web DashboardGreeting) */}
+        <View className="flex-row items-center justify-between mb-1" style={{ gap: 8 }}>
+          <View className="flex-row items-center gap-2 flex-1 min-w-0">
+            <Text className={TYPO.pageTitle} numberOfLines={1}>
+              {greeting}, {firstName} Ji!
             </Text>
+            <View
+              className={`h-2 w-2 rounded-full ${isConnected ? "bg-green-500" : "bg-amber-500"}`}
+              style={{ opacity: isConnected ? 1 : 0.8 }}
+            />
           </View>
-          <Text className="text-sm text-muted-foreground">
-            {new Date().toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}
-          </Text>
+          <Text className={`${TYPO.bodyMuted} shrink-0`}>📅 {dateStr}</Text>
         </View>
-        <Text className="text-sm text-slate-400 mb-5">Dashboard</Text>
+        <Text className={`${TYPO.caption} mb-4`}>Dashboard</Text>
 
-        {/* KPI cards — matches web KPICards with icons */}
-        <View className="flex-row flex-wrap gap-2 mb-5">
-          <PressableCard
-            onPress={() => navigation.navigate("InvoicesTab")}
-            className="flex-1 min-w-[45%] shadow-sm"
-          >
-            <View className="flex-row items-start justify-between">
-              <Text className="text-[11px] font-medium text-muted-foreground">Today's Sales</Text>
-              <View className="rounded-lg bg-primary/10 p-1">
-                <Ionicons name="trending-up" size={14} color="#e67e22" />
+        {/* 2 — Business Health Score */}
+        <View className="rounded-xl border border-slate-200 bg-card p-3 mb-4">
+          <View className="flex-row items-start justify-between mb-2" style={{ gap: 12 }}>
+            <View className="flex-1 min-w-0">
+              <View className="flex-row items-center gap-1.5">
+                <Text className={TYPO.sectionTitle}>Business Health</Text>
+                <View className={`h-1.5 w-1.5 rounded-full ${isConnected ? "bg-green-500" : "bg-slate-400"}`} />
               </View>
-            </View>
-            {isLoadingSummary ? (
-              <Skeleton className="mt-1.5 h-6 w-20 rounded" />
-            ) : (
-              <Text className="text-lg font-bold tracking-tight mt-1 text-slate-800">
-                {formatCurrency(totalToday)}
+              <Text className="text-lg font-bold" style={{ color: overallColor }}>
+                {overall}
               </Text>
-            )}
-            <Text className="text-[10px] font-medium text-success mt-0.5">
-              {dailySummary?.invoiceCount ?? 0} bills today
-            </Text>
-          </PressableCard>
-
-          <PressableCard
-            onPress={() => navigation.navigate("InvoicesTab")}
-            className="flex-1 min-w-[45%] shadow-sm"
-          >
-            <View className="flex-row items-start justify-between">
-              <Text className="text-[11px] font-medium text-muted-foreground">Pending Dues</Text>
-              <View className="rounded-lg bg-warning/20 p-1">
-                <Ionicons name="calendar" size={14} color="#e6a319" />
-              </View>
+              <Text className={TYPO.label}>/ 100 · {overallLabel}</Text>
+              <Text className={`${TYPO.micro} mt-0.5`}>Updated {secsAgo < 10 ? "just now" : `${secsAgo}s ago`}</Text>
             </View>
-            {isLoadingSummary ? (
-              <Skeleton className="mt-1.5 h-6 w-20 rounded" />
-            ) : (
-              <Text className="text-lg font-bold tracking-tight mt-1 text-slate-800">
-                {formatCurrency(dailySummary?.pendingAmount ?? 0)}
+            <View
+              className="w-14 h-14 rounded-full items-center justify-center bg-slate-100 shrink-0"
+              style={{ borderWidth: 4, borderColor: overallColor }}
+            >
+              <Text className={TYPO.labelBold} style={{ color: overallColor }}>
+                {overall}%
               </Text>
-            )}
-            <Text className={`text-[10px] font-medium mt-0.5 ${(dailySummary?.pendingAmount ?? 0) > 0 ? "text-destructive" : "text-success"}`}>
-              {(dailySummary?.pendingAmount ?? 0) > 0 ? "⚠️ Needs collection" : "✅ All clear"}
-            </Text>
-          </PressableCard>
-
-          <PressableCard
-            onPress={() => navigation.navigate("MoreTab", { screen: "Reports" })}
-            className="flex-1 min-w-[45%] shadow-sm"
-          >
-            <View className="flex-row items-start justify-between">
-              <Text className="text-[11px] font-medium text-muted-foreground">Collected Today</Text>
-              <View className="rounded-lg bg-success/20 p-1">
-                <Ionicons name="wallet" size={14} color="#1a9248" />
-              </View>
             </View>
-            {isLoadingSummary ? (
-              <Skeleton className="mt-1.5 h-6 w-20 rounded" />
-            ) : (
-              <Text className="text-lg font-bold tracking-tight mt-1 text-slate-800">
-                {formatCurrency(dailySummary?.totalPayments ?? 0)}
+          </View>
+          <View className="h-1 w-full rounded-full bg-slate-200 mb-3">
+            <View
+              className="h-full rounded-full"
+              style={{ width: `${overall}%`, backgroundColor: overallColor }}
+            />
+          </View>
+          <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
+            <TouchableOpacity
+              onPress={() => navigation.getParent()?.navigate("CustomersTab" as never, { screen: "Payment" } as never)}
+              style={{ flex: 1, minWidth: 0, borderRadius: 12, borderWidth: 1, borderColor: "#e2e8f0", backgroundColor: "#f8fafc", padding: 8 }}
+            >
+              <Text className={TYPO.micro}>💰 Collection</Text>
+              <Text className={`${TYPO.microBold} text-right ${collectionRate >= 80 ? "text-green-600" : collectionRate >= 50 ? "text-amber-600" : "text-red-600"}`}>
+                {collectionRate}%
               </Text>
-            )}
-            <Text className="text-[10px] font-medium text-success mt-0.5">
-              Cash {formatCurrency(dailySummary?.cashPayments ?? 0)} · UPI {formatCurrency(dailySummary?.upiPayments ?? 0)}
-            </Text>
-          </PressableCard>
-
-          <PressableCard
-            onPress={() => navigation.navigate("MoreTab", { screen: "Reports" })}
-            className="flex-1 min-w-[45%] shadow-sm"
-          >
-            <View className="flex-row items-start justify-between">
-              <Text className="text-[11px] font-medium text-muted-foreground">Collection Rate</Text>
-              <View className="rounded-lg bg-secondary/20 p-1">
-                <Ionicons name="pulse" size={14} color="#3d7a9e" />
-              </View>
-            </View>
-            {isLoadingSummary ? (
-              <Skeleton className="mt-1.5 h-6 w-20 rounded" />
-            ) : (
-              <Text className="text-lg font-bold tracking-tight mt-1 text-slate-800">{collectionRate}%</Text>
-            )}
-            <Text className={`text-[10px] font-medium mt-0.5 ${collectionRate >= 50 ? "text-success" : "text-destructive"}`}>
-              {collectionRate >= 80 ? "✅ Excellent" : collectionRate >= 50 ? "⚠️ Below target" : "🔴 Low"}
-            </Text>
-          </PressableCard>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.navigate("Items")}
+              style={{ flex: 1, minWidth: 0, borderRadius: 12, borderWidth: 1, borderColor: "#e2e8f0", backgroundColor: "#f8fafc", padding: 8 }}
+            >
+              <Text className={TYPO.micro}>📦 Stock</Text>
+              <Text className={`${TYPO.microBold} text-right ${stockScore >= 80 ? "text-green-600" : stockScore >= 50 ? "text-amber-600" : "text-red-600"}`}>
+                {stockScore}%
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.getParent()?.navigate("CustomersTab" as never, { screen: "Overdue" } as never)}
+              style={{ flex: 1, minWidth: 0, borderRadius: 12, borderWidth: 1, borderColor: "#e2e8f0", backgroundColor: "#f8fafc", padding: 8 }}
+            >
+              <Text className={TYPO.micro}>🧾 Receivables</Text>
+              <Text className={`${TYPO.microBold} text-right ${overdueScore >= 80 ? "text-green-600" : overdueScore >= 50 ? "text-amber-600" : "text-red-600"}`}>
+                {overdueScore}%
+              </Text>
+            </TouchableOpacity>
+          </View>
+          {overdueList.length > 0 && (
+            <TouchableOpacity
+              onPress={() => navigation.getParent()?.navigate("CustomersTab" as never, { screen: "Overdue" } as never)}
+              className="flex-row flex-wrap items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 mb-2"
+            >
+              <Text className={TYPO.labelBold + " text-red-700"}>🔴 Overdue ({overdueList.length})</Text>
+              {overdueList.slice(0, 3).map((c) => (
+                <View key={c.id} className="rounded-full border border-red-200 bg-red-100 px-2 py-0.5">
+                  <Text className={`${TYPO.label} text-red-700`}>
+                    {(c.name ?? "").slice(0, 10)}{(c.name ?? "").length > 10 ? "…" : ""} {formatCurrency(c.balance)}
+                  </Text>
+                </View>
+              ))}
+              {overdueList.length > 3 && (
+                <View className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5">
+                  <Text className={TYPO.caption}>+{overdueList.length - 3} more</Text>
+                </View>
+              )}
+              <Text className={`${TYPO.caption} ml-auto`}>View All →</Text>
+            </TouchableOpacity>
+          )}
+          {upcomingReminders.length > 0 && (
+            <TouchableOpacity
+              onPress={() => navigation.getParent()?.navigate("CustomersTab" as never, { screen: "Overdue" } as never)}
+              className="flex-row flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2"
+            >
+              <Text className={TYPO.labelBold + " text-amber-700"}>🟡 Upcoming ({upcomingReminders.length})</Text>
+              {upcomingReminders.slice(0, 3).map((r) => {
+                const days = Math.max(0, Math.ceil((new Date(r.scheduledTime).getTime() - Date.now()) / 86400000));
+                return (
+                  <View key={r.id} className="rounded-full border border-amber-200 bg-amber-100 px-2 py-0.5">
+                    <Text className={`${TYPO.label} text-amber-700`}>
+                      {(r.customer?.name ?? "—").slice(0, 10)} {formatCurrency(r.amount ?? r.notes ?? 0)} · {days === 0 ? "Today" : `${days}d`}
+                    </Text>
+                  </View>
+                );
+              })}
+              <Text className={`${TYPO.caption} ml-auto`}>View All →</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
-        {/* Quick actions — matches web QuickActions */}
-        <Text className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-          Quick Actions
-        </Text>
-        <View className="flex-row flex-wrap gap-2 mb-6">
+        {/* 3 — AI Agent Feed (command hints + live feed) */}
+        <View className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 mb-4">
+          <View className="flex-row items-center gap-3">
+            <View className="rounded-full bg-primary/10 p-2">
+              <Ionicons name="mic" size={18} color="#e67e22" />
+            </View>
+            <View className="flex-1">
+              <Text className={TYPO.sectionTitle + " text-primary/80"}>{hint.cat} · Say it naturally</Text>
+              <Text className={TYPO.body} key={cmdIdx}>&ldquo;{hint.text}&rdquo;</Text>
+            </View>
+          </View>
+        </View>
+        {feed.length > 0 && (
+          <View className="rounded-xl border border-slate-200 bg-card px-4 py-2 mb-4">
+            <View className="flex-row items-center gap-2 border-b border-slate-100 pb-2 mb-2">
+              <View className={`h-1.5 w-1.5 rounded-full ${isConnected ? "bg-green-500" : "bg-slate-400"}`} />
+              <Text className={TYPO.sectionTitle}>AI Activity Feed</Text>
+            </View>
+            {feed.slice(0, 5).map((item) => (
+              <View key={item.id} className="flex-row items-start gap-2 py-1.5">
+                <Text className="text-base">{item.icon}</Text>
+                <View className="flex-1">
+                  <Text className={TYPO.body} numberOfLines={1}>{item.text}</Text>
+                  {item.subtext && <Text className={TYPO.caption} numberOfLines={1}>{item.subtext}</Text>}
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* 4 — Quick Actions (10 items, 5 per row) */}
+        <Text className={`${TYPO.sectionTitle} mb-2`}>Quick Actions</Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
           {QUICK_ACTIONS.map((a) => (
             <TouchableOpacity
               key={a.label}
               onPress={() => handleQuickAction(a.route)}
               activeOpacity={0.85}
-              className={`flex-1 min-w-[22%] min-h-[72px] items-center justify-center gap-1 rounded-xl border py-3 ${
-                a.primary
-                  ? "bg-primary border-primary shadow-md"
-                  : "bg-card border-border"
-              }`}
+              style={{
+                width: Math.floor((contentWidth - 32) / 5),
+                minHeight: 64,
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 4,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: "#e2e8f0",
+                backgroundColor: a.primary ? "#e67e22" : "#fafbfc",
+                paddingVertical: 10,
+              }}
             >
-              <View className="mb-1">
-                <Ionicons
-                  name={a.icon}
-                  size={22}
-                  color={a.color}
-                />
-              </View>
-              <Text
-                className={`text-[10px] font-semibold ${a.primary ? "text-white" : "text-slate-600"}`}
-              >
+              <Ionicons name={a.icon} size={20} color={a.primary ? "#fff" : a.color} />
+              <Text className={`${TYPO.micro} font-semibold text-center ${a.primary ? "text-white" : "text-slate-600"}`} numberOfLines={1}>
                 {a.label}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Low stock alert — matches web DashboardLowStock */}
-        {!loadingLowStock && lowStock.length > 0 && (
-          <TouchableOpacity
-            onPress={() => navigation.navigate("Items")}
-            activeOpacity={0.9}
-            className="flex-row flex-wrap items-center gap-2 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2.5 mb-5"
-          >
-            <Text className="text-xs font-semibold text-amber-700">
-              {lowStock.filter((p) => p.stock === 0).length > 0 ? "🔴" : "⚠️"} Stock Alert ({lowStock.length}):
-            </Text>
-            {lowStock.slice(0, 5).map((p) => (
-              <View
-                key={p.id}
-                className={`rounded-full border px-2 py-0.5 ${
-                  p.stock === 0
-                    ? "border-destructive/40 bg-destructive/10"
-                    : "border-warning/40 bg-warning/15"
-                }`}
-              >
-                <Text className={`text-xs font-medium ${p.stock === 0 ? "text-destructive" : "text-warning"}`}>
-                  {p.name} {p.stock}{p.unit ?? ""}
-                </Text>
+        {/* 5 — KPI Cards (2x2 grid) */}
+        <Text className={`${TYPO.sectionTitle} mb-2`}>Today&apos;s Numbers</Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
+          <PressableCard onPress={() => navigation.navigate("InvoicesTab")} style={{ width: (contentWidth - 8) / 2, flexGrow: 1, minWidth: 0 }} className="shadow-sm">
+            <View className="flex-row items-start justify-between">
+              <Text className={TYPO.label}>Today&apos;s Sales</Text>
+              <View className="rounded-lg bg-primary/10 p-1">
+                <Ionicons name="trending-up" size={14} color="#e67e22" />
               </View>
-            ))}
-            {lowStock.length > 5 && (
-              <View className="rounded-full border border-border bg-muted px-2 py-0.5">
-                <Text className="text-xs text-muted-foreground">+{lowStock.length - 5} more</Text>
-              </View>
+            </View>
+            {isLoadingSummary ? <Skeleton className="mt-1.5 h-6 w-20 rounded" /> : (
+              <Text className={`${TYPO.value} mt-1`}>{formatCurrency(totalToday)}</Text>
             )}
-            <Text className="ml-auto text-[11px] text-muted-foreground">Manage Inventory →</Text>
-          </TouchableOpacity>
-        )}
+            <Text className={`${TYPO.caption} text-green-600 mt-0.5`}>{dailySummary?.invoiceCount ?? 0} bills today</Text>
+          </PressableCard>
+          <PressableCard onPress={() => navigation.navigate("InvoicesTab")} style={{ width: (contentWidth - 8) / 2, flexGrow: 1, minWidth: 0 }} className="shadow-sm">
+            <View className="flex-row items-start justify-between">
+              <Text className={TYPO.label}>Pending Dues</Text>
+              <View className="rounded-lg bg-amber-100 p-1">
+                <Ionicons name="calendar" size={14} color="#e6a319" />
+              </View>
+            </View>
+            {isLoadingSummary ? <Skeleton className="mt-1.5 h-6 w-20 rounded" /> : (
+              <Text className={`${TYPO.value} mt-1 text-right`}>{formatCurrency(dailySummary?.pendingAmount ?? 0)}</Text>
+            )}
+            <Text className={`${TYPO.caption} mt-0.5 text-right ${(dailySummary?.pendingAmount ?? 0) > 0 ? "text-red-600" : "text-green-600"}`}>
+              {(dailySummary?.pendingAmount ?? 0) > 0 ? "⚠️ Needs collection" : "✅ All clear"}
+            </Text>
+          </PressableCard>
+          <PressableCard onPress={() => navigation.navigate("MoreTab", { screen: "Reports" })} style={{ width: (contentWidth - 8) / 2, flexGrow: 1, minWidth: 0 }} className="shadow-sm">
+            <View className="flex-row items-start justify-between">
+              <Text className={TYPO.label}>Collected Today</Text>
+              <View className="rounded-lg bg-green-100 p-1">
+                <Ionicons name="wallet" size={14} color="#1a9248" />
+              </View>
+            </View>
+            {isLoadingSummary ? <Skeleton className="mt-1.5 h-6 w-20 rounded" /> : (
+              <Text className={`${TYPO.value} mt-1 text-right`}>{formatCurrency(dailySummary?.totalPayments ?? 0)}</Text>
+            )}
+            <Text className={`${TYPO.caption} text-green-600 mt-0.5 text-right`}>
+              Cash {formatCurrency(dailySummary?.cashPayments ?? 0)} · UPI {formatCurrency(dailySummary?.upiPayments ?? 0)}
+            </Text>
+          </PressableCard>
+          <PressableCard onPress={() => navigation.navigate("MoreTab", { screen: "Reports" })} style={{ width: (contentWidth - 8) / 2, flexGrow: 1, minWidth: 0 }} className="shadow-sm">
+            <View className="flex-row items-start justify-between">
+              <Text className={TYPO.label}>Collection Rate</Text>
+              <View className="rounded-lg bg-blue-100 p-1">
+                <Ionicons name="pulse" size={14} color="#3d7a9e" />
+              </View>
+            </View>
+            {isLoadingSummary ? <Skeleton className="mt-1.5 h-6 w-20 rounded" /> : (
+              <Text className={`${TYPO.value} mt-1 text-right`}>{collectionRate}%</Text>
+            )}
+            <Text className={`${TYPO.caption} mt-0.5 text-right ${collectionRate >= 80 ? "text-green-600" : collectionRate >= 50 ? "text-amber-600" : "text-red-600"}`}>
+              {collectionRate >= 80 ? "✅ Excellent" : collectionRate >= 50 ? "⚠️ Below target" : "🔴 Low"}
+            </Text>
+          </PressableCard>
+        </View>
 
-        {/* Recent invoices — card style like web */}
-        <Text className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-          Recent Invoices
-        </Text>
-        <View className="rounded-xl border border-slate-200 bg-card overflow-hidden shadow-sm">
+        {/* 6 — Recent Activity (with LIVE) */}
+        <View className="flex-row items-center justify-between mb-2">
+          <View className="flex-row items-center gap-2">
+            <Text className={TYPO.sectionTitle}>📋 Recent Activity</Text>
+            <View className="flex-row items-center gap-1 rounded-full bg-green-100 px-2 py-0.5">
+              <View className="h-1.5 w-1.5 rounded-full bg-green-500" />
+              <Text className={`${TYPO.micro} font-semibold text-green-700`}>LIVE</Text>
+            </View>
+          </View>
+          <TouchableOpacity onPress={() => void refetchInvoices()} className="flex-row items-center gap-1">
+            <Text className={TYPO.caption}>🔄 {secsAgo < 5 ? "just now" : `${secsAgo}s ago`}</Text>
+          </TouchableOpacity>
+        </View>
+        <View className="rounded-xl border border-slate-200 bg-card overflow-hidden shadow-sm mb-5">
           {todayInvoices.length === 0 && (
             <View className="py-8 items-center">
-              <Text className="text-slate-400 text-sm">No invoices yet today</Text>
+              <Text className={TYPO.bodyMuted}>No invoices yet today</Text>
             </View>
           )}
-          {todayInvoices.map((inv, idx) => (
+          {todayInvoices.slice(0, 5).map((inv, idx) => (
             <TouchableOpacity
               key={inv.id}
               onPress={() =>
-                navigation.getParent()?.navigate("InvoicesTab" as never, {
-                  screen: "InvoiceDetail",
-                  params: { id: inv.id },
-                } as never)
+                navigation.getParent()?.navigate("InvoicesTab" as never, { screen: "InvoiceDetail", params: { id: inv.id } } as never)
               }
               className={`flex-row items-center px-4 py-3 ${idx > 0 ? "border-t border-slate-100" : ""}`}
             >
               <View className="flex-1">
-                <Text className="text-sm font-semibold text-slate-800">
-                  {(inv as any).invoiceNo ?? inv.id.slice(-6)}
-                </Text>
-                <Text className="text-xs text-slate-500 mt-0.5">
-                  {inv.customer?.name ?? "Walk-in"}
-                </Text>
+                <Text className={TYPO.labelBold}>{(inv as { invoiceNo?: string }).invoiceNo ?? inv.id.slice(-6)}</Text>
+                <Text className={`${TYPO.caption} mt-0.5`}>{inv.customer?.name ?? "Walk-in"}</Text>
               </View>
               <View className="items-end">
-                <Text className="text-sm font-bold text-primary">
-                  ₹{inr(inv.total)}
-                </Text>
-                <View
-                  className={`mt-1 px-2 py-0.5 rounded-full ${inv.status === "paid" ? "bg-green-100" : "bg-amber-100"}`}
-                >
-                  <Text
-                    className={`text-[10px] font-semibold ${inv.status === "paid" ? "text-green-700" : "text-amber-700"}`}
-                  >
-                    {inv.status}
+                <Text className={`${TYPO.value} text-primary`}>₹{inr(inv.total)}</Text>
+                <View className={`mt-1 px-2 py-0.5 rounded-full ${inv.status === "paid" ? "bg-green-100" : "bg-amber-100"}`}>
+                  <Text className={`${TYPO.micro} font-semibold text-center ${inv.status === "paid" ? "text-green-700" : "text-amber-700"}`}>
+                    {inv.status === "paid" ? "✅ Paid" : (inv as { status?: string }).status === "cancelled" ? "❌ Void" : "⏳ Due"}
                   </Text>
                 </View>
               </View>
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* 7 — Low Stock */}
+        {!loadingLowStock && lowStock.length > 0 && (
+          <TouchableOpacity
+            onPress={() => navigation.navigate("Items")}
+            activeOpacity={0.9}
+            className="flex-row flex-wrap items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 mb-5"
+          >
+            <Text className={TYPO.labelBold + " text-amber-700"}>
+              {lowStock.filter((p) => p.stock === 0).length > 0 ? "🔴" : "⚠️"} Stock Alert ({lowStock.length}):
+            </Text>
+            {lowStock.slice(0, 5).map((p) => (
+              <View
+                key={p.id}
+                className={`rounded-full border px-2 py-0.5 ${p.stock === 0 ? "border-red-300 bg-red-100" : "border-amber-300 bg-amber-100"}`}
+              >
+                <Text className={`${TYPO.label} ${p.stock === 0 ? "text-red-700" : "text-amber-700"}`}>
+                  {p.name} {p.stock}{p.unit ?? ""}
+                </Text>
+              </View>
+            ))}
+            {lowStock.length > 5 && (
+              <View className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5">
+                <Text className={TYPO.caption}>+{lowStock.length - 5} more</Text>
+              </View>
+            )}
+            <Text className={`${TYPO.caption} ml-auto`}>Manage Inventory →</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* 8 — Expiry Alert */}
+        {batches.length > 0 && (
+          <View className="flex-row flex-wrap items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5">
+            <Text className={TYPO.labelBold + " text-amber-700"}>
+              {batches.filter((b) => daysUntil(b.expiryDate) <= 0).length > 0 ? "🔴" : "⚠️"} Expiry Alert ({batches.length}):
+            </Text>
+            {batches.slice(0, 6).map((batch) => {
+              const days = daysUntil(batch.expiryDate);
+              const pillClass = days <= 0 ? "border-red-300 bg-red-100" : days <= 7 ? "border-red-200 bg-red-50" : "border-amber-300 bg-amber-100";
+              return (
+                <TouchableOpacity
+                  key={batch.id}
+                  onPress={() => setExpirySelected(batch)}
+                  className={`rounded-full border px-2 py-0.5 ${pillClass}`}
+                >
+                  <Text className={`${TYPO.label} ${days <= 7 ? "text-red-700" : "text-amber-700"}`}>
+                    {batch.product.name.length > 14 ? batch.product.name.slice(0, 13) + "…" : batch.product.name}{" "}
+                    <Text className="opacity-70">{daysLabel(days)}</Text>
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+            {batches.length > 6 && (
+              <TouchableOpacity
+                onPress={() => navigation.navigate("MoreTab", { screen: "Expiry" })}
+                className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5"
+              >
+                <Text className={TYPO.caption}>+{batches.length - 6} more</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              onPress={() => navigation.navigate("MoreTab", { screen: "Expiry" })}
+              className="ml-auto"
+            >
+              <Text className={TYPO.caption}>View All →</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+        </View>
       </ScrollView>
+
+      {/* Expiry detail modal */}
+      <Modal visible={!!expirySelected} transparent animationType="fade">
+        <Pressable className="flex-1 bg-black/50 justify-center p-4" onPress={() => setExpirySelected(null)}>
+          <Pressable onPress={(e) => e.stopPropagation()} className="bg-white rounded-2xl p-4">
+            {expirySelected && (
+              <>
+                <View className="flex-row items-center gap-2 mb-3">
+                  <Ionicons name="warning" size={20} color="#dc2626" />
+                  <Text className={TYPO.value}>Expiry Stock Alert</Text>
+                </View>
+                <View className={`rounded-lg p-3 mb-3 ${daysUntil(expirySelected.expiryDate) <= 7 ? "bg-red-50" : "bg-amber-50"}`}>
+                  <Text className={`${TYPO.body} font-bold text-center ${daysUntil(expirySelected.expiryDate) <= 7 ? "text-red-700" : "text-amber-700"}`}>
+                    {daysUntil(expirySelected.expiryDate) <= 0
+                      ? "❌ This batch has EXPIRED"
+                      : `⚠️ Expiring in ${daysUntil(expirySelected.expiryDate)} day${daysUntil(expirySelected.expiryDate) === 1 ? "" : "s"}!`}
+                  </Text>
+                </View>
+                <View className="gap-2 mb-3">
+                  <View className="flex-row justify-between py-2 border-b border-slate-100">
+                    <Text className={TYPO.label}>Product</Text>
+                    <Text className={TYPO.labelBold}>{expirySelected.product.name}</Text>
+                  </View>
+                  <View className="flex-row justify-between py-2 border-b border-slate-100">
+                    <Text className={TYPO.label}>Quantity</Text>
+                    <Text className={TYPO.labelBold}>{expirySelected.quantity} {expirySelected.product.unit}</Text>
+                  </View>
+                  <View className="flex-row justify-between py-2">
+                    <Text className={TYPO.label}>Expiry Date</Text>
+                    <Text className={TYPO.labelBold}>
+                      {new Date(expirySelected.expiryDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                    </Text>
+                  </View>
+                </View>
+                <Text className={`${TYPO.caption} text-center mb-3`}>
+                  Go to <Text className="font-semibold">Expiry Tracker</Text> to write off or manage this batch.
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setExpirySelected(null);
+                    navigation.navigate("MoreTab", { screen: "Expiry" });
+                  }}
+                  className="bg-primary rounded-xl py-3 items-center"
+                >
+                  <Text className={`${TYPO.labelBold} text-white`}>Open Expiry Tracker</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }

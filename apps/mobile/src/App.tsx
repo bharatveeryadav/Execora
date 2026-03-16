@@ -50,7 +50,7 @@ function AppContent() {
 
 function AppContentInner() {
   const navRef = useRef<NavigationContainerRef<any>>(null);
-  const { isLoggedIn, login, logout } = useAuth();
+  const { isLoggedIn, login, loginWithUser, logout } = useAuth();
   const { isOffline, pendingCount, isSyncing } = useOffline();
 
   usePushAndDeepLinks(navRef, isLoggedIn);
@@ -60,9 +60,11 @@ function AppContentInner() {
     authApi.login(AUTO_EMAIL, AUTO_PASSWORD).then((data: { accessToken: string; refreshToken: string; user: unknown }) => {
       const { tokenStorage } = require("./lib/storage");
       tokenStorage.setTokens(data.accessToken, data.refreshToken);
-      login();
+      const u = data.user as { id?: string; name?: string; email?: string; role?: string } | undefined;
+      if (u?.id) loginWithUser({ id: u.id, name: u.name, email: u.email, role: u.role });
+      else login();
     }).catch(() => { /* show login screen on failure */ });
-  }, []);
+  }, [login, loginWithUser]);
 
   const handleAuthExpired = useCallback(() => {
     queryClient.clear();

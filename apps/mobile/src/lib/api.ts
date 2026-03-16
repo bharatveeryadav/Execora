@@ -15,6 +15,12 @@ import {
 } from "@execora/shared";
 import { tokenStorage } from "./storage";
 
+/** API base URL — treats empty/whitespace as fallback (emulator: 10.0.2.2:3006) */
+export const getApiBaseUrl = (): string => {
+  const v = (process.env.EXPO_PUBLIC_API_URL ?? "").trim();
+  return v || "http://10.0.2.2:3006";
+};
+
 // ── Extended invoice API ───────────────────────────────────────────────────────
 
 export const invoiceExtApi = {
@@ -194,9 +200,8 @@ export function setAuthExpiredHandler(fn: () => void): void {
 }
 
 export function bootApi(): void {
-  const apiUrl = process.env.EXPO_PUBLIC_API_URL ?? "http://10.0.2.2:3000"; // 10.0.2.2 = Android emulator host
   initApiClient({
-    baseUrl: apiUrl,
+    baseUrl: getApiBaseUrl(),
     getToken: tokenStorage.getToken,
     getRefreshToken: tokenStorage.getRefreshToken,
     setTokens: tokenStorage.setTokens,
@@ -228,6 +233,16 @@ export const feedbackApi = {
 // ── Product extensions (low-stock, expiry, write-off) ──────────────────────────
 
 export const productExtApi = {
+  expiringBatches: (days = 30) =>
+    apiFetch<{
+      batches: Array<{
+        id: string;
+        batchNo: string;
+        expiryDate: string;
+        quantity: number;
+        product: { name: string; unit: string };
+      }>;
+    }>(`/api/v1/products/expiring?days=${days}`),
   lowStock: () =>
     apiFetch<{ products: Array<{ id: string; name: string; stock: number; unit?: string; minStock?: number }> }>(
       "/api/v1/products/low-stock",
@@ -377,7 +392,7 @@ export const monitoringApi = {
   getUnreadCount: () =>
     apiFetch<{ count: number }>("/api/v1/monitoring/events/unread"),
   markAllRead: async () => {
-    const baseUrl = process.env.EXPO_PUBLIC_API_URL ?? "http://10.0.2.2:3000";
+    const baseUrl = getApiBaseUrl();
     const token = tokenStorage.getToken();
     const res = await fetch(`${baseUrl}/api/v1/monitoring/events/read-all`, {
       method: "POST",
@@ -389,7 +404,7 @@ export const monitoringApi = {
     if (!res.ok) throw new Error(await res.text().catch(() => String(res.status)));
   },
   markRead: async (id: string) => {
-    const baseUrl = process.env.EXPO_PUBLIC_API_URL ?? "http://10.0.2.2:3000";
+    const baseUrl = getApiBaseUrl();
     const token = tokenStorage.getToken();
     const res = await fetch(`${baseUrl}/api/v1/monitoring/events/${id}/read`, {
       method: "POST",

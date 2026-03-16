@@ -18,7 +18,8 @@ import { useRoute, useNavigation, RouteProp } from "@react-navigation/native";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 
-const API_BASE = (process.env.EXPO_PUBLIC_API_URL ?? "http://10.0.2.2:3006").replace(/\/$/, "");
+import { getApiBaseUrl } from "../lib/api";
+const API_BASE = getApiBaseUrl().replace(/\/$/, "");
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

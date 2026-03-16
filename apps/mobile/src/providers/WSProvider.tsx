@@ -4,9 +4,9 @@
  */
 import React, { useEffect } from "react";
 import { wsClient } from "../lib/ws";
+import { getApiBaseUrl } from "../lib/api";
 
-const API_BASE =
-  process.env.EXPO_PUBLIC_API_URL ?? "http://10.0.2.2:3006";
+const API_BASE = getApiBaseUrl();
 
 export function WSProvider({ children, isLoggedIn }: { children: React.ReactNode; isLoggedIn: boolean }) {
   useEffect(() => {
