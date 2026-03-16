@@ -34,7 +34,7 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   amountInWords,
@@ -61,6 +61,7 @@ import { enqueueInvoice } from "../lib/offlineQueue";
 import { hapticSuccess, hapticError, hapticLight } from "../lib/haptics";
 import { cacheProducts } from "../lib/offlineQueue";
 import type { ReceiptData } from "../lib/thermalReceipt";
+import type { BillingStackParams } from "../navigation";
 
 // ── ID counters ───────────────────────────────────────────────────────────────
 
@@ -85,8 +86,10 @@ const newSplit = (mode: PaymentMode = "cash"): PaymentSplit => ({
 
 export function BillingScreen() {
   const navigation = useNavigation();
+  const route = useRoute<RouteProp<BillingStackParams, "BillingForm">>();
   const qc = useQueryClient();
   const { isOffline } = useOffline();
+  const startAsWalkIn = route.params?.startAsWalkIn;
 
   // ── State ─────────────────────────────────────────────────────────────────
   const [items, setItems] = useState<BillingItem[]>([newItem()]);
@@ -230,6 +233,8 @@ export function BillingScreen() {
     validItemCount,
   ]);
 
+  const draftRestoredRef = useRef(false);
+
   // ── Draft restore on mount ────────────────────────────────────────────────
   useEffect(() => {
     const raw = storage.getString(DRAFT_KEY);
@@ -241,6 +246,7 @@ export function BillingScreen() {
         storage.delete(DRAFT_KEY);
         return;
       }
+      draftRestoredRef.current = true;
       const restored = (d.items as BillingItem[]).map((it) => ({
         ...it,
         id: _id++,
@@ -285,6 +291,15 @@ export function BillingScreen() {
       return (res as { customer: Customer }).customer;
     },
   });
+
+  // ── Auto-select Walk-in when opened as Quick Sale ──────────────────────────
+  useEffect(() => {
+    if (startAsWalkIn && !draftRestoredRef.current) {
+      createWalkIn.mutate(undefined, {
+        onSuccess: (c) => setSelectedCustomer(c),
+      });
+    }
+  }, [startAsWalkIn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const createCustomerInline = useMutation({
     mutationFn: async () =>

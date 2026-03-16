@@ -12,6 +12,7 @@ import {
   Modal,
   Pressable,
   useWindowDimensions,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
@@ -47,9 +48,10 @@ const QUICK_ACTIONS: Array<{
   primary: boolean;
   route: string;
   color: string;
+  params?: Record<string, unknown>;
 }> = [
-  { label: "Quick Sale", icon: "flash", primary: true, route: "BillingForm", color: "#ffffff" },
-  { label: "New Bill", icon: "receipt", primary: false, route: "BillingForm", color: ACTION_COLORS.primary },
+  { label: "Quick Sale", icon: "flash", primary: true, route: "BillingForm", color: "#ffffff", params: { startAsWalkIn: true } },
+  { label: "New Bill", icon: "receipt", primary: false, route: "BillingForm", color: ACTION_COLORS.primary, params: { startAsWalkIn: false } },
   { label: "Classic Bill", icon: "clipboard", primary: false, route: "BillingForm", color: ACTION_COLORS.primary },
   { label: "Payment", icon: "card", primary: false, route: "Payment", color: ACTION_COLORS.success },
   { label: "Stock", icon: "cube", primary: false, route: "Items", color: ACTION_COLORS.secondary },
@@ -60,12 +62,14 @@ const QUICK_ACTIONS: Array<{
   { label: "Reports", icon: "bar-chart", primary: false, route: "Reports", color: ACTION_COLORS.secondary },
 ];
 
-const COMMAND_HINTS = [
-  { cat: "💰 Sales", text: "Ramesh ka invoice banao 3 rice 50kg" },
-  { cat: "💸 Payment", text: "Ramesh ne 500 diya" },
-  { cat: "📦 Stock", text: "Rice kitna bacha?" },
-  { cat: "👥 Customers", text: "Ramesh ka balance batao" },
-  { cat: "📊 Reports", text: "Aaj ki sale kitni hui?" },
+// Command sets by category (matches web AiAgentFeed)
+const COMMAND_SETS = [
+  { category: "💰 Sales", items: ["Ramesh ka invoice banao 3 rice 50kg", "Suresh ko 3 bag diya 1200 ka", "Invoice print karo"] },
+  { category: "💸 Payment", items: ["Ramesh ne 500 diya", "Sita ka payment 2000 record karo", "Aaj kitna collection hua?"] },
+  { category: "📦 Stock", items: ["Rice kitna bacha?", "Atta ka stock low hai", "Sugar 100kg add karo"] },
+  { category: "👥 Customers", items: ["Ramesh ka balance batao", "Suresh ka udhar kitna hai?", "Naya customer Mohan add karo"] },
+  { category: "📊 Reports", items: ["Aaj ki sale kitni hui?", "Is hafte ka report dikhao", "GSTR-1 download karo"] },
+  { category: "🧾 Misc", items: ["Kaunse customers ka pesa aana baaki hai?", "Low stock alert dikhao", "Business health kaisi hai?"] },
 ];
 
 function useSecondsAgo(ts: number) {
@@ -181,7 +185,8 @@ export function DashboardScreen() {
   const lastUpdated = Math.max(sumAt ?? 0, invAt ?? 0) || Date.now();
   const secsAgo = useSecondsAgo(lastUpdated);
 
-  const [cmdIdx, setCmdIdx] = useState(0);
+  const [cmdSetIdx, setCmdSetIdx] = useState(0);
+  const [cmdItemIdx, setCmdItemIdx] = useState(0);
   const [expirySelected, setExpirySelected] = useState<{
     id: string;
     batchNo: string;
@@ -193,9 +198,19 @@ export function DashboardScreen() {
   const feedId = useRef(1);
 
   useEffect(() => {
-    const t = setInterval(() => setCmdIdx((i) => (i + 1) % COMMAND_HINTS.length), 4000);
+    const tick = () => {
+      setCmdItemIdx((i) => {
+        const maxItems = COMMAND_SETS[cmdSetIdx].items.length;
+        if (i + 1 >= maxItems) {
+          setCmdSetIdx((s) => (s + 1) % COMMAND_SETS.length);
+          return 0;
+        }
+        return i + 1;
+      });
+    };
+    const t = setInterval(tick, 4000);
     return () => clearInterval(t);
-  }, []);
+  }, [cmdSetIdx]);
 
   useEffect(() => {
     const push = (icon: string, text: string, subtext?: string) =>
@@ -205,10 +220,18 @@ export function DashboardScreen() {
       wsClient.on("invoice:confirmed", (p: unknown) => {
         const d = p as { customerName?: string; invoiceNo?: string; total?: number };
         push("🧾", `Invoice — ${d.customerName ?? "Customer"}`, d.invoiceNo);
+        const msg = d.total
+          ? `Invoice confirmed — ₹${parseFloat(String(d.total)).toLocaleString("en-IN")}`
+          : "Invoice confirmed";
+        Alert.alert("", msg);
       }),
       wsClient.on("payment:recorded", (p: unknown) => {
         const d = p as { customerName?: string; amount?: number };
         push("💰", `Payment from ${d.customerName ?? "Customer"}`, d.amount ? formatCurrency(d.amount) : undefined);
+        const msg = d.amount
+          ? `Payment recorded — ₹${parseFloat(String(d.amount)).toLocaleString("en-IN")}`
+          : "Payment recorded";
+        Alert.alert("", msg);
       }),
       wsClient.on("customer:updated", (p: unknown) => {
         const d = p as { name?: string };
@@ -222,8 +245,8 @@ export function DashboardScreen() {
     return () => offs.forEach((o) => o());
   }, []);
 
-  const handleQuickAction = (route: string) => {
-    if (route === "BillingForm") return navigation.navigate("Billing", { screen: "BillingForm" });
+  const handleQuickAction = (route: string, params?: Record<string, unknown>) => {
+    if (route === "BillingForm") return navigation.navigate("Billing", { screen: "BillingForm", params });
     if (route === "Payment") return navigation.getParent()?.navigate("CustomersTab" as never, { screen: "Payment" } as never);
     if (route === "Items") return navigation.navigate("Items");
     if (route === "InvoicesTab") return navigation.navigate("InvoicesTab");
@@ -237,7 +260,8 @@ export function DashboardScreen() {
   const greeting = hour < 12 ? "Good morning ☀️" : hour < 17 ? "Good afternoon 🙏" : "Good evening 🌙";
   const firstName = user?.name?.split(" ")[0] ?? "there";
   const dateStr = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" });
-  const hint = COMMAND_HINTS[cmdIdx];
+  const currentSet = COMMAND_SETS[cmdSetIdx];
+  const currentCmd = currentSet.items[cmdItemIdx];
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -375,12 +399,43 @@ export function DashboardScreen() {
             <View className="rounded-full bg-primary/10 p-2">
               <Ionicons name="mic" size={18} color="#e67e22" />
             </View>
-            <View className="flex-1">
-              <Text className={TYPO.sectionTitle + " text-primary/80"}>{hint.cat} · Say it naturally</Text>
-              <Text className={TYPO.body} key={cmdIdx}>&ldquo;{hint.text}&rdquo;</Text>
+            <View className="flex-1 min-w-0">
+              <Text className={TYPO.sectionTitle + " text-primary/80"}>{currentSet.category} · Say it naturally</Text>
+              <Text className={TYPO.body} key={cmdItemIdx}>&ldquo;{currentCmd}&rdquo;</Text>
             </View>
           </View>
         </View>
+        {/* Category chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 6, paddingBottom: 12, paddingHorizontal: 4 }}
+          style={{ marginHorizontal: -4 }}
+        >
+          {COMMAND_SETS.map((s, i) => (
+            <TouchableOpacity
+              key={s.category}
+              onPress={() => {
+                setCmdSetIdx(i);
+                setCmdItemIdx(0);
+              }}
+              style={{
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: i === cmdSetIdx ? "#e67e22" : "#e2e8f0",
+                backgroundColor: i === cmdSetIdx ? "#e67e22" : "#fafbfc",
+              }}
+            >
+              <Text
+                className={`text-xs font-medium ${i === cmdSetIdx ? "text-white" : "text-slate-500"}`}
+              >
+                {s.category.split(" ")[0]} {s.category.split(" ").slice(1).join(" ")}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
         {feed.length > 0 && (
           <View className="rounded-xl border border-slate-200 bg-card px-4 py-2 mb-4">
             <View className="flex-row items-center gap-2 border-b border-slate-100 pb-2 mb-2">
@@ -405,7 +460,7 @@ export function DashboardScreen() {
           {QUICK_ACTIONS.map((a) => (
             <TouchableOpacity
               key={a.label}
-              onPress={() => handleQuickAction(a.route)}
+              onPress={() => handleQuickAction(a.route, a.params)}
               activeOpacity={0.85}
               style={{
                 width: Math.floor((contentWidth - 32) / 5),
@@ -506,28 +561,35 @@ export function DashboardScreen() {
               <Text className={TYPO.bodyMuted}>No invoices yet today</Text>
             </View>
           )}
-          {todayInvoices.slice(0, 5).map((inv, idx) => (
-            <TouchableOpacity
-              key={inv.id}
-              onPress={() =>
-                navigation.getParent()?.navigate("InvoicesTab" as never, { screen: "InvoiceDetail", params: { id: inv.id } } as never)
-              }
-              className={`flex-row items-center px-4 py-3 ${idx > 0 ? "border-t border-slate-100" : ""}`}
-            >
-              <View className="flex-1">
-                <Text className={TYPO.labelBold}>{(inv as { invoiceNo?: string }).invoiceNo ?? inv.id.slice(-6)}</Text>
-                <Text className={`${TYPO.caption} mt-0.5`}>{inv.customer?.name ?? "Walk-in"}</Text>
-              </View>
-              <View className="items-end">
-                <Text className={`${TYPO.value} text-primary`}>₹{inr(inv.total)}</Text>
-                <View className={`mt-1 px-2 py-0.5 rounded-full ${inv.status === "paid" ? "bg-green-100" : "bg-amber-100"}`}>
-                  <Text className={`${TYPO.micro} font-semibold text-center ${inv.status === "paid" ? "text-green-700" : "text-amber-700"}`}>
-                    {inv.status === "paid" ? "✅ Paid" : (inv as { status?: string }).status === "cancelled" ? "❌ Void" : "⏳ Due"}
-                  </Text>
+          {todayInvoices.slice(0, 5).map((inv, idx) => {
+            const invWithDate = inv as { createdAt?: string };
+            const timeStr = invWithDate.createdAt
+              ? new Date(invWithDate.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })
+              : "";
+            return (
+              <TouchableOpacity
+                key={inv.id}
+                onPress={() =>
+                  navigation.getParent()?.navigate("InvoicesTab" as never, { screen: "InvoiceDetail", params: { id: inv.id } } as never)
+                }
+                className={`flex-row items-center px-4 py-3 ${idx > 0 ? "border-t border-slate-100" : ""}`}
+              >
+                <View className="flex-1 min-w-0">
+                  <Text className={TYPO.labelBold}>{(inv as { invoiceNo?: string }).invoiceNo ?? inv.id.slice(-6)}</Text>
+                  <Text className={`${TYPO.caption} mt-0.5`}>{inv.customer?.name ?? "Walk-in"}</Text>
                 </View>
-              </View>
-            </TouchableOpacity>
-          ))}
+                <View className="items-end shrink-0" style={{ marginLeft: 8 }}>
+                  <Text className={`${TYPO.value} text-primary`}>₹{inr(inv.total)}</Text>
+                  {timeStr ? <Text className={`${TYPO.micro} text-slate-500 mt-0.5`}>{timeStr}</Text> : null}
+                  <View className={`mt-1 px-2 py-0.5 rounded-full ${inv.status === "paid" ? "bg-green-100" : "bg-amber-100"}`}>
+                    <Text className={`${TYPO.micro} font-semibold text-center ${inv.status === "paid" ? "text-green-700" : "text-amber-700"}`}>
+                      {inv.status === "paid" ? "✅ Paid" : (inv as { status?: string }).status === "cancelled" ? "❌ Void" : "⏳ Due"}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* 7 — Low Stock */}

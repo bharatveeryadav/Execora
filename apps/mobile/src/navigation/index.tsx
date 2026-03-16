@@ -90,7 +90,7 @@ export type MoreStackParams = {
 };
 
 export type BillingStackParams = {
-  BillingForm: undefined;
+  BillingForm: { startAsWalkIn?: boolean } | undefined;
   InvoiceDetail: { id: string };
 };
 
