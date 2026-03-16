@@ -72,7 +72,7 @@ export function SettingsThermalScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
       <View className="flex-row items-center border-b border-slate-200 px-4 py-3">
         <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 -ml-2">
           <Ionicons name="arrow-back" size={24} color="#0f172a" />

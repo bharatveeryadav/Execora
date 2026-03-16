@@ -213,7 +213,7 @@ export function CustomerDetailScreen() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-slate-50" edges={['top', 'bottom']}>
       {/* Header */}
       <View className="bg-white border-b border-slate-100">
         <View className="px-4 pt-3 pb-0 flex-row items-center">

@@ -515,12 +515,12 @@ export function BillingScreen() {
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={80}
+        keyboardVerticalOffset={60}
       >
         <ScrollView
           className="flex-1 px-4"
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: 80, paddingTop: 4 }}
         >
           {/* ── Draft Banner ─────────────────────────────────────────── */}
           {draftBanner && (
@@ -537,7 +537,7 @@ export function BillingScreen() {
           )}
 
           {/* ── Customer ─────────────────────────────────────────────── */}
-          <View className="mt-4 mb-2">
+          <View className="mt-2 mb-2">
             <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
               👤 Customer
             </Text>
@@ -643,7 +643,7 @@ export function BillingScreen() {
           </View>
 
           {/* ── Items ────────────────────────────────────────────────── */}
-          <View className="mt-3 mb-2">
+          <View className="mt-2 mb-2">
             <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
               📦 Items
             </Text>
@@ -660,7 +660,7 @@ export function BillingScreen() {
               ))}
               <TouchableOpacity
                 onPress={addItem}
-                className="flex-row items-center px-4 py-4 border-t border-slate-100"
+                className="flex-row items-center px-4 py-3 border-t border-slate-100"
               >
                 <Text className="text-primary text-base font-semibold">
                   ＋ Add item

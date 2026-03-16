@@ -155,7 +155,7 @@ export function MonitoringScreen() {
   const isCameraTab = tab === "camera";
 
   return (
-    <SafeAreaView className={`flex-1 ${isCameraTab ? "bg-black" : "bg-background"}`} edges={["bottom"]}>
+    <SafeAreaView className={`flex-1 ${isCameraTab ? "bg-black" : "bg-background"}`} edges={["top", "bottom"]}>
       {isCameraTab ? (
         <>
           <View className="flex-row items-center justify-between px-4 py-3 bg-black/80">

@@ -60,7 +60,7 @@ export function IndirectIncomeScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-background" edges={["top", "bottom"]}>
       <View className="px-4 pt-4 pb-3 border-b border-slate-200 bg-card">
         <Text className="text-xl font-bold tracking-tight text-slate-800 mb-3">Indirect Income</Text>
         <View className="flex-row gap-2">

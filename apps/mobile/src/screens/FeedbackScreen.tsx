@@ -45,7 +45,7 @@ export function FeedbackScreen() {
 
   if (submitted) {
     return (
-      <SafeAreaView className="flex-1 bg-white" edges={["bottom"]}>
+      <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
         <View className="flex-1 items-center justify-center px-8">
           <Text className="text-5xl mb-4">🙏</Text>
           <Text className="text-xl font-bold text-slate-800 text-center mb-2">
@@ -63,7 +63,7 @@ export function FeedbackScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
       <View className="px-4 py-3 border-b border-slate-100">
         <Text className="text-xl font-bold text-slate-800">Feedback</Text>
       </View>

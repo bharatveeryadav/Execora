@@ -41,7 +41,7 @@ export function CashBookScreen() {
   const balance = data?.balance ?? 0;
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
       <View className="px-4 py-3 border-b border-slate-100">
         <Text className="text-xl font-bold text-slate-800">Cash Book</Text>
       </View>

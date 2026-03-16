@@ -139,7 +139,7 @@ export function PurchasesScreen() {
   const total = data?.total ?? 0;
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
       <View className="px-4 py-3 border-b border-slate-100">
         <View className="flex-row items-center justify-between">
           <Text className="text-xl font-bold text-slate-800">Purchases</Text>

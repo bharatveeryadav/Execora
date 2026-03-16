@@ -98,7 +98,7 @@ export function PaymentScreen() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-slate-50" edges={['top', 'bottom']}>
       {/* Header */}
       <View className="bg-white border-b border-slate-100 px-4 py-3 flex-row items-center">
         <TouchableOpacity onPress={() => navigation.goBack()} className="mr-3 p-1">

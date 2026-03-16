@@ -107,7 +107,7 @@ export function DayBookScreen() {
   const moneyOut = transactions.filter((t) => t.sign === "out").reduce((s, t) => s + t.amount, 0);
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
       <View className="px-4 py-3 border-b border-slate-100">
         <Text className="text-xl font-bold text-slate-800">Day Book</Text>
         <View className="flex-row gap-2 mt-2">

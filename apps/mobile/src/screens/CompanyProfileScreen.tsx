@@ -217,7 +217,7 @@ export function CompanyProfileScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView className="flex-1 bg-white" edges={["bottom"]}>
+      <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#e67e22" />
         </View>
@@ -226,7 +226,7 @@ export function CompanyProfileScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1"

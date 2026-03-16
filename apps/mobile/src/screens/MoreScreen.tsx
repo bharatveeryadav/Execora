@@ -88,7 +88,7 @@ export function MoreScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-background" edges={["top", "bottom"]}>
       <ScrollView>
         <View className="px-4 py-6">
           <Text className="text-xl font-bold tracking-tight text-slate-800 mb-1">More</Text>

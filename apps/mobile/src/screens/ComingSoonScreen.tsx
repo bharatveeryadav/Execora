@@ -16,7 +16,7 @@ export function ComingSoonScreen() {
   const emoji = (route.params as RouteParams)?.emoji ?? "🚧";
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50" edges={["bottom"]}>
+    <SafeAreaView className="flex-1 bg-slate-50" edges={["top", "bottom"]}>
       <View className="flex-1 items-center justify-center px-8">
         <Text className="text-6xl mb-4">{emoji}</Text>
         <Text className="text-xl font-bold text-slate-800 text-center mb-2">
