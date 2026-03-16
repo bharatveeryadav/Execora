@@ -371,12 +371,19 @@ export function DashboardScreen() {
             <Pressable onPress={(e) => e.stopPropagation()} className="bg-white rounded-t-2xl p-3 pb-6">
               <View className="w-8 h-0.5 rounded-full bg-slate-200 self-center mb-2" />
               <Text className={`${TYPO.sectionTitle} mb-2`}>Select Business</Text>
-              <View className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 mb-4">
-                <View className="flex-row items-center justify-between">
+              <View className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 mb-4" style={{ position: "relative" }}>
+                <View
+                  style={{
+                    position: "absolute",
+                    right: 10,
+                    top: "50%",
+                    marginTop: -9,
+                  }}
+                >
+                  <Ionicons name="radio-button-on" size={18} color="#e67e22" />
+                </View>
+                <View className="flex-row items-center pr-8">
                   <Text className="text-xs font-semibold text-slate-800 flex-1" numberOfLines={1}>{businessName}</Text>
-                  <View className="items-center justify-center" style={{ width: 24, height: 24 }}>
-                    <Ionicons name="radio-button-on" size={18} color="#e67e22" />
-                  </View>
                 </View>
                 <View className="flex-row gap-3 mt-1.5">
                   <TouchableOpacity
