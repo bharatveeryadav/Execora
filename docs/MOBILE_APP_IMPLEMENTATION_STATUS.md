@@ -137,6 +137,12 @@ This document tracks what has been **actually implemented** in `apps/mobile/` (R
 - **EmptyState:** Dark mode text variants
 - **Tailwind:** `darkMode: "media"` for system preference
 
+### Sprint 20 — Store Compliance ✅
+- **iOS:** Privacy manifest (UserDefaults, FileTimestamp), infoPlist usage descriptions (Camera, Mic, Photos, Bluetooth, Local Network)
+- **Android:** targetSdkVersion 34, compileSdkVersion 35, minSdkVersion 26, permissions (Bluetooth, etc.)
+- **EAS:** production profile with app-bundle, autoIncrement, submit config
+- **Docs:** `MOBILE_STORE_COMPLIANCE.md` — manual checklist for App Store Connect + Play Console
+
 ---
 
 ## API Clients (apps/mobile/src/lib/api.ts)
@@ -192,16 +198,15 @@ This document tracks what has been **actually implemented** in `apps/mobile/` (R
 
 ## Recommended Next Sprints (Monitoring Last)
 
-**Do these first, in order:** 20 → 21 → 22 → 23  
-**Do Monitoring (Sprint 14) last.** (Sprints 15–19 ✅ done)
+**Do these first, in order:** 21 → 22 → 23  
+**Do Monitoring (Sprint 14) last.** (Sprints 15–20 ✅ done)
 
 | Order | Sprint | Focus |
 |-------|--------|-------|
-| 1 | **20** | Store compliance + app store submission |
-| 2 | **21** | Extended finance (expiry, balance sheet, bank recon) |
-| 3 | **22** | Advanced features (import, e-invoice, GSTR-3B, etc.) |
-| 4 | **23** | Feedback + Coming Soon screens |
-| **5 (last)** | **14** | **Store Monitoring** (KPI bar, hourly chart, employee cards, camera) |
+| 1 | **21** | Extended finance (expiry, balance sheet, bank recon) |
+| 2 | **22** | Advanced features (import, e-invoice, GSTR-3B, etc.) |
+| 3 | **23** | Feedback + Coming Soon screens |
+| **4 (last)** | **14** | **Store Monitoring** (KPI bar, hourly chart, employee cards, camera) |
 
 ---
 

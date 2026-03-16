@@ -1,32 +1,51 @@
 {
   "cli": {
-    "version": ">= 12.0.0"
+    "version": ">= 12.0.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "android": { "buildType": "apk" }
+      "ios": { "simulator": true },
+      "android": { "buildType": "apk" },
+      "env": { "EXPO_PUBLIC_ENV": "development" }
     },
     "preview": {
       "distribution": "internal",
+      "ios": { "simulator": false },
       "android": { "buildType": "apk" },
       "env": {
+        "EXPO_PUBLIC_ENV": "staging",
         "EXPO_PUBLIC_API_URL": "https://your-api.execora.app"
       }
     },
     "production": {
-      "android": { "buildType": "aab" },
+      "autoIncrement": "buildNumber",
+      "ios": { "credentialsSource": "remote" },
+      "android": {
+        "buildType": "app-bundle",
+        "credentialsSource": "remote"
+      },
       "env": {
+        "EXPO_PUBLIC_ENV": "production",
         "EXPO_PUBLIC_API_URL": "https://your-api.execora.app"
       }
     }
   },
   "submit": {
     "production": {
+      "ios": {
+        "appleId": "dev@execora.app",
+        "ascAppId": "YOUR_APP_STORE_CONNECT_APP_ID",
+        "appleTeamId": "YOUR_APPLE_TEAM_ID",
+        "language": "en-US",
+        "releaseType": "AFTER_APPROVAL"
+      },
       "android": {
         "serviceAccountKeyPath": "./google-play-key.json",
-        "track": "internal"
+        "track": "internal",
+        "releaseStatus": "draft"
       }
     }
   }

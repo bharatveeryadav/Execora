@@ -13,6 +13,30 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "ios": {
+      "bundleIdentifier": "com.execora.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Scan product barcodes to quickly add items to your bills",
+        "NSMicrophoneUsageDescription": "Record voice commands to create bills hands-free",
+        "NSPhotoLibraryUsageDescription": "Upload your shop logo for invoices",
+        "NSPhotoLibraryAddUsageDescription": "Save invoice PDFs to your photo library",
+        "NSBluetoothAlwaysUsageDescription": "Connect to your thermal receipt printer",
+        "NSBluetoothPeripheralUsageDescription": "Connect to your thermal receipt printer",
+        "NSLocalNetworkUsageDescription": "Discover thermal printers on your local network"
+      },
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+            "NSPrivacyAccessedAPITypeReasons": ["C617.1"]
+          }
+        ]
+      }
+    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -20,12 +44,19 @@
       },
       "package": "com.execora.app",
       "versionCode": 1,
+      "compileSdkVersion": 35,
+      "targetSdkVersion": 34,
+      "minSdkVersion": 26,
       "permissions": [
         "CAMERA",
         "POST_NOTIFICATIONS",
+        "RECEIVE_BOOT_COMPLETED",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
-        "VIBRATE"
+        "VIBRATE",
+        "BLUETOOTH",
+        "BLUETOOTH_CONNECT",
+        "BLUETOOTH_SCAN"
       ]
     },
     "plugins": [
