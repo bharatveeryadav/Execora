@@ -163,6 +163,11 @@ This document tracks what has been **actually implemented** in `apps/mobile/` (R
 - **8 Coming Soon:** Debit Orders, Delivery Challans, Packaging Lists, Journals, Online Store, Addons, My Drive, Tutorial
 - All reachable from More grid
 
+### Sprint 14 — Store Monitoring ✅
+- **MonitoringScreen:** KPI bar (Bills, Sales, Footfall, Conversion%, Alerts), 24-bar hourly chart, employee risk cards, cash reconciliation, activity feed, alerts tab, camera tab with "Log Drawer" button
+- **API:** monitoringApi (events, stats, unread, markRead, markAllRead, logEvent, cash reconciliation)
+- **Tabs:** Dashboard, Activity, Alerts, Camera
+
 ---
 
 ## API Clients (apps/mobile/src/lib/api.ts)
@@ -216,16 +221,9 @@ This document tracks what has been **actually implemented** in `apps/mobile/` (R
 
 ---
 
-## Recommended Next Sprints (Monitoring Last)
+## Sprint Status
 
-**Do these first, in order:** 22 → 23  
-**Do Monitoring (Sprint 14) last.** (Sprints 15–21 ✅ done)
-
-| Order | Sprint | Focus |
-|-------|--------|-------|
-| 1 | **22** | Advanced features (import, e-invoice, GSTR-3B, etc.) |
-| 2 | **23** | Feedback + Coming Soon screens |
-| **2 (last)** | **14** | **Store Monitoring** (KPI bar, hourly chart, employee cards, camera) |
+**All sprints complete.** Sprints 14–23 ✅ done.
 
 ---
 

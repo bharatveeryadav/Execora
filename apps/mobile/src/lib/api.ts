@@ -349,5 +349,94 @@ export const purchaseOrderApi = {
   },
 };
 
+// ── Monitoring API (Sprint 14) ───────────────────────────────────────────────
+
+export const monitoringApi = {
+  getEvents: (params?: { limit?: number; offset?: number; unreadOnly?: boolean }) => {
+    const q = new URLSearchParams();
+    if (params?.limit) q.set("limit", String(params.limit));
+    if (params?.offset) q.set("offset", String(params.offset));
+    if (params?.unreadOnly) q.set("unreadOnly", "true");
+    const s = q.toString();
+    return apiFetch<{
+      events: Array<{
+        id: string;
+        eventType: string;
+        entityType: string;
+        entityId: string;
+        description: string;
+        amount?: number;
+        severity: string;
+        isRead: boolean;
+        createdAt: string;
+        user?: { id: string; name: string; role: string };
+      }>;
+      total: number;
+    }>(`/api/v1/monitoring/events${s ? `?${s}` : ""}`);
+  },
+  getUnreadCount: () =>
+    apiFetch<{ count: number }>("/api/v1/monitoring/events/unread"),
+  markAllRead: async () => {
+    const baseUrl = process.env.EXPO_PUBLIC_API_URL ?? "http://10.0.2.2:3000";
+    const token = tokenStorage.getToken();
+    const res = await fetch(`${baseUrl}/api/v1/monitoring/events/read-all`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (!res.ok) throw new Error(await res.text().catch(() => String(res.status)));
+  },
+  markRead: async (id: string) => {
+    const baseUrl = process.env.EXPO_PUBLIC_API_URL ?? "http://10.0.2.2:3000";
+    const token = tokenStorage.getToken();
+    const res = await fetch(`${baseUrl}/api/v1/monitoring/events/${id}/read`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (!res.ok) throw new Error(await res.text().catch(() => String(res.status)));
+  },
+  logEvent: (data: {
+    eventType: string;
+    entityType: string;
+    entityId: string;
+    description: string;
+    amount?: number;
+    severity?: "info" | "warning" | "alert";
+  }) =>
+    apiFetch<{ ok: boolean }>("/api/v1/monitoring/events", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  getStats: (params?: { from?: string; to?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.from) q.set("from", params.from);
+    if (params?.to) q.set("to", params.to);
+    const s = q.toString();
+    return apiFetch<{
+      billCount: number;
+      totalBillAmount: number;
+      footfall: number;
+      conversionRate: number | null;
+      hourlyBills: Record<string, number>;
+      peakHour: number | null;
+      byEmployee: Record<string, { bills: number; payments: number; cancellations: number; totalAmount: number }>;
+    }>(`/api/v1/monitoring/stats${s ? `?${s}` : ""}`);
+  },
+  submitCashReconciliation: (data: { date: string; actual: number; expected: number; note?: string }) =>
+    apiFetch<{ ok: boolean }>("/api/v1/monitoring/cash-reconciliation", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  getCashReconciliation: (date: string) =>
+    apiFetch<{ reconciliation: { id: string; description: string; meta: unknown } | null }>(
+      `/api/v1/monitoring/cash-reconciliation/${date}`,
+    ),
+};
+
 // Re-export the API functions so screens import from one place
 export { customerApi, productApi, invoiceApi, authApi };
