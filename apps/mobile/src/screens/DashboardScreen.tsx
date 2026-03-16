@@ -13,9 +13,10 @@ import {
   Pressable,
   useWindowDimensions,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -91,6 +92,12 @@ function daysLabel(days: number) {
   return `${days}d left`;
 }
 
+function reminderPillStyle(days: number) {
+  if (days <= 3) return { borderColor: "#fecaca", backgroundColor: "#fef2f2" };
+  if (days <= 5) return { borderColor: "#fde68a", backgroundColor: "#fffbeb" };
+  return { borderColor: "#bbf7d0", backgroundColor: "#f0fdf4" };
+}
+
 const SECTION_GAP = 16;
 const HORIZONTAL_PADDING = 16;
 const MAX_CONTENT_WIDTH = 480;
@@ -98,6 +105,7 @@ const MAX_CONTENT_WIDTH = 480;
 export function DashboardScreen() {
   const { width: screenWidth } = useWindowDimensions();
   const navigation = useNavigation<any>();
+  const qc = useQueryClient();
   const { user } = useAuth();
   const { isConnected } = useWS();
   useWsInvalidation(["invoices", "customers", "summary", "products", "lowStock", "reminders", "expiringBatches"]);
@@ -105,7 +113,7 @@ export function DashboardScreen() {
   const padding = Math.max(HORIZONTAL_PADDING, Math.min(screenWidth * 0.04, 24));
   const contentWidth = Math.min(screenWidth - padding * 2, MAX_CONTENT_WIDTH);
 
-  const { data: summary, isLoading: isLoadingSummary, dataUpdatedAt: sumAt } = useQuery({
+  const { data: summary, isLoading: isLoadingSummary, isFetching: sumFetching, dataUpdatedAt: sumAt } = useQuery({
     queryKey: ["summary", "daily"],
     queryFn: () => summaryApi.daily(),
     staleTime: 60_000,
@@ -122,13 +130,13 @@ export function DashboardScreen() {
     staleTime: 60_000,
   });
 
-  const { data: customersData } = useQuery({
+  const { data: customersData, isFetching: custFetching, dataUpdatedAt: custAt } = useQuery({
     queryKey: ["customers", "health"],
     queryFn: () => customerApi.list(1, 200),
     staleTime: 60_000,
   });
 
-  const { data: lowStockData, isLoading: loadingLowStock } = useQuery({
+  const { data: lowStockData, isLoading: loadingLowStock, isFetching: stockFetching, dataUpdatedAt: stockAt } = useQuery({
     queryKey: ["products", "low-stock"],
     queryFn: () => productExtApi.lowStock(),
     staleTime: 60_000,
@@ -147,6 +155,7 @@ export function DashboardScreen() {
   });
 
   const refreshing = loadingInvoices;
+  const healthRefreshing = sumFetching || custFetching || stockFetching;
   const todayInvoices = invoices?.invoices ?? [];
   const totalToday = summary?.summary?.totalSales ?? todayInvoices.reduce((s, i) => s + (i.total ?? 0), 0);
   const dailySummary = summary?.summary;
@@ -182,8 +191,13 @@ export function DashboardScreen() {
     .filter((c) => parseFloat(String(c.balance ?? 0)) > 0)
     .sort((a, b) => parseFloat(String(b.balance)) - parseFloat(String(a.balance)));
 
-  const lastUpdated = Math.max(sumAt ?? 0, invAt ?? 0) || Date.now();
+  const lastUpdated = Math.max(sumAt ?? 0, invAt ?? 0, custAt ?? 0, stockAt ?? 0) || Date.now();
   const secsAgo = useSecondsAgo(lastUpdated);
+
+  const [flashCollection, setFlashCollection] = useState(false);
+  const [flashStock, setFlashStock] = useState(false);
+  const [flashReceivables, setFlashReceivables] = useState(false);
+  const flashTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const [cmdSetIdx, setCmdSetIdx] = useState(0);
   const [cmdItemIdx, setCmdItemIdx] = useState(0);
@@ -245,6 +259,42 @@ export function DashboardScreen() {
     return () => offs.forEach((o) => o());
   }, []);
 
+  // Flash pillars on WS events
+  const flash = (setter: (v: boolean) => void, key: string) => {
+    setter(true);
+    if (flashTimers.current[key]) clearTimeout(flashTimers.current[key]);
+    flashTimers.current[key] = setTimeout(() => setter(false), 2000);
+  };
+  useEffect(() => {
+    const offs = [
+      wsClient.on("payment:recorded", () => {
+        void qc.invalidateQueries({ queryKey: ["summary"] });
+        void qc.invalidateQueries({ queryKey: ["customers"] });
+        flash(setFlashCollection, "col");
+        flash(setFlashReceivables, "rec");
+      }),
+      wsClient.on("invoice:confirmed", () => {
+        void qc.invalidateQueries({ queryKey: ["summary"] });
+        void qc.invalidateQueries({ queryKey: ["customers"] });
+        flash(setFlashCollection, "col");
+      }),
+      wsClient.on("invoice:draft", () => {
+        void qc.invalidateQueries({ queryKey: ["summary"] });
+        flash(setFlashCollection, "col");
+      }),
+      wsClient.on("customer:updated", () => {
+        void qc.invalidateQueries({ queryKey: ["customers"] });
+        flash(setFlashReceivables, "rec");
+      }),
+      wsClient.on("product:updated", () => {
+        void qc.invalidateQueries({ queryKey: ["products"] });
+        void qc.invalidateQueries({ queryKey: ["products", "low-stock"] });
+        flash(setFlashStock, "stk");
+      }),
+    ];
+    return () => offs.forEach((o) => o());
+  }, [qc]);
+
   const handleQuickAction = (route: string, params?: Record<string, unknown>) => {
     if (route === "BillingForm") return navigation.navigate("Billing", { screen: "BillingForm", params });
     if (route === "Payment") return navigation.getParent()?.navigate("CustomersTab" as never, { screen: "Payment" } as never);
@@ -294,17 +344,27 @@ export function DashboardScreen() {
         <Text className={`${TYPO.caption} mb-4`}>Dashboard</Text>
 
         {/* 2 — Business Health Score */}
-        <View className="rounded-xl border border-slate-200 bg-card p-3 mb-4">
-          <View className="flex-row items-start justify-between mb-2" style={{ gap: 12 }}>
+        <View
+          className="rounded-xl border bg-card p-3 mb-4"
+          style={{
+            borderColor: "#e2e8f0",
+            ...(flashCollection || flashStock || flashReceivables ? { borderWidth: 2, borderColor: "#e67e22" } : {}),
+          }}
+        >
+          <View className="flex-row items-center justify-between mb-2" style={{ gap: 12 }}>
             <View className="flex-1 min-w-0">
               <View className="flex-row items-center gap-1.5">
                 <Text className={TYPO.sectionTitle}>Business Health</Text>
                 <View className={`h-1.5 w-1.5 rounded-full ${isConnected ? "bg-green-500" : "bg-slate-400"}`} />
+                {healthRefreshing && <ActivityIndicator size="small" color="#e67e22" style={{ marginLeft: 4 }} />}
               </View>
-              <Text className="text-lg font-bold" style={{ color: overallColor }}>
-                {overall}
-              </Text>
-              <Text className={TYPO.label}>/ 100 · {overallLabel}</Text>
+              <View className="flex-row items-baseline gap-1" style={{ marginTop: 2 }}>
+                <Text className="text-xl font-bold tabular-nums" style={{ color: overallColor }}>
+                  {overall}
+                </Text>
+                <Text className={TYPO.label}>/ 100</Text>
+                <Text className={`${TYPO.label} text-slate-500`}>· {overallLabel}</Text>
+              </View>
               <Text className={`${TYPO.micro} mt-0.5`}>Updated {secsAgo < 10 ? "just now" : `${secsAgo}s ago`}</Text>
             </View>
             <View
@@ -322,72 +382,147 @@ export function DashboardScreen() {
               style={{ width: `${overall}%`, backgroundColor: overallColor }}
             />
           </View>
-          <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
+          {/* Pillar cards with progress bars and hints */}
+          <View style={{ flexDirection: "row", gap: 8, marginBottom: overdueList.length > 0 || upcomingReminders.length > 0 ? 12 : 0 }}>
             <TouchableOpacity
               onPress={() => navigation.getParent()?.navigate("CustomersTab" as never, { screen: "Payment" } as never)}
-              style={{ flex: 1, minWidth: 0, borderRadius: 12, borderWidth: 1, borderColor: "#e2e8f0", backgroundColor: "#f8fafc", padding: 8 }}
+              activeOpacity={0.8}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                borderRadius: 12,
+                borderWidth: flashCollection ? 2 : 1,
+                borderColor: flashCollection ? "#e67e22" : "#e2e8f0",
+                backgroundColor: "#f8fafc",
+                padding: 10,
+              }}
             >
-              <Text className={TYPO.micro}>💰 Collection</Text>
-              <Text className={`${TYPO.microBold} text-right ${collectionRate >= 80 ? "text-green-600" : collectionRate >= 50 ? "text-amber-600" : "text-red-600"}`}>
-                {collectionRate}%
-              </Text>
+              <View className="flex-row items-center justify-between mb-1">
+                <Text className={TYPO.micro}>💰 Collection</Text>
+                <Text className={`${TYPO.microBold} ${collectionRate >= 80 ? "text-green-600" : collectionRate >= 50 ? "text-amber-600" : "text-red-600"}`}>
+                  {collectionRate}%
+                </Text>
+              </View>
+              <View className="h-1 w-full rounded-full bg-slate-200 mb-1">
+                <View
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${collectionRate}%`,
+                    backgroundColor: collectionRate >= 80 ? "#1a9248" : collectionRate >= 50 ? "#e6a319" : "#dc2626",
+                  }}
+                />
+              </View>
+              <Text className={`${TYPO.micro} text-slate-500`}>{collectionRate}% today</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => navigation.navigate("Items")}
-              style={{ flex: 1, minWidth: 0, borderRadius: 12, borderWidth: 1, borderColor: "#e2e8f0", backgroundColor: "#f8fafc", padding: 8 }}
+              activeOpacity={0.8}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                borderRadius: 12,
+                borderWidth: flashStock ? 2 : 1,
+                borderColor: flashStock ? "#e67e22" : "#e2e8f0",
+                backgroundColor: "#f8fafc",
+                padding: 10,
+              }}
             >
-              <Text className={TYPO.micro}>📦 Stock</Text>
-              <Text className={`${TYPO.microBold} text-right ${stockScore >= 80 ? "text-green-600" : stockScore >= 50 ? "text-amber-600" : "text-red-600"}`}>
-                {stockScore}%
+              <View className="flex-row items-center justify-between mb-1">
+                <Text className={TYPO.micro}>📦 Stock</Text>
+                <Text className={`${TYPO.microBold} ${stockScore >= 80 ? "text-green-600" : stockScore >= 50 ? "text-amber-600" : "text-red-600"}`}>
+                  {stockScore}%
+                </Text>
+              </View>
+              <View className="h-1 w-full rounded-full bg-slate-200 mb-1">
+                <View
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${stockScore}%`,
+                    backgroundColor: stockScore >= 80 ? "#1a9248" : stockScore >= 50 ? "#e6a319" : "#dc2626",
+                  }}
+                />
+              </View>
+              <Text className={`${TYPO.micro} text-slate-500`}>
+                {lowStock.length === 0 ? "All stocked" : `${lowStock.length} low`}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => navigation.getParent()?.navigate("CustomersTab" as never, { screen: "Overdue" } as never)}
-              style={{ flex: 1, minWidth: 0, borderRadius: 12, borderWidth: 1, borderColor: "#e2e8f0", backgroundColor: "#f8fafc", padding: 8 }}
+              activeOpacity={0.8}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                borderRadius: 12,
+                borderWidth: flashReceivables ? 2 : 1,
+                borderColor: flashReceivables ? "#e67e22" : "#e2e8f0",
+                backgroundColor: "#f8fafc",
+                padding: 10,
+              }}
             >
-              <Text className={TYPO.micro}>🧾 Receivables</Text>
-              <Text className={`${TYPO.microBold} text-right ${overdueScore >= 80 ? "text-green-600" : overdueScore >= 50 ? "text-amber-600" : "text-red-600"}`}>
-                {overdueScore}%
+              <View className="flex-row items-center justify-between mb-1">
+                <Text className={TYPO.micro}>🧾 Receivables</Text>
+                <Text className={`${TYPO.microBold} ${overdueScore >= 80 ? "text-green-600" : overdueScore >= 50 ? "text-amber-600" : "text-red-600"}`}>
+                  {overdueScore}%
+                </Text>
+              </View>
+              <View className="h-1 w-full rounded-full bg-slate-200 mb-1">
+                <View
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${overdueScore}%`,
+                    backgroundColor: overdueScore >= 80 ? "#1a9248" : overdueScore >= 50 ? "#e6a319" : "#dc2626",
+                  }}
+                />
+              </View>
+              <Text className={`${TYPO.micro} text-slate-500`}>
+                {overdueCount === 0 ? "All clear" : `${overdueCount} overdue`}
               </Text>
             </TouchableOpacity>
           </View>
           {overdueList.length > 0 && (
             <TouchableOpacity
               onPress={() => navigation.getParent()?.navigate("CustomersTab" as never, { screen: "Overdue" } as never)}
-              className="flex-row flex-wrap items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 mb-2"
+              activeOpacity={0.9}
+              className="flex-row flex-wrap items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 mb-2"
             >
-              <Text className={TYPO.labelBold + " text-red-700"}>🔴 Overdue ({overdueList.length})</Text>
-              {overdueList.slice(0, 3).map((c) => (
-                <View key={c.id} className="rounded-full border border-red-200 bg-red-100 px-2 py-0.5">
-                  <Text className={`${TYPO.label} text-red-700`}>
-                    {(c.name ?? "").slice(0, 10)}{(c.name ?? "").length > 10 ? "…" : ""} {formatCurrency(c.balance)}
-                  </Text>
-                </View>
-              ))}
-              {overdueList.length > 3 && (
-                <View className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5">
-                  <Text className={TYPO.caption}>+{overdueList.length - 3} more</Text>
-                </View>
-              )}
-              <Text className={`${TYPO.caption} ml-auto`}>View All →</Text>
+              <Text className={TYPO.labelBold + " text-red-700 shrink-0"}>🔴 Overdue ({overdueList.length})</Text>
+              <View className="rounded-full border border-red-200 bg-red-100 px-2 py-0.5">
+                <Text className={`${TYPO.label} text-red-700`}>
+                  {(overdueList[0].name ?? "—").slice(0, 12)}{(overdueList[0].name ?? "").length > 12 ? "…" : ""} {formatCurrency(overdueList[0].balance)}
+                </Text>
+              </View>
+              <View className="rounded-full border border-red-300 bg-red-200/50 px-2 py-0.5">
+                <Text className={`${TYPO.micro} font-semibold text-red-700`}>
+                  {formatCurrency(overdueList.reduce((s, c) => s + parseFloat(String(c.balance ?? 0)), 0))} total
+                </Text>
+              </View>
+              <Text className={`${TYPO.caption} ml-auto shrink-0`}>View All →</Text>
             </TouchableOpacity>
           )}
           {upcomingReminders.length > 0 && (
             <TouchableOpacity
               onPress={() => navigation.getParent()?.navigate("CustomersTab" as never, { screen: "Overdue" } as never)}
-              className="flex-row flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2"
+              activeOpacity={0.9}
+              className="flex-row flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5"
             >
-              <Text className={TYPO.labelBold + " text-amber-700"}>🟡 Upcoming ({upcomingReminders.length})</Text>
+              <Text className={TYPO.labelBold + " text-primary"}>🟡 Upcoming ({upcomingReminders.length})</Text>
               {upcomingReminders.slice(0, 3).map((r) => {
                 const days = Math.max(0, Math.ceil((new Date(r.scheduledTime).getTime() - Date.now()) / 86400000));
+                const pillStyle = reminderPillStyle(days);
+                const textColor = days <= 3 ? "text-red-700" : days <= 5 ? "text-amber-700" : "text-green-700";
                 return (
-                  <View key={r.id} className="rounded-full border border-amber-200 bg-amber-100 px-2 py-0.5">
-                    <Text className={`${TYPO.label} text-amber-700`}>
+                  <View key={r.id} className="rounded-full border px-2 py-0.5" style={pillStyle}>
+                    <Text className={`${TYPO.label} ${textColor}`}>
                       {(r.customer?.name ?? "—").slice(0, 10)} {formatCurrency(r.amount ?? r.notes ?? 0)} · {days === 0 ? "Today" : `${days}d`}
                     </Text>
                   </View>
                 );
               })}
+              {upcomingReminders.length > 3 && (
+                <View className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5">
+                  <Text className={TYPO.caption}>+{upcomingReminders.length - 3} more</Text>
+                </View>
+              )}
               <Text className={`${TYPO.caption} ml-auto`}>View All →</Text>
             </TouchableOpacity>
           )}
