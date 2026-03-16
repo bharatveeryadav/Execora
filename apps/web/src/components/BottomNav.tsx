@@ -81,23 +81,22 @@ const BottomNav = () => {
 
   return (
     <>
-      {/* Bottom navigation bar — min 44px touch targets, safe-area for notched devices */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-sm md:hidden pb-safe">
-        <div className="grid grid-cols-5">
+      {/* Bottom nav — label BELOW icon per iOS HIG / Material Design / React Navigation below-icon */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-sm pb-safe pt-1">
+        <div className="grid grid-cols-5 min-h-[56px]">
           {NAV_ITEMS.map((item) => {
             if (item.path === "__more__") {
               return (
                 <button
                   key="more"
                   onClick={() => setMoreOpen((v) => !v)}
-                  className={`flex flex-col items-center justify-center gap-0.5 min-h-[52px] py-3 text-[11px] transition-colors touch-manipulation ${
-                    moreOpen
-                      ? "text-primary font-semibold"
-                      : "text-muted-foreground"
+                  className={`flex flex-col items-center justify-center gap-1 min-h-[52px] py-2 text-[11px] transition-colors touch-manipulation ${
+                    moreOpen ? "text-slate-800 font-semibold" : "text-slate-600"
                   }`}
+                  style={{ flexDirection: "column" }}
                 >
-                  <MoreHorizontal className="h-6 w-6 shrink-0" />
-                  <span>More</span>
+                  <MoreHorizontal className="h-6 w-6 shrink-0 order-first" />
+                  <span className="order-last text-center leading-snug">More</span>
                 </button>
               );
             }
@@ -115,14 +114,13 @@ const BottomNav = () => {
               <button
                 key={item.label}
                 onClick={() => navigate(item.path)}
-                className={`flex flex-col items-center justify-center gap-0.5 min-h-[52px] py-3 text-[11px] transition-colors touch-manipulation ${
-                  isActive
-                    ? "text-primary font-semibold"
-                    : "text-muted-foreground"
+                className={`flex flex-col items-center justify-center gap-1 min-h-[52px] py-2 text-[11px] transition-colors touch-manipulation ${
+                  isActive ? "text-slate-800 font-semibold" : "text-slate-600"
                 }`}
+                style={{ flexDirection: "column" }}
               >
-                <item.icon className="h-6 w-6 shrink-0" />
-                <span>{item.label}</span>
+                <item.icon className="h-6 w-6 shrink-0 order-first" />
+                <span className="order-last text-center leading-snug">{item.label}</span>
               </button>
             );
           })}
@@ -133,10 +131,10 @@ const BottomNav = () => {
       {moreOpen && (
         <>
           <div
-            className="fixed inset-0 z-40 bg-black/40 md:hidden"
+            className="fixed inset-0 z-40 bg-black/40"
             onClick={() => setMoreOpen(false)}
           />
-          <div className="fixed bottom-[60px] left-0 right-0 z-50 rounded-t-2xl border-t bg-card p-4 shadow-2xl md:hidden animate-in slide-in-from-bottom-4 duration-200 pb-safe max-h-[70vh] overflow-y-auto">
+          <div className="fixed bottom-[60px] left-0 right-0 z-50 rounded-t-2xl border-t bg-card p-4 shadow-2xl animate-in slide-in-from-bottom-4 duration-200 pb-safe max-h-[70vh] overflow-y-auto">
             <div className="mb-3 flex items-center justify-between">
               <p className="text-sm font-semibold">More Features</p>
               <button

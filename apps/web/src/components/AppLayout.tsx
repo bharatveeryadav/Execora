@@ -289,10 +289,11 @@ export function AppLayout() {
       </Sidebar>
       <SidebarInset>
         <OfflineBanner />
-        <div className="flex flex-1 flex-col min-h-svh">
+        <div className="flex flex-1 flex-col min-h-svh pb-[56px]">
           <Outlet />
         </div>
       </SidebarInset>
+      <BottomNav />
       <InvoiceCreation open={invoiceOpen} onOpenChange={setInvoiceOpen} />
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
     </SidebarProvider>

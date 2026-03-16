@@ -310,8 +310,9 @@ function MainTabs() {
       tabBar={(props) => <ResponsiveTabBar {...props} />}
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: "#e67e22",
-        tabBarInactiveTintColor: "#94a3b8",
+        tabBarLabelPosition: "below-icon",
+        tabBarActiveTintColor: "#1e293b",
+        tabBarInactiveTintColor: "#64748b",
         tabBarStyle: {
           borderTopColor: "#e2e8f0",
           paddingBottom: Math.max(insets.bottom, 8),
