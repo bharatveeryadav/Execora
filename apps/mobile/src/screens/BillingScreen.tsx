@@ -58,6 +58,7 @@ import { BarcodeScanner } from "../components/common/BarcodeScanner";
 import { printReceipt } from "../lib/printReceipt";
 import { useOffline } from "../contexts/OfflineContext";
 import { enqueueInvoice } from "../lib/offlineQueue";
+import { hapticSuccess, hapticError, hapticLight } from "../lib/haptics";
 import { cacheProducts } from "../lib/offlineQueue";
 import type { ReceiptData } from "../lib/thermalReceipt";
 
@@ -181,7 +182,10 @@ export function BillingScreen() {
       }),
     );
   }, []);
-  const addItem = () => setItems((prev) => [...prev, newItem()]);
+  const addItem = () => {
+    hapticLight();
+    setItems((prev) => [...prev, newItem()]);
+  };
   const removeItem = (id: number) =>
     setItems((prev) =>
       prev.length > 1 ? prev.filter((it) => it.id !== id) : prev,
@@ -367,6 +371,7 @@ export function BillingScreen() {
       return invoiceApi.create(buildPayload(vars));
     },
     onSuccess: (data, vars) => {
+      hapticSuccess();
       void qc.invalidateQueries({ queryKey: ["invoices"] });
       void qc.invalidateQueries({ queryKey: ["customers"] });
       storage.delete(DRAFT_KEY);
@@ -380,7 +385,10 @@ export function BillingScreen() {
         fromOffline,
       });
     },
-    onError: (err: Error) => Alert.alert("Error creating invoice", err.message),
+    onError: (err: Error) => {
+      hapticError();
+      Alert.alert("Error creating invoice", err.message);
+    },
   });
 
   const handleSubmit = async () => {

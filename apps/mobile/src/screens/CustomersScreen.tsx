@@ -17,6 +17,7 @@ import { customerApi } from "../lib/api";
 import { useWsInvalidation } from "../hooks/useWsInvalidation";
 import { inr, type Customer } from "@execora/shared";
 import { EmptyState } from "../components/ui/EmptyState";
+import { ErrorCard } from "../components/ui/ErrorCard";
 
 export function CustomersScreen() {
   const navigation = useNavigation<any>();
@@ -25,7 +26,7 @@ export function CustomersScreen() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
-  const { data, isFetching, refetch } = useQuery({
+  const { data, isFetching, isError, refetch } = useQuery({
     queryKey: ["customers", search, page],
     queryFn: () =>
       search.length >= 1
@@ -75,11 +76,20 @@ export function CustomersScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
         ItemSeparatorComponent={() => <View className="h-2" />}
         ListEmptyComponent={
-          <EmptyState
-            icon={search ? "🔍" : "👥"}
-            title={search ? "No customers found" : "No customers yet"}
-            description={search ? "Try a different search term" : "Add your first customer to get started"}
-          />
+          isError ? (
+            <View className="py-16 px-4">
+              <ErrorCard
+                message="Failed to load customers"
+                onRetry={() => refetch()}
+              />
+            </View>
+          ) : (
+            <EmptyState
+              icon={search ? "🔍" : "👥"}
+              title={search ? "No customers found" : "No customers yet"}
+              description={search ? "Try a different search term" : "Add your first customer to get started"}
+            />
+          )
         }
         renderItem={({ item: c }) => (
           <TouchableOpacity

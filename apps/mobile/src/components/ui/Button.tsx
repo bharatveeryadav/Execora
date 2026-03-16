@@ -11,6 +11,7 @@ import {
   TextStyle,
 } from "react-native";
 import { cn } from "../../lib/utils";
+import { hapticLight } from "../../lib/haptics";
 
 type Variant = "primary" | "outline" | "ghost" | "danger";
 type Size = "sm" | "md" | "lg";
@@ -64,9 +65,16 @@ export function Button({
 }: ButtonProps) {
   const isDisabled = disabled || loading;
 
+  const handlePress = () => {
+    if (!isDisabled && onPress) {
+      hapticLight();
+      onPress();
+    }
+  };
+
   return (
     <TouchableOpacity
-      onPress={onPress}
+      onPress={handlePress}
       disabled={isDisabled}
       activeOpacity={0.7}
       className={cn(

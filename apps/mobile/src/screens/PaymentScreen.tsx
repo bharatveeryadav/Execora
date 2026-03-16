@@ -18,6 +18,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { customerApi, paymentApi } from '../lib/api';
 import { formatCurrency, toFloat } from '../lib/utils';
+import { hapticSuccess, hapticError } from '../lib/haptics';
 import type { CustomersStackParams } from '../navigation';
 
 type RouteProps = RouteProp<CustomersStackParams, 'Payment'>;
@@ -73,6 +74,7 @@ export function PaymentScreen() {
         reference: reference || undefined,
       }),
     onSuccess: () => {
+      hapticSuccess();
       qc.invalidateQueries({ queryKey: ['customers'] });
       qc.invalidateQueries({ queryKey: ['customer', selectedCustomerId] });
       qc.invalidateQueries({ queryKey: ['customer-invoices', selectedCustomerId] });
@@ -80,7 +82,10 @@ export function PaymentScreen() {
       qc.invalidateQueries({ queryKey: ['invoices'] });
       Alert.alert('', '💰 Payment recorded!', [{ text: 'OK', onPress: () => navigation.goBack() }]);
     },
-    onError: (err: any) => Alert.alert('Error', err?.message ?? 'Failed to record payment'),
+    onError: (err: any) => {
+      hapticError();
+      Alert.alert('Error', err?.message ?? 'Failed to record payment');
+    },
   });
 
   // ── Derived ───────────────────────────────────────────────────────────────

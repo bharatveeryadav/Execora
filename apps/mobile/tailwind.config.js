@@ -2,6 +2,7 @@
 module.exports = {
     content: ["./src/**/*.{ts,tsx}", "./index.ts"],
     presets: [require("nativewind/preset")],
+    darkMode: "media",
     theme: {
         extend: {
             colors: {

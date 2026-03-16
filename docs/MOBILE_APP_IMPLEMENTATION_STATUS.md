@@ -130,6 +130,13 @@ This document tracks what has been **actually implemented** in `apps/mobile/` (R
 - Billing: create bills offline → queue → sync when online
 - Walk-in customer handled on sync
 
+### Sprint 19 — Polish + QA ✅
+- **Haptics:** `lib/haptics.ts` — light (buttons), success (save/record), error (failures)
+- Button: haptic on press; BillingScreen: success/error; PaymentScreen: success/error; BarcodeScanner: light on scan
+- **ErrorCard:** Error state with retry on InvoiceListScreen, CustomersScreen
+- **EmptyState:** Dark mode text variants
+- **Tailwind:** `darkMode: "media"` for system preference
+
 ---
 
 ## API Clients (apps/mobile/src/lib/api.ts)
@@ -185,18 +192,16 @@ This document tracks what has been **actually implemented** in `apps/mobile/` (R
 
 ## Recommended Next Sprints (Monitoring Last)
 
-**Do these first, in order:** 19 → 20 → 21 → 22 → 23  
-**Do Monitoring (Sprint 14) last.** (Sprints 15–18 ✅ done)
+**Do these first, in order:** 20 → 21 → 22 → 23  
+**Do Monitoring (Sprint 14) last.** (Sprints 15–19 ✅ done)
 
 | Order | Sprint | Focus |
 |-------|--------|-------|
-| 1 | **19** | Polish + QA (animations, haptics, dark mode) |
-| 2 | **20** | Store compliance + app store submission |
-| 3 | **20** | Store compliance + app store submission |
-| 4 | **21** | Extended finance (expiry, balance sheet, bank recon) |
-| 5 | **22** | Advanced features (import, e-invoice, GSTR-3B, etc.) |
-| 6 | **23** | Feedback + Coming Soon screens |
-| **7 (last)** | **14** | **Store Monitoring** (KPI bar, hourly chart, employee cards, camera) |
+| 1 | **20** | Store compliance + app store submission |
+| 2 | **21** | Extended finance (expiry, balance sheet, bank recon) |
+| 3 | **22** | Advanced features (import, e-invoice, GSTR-3B, etc.) |
+| 4 | **23** | Feedback + Coming Soon screens |
+| **5 (last)** | **14** | **Store Monitoring** (KPI bar, hourly chart, employee cards, camera) |
 
 ---
 
@@ -205,7 +210,7 @@ This document tracks what has been **actually implemented** in `apps/mobile/` (R
 - Expo Router migration (optional; React Navigation works)
 - BottomSheet ✅ (design system)
 - DatePicker, NumpadSheet (design system)
-- Dark mode
+- Dark mode (partial: `darkMode: media` + EmptyState/ErrorCard variants)
 - Full Settings sub-pages (profile, etc.) — Thermal Print ✅
 - Purchase Orders, Credit Notes, GSTR-3B, E-Invoicing, Import, Indirect Income (web has these; mobile has Coming Soon stubs)
 - Feedback ✅ (NPS form in More grid)

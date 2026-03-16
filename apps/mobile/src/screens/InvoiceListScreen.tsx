@@ -16,6 +16,7 @@ import { inr, type Invoice } from "@execora/shared";
 import { useWsInvalidation } from "../hooks/useWsInvalidation";
 import { Chip } from "../components/ui/Chip";
 import { EmptyState } from "../components/ui/EmptyState";
+import { ErrorCard } from "../components/ui/ErrorCard";
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   paid: { bg: "bg-green-100", text: "text-green-700" },
@@ -35,7 +36,7 @@ export function InvoiceListScreen() {
   const [statusFilter, setStatusFilter] = useState<(typeof STATUS_FILTERS)[number]>("all");
   useWsInvalidation(["invoices", "summary"]);
 
-  const { data, isFetching, refetch } = useQuery({
+  const { data, isFetching, isError, refetch } = useQuery({
     queryKey: ["invoices", page],
     queryFn: () => invoiceApi.list(page, 20),
     staleTime: 30_000,
@@ -86,7 +87,14 @@ export function InvoiceListScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
         ItemSeparatorComponent={() => <View className="h-2" />}
         ListEmptyComponent={
-          isFetching ? (
+          isError ? (
+            <View className="py-16 px-4">
+              <ErrorCard
+                message="Failed to load invoices"
+                onRetry={() => refetch()}
+              />
+            </View>
+          ) : isFetching ? (
             <View className="py-16 items-center">
               <ActivityIndicator size="large" color="#e67e22" />
             </View>

@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
+import { hapticLight } from "../../lib/haptics";
 
 export interface BarcodeScannerProps {
   visible: boolean;
@@ -46,6 +47,7 @@ export function BarcodeScanner({
       }, 2000);
 
       setScanning(false);
+      hapticLight();
       Vibration.vibrate(100);
       onScan(data.trim());
       onClose();
