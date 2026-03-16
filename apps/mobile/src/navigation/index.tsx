@@ -262,7 +262,7 @@ function MoreNavigator() {
 
 // ── Main bottom tabs (icons match web BottomNav) ──────────────────────────────
 
-const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+const TAB_ICONS_FILLED: Record<string, keyof typeof Ionicons.glyphMap> = {
   Dashboard: "home",
   Billing: "receipt",
   CustomersTab: "people",
@@ -270,19 +270,23 @@ const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   MoreTab: "ellipsis-horizontal",
 };
 
-const TAB_ACTIVE_COLORS: Record<string, string> = {
-  Dashboard: "#e67e22",
-  Billing: "#e67e22",
-  CustomersTab: "#3d7a9e",
-  InvoicesTab: "#e67e22",
-  MoreTab: "#64748b",
+const TAB_ICONS_OUTLINE: Record<string, keyof typeof Ionicons.glyphMap> = {
+  Dashboard: "home-outline",
+  Billing: "receipt-outline",
+  CustomersTab: "people-outline",
+  InvoicesTab: "document-text-outline",
+  MoreTab: "ellipsis-horizontal",
 };
 
+const TAB_ACTIVE_COLOR = "#0f172a";
+const TAB_INACTIVE_COLOR = "#475569";
 const TAB_BAR_MAX_WIDTH = 480;
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
-  const iconName = TAB_ICONS[name] ?? "ellipse";
-  const color = focused ? (TAB_ACTIVE_COLORS[name] ?? "#e67e22") : "#94a3b8";
+  const iconName = focused
+    ? (TAB_ICONS_FILLED[name] ?? "ellipse")
+    : (TAB_ICONS_OUTLINE[name] ?? "ellipse-outline");
+  const color = focused ? TAB_ACTIVE_COLOR : TAB_INACTIVE_COLOR;
   return <Ionicons name={iconName} size={20} color={color} />;
 }
 
@@ -311,8 +315,8 @@ function MainTabs() {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarLabelPosition: "below-icon",
-        tabBarActiveTintColor: "#1e293b",
-        tabBarInactiveTintColor: "#64748b",
+        tabBarActiveTintColor: "#0f172a",
+        tabBarInactiveTintColor: "#475569",
         tabBarStyle: {
           borderTopColor: "#e2e8f0",
           paddingBottom: Math.max(insets.bottom, 8),

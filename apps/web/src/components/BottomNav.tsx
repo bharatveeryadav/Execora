@@ -91,11 +91,15 @@ const BottomNav = () => {
                   key="more"
                   onClick={() => setMoreOpen((v) => !v)}
                   className={`flex flex-col items-center justify-center gap-1 min-h-[56px] py-2 text-[11px] transition-colors touch-manipulation overflow-visible ${
-                    moreOpen ? "text-slate-800 font-semibold" : "text-slate-600"
+                    moreOpen ? "text-slate-900 font-semibold" : "text-slate-600"
                   }`}
                   style={{ flexDirection: "column" }}
                 >
-                  <MoreHorizontal className="h-6 w-6 shrink-0 order-first" />
+                  <MoreHorizontal
+                    className="h-6 w-6 shrink-0 order-first"
+                    strokeWidth={moreOpen ? 2.5 : 1.5}
+                    fill={moreOpen ? "currentColor" : "none"}
+                  />
                   <span className="order-last text-center leading-snug whitespace-nowrap overflow-visible">More</span>
                 </button>
               );
@@ -115,11 +119,15 @@ const BottomNav = () => {
                 key={item.label}
                 onClick={() => navigate(item.path)}
                 className={`flex flex-col items-center justify-center gap-1 min-h-[56px] py-2 text-[11px] transition-colors touch-manipulation overflow-visible ${
-                  isActive ? "text-slate-800 font-semibold" : "text-slate-600"
+                  isActive ? "text-slate-900 font-semibold" : "text-slate-600"
                 }`}
                 style={{ flexDirection: "column" }}
               >
-                <item.icon className="h-6 w-6 shrink-0 order-first" />
+                <item.icon
+                  className="h-6 w-6 shrink-0 order-first"
+                  strokeWidth={isActive ? 2.5 : 1.5}
+                  fill={isActive ? "currentColor" : "none"}
+                />
                 <span className="order-last text-center leading-snug whitespace-nowrap overflow-visible">{item.label}</span>
               </button>
             );
