@@ -158,6 +158,11 @@ This document tracks what has been **actually implemented** in `apps/mobile/` (R
 - **Import, E-Invoicing:** Coming Soon placeholders
 - **API:** reportsApi.gstr1, creditNoteApi, purchaseOrderApi
 
+### Sprint 23 — Feedback + Coming Soon ✅
+- **FeedbackScreen:** NPS 0–10 + optional text → POST /api/v1/feedback (already live)
+- **8 Coming Soon:** Debit Orders, Delivery Challans, Packaging Lists, Journals, Online Store, Addons, My Drive, Tutorial
+- All reachable from More grid
+
 ---
 
 ## API Clients (apps/mobile/src/lib/api.ts)

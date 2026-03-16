@@ -79,6 +79,14 @@ export type MoreStackParams = {
   Import: { title?: string };
   EInvoicing: { title?: string };
   IndirectIncome: undefined;
+  DebitOrders: { title?: string };
+  DeliveryChallans: { title?: string };
+  PackagingLists: { title?: string };
+  Journals: { title?: string };
+  OnlineStore: { title?: string };
+  Addons: { title?: string };
+  MyDrive: { title?: string };
+  Tutorial: { title?: string };
 };
 
 export type BillingStackParams = {
@@ -228,6 +236,14 @@ function MoreNavigator() {
         options={{ title: "E-Invoicing" }}
       />
       <MoreStack.Screen name="IndirectIncome" component={IndirectIncomeScreen} options={{ title: "Indirect Income" }} />
+      <MoreStack.Screen name="DebitOrders" component={ComingSoonScreen} initialParams={{ title: "Debit Orders" }} options={{ title: "Debit Orders" }} />
+      <MoreStack.Screen name="DeliveryChallans" component={ComingSoonScreen} initialParams={{ title: "Delivery Challans" }} options={{ title: "Delivery Challans" }} />
+      <MoreStack.Screen name="PackagingLists" component={ComingSoonScreen} initialParams={{ title: "Packaging Lists" }} options={{ title: "Packaging Lists" }} />
+      <MoreStack.Screen name="Journals" component={ComingSoonScreen} initialParams={{ title: "Journals" }} options={{ title: "Journals" }} />
+      <MoreStack.Screen name="OnlineStore" component={ComingSoonScreen} initialParams={{ title: "Online Store" }} options={{ title: "Online Store" }} />
+      <MoreStack.Screen name="Addons" component={ComingSoonScreen} initialParams={{ title: "Addons" }} options={{ title: "Addons" }} />
+      <MoreStack.Screen name="MyDrive" component={ComingSoonScreen} initialParams={{ title: "My Drive" }} options={{ title: "My Drive" }} />
+      <MoreStack.Screen name="Tutorial" component={ComingSoonScreen} initialParams={{ title: "Tutorial" }} options={{ title: "Tutorial" }} />
       <MoreStack.Screen name="Settings" component={SettingsScreen} options={{ title: "Settings" }} />
       <MoreStack.Screen
         name="ComingSoon"

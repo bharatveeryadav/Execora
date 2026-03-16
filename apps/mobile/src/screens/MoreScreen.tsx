@@ -56,6 +56,18 @@ const TILES: Tile[][] = [
     { icon: "cash", label: "Indirect Income", route: "IndirectIncome", color: TILE_COLORS.success },
     { icon: "chatbubble", label: "Feedback", route: "Feedback", color: TILE_COLORS.primary },
   ],
+  [
+    { icon: "card-outline", label: "Debit Orders", route: "DebitOrders", color: TILE_COLORS.secondary },
+    { icon: "car", label: "Challans", route: "DeliveryChallans", color: TILE_COLORS.info },
+    { icon: "cube-outline", label: "Packaging", route: "PackagingLists", color: TILE_COLORS.warning },
+    { icon: "book", label: "Journals", route: "Journals", color: TILE_COLORS.secondary },
+  ],
+  [
+    { icon: "storefront", label: "Online Store", route: "OnlineStore", color: TILE_COLORS.primary },
+    { icon: "apps", label: "Addons", route: "Addons", color: TILE_COLORS.info },
+    { icon: "cloud", label: "My Drive", route: "MyDrive", color: TILE_COLORS.secondary },
+    { icon: "school", label: "Tutorial", route: "Tutorial", color: TILE_COLORS.success },
+  ],
 ];
 
 export function MoreScreen() {
