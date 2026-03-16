@@ -17,13 +17,15 @@ import {
   Platform,
   Modal,
   Pressable,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
-import { authApi, authExtApi } from "../lib/api";
+import { authApi, authExtApi, getApiBaseUrl } from "../lib/api";
+import { tokenStorage } from "../lib/storage";
 import { TYPO } from "../lib/typography";
 
 const BUSINESS_TYPES = [
@@ -90,8 +92,37 @@ export function CompanyProfileScreen() {
   const [bankAccountNo, setBankAccountNo] = useState("");
   const [bankIfsc, setBankIfsc] = useState("");
   const [logoObjectKey, setLogoObjectKey] = useState<string | null>(null);
+  const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
   const [businessTypeModalOpen, setBusinessTypeModalOpen] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
+
+  useEffect(() => {
+    if (!logoObjectKey) {
+      setLogoDataUrl(null);
+      return;
+    }
+    const token = tokenStorage.getToken();
+    if (!token) return;
+    let cancelled = false;
+    fetch(`${getApiBaseUrl()}/api/v1/tenant/logo`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.arrayBuffer() : null))
+      .then((arrayBuffer) => {
+        if (cancelled || !arrayBuffer) return;
+        try {
+          const bytes = new Uint8Array(arrayBuffer);
+          let binary = "";
+          for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+          const base64 = btoa(binary);
+          if (!cancelled) setLogoDataUrl(`data:image/jpeg;base64,${base64}`);
+        } catch {
+          /* base64 conversion failed */
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [logoObjectKey]);
 
   useEffect(() => {
     if (tenant) {
@@ -223,30 +254,24 @@ export function CompanyProfileScreen() {
           contentContainerStyle={{ padding: 20, paddingBottom: 48 }}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Upload company logo */}
-          <View className="mb-6">
-            <Text className={`${LABEL} mb-3`}>Company Logo</Text>
+          {/* Company logo — top middle */}
+          <View className="items-center mb-6">
             <TouchableOpacity
               onPress={logoUploading ? undefined : pickLogo}
               disabled={logoUploading}
-              className="w-24 h-24 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 items-center justify-center overflow-hidden"
+              className="w-24 h-24 rounded-2xl border-2 border-slate-200 bg-slate-50 items-center justify-center overflow-hidden"
             >
-              {logoObjectKey ? (
-                <View className="items-center">
-                  <View className="w-12 h-12 rounded-full bg-primary/20 items-center justify-center">
-                    <Ionicons name="checkmark" size={28} color="#e67e22" />
-                  </View>
-                  <Text className="text-xs font-medium text-slate-600 mt-1">Logo set</Text>
-                </View>
+              {logoDataUrl ? (
+                <Image source={{ uri: logoDataUrl }} className="w-full h-full" resizeMode="cover" />
               ) : logoUploading ? (
                 <ActivityIndicator size="large" color="#e67e22" />
               ) : (
                 <View className="items-center">
                   <Ionicons name="business" size={36} color="#94a3b8" />
-                  <Text className="text-xs font-medium text-slate-500 mt-1">Upload</Text>
                 </View>
               )}
             </TouchableOpacity>
+            <Text className="text-sm font-medium text-slate-500 mt-2">Upload company logo</Text>
           </View>
 
           {/* Business / Company name */}
