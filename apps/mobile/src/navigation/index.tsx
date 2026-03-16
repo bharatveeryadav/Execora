@@ -1,7 +1,8 @@
 import React from "react";
+import { View, useWindowDimensions } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useAuth } from "../contexts/AuthContext";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { createBottomTabNavigator, BottomTabBar } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -53,12 +54,12 @@ export type MainTabParams = {
   Billing: undefined;
   CustomersTab: undefined;
   InvoicesTab: undefined;
-  Items: undefined;
   MoreTab: undefined;
 };
 
 export type MoreStackParams = {
   More: undefined;
+  Items: undefined;
   SettingsThermal: undefined;
   Reports: undefined;
   DayBook: undefined;
@@ -209,6 +210,7 @@ function MoreNavigator() {
       }}
     >
       <MoreStack.Screen name="More" component={MoreScreen} options={{ headerShown: false }} />
+      <MoreStack.Screen name="Items" component={ItemsScreen} options={{ headerShown: false }} />
       <MoreStack.Screen name="SettingsThermal" component={SettingsThermalScreen} options={{ headerShown: false }} />
       <MoreStack.Screen name="Reports" component={ReportsScreen} options={{ title: "Reports" }} />
       <MoreStack.Screen name="DayBook" component={DayBookScreen} options={{ title: "Day Book" }} />
@@ -262,7 +264,6 @@ const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   Billing: "receipt",
   CustomersTab: "people",
   InvoicesTab: "document-text",
-  Items: "cube",
   MoreTab: "ellipsis-horizontal",
 };
 
@@ -271,33 +272,52 @@ const TAB_ACTIVE_COLORS: Record<string, string> = {
   Billing: "#e67e22",
   CustomersTab: "#3d7a9e",
   InvoicesTab: "#e67e22",
-  Items: "#1a9248",
   MoreTab: "#64748b",
 };
+
+const TAB_BAR_MAX_WIDTH = 480;
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   const iconName = TAB_ICONS[name] ?? "ellipse";
   const color = focused ? (TAB_ACTIVE_COLORS[name] ?? "#e67e22") : "#94a3b8";
-  return <Ionicons name={iconName} size={22} color={color} />;
+  return <Ionicons name={iconName} size={20} color={color} />;
+}
+
+function ResponsiveTabBar(props: React.ComponentProps<typeof BottomTabBar>) {
+  const { width } = useWindowDimensions();
+  const constrainWidth = width > TAB_BAR_MAX_WIDTH;
+  return (
+    <View style={{ alignItems: "center", width: "100%" }}>
+      <View
+        style={{
+          width: constrainWidth ? TAB_BAR_MAX_WIDTH : "100%",
+          maxWidth: "100%",
+        }}
+      >
+        <BottomTabBar {...props} />
+      </View>
+    </View>
+  );
 }
 
 function MainTabs() {
   const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
+      tabBar={(props) => <ResponsiveTabBar {...props} />}
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: "#e67e22",
         tabBarInactiveTintColor: "#94a3b8",
         tabBarStyle: {
           borderTopColor: "#e2e8f0",
-          paddingBottom: Math.max(insets.bottom, 16),
-          paddingTop: 12,
-          height: 72 + Math.max(insets.bottom, 16),
-          minHeight: 72 + Math.max(insets.bottom, 16),
+          paddingBottom: Math.max(insets.bottom, 8),
+          paddingTop: 6,
+          height: 52 + Math.max(insets.bottom, 8),
+          minHeight: 52 + Math.max(insets.bottom, 8),
         },
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 9,
           fontWeight: "600",
           marginTop: 2,
         },
@@ -323,11 +343,6 @@ function MainTabs() {
         name="InvoicesTab"
         component={InvoicesNavigator}
         options={{ tabBarLabel: "Invs" }}
-      />
-      <Tab.Screen
-        name="Items"
-        component={ItemsScreen}
-        options={{ tabBarLabel: "Stock" }}
       />
       <Tab.Screen
         name="MoreTab"

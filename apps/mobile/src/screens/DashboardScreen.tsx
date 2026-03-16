@@ -298,7 +298,7 @@ export function DashboardScreen() {
   const handleQuickAction = (route: string, params?: Record<string, unknown>) => {
     if (route === "BillingForm") return navigation.navigate("Billing", { screen: "BillingForm", params });
     if (route === "Payment") return navigation.getParent()?.navigate("CustomersTab" as never, { screen: "Payment" } as never);
-    if (route === "Items") return navigation.navigate("Items");
+    if (route === "Items") return navigation.navigate("MoreTab", { screen: "Items" });
     if (route === "InvoicesTab") return navigation.navigate("InvoicesTab");
     if (route === "CustomersTab") return navigation.navigate("CustomersTab");
     if (route === "Expenses") return navigation.navigate("MoreTab", { screen: "Expenses" });
@@ -415,7 +415,7 @@ export function DashboardScreen() {
               <Text className={`${TYPO.micro} text-slate-500`}>{collectionRate}% today</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => navigation.navigate("Items")}
+              onPress={() => navigation.navigate("MoreTab", { screen: "Items" })}
               activeOpacity={0.8}
               style={{
                 flex: 1,
@@ -730,7 +730,7 @@ export function DashboardScreen() {
         {/* 7 — Low Stock */}
         {!loadingLowStock && lowStock.length > 0 && (
           <TouchableOpacity
-            onPress={() => navigation.navigate("Items")}
+            onPress={() => navigation.navigate("MoreTab", { screen: "Items" })}
             activeOpacity={0.9}
             className="flex-row flex-wrap items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 mb-5"
           >

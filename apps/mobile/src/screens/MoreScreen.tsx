@@ -32,6 +32,7 @@ const TILES: Tile[][] = [
     { icon: "cash", label: "Cash Book", route: "CashBook", color: TILE_COLORS.success },
   ],
   [
+    { icon: "cube", label: "Stock", route: "Items", color: TILE_COLORS.success },
     { icon: "cart", label: "Expenses", route: "Expenses", color: TILE_COLORS.warning },
     { icon: "repeat", label: "Recurring", route: "Recurring", color: TILE_COLORS.secondary },
     { icon: "bag", label: "Purchases", route: "Purchases", color: TILE_COLORS.primary },
