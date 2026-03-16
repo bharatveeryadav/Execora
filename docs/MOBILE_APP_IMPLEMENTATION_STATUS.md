@@ -143,6 +143,13 @@ This document tracks what has been **actually implemented** in `apps/mobile/` (R
 - **EAS:** production profile with app-bundle, autoIncrement, submit config
 - **Docs:** `MOBILE_STORE_COMPLIANCE.md` — manual checklist for App Store Connect + Play Console
 
+### Sprint 21 — Extended Finance ✅
+- **ExpiryScreen:** Product expiry page, filter (expired/7d/30d/90d/all), write-off batch
+- **BalanceSheetScreen:** P&L summary (revenue, expenses, profit, outstanding)
+- **BankReconScreen:** Cashbook with period filter (week/month/2 months)
+- **API:** productExtApi.expiryPage, writeOffBatch; reportsApi.pnl
+- **More grid:** Expiry, Bank Recon, Balance (BalanceSheet) tiles
+
 ---
 
 ## API Clients (apps/mobile/src/lib/api.ts)
@@ -198,13 +205,12 @@ This document tracks what has been **actually implemented** in `apps/mobile/` (R
 
 ## Recommended Next Sprints (Monitoring Last)
 
-**Do these first, in order:** 21 → 22 → 23  
-**Do Monitoring (Sprint 14) last.** (Sprints 15–20 ✅ done)
+**Do these first, in order:** 22 → 23  
+**Do Monitoring (Sprint 14) last.** (Sprints 15–21 ✅ done)
 
 | Order | Sprint | Focus |
 |-------|--------|-------|
-| 1 | **21** | Extended finance (expiry, balance sheet, bank recon) |
-| 2 | **22** | Advanced features (import, e-invoice, GSTR-3B, etc.) |
+| 1 | **22** | Advanced features (import, e-invoice, GSTR-3B, etc.) |
 | 3 | **23** | Feedback + Coming Soon screens |
 | **4 (last)** | **14** | **Store Monitoring** (KPI bar, hourly chart, employee cards, camera) |
 

@@ -225,13 +225,74 @@ export const feedbackApi = {
     ),
 };
 
-// ── Product extensions (low-stock, etc.) ──────────────────────────────────────
+// ── Product extensions (low-stock, expiry, write-off) ──────────────────────────
 
 export const productExtApi = {
   lowStock: () =>
     apiFetch<{ products: Array<{ id: string; name: string; stock: number; unit?: string; minStock?: number }> }>(
       "/api/v1/products/low-stock",
     ),
+  expiryPage: (filter: "expired" | "7d" | "30d" | "90d" | "all" = "30d") =>
+    apiFetch<{
+      batches: Array<{
+        id: string;
+        batchNo: string;
+        expiryDate: string;
+        manufacturingDate: string | null;
+        quantity: number;
+        purchasePrice: string | null;
+        status: string;
+        product: { name: string; unit: string; category: string | null };
+      }>;
+      summary: {
+        expiredCount: number;
+        critical7: number;
+        warning30: number;
+        valueAtRisk: number;
+      };
+    }>(`/api/v1/products/expiry-page?filter=${filter}`),
+  writeOffBatch: (batchId: string) =>
+    apiFetch<{ ok: boolean; batchNo: string; qtyWrittenOff: number }>(
+      `/api/v1/products/batches/${batchId}/write-off`,
+      { method: "PATCH" },
+    ),
+};
+
+// ── Reports API (PnL, etc.) ───────────────────────────────────────────────────
+
+export const reportsApi = {
+  pnl: (params?: { from?: string; to?: string; fy?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.from) q.set("from", params.from);
+    if (params?.to) q.set("to", params.to);
+    if (params?.fy) q.set("fy", params.fy);
+    const s = q.toString();
+    return apiFetch<{
+      report: {
+        period: { from: string; to: string };
+        months: Array<{
+          month: string;
+          invoiceCount: number;
+          revenue: number;
+          discounts: number;
+          netRevenue: number;
+          taxCollected: number;
+          collected: number;
+          outstanding: number;
+        }>;
+        totals: {
+          invoiceCount: number;
+          revenue: number;
+          discounts: number;
+          netRevenue: number;
+          taxCollected: number;
+          collected: number;
+          outstanding: number;
+          collectionRate: number;
+        };
+      };
+    }>(`/api/v1/reports/pnl${s ? `?${s}` : ""}`);
+  },
 };
 
 // Re-export the API functions so screens import from one place

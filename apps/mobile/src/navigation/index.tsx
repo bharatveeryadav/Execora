@@ -28,6 +28,9 @@ import { ComingSoonScreen } from "../screens/ComingSoonScreen";
 import { FeedbackScreen } from "../screens/FeedbackScreen";
 import { PubInvoiceScreen } from "../screens/PubInvoiceScreen";
 import { SettingsThermalScreen } from "../screens/SettingsThermalScreen";
+import { ExpiryScreen } from "../screens/ExpiryScreen";
+import { BalanceSheetScreen } from "../screens/BalanceSheetScreen";
+import { BankReconScreen } from "../screens/BankReconScreen";
 
 // ── Param lists ───────────────────────────────────────────────────────────────
 
@@ -63,6 +66,9 @@ export type MoreStackParams = {
   Settings: undefined;
   ComingSoon: { title?: string; emoji?: string };
   Feedback: undefined;
+  Expiry: undefined;
+  BalanceSheet: undefined;
+  BankRecon: undefined;
 };
 
 export type BillingStackParams = {
@@ -193,6 +199,9 @@ function MoreNavigator() {
       <MoreStack.Screen name="Recurring" component={RecurringScreen} options={{ title: "Recurring" }} />
       <MoreStack.Screen name="Purchases" component={PurchasesScreen} options={{ title: "Purchases" }} />
       <MoreStack.Screen name="Monitoring" component={MonitoringScreen} options={{ title: "Store Monitor" }} />
+      <MoreStack.Screen name="Expiry" component={ExpiryScreen} options={{ title: "Product Expiry" }} />
+      <MoreStack.Screen name="BalanceSheet" component={BalanceSheetScreen} options={{ title: "Balance / P&L" }} />
+      <MoreStack.Screen name="BankRecon" component={BankReconScreen} options={{ title: "Bank Reconciliation" }} />
       <MoreStack.Screen name="Settings" component={SettingsScreen} options={{ title: "Settings" }} />
       <MoreStack.Screen
         name="ComingSoon"

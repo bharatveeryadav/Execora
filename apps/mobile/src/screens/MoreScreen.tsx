@@ -38,13 +38,17 @@ const TILES: Tile[][] = [
     { icon: "time", label: "Overdue", route: "Overdue", color: TILE_COLORS.destructive },
   ],
   [
+    { icon: "hourglass", label: "Expiry", route: "Expiry", color: TILE_COLORS.warning },
+    { icon: "swap-horizontal", label: "Bank Recon", route: "BankRecon", color: TILE_COLORS.info },
     { icon: "shield-checkmark", label: "Monitor", route: "Monitoring", color: TILE_COLORS.info },
     { icon: "settings", label: "Settings", route: "Settings", color: "#64748b" },
+  ],
+  [
     { icon: "download", label: "Import", route: "ComingSoon", color: TILE_COLORS.secondary, params: { title: "Import" } },
     { icon: "document-text", label: "GST", route: "ComingSoon", color: TILE_COLORS.primary, params: { title: "GSTR Reports" } },
   ],
   [
-    { icon: "wallet", label: "Balance", route: "ComingSoon", color: TILE_COLORS.success, params: { title: "Balance Sheet" } },
+    { icon: "wallet", label: "Balance", route: "BalanceSheet", color: TILE_COLORS.success },
     { icon: "document-text", label: "Aging", route: "ComingSoon", color: TILE_COLORS.warning, params: { title: "Aging Report" } },
     { icon: "notifications", label: "Alerts", route: "ComingSoon", color: TILE_COLORS.destructive, params: { title: "Alerts" } },
     { icon: "chatbubble", label: "Feedback", route: "Feedback", color: TILE_COLORS.primary },
