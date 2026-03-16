@@ -1,7 +1,9 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { useAuth } from "../contexts/AuthContext";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Text } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 
 import { DashboardScreen } from "../screens/DashboardScreen";
 import { BillingScreen } from "../screens/BillingScreen";
@@ -13,12 +15,26 @@ import { CustomerDetailScreen } from "../screens/CustomerDetailScreen";
 import { PaymentScreen } from "../screens/PaymentScreen";
 import { OverdueScreen } from "../screens/OverdueScreen";
 import { ItemsScreen } from "../screens/ItemsScreen";
+import { MoreScreen } from "../screens/MoreScreen";
+import { ExpensesScreen } from "../screens/ExpensesScreen";
+import { CashBookScreen } from "../screens/CashBookScreen";
+import { DayBookScreen } from "../screens/DayBookScreen";
+import { ReportsScreen } from "../screens/ReportsScreen";
+import { PurchasesScreen } from "../screens/PurchasesScreen";
+import { RecurringScreen } from "../screens/RecurringScreen";
+import { MonitoringScreen } from "../screens/MonitoringScreen";
+import { SettingsScreen } from "../screens/SettingsScreen";
+import { ComingSoonScreen } from "../screens/ComingSoonScreen";
+import { FeedbackScreen } from "../screens/FeedbackScreen";
+import { PubInvoiceScreen } from "../screens/PubInvoiceScreen";
+import { SettingsThermalScreen } from "../screens/SettingsThermalScreen";
 
 // ── Param lists ───────────────────────────────────────────────────────────────
 
 export type RootStackParams = {
   Auth: undefined;
   Main: undefined;
+  PubInvoice: { id: string; token: string };
 };
 
 export type AuthStackParams = {
@@ -31,6 +47,22 @@ export type MainTabParams = {
   CustomersTab: undefined;
   InvoicesTab: undefined;
   Items: undefined;
+  MoreTab: undefined;
+};
+
+export type MoreStackParams = {
+  More: undefined;
+  SettingsThermal: undefined;
+  Reports: undefined;
+  DayBook: undefined;
+  CashBook: undefined;
+  Expenses: undefined;
+  Recurring: undefined;
+  Purchases: undefined;
+  Monitoring: undefined;
+  Settings: undefined;
+  ComingSoon: { title?: string; emoji?: string };
+  Feedback: undefined;
 };
 
 export type BillingStackParams = {
@@ -58,6 +90,7 @@ const Tab = createBottomTabNavigator<MainTabParams>();
 const BillingStack = createNativeStackNavigator<BillingStackParams>();
 const InvoicesStack = createNativeStackNavigator<InvoicesStackParams>();
 const CustomersStack = createNativeStackNavigator<CustomersStackParams>();
+const MoreStack = createNativeStackNavigator<MoreStackParams>();
 
 // ── Auth stack ────────────────────────────────────────────────────────────────
 
@@ -139,52 +172,116 @@ function CustomersNavigator() {
   );
 }
 
-// ── Main bottom tabs ──────────────────────────────────────────────────────────
+// ── More stack ────────────────────────────────────────────────────────────────
 
-function TabIcon({ name, color }: { name: string; color: string }) {
-  const icons: Record<string, string> = {
-    Dashboard: "📊",
-    Billing: "🧾",
-    CustomersTab: "👥",
-    InvoicesTab: "📋",
-    Items: "📦",
-  };
-  return <Text style={{ fontSize: 20, color }}>{icons[name] ?? "•"}</Text>;
+function MoreNavigator() {
+  return (
+    <MoreStack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: "#fff" },
+        headerShadowVisible: true,
+        headerTintColor: "#0f172a",
+        headerTitleStyle: { fontWeight: "700" },
+      }}
+    >
+      <MoreStack.Screen name="More" component={MoreScreen} options={{ headerShown: false }} />
+      <MoreStack.Screen name="SettingsThermal" component={SettingsThermalScreen} options={{ headerShown: false }} />
+      <MoreStack.Screen name="Reports" component={ReportsScreen} options={{ title: "Reports" }} />
+      <MoreStack.Screen name="DayBook" component={DayBookScreen} options={{ title: "Day Book" }} />
+      <MoreStack.Screen name="CashBook" component={CashBookScreen} options={{ title: "Cash Book" }} />
+      <MoreStack.Screen name="Expenses" component={ExpensesScreen} options={{ title: "Expenses" }} />
+      <MoreStack.Screen name="Recurring" component={RecurringScreen} options={{ title: "Recurring" }} />
+      <MoreStack.Screen name="Purchases" component={PurchasesScreen} options={{ title: "Purchases" }} />
+      <MoreStack.Screen name="Monitoring" component={MonitoringScreen} options={{ title: "Store Monitor" }} />
+      <MoreStack.Screen name="Settings" component={SettingsScreen} options={{ title: "Settings" }} />
+      <MoreStack.Screen
+        name="ComingSoon"
+        component={ComingSoonScreen}
+        options={({ route }) => ({ title: (route.params as { title?: string })?.title ?? "Coming Soon" })}
+      />
+      <MoreStack.Screen name="Feedback" component={FeedbackScreen} options={{ title: "Feedback" }} />
+    </MoreStack.Navigator>
+  );
+}
+
+// ── Main bottom tabs (icons match web BottomNav) ──────────────────────────────
+
+const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  Dashboard: "home",
+  Billing: "receipt",
+  CustomersTab: "people",
+  InvoicesTab: "document-text",
+  Items: "cube",
+  MoreTab: "ellipsis-horizontal",
+};
+
+const TAB_ACTIVE_COLORS: Record<string, string> = {
+  Dashboard: "#e67e22",
+  Billing: "#e67e22",
+  CustomersTab: "#3d7a9e",
+  InvoicesTab: "#e67e22",
+  Items: "#1a9248",
+  MoreTab: "#64748b",
+};
+
+function TabIcon({ name, focused }: { name: string; focused: boolean }) {
+  const iconName = TAB_ICONS[name] ?? "ellipse";
+  const color = focused ? (TAB_ACTIVE_COLORS[name] ?? "#e67e22") : "#94a3b8";
+  return <Ionicons name={iconName} size={22} color={color} />;
 }
 
 function MainTabs() {
+  const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarActiveTintColor: "#6366f1",
+        tabBarActiveTintColor: "#e67e22",
         tabBarInactiveTintColor: "#94a3b8",
         tabBarStyle: {
           borderTopColor: "#e2e8f0",
-          paddingBottom: 6,
-          paddingTop: 4,
-          height: 64,
+          paddingBottom: Math.max(insets.bottom, 16),
+          paddingTop: 12,
+          height: 72 + Math.max(insets.bottom, 16),
+          minHeight: 72 + Math.max(insets.bottom, 16),
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
-        tabBarIcon: ({ color }) => <TabIcon name={route.name} color={color} />,
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: "600",
+          marginTop: 2,
+        },
+        tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} />,
       })}
     >
-      <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      <Tab.Screen name="Billing" component={BillingNavigator} />
+      <Tab.Screen
+        name="Dashboard"
+        component={DashboardScreen}
+        options={{ tabBarLabel: "Home" }}
+      />
+      <Tab.Screen
+        name="Billing"
+        component={BillingNavigator}
+        options={{ tabBarLabel: "Bill" }}
+      />
       <Tab.Screen
         name="CustomersTab"
         component={CustomersNavigator}
-        options={{ tabBarLabel: "Customers" }}
+        options={{ tabBarLabel: "Cust" }}
       />
       <Tab.Screen
         name="InvoicesTab"
         component={InvoicesNavigator}
-        options={{ tabBarLabel: "Invoices" }}
+        options={{ tabBarLabel: "Invs" }}
       />
       <Tab.Screen
         name="Items"
         component={ItemsScreen}
-        options={{ tabBarLabel: "Items" }}
+        options={{ tabBarLabel: "Stock" }}
+      />
+      <Tab.Screen
+        name="MoreTab"
+        component={MoreNavigator}
+        options={{ tabBarLabel: "More" }}
       />
     </Tab.Navigator>
   );
@@ -192,22 +289,22 @@ function MainTabs() {
 
 // ── Root navigator ────────────────────────────────────────────────────────────
 
-export function RootNavigator({
-  isLoggedIn,
-  onLogin,
-}: {
-  isLoggedIn: boolean;
-  onLogin: () => void;
-}) {
+export function RootNavigator() {
+  const { isLoggedIn, login } = useAuth();
   return (
     <Root.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
       {isLoggedIn ? (
         <Root.Screen name="Main" component={MainTabs} />
       ) : (
         <Root.Screen name="Auth">
-          {() => <AuthNavigator onLogin={onLogin} />}
+          {() => <AuthNavigator onLogin={login} />}
         </Root.Screen>
       )}
+      <Root.Screen
+        name="PubInvoice"
+        component={PubInvoiceScreen}
+        options={{ presentation: "modal" }}
+      />
     </Root.Navigator>
   );
 }

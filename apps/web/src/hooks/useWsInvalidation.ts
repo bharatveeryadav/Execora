@@ -17,31 +17,33 @@ import { wsClient } from '@/lib/ws';
 // Each WS event type maps to the list of query-key prefixes to invalidate.
 // Extend this map as new real-time events are added to the API.
 export const WS_EVENT_QUERIES: Record<string, string[][]> = {
-	'invoice:created': [['invoices'], ['summary'], ['customers']],
+	'invoice:created':   [['invoices'], ['summary'], ['customers']],
 	'invoice:confirmed': [['invoices'], ['summary'], ['customers']],
-	'invoice:updated': [['invoices']],
+	'invoice:updated':   [['invoices']],
 	'invoice:cancelled': [['invoices'], ['summary'], ['customers']],
-	'invoice:draft': [['invoices']],
-	'payment:recorded': [['customers'], ['summary'], ['ledger'], ['cashbook'], ['invoices']],
-	'customer:created': [['customers'], ['summary']],
-	'customer:deleted': [['customers'], ['summary']],
-	'customer:updated': [['customers']],
-	'customer:balance': [['customers'], ['summary']],
-	'reminder:created': [['reminders']],
-	'reminder:cancelled': [['reminders']],
-	'stock:updated': [['products'], ['lowStock']],
-	'product:updated': [['products'], ['lowStock']],
-	'expense:created': [['expenses'], ['cashbook']],
-	'expense:deleted': [['expenses'], ['cashbook']],
-	'purchase:created': [['purchases'], ['cashbook']],
-	'purchase:deleted': [['purchases'], ['cashbook']],
+	'payment:recorded':  [['customers'], ['summary'], ['ledger'], ['cashbook'], ['invoices']],
+	'customer:created':  [['customers'], ['summary']],
+	'customer:deleted':  [['customers'], ['summary']],
+	'customer:updated':  [['customers']],
+	// 'customer:balance' not emitted by backend — 'payment:recorded' covers balance changes
+	'reminder:created':  [['reminders']],
+	'reminder:cancelled':[['reminders']],
+	'reminders:updated': [['reminders']],   // AI predictive reminders (ai.routes.ts)
+	'stock:updated':     [['products'], ['lowStock']],
+	'product:created':   [['products'], ['lowStock']],
+	'product:updated':   [['products'], ['lowStock']],
+	'expense:created':   [['expenses'], ['incomes'], ['cashbook']],
+	'expense:deleted':   [['expenses'], ['incomes'], ['cashbook']],
+	'purchase:created':  [['purchases'], ['cashbook']],
+	'purchase:deleted':  [['purchases'], ['cashbook']],
 	// Draft / staging system
-	'draft:created': [['drafts']],
-	'draft:updated': [['drafts']],
-	'draft:confirmed': [['drafts'], ['purchases'], ['products'], ['expenses']],
-	'draft:discarded': [['drafts']],
-	// product create via draft confirm
-	'product:created': [['products'], ['lowStock']],
+	'draft:created':     [['drafts']],
+	'draft:updated':     [['drafts']],
+	'draft:confirmed':   [['drafts'], ['purchases'], ['products'], ['expenses']],
+	'draft:discarded':   [['drafts']],
+	// Monitoring
+	'monitoring:event':  [['monitoring']],
+	'monitoring:snap':   [['monitoring']],
 };
 
 /**

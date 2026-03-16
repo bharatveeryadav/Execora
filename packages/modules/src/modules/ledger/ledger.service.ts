@@ -326,6 +326,69 @@ class LedgerService {
 	}
 
 	/**
+	 * Reverse a payment applied to an invoice (owner/admin only).
+	 * Decrements invoice.paidAmount, increments customer.balance.
+	 */
+	async reversePayment(invoiceId: string, amount: number) {
+		if (!invoiceId?.trim()) throw new Error('Invoice ID is required');
+		if (typeof amount !== 'number' || amount <= 0 || !isFinite(amount)) {
+			throw new Error('Amount must be a positive number');
+		}
+
+		return await prisma.$transaction(async (tx) => {
+			const invoice = await tx.invoice.findFirst({
+				where: { id: invoiceId, tenantId: tenantContext.get().tenantId },
+				include: { customer: true },
+			});
+			if (!invoice) throw new Error('Invoice not found');
+			if (!invoice.customerId) throw new Error('Invoice has no customer');
+
+			const paid = parseFloat((invoice.paidAmount ?? 0).toString());
+			if (amount > paid) {
+				throw new Error(`Cannot reverse more than paid amount (${paid})`);
+			}
+
+			const newPaid = Math.round((paid - amount) * 100) / 100;
+			const invTotal = parseFloat(invoice.total.toString());
+			const newStatus = newPaid <= 0 ? 'pending' : newPaid >= invTotal ? 'paid' : 'partial';
+
+			await tx.invoice.update({
+				where: { id: invoiceId },
+				data: {
+					paidAmount: new Decimal(newPaid),
+					status: newStatus,
+					...(newPaid <= 0 && { paidAt: null }),
+				},
+			});
+
+			await tx.customer.update({
+				where: { id: invoice.customerId },
+				data: {
+					balance: { increment: amount },
+					totalPayments: { decrement: amount },
+				},
+			});
+
+			// Audit: create refund payment record
+			await tx.payment.create({
+				data: {
+					paymentNo: `REV-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+					tenantId: tenantContext.get().tenantId,
+					customerId: invoice.customerId,
+					invoiceId,
+					amount: new Decimal(amount),
+					method: 'bank',
+					status: 'refunded',
+					notes: `Reversal of payment on invoice ${invoice.invoiceNo ?? invoiceId}`,
+				},
+			});
+
+			logger.info({ invoiceId, amount, customerId: invoice.customerId }, 'Payment reversed');
+			return { ok: true, newPaid, newStatus };
+		});
+	}
+
+	/**
 	 * Get most recent payments across all customers.
 	 */
 	async getRecentTransactions(limit: number = 20) {

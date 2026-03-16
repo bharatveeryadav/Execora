@@ -49,9 +49,17 @@ import {
   type PaymentSplit,
   type Customer,
   type Product,
+  type CreateInvoicePayload,
 } from "@execora/shared";
+import { Ionicons } from "@expo/vector-icons";
 import { customerApi, productApi, invoiceApi } from "../lib/api";
 import { storage, DRAFT_KEY } from "../lib/storage";
+import { BarcodeScanner } from "../components/common/BarcodeScanner";
+import { printReceipt } from "../lib/printReceipt";
+import { useOffline } from "../contexts/OfflineContext";
+import { enqueueInvoice } from "../lib/offlineQueue";
+import { cacheProducts } from "../lib/offlineQueue";
+import type { ReceiptData } from "../lib/thermalReceipt";
 
 // ── ID counters ───────────────────────────────────────────────────────────────
 
@@ -77,6 +85,7 @@ const newSplit = (mode: PaymentMode = "cash"): PaymentSplit => ({
 export function BillingScreen() {
   const navigation = useNavigation();
   const qc = useQueryClient();
+  const { isOffline } = useOffline();
 
   // ── State ─────────────────────────────────────────────────────────────────
   const [items, setItems] = useState<BillingItem[]>([newItem()]);
@@ -107,6 +116,7 @@ export function BillingScreen() {
     id: string;
     no: string;
     total: number;
+    fromOffline?: boolean;
   } | null>(null);
 
   // ── Preloaded product catalog (for instant fuzzy search) ──────────────────
@@ -116,6 +126,10 @@ export function BillingScreen() {
     staleTime: 5 * 60_000,
   });
   const catalog: Product[] = catalogData?.products ?? [];
+
+  useEffect(() => {
+    if (catalogData?.products?.length) cacheProducts(catalogData.products);
+  }, [catalogData?.products]);
 
   // ── Customer search ───────────────────────────────────────────────────────
   const { data: custData, isFetching: searchingCustomers } = useQuery({
@@ -286,6 +300,53 @@ export function BillingScreen() {
     onError: (err: Error) => Alert.alert("Error", err.message),
   });
 
+  const buildPayload = useCallback(
+    (vars: { customerId: string; notesWithDue: string }): CreateInvoicePayload => ({
+      customerId: vars.customerId,
+      items: validItems.map((it) => ({
+        productName: it.name.trim(),
+        quantity: Math.max(1, parseFloat(it.qty) || 1),
+        unitPrice: parseFloat(it.rate) > 0 ? parseFloat(it.rate) : undefined,
+        lineDiscountPercent:
+          parseFloat(it.discount) > 0 ? parseFloat(it.discount) : undefined,
+      })),
+      notes: vars.notesWithDue || undefined,
+      withGst: withGst || undefined,
+      discountPercent:
+        parseFloat(discountPct) > 0 ? parseFloat(discountPct) : undefined,
+      discountAmount:
+        !discountPct && parseFloat(discountFlat) > 0
+          ? parseFloat(discountFlat)
+          : undefined,
+      initialPayment: (() => {
+        if (splitEnabled) {
+          if (splitTotal <= 0) return undefined;
+          const primary = splits[0]?.mode ?? "cash";
+          return {
+            amount: splitTotal,
+            method: (primary === "credit" ? "other" : primary) as "cash" | "upi" | "card" | "other",
+          };
+        }
+        return parseFloat(paymentAmount) > 0
+          ? {
+              amount: parseFloat(paymentAmount),
+              method: (paymentMode === "credit" ? "other" : paymentMode) as "cash" | "upi" | "card" | "other",
+            }
+          : undefined;
+      })(),
+    }),
+    [
+      validItems,
+      withGst,
+      discountPct,
+      discountFlat,
+      splitEnabled,
+      splits,
+      paymentMode,
+      paymentAmount,
+    ]
+  );
+
   const createInvoice = useMutation({
     mutationFn: async (vars: {
       customerId: string;
@@ -293,51 +354,30 @@ export function BillingScreen() {
       notesWithDue: string;
     }) => {
       if (!validItems.length) throw new Error("No items added");
-      return invoiceApi.create({
-        customerId: vars.customerId,
-        items: validItems.map((it) => ({
-          productName: it.name.trim(),
-          quantity: Math.max(1, parseFloat(it.qty) || 1),
-          unitPrice: parseFloat(it.rate) > 0 ? parseFloat(it.rate) : undefined,
-          lineDiscountPercent:
-            parseFloat(it.discount) > 0 ? parseFloat(it.discount) : undefined,
-        })),
-        notes: vars.notesWithDue || undefined,
-        withGst: withGst || undefined,
-        discountPercent:
-          parseFloat(discountPct) > 0 ? parseFloat(discountPct) : undefined,
-        discountAmount:
-          !discountPct && parseFloat(discountFlat) > 0
-            ? parseFloat(discountFlat)
-            : undefined,
-        initialPayment: (() => {
-          if (splitEnabled) {
-            if (splitTotal <= 0) return undefined;
-            const primary = splits[0]?.mode ?? "cash";
-            return {
-              amount: splitTotal,
-              method: primary === "credit" ? "other" : primary,
-            };
-          }
-          return parseFloat(paymentAmount) > 0
-            ? {
-                amount: parseFloat(paymentAmount),
-                method: paymentMode === "credit" ? "other" : paymentMode,
-              }
-            : undefined;
-        })(),
-      });
+      if (isOffline) {
+        const payload = buildPayload(vars);
+        const id = enqueueInvoice(payload, vars.displayTotal, vars.notesWithDue);
+        return {
+          invoice: {
+            id,
+            invoiceNo: `OFFLINE-${Date.now().toString(36).toUpperCase()}`,
+          },
+        } as { invoice: { id: string; invoiceNo: string } };
+      }
+      return invoiceApi.create(buildPayload(vars));
     },
     onSuccess: (data, vars) => {
       void qc.invalidateQueries({ queryKey: ["invoices"] });
       void qc.invalidateQueries({ queryKey: ["customers"] });
       storage.delete(DRAFT_KEY);
+      const fromOffline = data.invoice.id.startsWith("offline-");
       setSavedInvoice({
         id: data.invoice.id,
         no:
           (data.invoice as any).invoiceNo ??
           data.invoice.id.slice(-8).toUpperCase(),
         total: vars.displayTotal,
+        fromOffline,
       });
     },
     onError: (err: Error) => Alert.alert("Error creating invoice", err.message),
@@ -347,8 +387,12 @@ export function BillingScreen() {
     if (validItemCount === 0) return;
     let customerId = selectedCustomer?.id;
     if (!customerId) {
-      const walkIn = await createWalkIn.mutateAsync();
-      customerId = walkIn.id;
+      if (isOffline) {
+        customerId = "offline-walkin";
+      } else {
+        const walkIn = await createWalkIn.mutateAsync();
+        customerId = walkIn.id;
+      }
     }
     const notesWithDue = [notes.trim(), dueDate ? `Due: ${dueDate}` : ""]
       .filter(Boolean)
@@ -385,6 +429,63 @@ export function BillingScreen() {
     discardDraft();
   };
 
+  const handlePrintReceipt = useCallback(async () => {
+    if (!savedInvoice) return;
+    const receiptData: ReceiptData = {
+      shopName: "My Shop",
+      invoiceNo: savedInvoice.no,
+      date: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
+      customerName: selectedCustomer?.name ?? "Walk-in",
+      items: validItems.map((it) => ({
+        name: it.name.trim(),
+        qty: Math.max(1, parseFloat(it.qty) || 1),
+        rate: parseFloat(it.rate) || 0,
+        discountPct: parseFloat(it.discount) || 0,
+        amount: computeAmount(it.rate, it.qty, it.discount),
+      })),
+      subtotal,
+      discountAmt,
+      taxableAmt,
+      withGst,
+      totalGst: cgst + sgst,
+      grandTotal,
+      roundOff,
+      finalTotal,
+      amountInWords: grandTotalWords,
+      payments: splitEnabled
+        ? splits.filter((s) => parseFloat(s.amount) > 0).map((s) => ({ mode: s.mode, amount: parseFloat(s.amount) }))
+        : parseFloat(paymentAmount) > 0
+          ? [{ mode: paymentMode, amount: parseFloat(paymentAmount) }]
+          : [{ mode: "cash", amount: finalTotal }],
+      notes: [notes.trim(), dueDate ? `Due: ${dueDate}` : ""].filter(Boolean).join(" ") || undefined,
+    };
+    try {
+      await printReceipt(receiptData);
+    } catch (e) {
+      Alert.alert("Print", (e as Error).message ?? "Could not print receipt");
+    }
+  }, [
+    savedInvoice,
+    selectedCustomer,
+    validItems,
+    subtotal,
+    discountAmt,
+    taxableAmt,
+    withGst,
+    cgst,
+    sgst,
+    grandTotal,
+    roundOff,
+    finalTotal,
+    grandTotalWords,
+    splitEnabled,
+    splits,
+    paymentMode,
+    paymentAmount,
+    notes,
+    dueDate,
+  ]);
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["bottom"]}>
@@ -418,7 +519,7 @@ export function BillingScreen() {
               👤 Customer
             </Text>
             {selectedCustomer ? (
-              <View className="flex-row items-center rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-3">
+              <View className="flex-row items-center rounded-xl border border-primary/30 bg-primary/10 px-3 py-3">
                 <View className="flex-1">
                   <Text className="text-sm font-bold text-slate-800">
                     {selectedCustomer.name}
@@ -454,7 +555,7 @@ export function BillingScreen() {
             ) : (
               <View>
                 <View className="flex-row items-center border border-slate-200 rounded-xl bg-white px-3">
-                  <Text className="text-slate-400 mr-2">🔍</Text>
+                  <Ionicons name="search" size={18} color="#94a3b8" style={{ marginRight: 8 }} />
                   <TextInput
                     value={customerQuery}
                     onChangeText={(t) => {
@@ -470,7 +571,7 @@ export function BillingScreen() {
                     className="flex-1 h-12 text-sm text-slate-800"
                   />
                   {searchingCustomers && (
-                    <ActivityIndicator size="small" color="#6366f1" />
+                    <ActivityIndicator size="small" color="#e67e22" />
                   )}
                 </View>
                 {showCustSuggest && customerQuery.length >= 1 && (
@@ -501,9 +602,9 @@ export function BillingScreen() {
                         setShowNewCust(true);
                         setShowCustSuggest(false);
                       }}
-                      className="flex-row items-center px-3 py-3 border-t border-slate-100 bg-indigo-50"
+                      className="flex-row items-center px-3 py-3 border-t border-slate-100 bg-primary/10"
                     >
-                      <Text className="text-sm text-indigo-600 font-semibold">
+                      <Text className="text-sm text-primary font-semibold">
                         ➕ Add "{customerQuery}" as new customer
                       </Text>
                     </TouchableOpacity>
@@ -538,7 +639,7 @@ export function BillingScreen() {
                 onPress={addItem}
                 className="flex-row items-center px-4 py-4 border-t border-slate-100"
               >
-                <Text className="text-indigo-600 text-base font-semibold">
+                <Text className="text-primary text-base font-semibold">
                   ＋ Add item
                 </Text>
               </TouchableOpacity>
@@ -559,7 +660,7 @@ export function BillingScreen() {
               value={withGst}
               onValueChange={setWithGst}
               trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
-              thumbColor={withGst ? "#6366f1" : "#f4f4f5"}
+              thumbColor={withGst ? "#e67e22" : "#f4f4f5"}
             />
           </View>
 
@@ -627,7 +728,7 @@ export function BillingScreen() {
               <View className="border-t border-slate-200 mt-2 pt-2">
                 <View className="flex-row justify-between items-center">
                   <Text className="font-bold text-slate-800">Grand Total</Text>
-                  <Text className="font-black text-xl text-indigo-600">
+                  <Text className="font-black text-xl text-primary">
                     ₹{inr(finalTotal)}
                   </Text>
                 </View>
@@ -644,7 +745,7 @@ export function BillingScreen() {
                       value={roundOffEnabled}
                       onValueChange={setRoundOffEnabled}
                       trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
-                      thumbColor={roundOffEnabled ? "#6366f1" : "#f4f4f5"}
+                      thumbColor={roundOffEnabled ? "#e67e22" : "#f4f4f5"}
                     />
                   </View>
                 </View>
@@ -673,7 +774,7 @@ export function BillingScreen() {
                     if (v) setSplits([newSplit("cash")]);
                   }}
                   trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
-                  thumbColor={splitEnabled ? "#6366f1" : "#f4f4f5"}
+                  thumbColor={splitEnabled ? "#e67e22" : "#f4f4f5"}
                 />
               </View>
             </View>
@@ -685,11 +786,11 @@ export function BillingScreen() {
                     <TouchableOpacity
                       key={id}
                       onPress={() => setPaymentMode(id)}
-                      className={`flex-1 items-center justify-center rounded-xl border-2 py-3 ${paymentMode === id ? "border-indigo-500 bg-indigo-50" : "border-slate-200"}`}
+                      className={`flex-1 items-center justify-center rounded-xl border-2 py-3 ${paymentMode === id ? "border-primary bg-primary/10" : "border-slate-200"}`}
                     >
                       <Text className="text-2xl">{icon}</Text>
                       <Text
-                        className={`text-xs font-semibold mt-0.5 ${paymentMode === id ? "text-indigo-600" : "text-slate-500"}`}
+                        className={`text-xs font-semibold mt-0.5 ${paymentMode === id ? "text-primary" : "text-slate-500"}`}
                       >
                         {label}
                       </Text>
@@ -760,7 +861,7 @@ export function BillingScreen() {
                               ),
                             )
                           }
-                          className={`w-9 h-9 items-center justify-center rounded-lg border ${sp.mode === id ? "border-indigo-500 bg-indigo-50" : "border-transparent"}`}
+                          className={`w-9 h-9 items-center justify-center rounded-lg border ${sp.mode === id ? "border-primary bg-primary/10" : "border-transparent"}`}
                         >
                           <Text className="text-xl">{icon}</Text>
                         </TouchableOpacity>
@@ -844,7 +945,7 @@ export function BillingScreen() {
                     }}
                     className="flex-row items-center px-3 py-3"
                   >
-                    <Text className="text-indigo-600 text-sm font-semibold">
+                    <Text className="text-primary text-sm font-semibold">
                       ＋ Add payment method
                     </Text>
                   </TouchableOpacity>
@@ -895,7 +996,7 @@ export function BillingScreen() {
           <TouchableOpacity
             onPress={() => void handleSubmit()}
             disabled={validItemCount === 0 || isSubmitting}
-            className={`rounded-2xl h-14 items-center justify-center ${validItemCount > 0 && !isSubmitting ? "bg-indigo-600 active:bg-indigo-700" : "bg-slate-300"}`}
+            className={`rounded-2xl h-14 items-center justify-center ${validItemCount > 0 && !isSubmitting ? "bg-primary active:opacity-90" : "bg-slate-300"}`}
           >
             {isSubmitting ? (
               <ActivityIndicator color="#fff" />
@@ -955,7 +1056,7 @@ export function BillingScreen() {
             <TouchableOpacity
               onPress={() => void createCustomerInline.mutateAsync()}
               disabled={!newCustName.trim() || createCustomerInline.isPending}
-              className={`flex-1 h-12 items-center justify-center rounded-xl ${newCustName.trim() ? "bg-indigo-600" : "bg-slate-300"}`}
+              className={`flex-1 h-12 items-center justify-center rounded-xl ${newCustName.trim() ? "bg-primary" : "bg-slate-300"}`}
             >
               {createCustomerInline.isPending ? (
                 <ActivityIndicator color="#fff" />
@@ -972,8 +1073,13 @@ export function BillingScreen() {
         <View className="flex-1 bg-black/50 items-center justify-center px-6">
           <View className="bg-white rounded-3xl w-full p-6">
             <Text className="text-green-600 font-bold text-lg mb-3">
-              ✅ Invoice Created!
+              ✅ {savedInvoice?.fromOffline ? "Queued for Sync!" : "Invoice Created!"}
             </Text>
+            {savedInvoice?.fromOffline && (
+              <Text className="text-amber-600 text-sm mb-2">
+                Will sync when you're back online
+              </Text>
+            )}
             <View className="bg-slate-50 rounded-xl px-4 py-3 mb-4 space-y-2">
               <View className="flex-row justify-between">
                 <Text className="text-sm text-slate-500">Invoice #</Text>
@@ -999,7 +1105,7 @@ export function BillingScreen() {
               )}
               <View className="flex-row justify-between pt-2 border-t border-slate-200">
                 <Text className="text-sm text-slate-500">Amount</Text>
-                <Text className="text-lg font-black text-indigo-600">
+                <Text className="text-lg font-black text-primary">
                   ₹{inr(savedInvoice?.total ?? 0)}
                 </Text>
               </View>
@@ -1022,6 +1128,15 @@ export function BillingScreen() {
                 </Text>
               </TouchableOpacity>
             )}
+            <TouchableOpacity
+              onPress={() => void handlePrintReceipt()}
+              className="flex-row items-center justify-center gap-2 bg-slate-700 rounded-2xl h-12 mb-3"
+            >
+              <Ionicons name="print-outline" size={20} color="#fff" />
+              <Text className="text-white font-semibold text-sm">
+                Print Receipt
+              </Text>
+            </TouchableOpacity>
             <View className="flex-row gap-3">
               <TouchableOpacity
                 onPress={() => {
@@ -1036,7 +1151,7 @@ export function BillingScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={resetForm}
-                className="flex-1 h-12 items-center justify-center bg-indigo-600 rounded-xl"
+                className="flex-1 h-12 items-center justify-center bg-primary rounded-xl"
               >
                 <Text className="text-white font-bold text-sm">
                   New Invoice
@@ -1067,6 +1182,7 @@ function MobileItemRow({
 }) {
   const [focused, setFocused] = useState(false);
   const [debouncedQ, setDebouncedQ] = useState("");
+  const [scanOpen, setScanOpen] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(item.name.trim()), 80);
@@ -1101,21 +1217,48 @@ function MobileItemRow({
     setFocused(false);
   };
 
+  const handleBarcodeScan = useCallback(
+    async (barcode: string) => {
+      try {
+        const { product } = await productApi.byBarcode(barcode);
+        handleSelect(product);
+      } catch {
+        Alert.alert("Not found", "No product with this barcode in your catalog.");
+      }
+    },
+    [handleSelect],
+  );
+
   return (
     <View
       className={`px-3 py-2.5 ${isFirst ? "" : "border-t border-slate-100"}`}
     >
-      {/* Product name + suggestions */}
+      {/* Product name + scan + suggestions */}
       <View className="relative mb-2">
-        <TextInput
-          value={item.name}
-          onChangeText={(t) => onUpdate({ name: t })}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setTimeout(() => setFocused(false), 200)}
-          placeholder="Product name or scan barcode…"
-          placeholderTextColor="#94a3b8"
-          className="border border-slate-200 rounded-xl px-3 h-11 text-sm text-slate-800 bg-white"
-          autoFocus={isFirst && item.name === ""}
+        <View className="flex-row items-center border border-slate-200 rounded-xl bg-white overflow-hidden">
+          <TextInput
+            value={item.name}
+            onChangeText={(t) => onUpdate({ name: t })}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setTimeout(() => setFocused(false), 200)}
+            placeholder="Product name or scan barcode…"
+            placeholderTextColor="#94a3b8"
+            className="flex-1 px-3 h-11 text-sm text-slate-800"
+            autoFocus={isFirst && item.name === ""}
+          />
+          <TouchableOpacity
+            onPress={() => setScanOpen(true)}
+            className="w-11 h-11 items-center justify-center border-l border-slate-200"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="barcode-outline" size={22} color="#e67e22" />
+          </TouchableOpacity>
+        </View>
+        <BarcodeScanner
+          visible={scanOpen}
+          onClose={() => setScanOpen(false)}
+          onScan={handleBarcodeScan}
+          hint="Point at product barcode"
         />
         {focused && suggestions.length > 0 && (
           <View className="absolute top-12 left-0 right-0 z-50 bg-white border border-slate-200 rounded-xl shadow-lg max-h-52 overflow-hidden">
@@ -1142,7 +1285,7 @@ function MobileItemRow({
                         {outOfStock ? "Out of stock" : `Stock: ${p.stock}`}
                       </Text>
                     </View>
-                    <Text className="text-sm font-bold text-indigo-600">
+                    <Text className="text-sm font-bold text-primary">
                       ₹
                       {parseFloat(p.price?.toString() ?? "0").toLocaleString(
                         "en-IN",
@@ -1207,7 +1350,7 @@ function MobileItemRow({
           {/* Amount + remove */}
           <View className="flex-row items-center justify-between mt-2 bg-slate-50 rounded-xl px-3 py-2">
             <Text className="text-xs text-slate-500">Amount</Text>
-            <Text className="font-bold text-base text-indigo-600">
+            <Text className="font-bold text-base text-primary">
               ₹
               {item.amount.toLocaleString("en-IN", {
                 minimumFractionDigits: 2,

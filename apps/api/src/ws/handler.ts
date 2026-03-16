@@ -171,7 +171,7 @@ class WebSocketHandler {
 
       // Client requests the current pending-invoice list on connect/resume.
       case 'pending:get':
-        this.broadcastPendingInvoices();
+        this.broadcastPendingInvoices(undefined, session.tenantId);
         break;
 
       // ── WebRTC signalling relay ──────────────────────────────────────────
@@ -297,13 +297,13 @@ class WebSocketHandler {
       await conversationMemory.addUserMessage(sessionId, finalText, intent.intent, intent.entities);
       await conversationMemory.addAssistantMessage(sessionId, response);
 
-      // Step 7b: Broadcast updated pending-invoice list to ALL sessions (real-time panel)
+      // Step 7b: Broadcast updated pending-invoice list to all sessions for THIS tenant.
       // Use pendingInvoices from executionResult.data if the engine already fetched it,
       // otherwise load from Redis directly — avoids a redundant round-trip.
       const panelDrafts: any[] =
         executionResult.data?.pendingInvoices ??
         await conversationMemory.getShopPendingInvoices();
-      this.broadcastPendingInvoices(panelDrafts);
+      this.broadcastPendingInvoices(panelDrafts, session.tenantId);
 
       // Step 8: Persist turn to DB — fire-and-forget (does NOT block real-time response)
       if (session.dbSessionId) {
@@ -359,11 +359,11 @@ class WebSocketHandler {
   }
 
   /**
-   * Broadcast the current pending-invoice list to every connected session.
-   * Called after any engine action that may have changed the list, so all
-   * open browser tabs / devices see the same real-time panel state.
+   * Broadcast the current pending-invoice list to every connected session
+   * belonging to the same tenant.  Pass tenantId to scope the fan-out — only
+   * sessions for that tenant receive the update, preventing cross-tenant leakage.
    */
-  private broadcastPendingInvoices(drafts?: any[]): void {
+  private broadcastPendingInvoices(drafts?: any[], tenantId?: string): void {
     const payload = async () => {
       const list = drafts ?? await conversationMemory.getShopPendingInvoices();
       const msg: WSMessage = {
@@ -372,6 +372,8 @@ class WebSocketHandler {
         timestamp: new Date().toISOString(),
       };
       for (const s of this.sessions.values()) {
+        // Only push to sessions that share the same tenant as the triggering action
+        if (tenantId && s.tenantId !== tenantId) continue;
         this.sendMessage(s.ws, msg);
       }
     };

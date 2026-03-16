@@ -43,6 +43,7 @@ import {
   useInvoices,
   useGstr1Report,
   usePnlReport,
+  useItemwisePnlReport,
   useEmailReport,
 } from "@/hooks/useQueries";
 import { useWsInvalidation } from "@/hooks/useWsInvalidation";
@@ -106,10 +107,10 @@ const GST_REPORTS: { label: string; path?: string; inline?: string }[] = [
   { label: "By HSN SAC Report" },
 ];
 
-const ITEM_STOCK_REPORTS: { label: string; path?: string }[] = [
+const ITEM_STOCK_REPORTS: { label: string; path?: string; inline?: string }[] = [
   { label: "Stock Summary Report", path: "/inventory" },
   { label: "Item Report by Party" },
-  { label: "Itemwise Profit & Loss" },
+  { label: "Itemwise Profit & Loss", inline: "itemwise-pnl" },
   { label: "Low Stock Summary Report", path: "/inventory" },
   { label: "Item Details Report", path: "/inventory" },
   { label: "Stock Detail Report" },
@@ -2284,6 +2285,175 @@ function PnlTab() {
   );
 }
 
+// ── Itemwise P&L tab ──────────────────────────────────────────────────────────
+
+function ItemwisePnlTab() {
+  const now = new Date();
+  const [from, setFrom] = useState(
+    () =>
+      `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`,
+  );
+  const [to, setTo] = useState(() => {
+    const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return last.toISOString().slice(0, 10);
+  });
+
+  const pnlFmt = (d: Date) => d.toISOString().slice(0, 10);
+  const fyYear =
+    now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  const PRESETS = [
+    {
+      label: "This Month",
+      from: pnlFmt(new Date(now.getFullYear(), now.getMonth(), 1)),
+      to: pnlFmt(now),
+    },
+    {
+      label: "Last Month",
+      from: pnlFmt(new Date(now.getFullYear(), now.getMonth() - 1, 1)),
+      to: pnlFmt(new Date(now.getFullYear(), now.getMonth(), 0)),
+    },
+    { label: "This FY", from: `${fyYear}-04-01`, to: pnlFmt(now) },
+    {
+      label: "Last 3M",
+      from: pnlFmt(
+        new Date(now.getFullYear(), now.getMonth() - 3, now.getDate()),
+      ),
+      to: pnlFmt(now),
+    },
+  ];
+  const activePreset =
+    PRESETS.find((p) => p.from === from && p.to === to)?.label ?? "Custom";
+
+  const { data: report, isLoading, error, refetch } = useItemwisePnlReport({
+    from,
+    to,
+  });
+
+  if (isLoading)
+    return (
+      <div className="flex h-48 items-center justify-center">
+        <div className="text-center text-muted-foreground">
+          <RefreshCw className="mx-auto mb-2 h-6 w-6 animate-spin" />
+          <p className="text-sm">Loading itemwise P&L…</p>
+        </div>
+      </div>
+    );
+
+  if (error)
+    return (
+      <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+        <AlertCircle className="mr-2 inline h-4 w-4" />
+        Failed to load: {String(error)}
+      </div>
+    );
+
+  const items = report?.items ?? [];
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-nowrap gap-1.5 overflow-x-auto pb-1 scrollbar-hide touch-pan-x">
+        {PRESETS.map((p) => (
+          <button
+            key={p.label}
+            onClick={() => {
+              setFrom(p.from);
+              setTo(p.to);
+            }}
+            className={`shrink-0 rounded-lg px-3 py-2.5 min-h-[44px] text-xs font-semibold transition-colors touch-manipulation ${
+              activePreset === p.label
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:bg-muted/70 active:bg-muted"
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="text-xs text-muted-foreground">From</label>
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+            className="rounded-md border bg-background px-2 py-1 text-sm"
+          />
+          <label className="text-xs text-muted-foreground">To</label>
+          <input
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+            className="rounded-md border bg-background px-2 py-1 text-sm"
+          />
+          <Button size="sm" variant="outline" onClick={() => refetch()}>
+            <RefreshCw className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="rounded-lg border-2 border-dashed p-8 text-center text-muted-foreground">
+          <Package className="mx-auto mb-3 h-10 w-10 opacity-30" />
+          <p className="text-sm font-medium">No sales in selected period</p>
+          <p className="mt-1 text-xs">
+            Add cost prices to products in Inventory for margin analysis
+          </p>
+        </div>
+      ) : (
+        <Card className="border-none shadow-sm overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">
+              Product-wise Sales, Cost & Margin ({from} → {to})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/50 text-left text-[10px] font-semibold uppercase text-muted-foreground">
+                    <th className="px-4 py-2">Product</th>
+                    <th className="px-4 py-2 text-right">Sales</th>
+                    <th className="px-4 py-2 text-right">Cost</th>
+                    <th className="px-4 py-2 text-right">Profit</th>
+                    <th className="px-4 py-2 text-right">Margin %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((row, i) => (
+                    <tr
+                      key={i}
+                      className={`border-b last:border-0 ${i % 2 === 0 ? "bg-muted/5" : ""}`}
+                    >
+                      <td className="px-4 py-2 font-medium">{row.productName}</td>
+                      <td className="px-4 py-2 text-right">
+                        {formatCurrency(row.totalSales)}
+                      </td>
+                      <td className="px-4 py-2 text-right text-muted-foreground">
+                        {formatCurrency(row.totalCost)}
+                      </td>
+                      <td
+                        className={`px-4 py-2 text-right font-semibold ${row.grossProfit >= 0 ? "text-green-600" : "text-destructive"}`}
+                      >
+                        {formatCurrency(row.grossProfit)}
+                      </td>
+                      <td
+                        className={`px-4 py-2 text-right font-medium ${row.marginPct >= 0 ? "text-green-600" : "text-destructive"}`}
+                      >
+                        {row.marginPct.toFixed(1)}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
 // ── Aging / Outstanding Report ───────────────────────────────────────────────
 
 const AGING_BUCKETS = [
@@ -3070,6 +3240,11 @@ const Reports = () => {
                 <PnlTab />
               </div>
             )}
+            {selectedReportKey === "itemwise-pnl" && (
+              <div className="max-w-4xl">
+                <ItemwisePnlTab />
+              </div>
+            )}
             {selectedReportKey === "gstr1" && (
               <div className="max-w-5xl">
                 <Gstr1Tab />
@@ -3092,6 +3267,7 @@ const Reports = () => {
                 "overview",
                 "aging",
                 "pnl",
+                "itemwise-pnl",
                 "gstr1",
                 "invoices",
                 "purchases",

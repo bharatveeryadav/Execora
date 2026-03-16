@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
   reconnectBtn: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    backgroundColor: "#6366f1",
+    backgroundColor: "#e67e22",
     borderRadius: 6,
   },
   reconnectText: { color: "#fff", fontSize: 12, fontWeight: "600" },
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
   },
   bubbleUser: {
     alignSelf: "flex-end",
-    backgroundColor: "#6366f1",
+    backgroundColor: "#e67e22",
     borderBottomRightRadius: 4,
   },
   bubbleAssistant: {
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
   intentBadge: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#6366f1",
+    color: "#e67e22",
     marginBottom: 2,
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
     minWidth: 60,
     height: 44,
     borderRadius: 10,
-    backgroundColor: "#6366f1",
+    backgroundColor: "#e67e22",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 14,

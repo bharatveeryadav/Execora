@@ -8,15 +8,18 @@
  *   4. On viewer join (rtc:offer-request), create RTCPeerConnection + offer
  *   5. Run motion detection every 500ms — snap + monitoring event on trigger
  *   6. Run face detection (Chrome FaceDetector API) — snap + event on person arrival
- *   7. Expose AI status indicators (motion level, face count)
+ *   7. Run cash/note detection (HSV color analysis) — event on currency visible + hands
+ *   8. Expose AI status indicators (motion level, face count, cash detected)
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Activity, User, Users, Video, VideoOff } from 'lucide-react';
+import { Activity, User, Users, Video, VideoOff, IndianRupee } from 'lucide-react';
 import { wsClient } from '@/lib/ws';
 import { monitoringApi } from '@/lib/api';
 import { triggerSnap } from './CameraCapture';
 import { useMotionDetection } from './useMotionDetection';
 import { useFaceDetection } from './useFaceDetection';
+import { useCashDetection } from './useCashDetection';
+import { FaceTransactionTracker, type FaceRegistry } from './FaceTransactionTracker';
 import { Button } from '@/components/ui/button';
 
 const STUN = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
@@ -28,9 +31,10 @@ interface Props {
   /** entityId passed with each auto-snap (e.g. current session ID) */
   sessionId?: string;
   onStreamReady?: (stream: MediaStream) => void;
+  onRegistry?: (reg: FaceRegistry) => void;
 }
 
-export function LiveStreamSender({ sessionId = 'counter', onStreamReady }: Props) {
+export function LiveStreamSender({ sessionId = 'counter', onStreamReady, onRegistry }: Props) {
   const videoRef  = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const pcMap     = useRef<Map<string, RTCPeerConnection>>(new Map()); // fromId → pc
@@ -75,6 +79,30 @@ export function LiveStreamSender({ sessionId = 'counter', onStreamReady }: Props
     },
   });
 
+  const { cashDetected, denominationHint, confidence } = useCashDetection(videoRef, {
+    enabled: active,
+    onCashDetected: (denom, conf) => {
+      const now = Date.now();
+      if (now - lastSnapRef.current < SNAP_DEBOUNCE_MS) return;
+      lastSnapRef.current = now;
+      const denomLabel = denom ? ` (${denom} note)` : '';
+      triggerSnap({
+        eventType:   'cash.transaction',
+        entityType:  'counter',
+        entityId:    sessionId,
+        description: `Cash transaction detected${denomLabel}`,
+      });
+      monitoringApi.postEvent({
+        eventType:   'cash.transaction',
+        entityType:  'counter',
+        entityId:    sessionId,
+        description: `Cash transaction detected at counter${denomLabel}`,
+        severity:    'info',
+        meta:        { denominationHint: denom, confidence: Math.round(conf * 100) },
+      }).catch(() => {});
+    },
+  });
+
   // ── WebRTC helpers ───────────────────────────────────────────────────────────
   const createPeerConnection = useCallback((viewerId: string): RTCPeerConnection => {
     const pc = new RTCPeerConnection(STUN);
@@ -106,7 +134,7 @@ export function LiveStreamSender({ sessionId = 'counter', onStreamReady }: Props
   const startCamera = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false,
       });
       streamRef.current = stream;
@@ -206,6 +234,15 @@ export function LiveStreamSender({ sessionId = 'counter', onStreamReady }: Props
               {faceCount > 0 ? `${faceCount} face${faceCount > 1 ? 's' : ''}` : 'No face'}
             </span>
           )}
+          {/* Cash detection */}
+          <span className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 transition-all ${
+            cashDetected ? 'bg-green-600 text-white' : 'bg-black/50 text-white/70'
+          }`}>
+            <IndianRupee className="h-3 w-3" />
+            {cashDetected
+              ? `Cash${denominationHint ? ` ${denominationHint}` : ''} (${Math.round(confidence * 100)}%)`
+              : 'No cash'}
+          </span>
         </div>
       )}
 
@@ -242,6 +279,13 @@ export function LiveStreamSender({ sessionId = 'counter', onStreamReady }: Props
           </Button>
         </div>
       )}
+
+      {/* Face-transaction tracker (invisible AI component) */}
+      <FaceTransactionTracker
+        videoRef={videoRef}
+        active={active}
+        onRegistry={onRegistry}
+      />
     </div>
   );
 }

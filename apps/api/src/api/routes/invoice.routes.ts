@@ -334,6 +334,37 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 		}
 	);
 
+	// ── POST /api/v1/invoices/:id/reverse-payment — owner/admin only ───────────
+	fastify.post(
+		'/api/v1/invoices/:id/reverse-payment',
+		{
+			schema: {
+				body: {
+					type: 'object',
+					required: ['amount'],
+					properties: { amount: { type: 'number', minimum: 0.01 } },
+					additionalProperties: false,
+				},
+			},
+		},
+		async (
+			request: FastifyRequest<{
+				Params: { id: string };
+				Body: { amount: number };
+			}>,
+			reply
+		) => {
+			const role = request.user!.role;
+			if (role !== 'owner' && role !== 'admin') {
+				return reply.code(403).send({ error: 'Only owner or admin can reverse payments' });
+			}
+			const result = await ledgerService.reversePayment(request.params.id, request.body.amount);
+			const tid = request.user!.tenantId;
+			if (tid) broadcaster.send(tid, 'payment:recorded', { invoiceId: request.params.id });
+			return result;
+		}
+	);
+
 	// ── GET /api/v1/invoices/:id/portal-token — get public portal token ─────────
 	fastify.get<{ Params: { id: string } }>('/api/v1/invoices/:id/portal-token', async (request, reply) => {
 		const invoice = await invoiceService.getInvoiceById(request.params.id);

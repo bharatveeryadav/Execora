@@ -18,6 +18,7 @@ import {
   Plus,
   Minus,
   Mail,
+  Undo2,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ import {
   useConvertProforma,
   useMe,
 } from "@/hooks/useQueries";
+import { useQueryClient } from "@tanstack/react-query";
 import { useWsInvalidation } from "@/hooks/useWsInvalidation";
 import { formatCurrency, formatDate, getToken, invoiceApi } from "@/lib/api";
 import { Input } from "@/components/ui/input";
@@ -137,9 +139,13 @@ export default function InvoiceDetail() {
   const [convertAmount, setConvertAmount] = useState("");
   const [convertMethod, setConvertMethod] = useState("cash");
   const [copyingLink, setCopyingLink] = useState(false);
+  const [reverseOpen, setReverseOpen] = useState(false);
+  const [reverseAmount, setReverseAmount] = useState("");
+  const [reversing, setReversing] = useState(false);
 
   const { data: invoice, isLoading } = useInvoice(id!);
   const { data: meData } = useMe();
+  const qc = useQueryClient();
   const cancelInvoice = useCancelInvoice();
   const updateInvoice = useUpdateInvoice();
   const convertProforma = useConvertProforma();
@@ -199,15 +205,41 @@ export default function InvoiceDetail() {
     setEditItems((prev) => prev.filter((_, i) => i !== idx));
   }
 
+  function editAddItem() {
+    setEditItems((prev) => [
+      ...prev,
+      { id: `new-${Date.now()}`, name: "New Item", qty: 1, price: 0, discount: 0 },
+    ]);
+  }
+
+  function editChangeName(idx: number, name: string) {
+    setEditItems((prev) =>
+      prev.map((it, i) => (i === idx ? { ...it, name } : it)),
+    );
+  }
+
+  function editChangePrice(idx: number, price: number) {
+    setEditItems((prev) =>
+      prev.map((it, i) => (i === idx ? { ...it, price } : it)),
+    );
+  }
+
   function handleSaveEdit() {
     if (!invoice) return;
+    const validItems = editItems.filter((it) => (it.name ?? "").trim().length > 0);
+    if (validItems.length === 0) {
+      toast({ title: "Add at least one item", variant: "destructive" });
+      return;
+    }
     updateInvoice.mutate(
       {
         id: invoice.id,
         data: {
-          items: editItems.map((it) => ({
-            productName: it.name,
+          items: validItems.map((it) => ({
+            productName: it.name.trim(),
             quantity: it.qty,
+            unitPrice: it.price,
+            lineDiscountPercent: it.discount || 0,
           })),
           notes: editNotes || undefined,
         },
@@ -270,6 +302,9 @@ export default function InvoiceDetail() {
   const total = parseFloat(String(invoice.total ?? 0));
   const paidAmount = parseFloat(String(invoice.paidAmount ?? 0));
   const pending = Math.max(0, total - paidAmount);
+  const userRole = (meData as any)?.role ?? "";
+  const canReversePayment =
+    (userRole === "owner" || userRole === "admin") && paidAmount > 0;
   const subtotal = parseFloat(String(invoice.subtotal ?? 0));
   const discount = parseFloat(String(invoice.discount ?? 0));
   const cgst = parseFloat(String(invoice.cgst ?? 0));
@@ -315,6 +350,38 @@ export default function InvoiceDetail() {
       onError: () =>
         toast({ title: "Failed to cancel", variant: "destructive" }),
     });
+  }
+
+  async function handleReversePayment() {
+    if (!invoice) return;
+    const amt = parseFloat(reverseAmount);
+    if (!amt || amt <= 0 || amt > paidAmount) {
+      toast({
+        title: "Invalid amount",
+        description: `Enter amount between 0.01 and ${formatCurrency(paidAmount)}`,
+        variant: "destructive",
+      });
+      return;
+    }
+    setReversing(true);
+    try {
+      await invoiceApi.reversePayment(invoice.id, amt);
+      qc.invalidateQueries({ queryKey: ["invoice", id] });
+      qc.invalidateQueries({ queryKey: ["invoices"] });
+      qc.invalidateQueries({ queryKey: ["customers"] });
+      qc.invalidateQueries({ queryKey: ["summary"] });
+      toast({ title: "Payment reversed", description: formatCurrency(amt) });
+      setReverseOpen(false);
+      setReverseAmount("");
+    } catch (err) {
+      toast({
+        title: "Failed to reverse",
+        description: err instanceof Error ? err.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setReversing(false);
+    }
   }
 
   const printUrl = `${(import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "")}/api/v1/invoices/${invoice.id}/pdf`;
@@ -694,6 +761,20 @@ export default function InvoiceDetail() {
           </Button>
         )}
 
+        {/* Reverse Payment — owner/admin only, when paid */}
+        {canReversePayment && (
+          <Button
+            variant="outline"
+            className="w-full min-h-11 gap-2 text-amber-600 border-amber-200 hover:bg-amber-50 touch-manipulation"
+            onClick={() => {
+              setReverseAmount(String(paidAmount));
+              setReverseOpen(true);
+            }}
+          >
+            <Undo2 className="h-4 w-4" /> Reverse Payment
+          </Button>
+        )}
+
         {/* Cancel button — only if not already cancelled/paid */}
         {invoice.status !== "cancelled" && invoice.status !== "paid" && (
           <Button
@@ -800,6 +881,47 @@ export default function InvoiceDetail() {
         </DialogContent>
       </Dialog>
 
+      {/* Reverse Payment Dialog */}
+      <Dialog open={reverseOpen} onOpenChange={setReverseOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Reverse Payment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              Undo a recorded payment. The amount will be added back to the
+              customer&apos;s balance.
+            </p>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Amount to reverse (max {formatCurrency(paidAmount)})
+              </label>
+              <Input
+                type="number"
+                min={0.01}
+                max={paidAmount}
+                step={0.01}
+                placeholder={formatCurrency(paidAmount)}
+                value={reverseAmount}
+                onChange={(e) => setReverseAmount(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReverseOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleReversePayment}
+              disabled={reversing || !reverseAmount}
+            >
+              {reversing ? "Reversing…" : "Reverse Payment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Edit Invoice Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
@@ -814,6 +936,9 @@ export default function InvoiceDetail() {
                     <th className="px-3 py-2 text-left font-medium">Item</th>
                     <th className="px-2 py-2 text-center font-medium w-20">
                       Qty
+                    </th>
+                    <th className="px-2 py-2 text-right font-medium w-16">
+                      Rate
                     </th>
                     <th className="px-1 py-2 text-center font-medium w-14">
                       Disc%
@@ -833,7 +958,16 @@ export default function InvoiceDetail() {
                       ) / 100;
                     return (
                       <tr key={item.id} className="border-t">
-                        <td className="px-3 py-2 text-sm">{item.name}</td>
+                        <td className="px-3 py-2">
+                          <Input
+                            value={item.name}
+                            onChange={(e) =>
+                              editChangeName(idx, e.target.value)
+                            }
+                            placeholder="Product name"
+                            className="h-8 text-sm"
+                          />
+                        </td>
                         <td className="px-2 py-2 text-center">
                           <div className="flex items-center justify-center gap-1">
                             <button
@@ -850,6 +984,18 @@ export default function InvoiceDetail() {
                               <Plus className="h-3 w-3" />
                             </button>
                           </div>
+                        </td>
+                        <td className="px-2 py-2 text-right">
+                          <Input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={item.price || ""}
+                            onChange={(e) =>
+                              editChangePrice(idx, parseFloat(e.target.value) || 0)
+                            }
+                            className="h-8 w-20 text-right text-sm"
+                          />
                         </td>
                         <td className="px-1 py-2 text-center">
                           <input
@@ -886,6 +1032,15 @@ export default function InvoiceDetail() {
                 </tbody>
               </table>
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={editAddItem}
+              className="w-full gap-2"
+            >
+              <Plus className="h-4 w-4" /> Add Item
+            </Button>
             <Textarea
               placeholder="Notes (optional)"
               value={editNotes}

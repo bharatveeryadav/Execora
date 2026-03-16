@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
 import { customerApi, paymentApi } from '../lib/api';
 import { formatCurrency, toFloat } from '../lib/utils';
 import type { CustomersStackParams } from '../navigation';
@@ -137,7 +138,7 @@ export function PaymentScreen() {
             /* Search box */
             <>
               <View className="flex-row items-center border border-slate-200 rounded-xl bg-slate-50 px-3 mb-2">
-                <Text className="text-slate-400 mr-2">🔍</Text>
+                <Ionicons name="search" size={18} color="#94a3b8" style={{ marginRight: 8 }} />
                 <TextInput
                   value={search}
                   onChangeText={setSearch}
@@ -145,7 +146,7 @@ export function PaymentScreen() {
                   placeholderTextColor="#94a3b8"
                   className="flex-1 h-11 text-sm text-slate-800"
                 />
-                {searching && <ActivityIndicator size="small" color="#6366f1" />}
+                {searching && <ActivityIndicator size="small" color="#e67e22" />}
               </View>
               {searchResults.length > 0 && (
                 <View className="rounded-xl border border-slate-200 overflow-hidden">
@@ -189,7 +190,7 @@ export function PaymentScreen() {
               onPress={() => setAmount(String(balance))}
               className="mt-2 self-start"
             >
-              <Text className="text-xs text-indigo-600 font-medium">Fill full balance: {formatCurrency(balance)}</Text>
+              <Text className="text-xs text-primary-600 font-medium">Fill full balance: {formatCurrency(balance)}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -202,7 +203,7 @@ export function PaymentScreen() {
               <TouchableOpacity
                 key={m.value}
                 onPress={() => setMethod(m.value)}
-                className={`px-4 py-2.5 rounded-xl border ${method === m.value ? 'bg-indigo-600 border-indigo-600' : 'border-slate-200 bg-slate-50'}`}
+                className={`px-4 py-2.5 rounded-xl border ${method === m.value ? 'bg-primary border-primary' : 'border-slate-200 bg-slate-50'}`}
               >
                 <Text className={`text-sm font-medium ${method === m.value ? 'text-white' : 'text-slate-600'}`}>
                   {m.label}
@@ -228,20 +229,20 @@ export function PaymentScreen() {
 
         {/* Summary */}
         {selectedCustomerId && parseFloat(amount) > 0 && (
-          <View className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4">
-            <Text className="text-xs font-semibold uppercase text-indigo-400 mb-2">Summary</Text>
+          <View className="bg-primary/10 border border-primary/30 rounded-2xl p-4">
+            <Text className="text-xs font-semibold uppercase text-primary-400 mb-2">Summary</Text>
             <View className="gap-1">
               <View className="flex-row justify-between">
-                <Text className="text-sm text-indigo-700">Customer</Text>
-                <Text className="text-sm font-semibold text-indigo-800">{customer?.name ?? '…'}</Text>
+                <Text className="text-sm text-primary-700">Customer</Text>
+                <Text className="text-sm font-semibold text-primary-800">{customer?.name ?? '…'}</Text>
               </View>
               <View className="flex-row justify-between">
-                <Text className="text-sm text-indigo-700">Amount</Text>
-                <Text className="text-sm font-bold text-indigo-800">{formatCurrency(parseFloat(amount))}</Text>
+                <Text className="text-sm text-primary-700">Amount</Text>
+                <Text className="text-sm font-bold text-primary-800">{formatCurrency(parseFloat(amount))}</Text>
               </View>
               <View className="flex-row justify-between">
-                <Text className="text-sm text-indigo-700">Method</Text>
-                <Text className="text-sm font-semibold text-indigo-800 capitalize">{method.replace('_', ' ')}</Text>
+                <Text className="text-sm text-primary-700">Method</Text>
+                <Text className="text-sm font-semibold text-primary-800 capitalize">{method.replace('_', ' ')}</Text>
               </View>
               {balance > 0 && parseFloat(amount) >= balance && (
                 <View className="mt-2 bg-green-100 rounded-xl px-3 py-2">
@@ -267,7 +268,7 @@ export function PaymentScreen() {
         <TouchableOpacity
           onPress={() => recordMutation.mutate()}
           disabled={!canSubmit}
-          className={`rounded-2xl py-4 items-center ${canSubmit ? 'bg-indigo-600' : 'bg-slate-200'}`}
+          className={`rounded-2xl py-4 items-center ${canSubmit ? 'bg-primary' : 'bg-slate-200'}`}
         >
           {recordMutation.isPending ? (
             <ActivityIndicator color="#fff" />

@@ -20,9 +20,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { invoiceApi } from '../lib/api';
-import { invoiceExtApi } from '../lib/api';
+import { invoiceApi, invoiceExtApi } from '../lib/api';
 import { formatCurrency, formatDate, toFloat } from '../lib/utils';
+import { useWsInvalidation } from '../hooks/useWsInvalidation';
 import type { InvoicesStackParams } from '../navigation';
 
 type RouteProps = RouteProp<InvoicesStackParams, 'InvoiceDetail'>;
@@ -52,6 +52,7 @@ export function InvoiceDetailScreen() {
   const route = useRoute<RouteProps>();
   const { id } = route.params;
   const qc = useQueryClient();
+  useWsInvalidation(['invoices']);
 
   // Edit modal state
   const [editOpen, setEditOpen] = useState(false);
@@ -107,7 +108,7 @@ export function InvoiceDetailScreen() {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-white items-center justify-center">
-        <ActivityIndicator color="#6366f1" size="large" />
+        <ActivityIndicator color="#e67e22" size="large" />
       </SafeAreaView>
     );
   }
@@ -116,7 +117,7 @@ export function InvoiceDetailScreen() {
     return (
       <SafeAreaView className="flex-1 bg-white items-center justify-center gap-4">
         <Text className="text-slate-400">Invoice not found</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()} className="bg-indigo-600 px-5 py-2 rounded-xl">
+        <TouchableOpacity onPress={() => navigation.goBack()} className="bg-primary px-5 py-2 rounded-xl">
           <Text className="text-white font-semibold">Go Back</Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -480,7 +481,7 @@ export function InvoiceDetailScreen() {
               <TouchableOpacity onPress={() => setEditOpen(false)} className="flex-1 border border-slate-200 rounded-xl py-3 items-center">
                 <Text className="font-semibold text-slate-700">Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={saveEdit} disabled={updateMutation.isPending} className="flex-1 bg-indigo-600 rounded-xl py-3 items-center">
+              <TouchableOpacity onPress={saveEdit} disabled={updateMutation.isPending} className="flex-1 bg-primary rounded-xl py-3 items-center">
                 {updateMutation.isPending ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
@@ -513,7 +514,7 @@ export function InvoiceDetailScreen() {
                 <TouchableOpacity
                   key={m.value}
                   onPress={() => setConvertMethod(m.value)}
-                  className={`px-4 py-2 rounded-full border ${convertMethod === m.value ? 'bg-indigo-600 border-indigo-600' : 'border-slate-200'}`}
+                  className={`px-4 py-2 rounded-full border ${convertMethod === m.value ? 'bg-primary border-primary' : 'border-slate-200'}`}
                 >
                   <Text className={`text-sm font-medium ${convertMethod === m.value ? 'text-white' : 'text-slate-600'}`}>
                     {m.label}

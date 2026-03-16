@@ -1,11 +1,28 @@
 /**
  * Storage adapter using MMKV (react-native-mmkv).
  * MMKV is ~30x faster than AsyncStorage and synchronous — no await chains.
- * Swap with AsyncStorage if you can't use native modules (Expo Go).
+ * Falls back to in-memory storage when MMKV is unavailable (Expo Go).
  */
 import { MMKV } from "react-native-mmkv";
 
-export const storage = new MMKV({ id: "execora-storage" });
+function createStorage(): {
+  getString: (key: string) => string | undefined;
+  set: (key: string, value: string) => void;
+  delete: (key: string) => void;
+} {
+  try {
+    return new MMKV({ id: "execora-storage" });
+  } catch {
+    const mem: Record<string, string> = {};
+    return {
+      getString: (k) => mem[k],
+      set: (k, v) => { mem[k] = v; },
+      delete: (k) => { delete mem[k]; },
+    };
+  }
+}
+
+export const storage = createStorage();
 
 export const TOKEN_KEY = "execora_token";
 export const REFRESH_KEY = "execora_refresh";

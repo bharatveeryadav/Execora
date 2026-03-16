@@ -46,7 +46,7 @@ export async function monitoringRoutes(fastify: FastifyInstance) {
 	);
 
 	// ── GET /api/v1/monitoring/events/unread ─────────────────────────────────
-	fastify.get('/api/v1/monitoring/events/unread', async (request, reply) => {
+	fastify.get('/api/v1/monitoring/events/unread', async (request) => {
 		const { tenantId } = request.user!;
 		const count = await monitoringService.getUnreadAlertCount(tenantId);
 		return { count };
@@ -237,6 +237,56 @@ export async function monitoringRoutes(fastify: FastifyInstance) {
 		broadcaster.send(tenantId, 'monitoring:snap', { eventId: result.eventId, snapKey: result.snapKey });
 		return reply.code(201).send({ ok: true, snapKey: result.snapKey, eventId: result.eventId });
 	});
+
+	// ── POST /api/v1/monitoring/cash-reconciliation — EOD cash count ─────────
+	fastify.post(
+		'/api/v1/monitoring/cash-reconciliation',
+		{
+			schema: {
+				body: {
+					type: 'object',
+					required: ['date', 'actual', 'expected'],
+					properties: {
+						date:     { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+						actual:   { type: 'number', minimum: 0 },
+						expected: { type: 'number', minimum: 0 },
+						note:     { type: 'string', maxLength: 300 },
+					},
+					additionalProperties: false,
+				},
+			},
+		},
+		async (
+			request: FastifyRequest<{ Body: { date: string; actual: number; expected: number; note?: string } }>,
+			reply,
+		) => {
+			const { tenantId, userId, role } = request.user!;
+			if (role !== 'owner' && role !== 'admin' && role !== 'manager') {
+				return { statusCode: 403, error: 'Forbidden' };
+			}
+			const { date, actual, expected, note } = request.body;
+			await monitoringService.recordCashReconciliation(tenantId, userId, date, actual, expected, note);
+			broadcaster.send(tenantId, 'monitoring:event', {
+				eventType: 'cash.reconciliation',
+				severity: Math.abs(actual - expected) > 500 ? 'alert' : Math.abs(actual - expected) > 100 ? 'warning' : 'info',
+				description: `EOD reconciliation submitted`,
+			});
+			return reply.code(201).send({ ok: true });
+		},
+	);
+
+	// ── GET /api/v1/monitoring/cash-reconciliation/:date ─────────────────────
+	fastify.get<{ Params: { date: string } }>(
+		'/api/v1/monitoring/cash-reconciliation/:date',
+		async (request, reply) => {
+			const { tenantId, role } = request.user!;
+			if (role !== 'owner' && role !== 'admin' && role !== 'manager') {
+				return reply.code(403).send({ error: 'Forbidden' });
+			}
+			const result = await monitoringService.getCashReconciliation(tenantId, request.params.date);
+			return { reconciliation: result };
+		},
+	);
 
 	// ── GET /api/v1/monitoring/snap/:key — presigned URL ─────────────────────
 	fastify.get<{ Params: { '*': string } }>(

@@ -30,7 +30,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { productApi, apiFetch } from "@execora/shared";
+import { BarcodeScanner } from "../components/common/BarcodeScanner";
 import type { Product } from "@execora/shared";
+import { Ionicons } from "@expo/vector-icons";
+import { useWsInvalidation } from "../hooks/useWsInvalidation";
 
 // ── Helper: parse numeric fields returned as string | number from API ─────────
 
@@ -95,6 +98,7 @@ const productExtApi = {
     category?: string;
     stock?: number;
     minStock?: number;
+    barcode?: string;
   }) =>
     apiFetch<{ product: Product & { minStock?: number } }>("/api/v1/products", {
       method: "POST",
@@ -110,6 +114,7 @@ type FilterMode = "all" | "low" | "out";
 
 export function ItemsScreen() {
   const qc = useQueryClient();
+  useWsInvalidation(["products", "lowStock"]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterMode>("all");
   const [addOpen, setAddOpen] = useState(false);
@@ -197,17 +202,18 @@ export function ItemsScreen() {
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
       {/* ── Header ─────────────────────────────────────────────────── */}
-      <View className="bg-white px-4 pt-2 pb-3 border-b border-slate-200">
+      <View className="bg-card px-4 pt-2 pb-3 border-b border-slate-200">
         <View className="flex-row items-center justify-between mb-3">
           <View>
-            <Text className="text-2xl font-black text-slate-800">Items</Text>
+            <Text className="text-xl font-bold tracking-tight text-slate-800">Stock</Text>
             <Text className="text-xs text-slate-400">
               {allProducts.length} products
             </Text>
           </View>
           <TouchableOpacity
             onPress={() => setAddOpen(true)}
-            className="bg-indigo-600 px-4 py-2 rounded-xl flex-row items-center gap-1"
+            activeOpacity={0.7}
+            className="bg-primary px-4 min-h-[44px] rounded-xl flex-row items-center justify-center gap-1"
           >
             <Text className="text-white font-bold text-sm">+ Add</Text>
           </TouchableOpacity>
@@ -215,7 +221,7 @@ export function ItemsScreen() {
 
         {/* Search */}
         <View className="bg-slate-100 rounded-xl flex-row items-center px-3 py-2 mb-3">
-          <Text className="text-slate-400 mr-2">🔍</Text>
+          <Ionicons name="search" size={18} color="#94a3b8" style={{ marginRight: 8 }} />
           <TextInput
             className="flex-1 text-sm text-slate-800"
             placeholder="Search products..."
@@ -248,9 +254,11 @@ export function ItemsScreen() {
               key={key}
               disabled={disabled}
               onPress={() => setFilter(key)}
-              className={`px-3 py-1.5 rounded-full border ${
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+              className={`px-4 py-2 rounded-full border items-center justify-center min-h-[40px] ${
                 filter === key
-                  ? "bg-indigo-600 border-indigo-600"
+                  ? "bg-primary border-primary"
                   : disabled
                     ? "bg-slate-100 border-slate-200 opacity-40"
                     : "bg-white border-slate-300"
@@ -295,7 +303,7 @@ export function ItemsScreen() {
       >
         {isFetching && allProducts.length === 0 && (
           <View className="py-12 items-center">
-            <ActivityIndicator color="#6366f1" />
+            <ActivityIndicator color="#e67e22" />
             <Text className="text-slate-400 text-sm mt-2">
               Loading products…
             </Text>
@@ -387,7 +395,7 @@ function ProductCard({
     >
       <View className="flex-row items-center px-4 py-3">
         {/* Category icon */}
-        <View className="w-10 h-10 rounded-xl bg-indigo-50 items-center justify-center mr-3">
+        <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center mr-3">
           <Text className="text-xl">{categoryIcon(product.category)}</Text>
         </View>
 
@@ -475,6 +483,8 @@ function AddProductModal({
   const [category, setCategory] = useState("");
   const [stock, setStock] = useState("0");
   const [minStock, setMinStock] = useState("5");
+  const [barcode, setBarcode] = useState("");
+  const [scanOpen, setScanOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const reset = () => {
@@ -484,6 +494,21 @@ function AddProductModal({
     setCategory("");
     setStock("0");
     setMinStock("5");
+    setBarcode("");
+  };
+
+  const handleBarcodeScan = async (code: string) => {
+    setBarcode(code);
+    try {
+      const { product } = await productApi.byBarcode(code);
+      setName(product.name ?? "");
+      setPrice(product.price != null ? String(product.price) : "");
+      setUnit(product.unit ?? "Piece");
+      if (product.category) setCategory(product.category);
+      if (product.stock != null) setStock(String(product.stock));
+    } catch {
+      // Product not in catalog — just keep barcode for new product
+    }
   };
 
   const handleCreate = async () => {
@@ -500,6 +525,7 @@ function AddProductModal({
         category: category.trim() || undefined,
         stock: parseInt(stock) || 0,
         minStock: parseInt(minStock) || 5,
+        barcode: barcode.trim() || undefined,
       });
       reset();
       onCreated();
@@ -545,7 +571,7 @@ function AddProductModal({
             <TouchableOpacity
               onPress={handleCreate}
               disabled={loading || !name.trim()}
-              className={`px-4 py-2 rounded-xl ${loading || !name.trim() ? "bg-slate-200" : "bg-indigo-600"}`}
+              className={`px-4 py-2 rounded-xl ${loading || !name.trim() ? "bg-slate-200" : "bg-primary"}`}
             >
               <Text
                 className={`font-bold text-sm ${loading || !name.trim() ? "text-slate-400" : "text-white"}`}
@@ -592,7 +618,7 @@ function AddProductModal({
                           onPress={() => setUnit(u)}
                           className={`px-3 py-2 rounded-lg border ${
                             unit === u
-                              ? "bg-indigo-600 border-indigo-600"
+                              ? "bg-primary border-primary"
                               : "bg-white border-slate-200"
                           }`}
                         >
@@ -619,6 +645,31 @@ function AddProductModal({
               />
             </FormField>
 
+            <FormField label="Barcode (optional)">
+              <View className="flex-row items-center bg-slate-50 border border-slate-200 rounded-xl overflow-hidden">
+                <TextInput
+                  className="flex-1 px-4 py-3 text-sm text-slate-800"
+                  placeholder="Scan or type barcode"
+                  value={barcode}
+                  onChangeText={setBarcode}
+                  autoCorrect={false}
+                  keyboardType="numeric"
+                />
+                <TouchableOpacity
+                  onPress={() => setScanOpen(true)}
+                  className="w-12 h-12 items-center justify-center border-l border-slate-200"
+                >
+                  <Ionicons name="barcode-outline" size={24} color="#e67e22" />
+                </TouchableOpacity>
+              </View>
+            </FormField>
+            <BarcodeScanner
+              visible={scanOpen}
+              onClose={() => setScanOpen(false)}
+              onScan={handleBarcodeScan}
+              hint="Scan product barcode to prefill"
+            />
+
             <View className="flex-row gap-3">
               <View className="flex-1">
                 <FormField label="Opening Stock">
@@ -644,8 +695,8 @@ function AddProductModal({
               </View>
             </View>
 
-            <View className="bg-indigo-50 rounded-xl p-4 mt-2">
-              <Text className="text-xs text-indigo-700 font-medium">
+            <View className="bg-primary/10 rounded-xl p-4 mt-2">
+              <Text className="text-xs text-primary-700 font-medium">
                 💡 Voice tip: After adding, say "50 kilo aata aaya" to add
                 incoming stock by voice instantly.
               </Text>

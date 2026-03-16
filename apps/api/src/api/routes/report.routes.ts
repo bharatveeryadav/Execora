@@ -178,6 +178,19 @@ export async function reportRoutes(fastify: FastifyInstance) {
       .send('\uFEFF' + csv); // BOM for Excel compatibility
   });
 
+  // ── GET /api/v1/reports/itemwise-pnl ───────────────────────────────────────
+  fastify.get('/api/v1/reports/itemwise-pnl', async (
+    request: FastifyRequest<{ Querystring: ReportQuerystring }>,
+    reply,
+  ) => {
+    const tenantId = request.user!.tenantId;
+    const range = resolveDateRange(request.query, reply);
+    if (!range) return;
+
+    const report = await gstr1Service.getItemwisePnlReport(tenantId, range.from, range.to);
+    return { report };
+  });
+
   // ── GET /api/v1/reports/pnl ───────────────────────────────────────────────
   fastify.get('/api/v1/reports/pnl', async (
     request: FastifyRequest<{

@@ -30,17 +30,18 @@ export function LoginScreen({ onLogin }: { onLogin: () => void }) {
   const canSubmit = email.includes("@") && password.length >= 1;
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-background">
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
         <View className="flex-1 px-6 justify-center">
-          {/* Branding */}
-          <Text className="text-4xl font-black text-indigo-600 mb-1">
-            Execora
+          {/* Branding — matches web */}
+          <Text className="text-3xl font-bold tracking-tight">
+            <Text className="text-primary">EXECORA</Text>
           </Text>
-          <Text className="text-slate-500 text-sm mb-10">
+          <Text className="text-muted-foreground text-sm mb-10">
             Smart billing for Indian businesses
           </Text>
 
@@ -77,7 +78,7 @@ export function LoginScreen({ onLogin }: { onLogin: () => void }) {
           <TouchableOpacity
             onPress={() => void login.mutateAsync()}
             disabled={!canSubmit || login.isPending}
-            className={`h-14 rounded-2xl items-center justify-center ${canSubmit ? "bg-indigo-600" : "bg-slate-300"}`}
+            className={`h-14 rounded-2xl items-center justify-center ${canSubmit ? "bg-primary" : "bg-slate-300"}`}
           >
             {login.isPending ? (
               <ActivityIndicator color="#fff" />

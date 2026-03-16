@@ -1,5 +1,5 @@
 import "./global.css";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   NavigationContainer,
@@ -9,8 +9,12 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { bootApi, setAuthExpiredHandler, authApi } from "./lib/api";
-import { tokenStorage } from "./lib/storage";
 import { RootNavigator } from "./navigation";
+import { WSProvider } from "./providers/WSProvider";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { OfflineProvider, useOffline } from "./contexts/OfflineContext";
+import { OfflineBanner } from "./components/common/OfflineBanner";
+import { usePushAndDeepLinks } from "./hooks/usePushAndDeepLinks";
 
 // Boot the API client once (token storage injected)
 bootApi();
@@ -26,44 +30,71 @@ const queryClient = new QueryClient({
 const AUTO_EMAIL = process.env.EXPO_PUBLIC_LOGIN_EMAIL ?? "";
 const AUTO_PASSWORD = process.env.EXPO_PUBLIC_LOGIN_PASSWORD ?? "";
 
-export default function App() {
-  const navRef = useRef<NavigationContainerRef<any>>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(() => !!tokenStorage.getToken());
-
-  // Auto-login on first launch if env credentials are set and no token stored
-  useEffect(() => {
-    if (isLoggedIn || !AUTO_EMAIL || !AUTO_PASSWORD) return;
-    authApi.login(AUTO_EMAIL, AUTO_PASSWORD).then((data: { accessToken: string; refreshToken: string; user: unknown }) => {
-      tokenStorage.setTokens(data.accessToken, data.refreshToken);
-      setIsLoggedIn(true);
-    }).catch(() => { /* show login screen on failure */ });
-  }, []);
-
-  const handleAuthExpired = useCallback(() => {
-    queryClient.clear();
-    setIsLoggedIn(false);
-  }, []);
+function AppContent() {
+  const { isLoggedIn } = useAuth();
 
   return (
     <GestureHandlerRootView className="flex-1">
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <NavigationContainer
-            ref={navRef}
-            onReady={() => {
-              setAuthExpiredHandler(() =>
-                navRef.current?.navigate("Login" as never),
-              );
-            }}
-          >
-            <StatusBar style="auto" />
-            <RootNavigator
-              isLoggedIn={isLoggedIn}
-              onLogin={() => setIsLoggedIn(true)}
-            />
-          </NavigationContainer>
+          <OfflineProvider>
+            <WSProvider isLoggedIn={isLoggedIn}>
+              <AppContentInner />
+            </WSProvider>
+          </OfflineProvider>
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
+  );
+}
+
+function AppContentInner() {
+  const navRef = useRef<NavigationContainerRef<any>>(null);
+  const { isLoggedIn, login, logout } = useAuth();
+  const { isOffline, pendingCount, isSyncing } = useOffline();
+
+  usePushAndDeepLinks(navRef, isLoggedIn);
+
+  useEffect(() => {
+    if (isLoggedIn || !AUTO_EMAIL || !AUTO_PASSWORD) return;
+    authApi.login(AUTO_EMAIL, AUTO_PASSWORD).then((data: { accessToken: string; refreshToken: string; user: unknown }) => {
+      const { tokenStorage } = require("./lib/storage");
+      tokenStorage.setTokens(data.accessToken, data.refreshToken);
+      login();
+    }).catch(() => { /* show login screen on failure */ });
+  }, []);
+
+  const handleAuthExpired = useCallback(() => {
+    queryClient.clear();
+    logout();
+  }, [logout]);
+
+  useEffect(() => {
+    setAuthExpiredHandler(handleAuthExpired);
+  }, [handleAuthExpired]);
+
+  return (
+    <>
+      {isOffline && <OfflineBanner pendingCount={pendingCount} isSyncing={isSyncing} />}
+      <NavigationContainer
+        ref={navRef}
+        onReady={() => {
+          setAuthExpiredHandler(() =>
+            navRef.current?.navigate("Login" as never),
+          );
+        }}
+      >
+        <StatusBar style="auto" />
+        <RootNavigator />
+      </NavigationContainer>
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }

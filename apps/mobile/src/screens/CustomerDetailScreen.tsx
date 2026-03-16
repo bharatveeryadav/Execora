@@ -160,7 +160,7 @@ export function CustomerDetailScreen() {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-white items-center justify-center">
-        <ActivityIndicator color="#6366f1" size="large" />
+        <ActivityIndicator color="#e67e22" size="large" />
       </SafeAreaView>
     );
   }
@@ -263,9 +263,9 @@ export function CustomerDetailScreen() {
             <TouchableOpacity
               key={t}
               onPress={() => setTab(t)}
-              className={`flex-1 py-3 border-b-2 ${tab === t ? 'border-indigo-600' : 'border-transparent'}`}
+              className={`flex-1 py-3 border-b-2 ${tab === t ? 'border-primary' : 'border-transparent'}`}
             >
-              <Text className={`text-center text-xs font-medium ${tab === t ? 'text-indigo-600' : 'text-slate-400'}`}>
+              <Text className={`text-center text-xs font-medium ${tab === t ? 'text-primary' : 'text-slate-400'}`}>
                 {t}
               </Text>
             </TouchableOpacity>
@@ -370,7 +370,7 @@ export function CustomerDetailScreen() {
               <View className="flex-row items-center justify-between mb-3">
                 <Text className="text-xs font-semibold uppercase text-slate-400">Notification Channels</Text>
                 <TouchableOpacity onPress={openPrefs}>
-                  <Text className="text-xs font-medium text-indigo-600">Edit</Text>
+                  <Text className="text-xs font-medium text-primary">Edit</Text>
                 </TouchableOpacity>
               </View>
               {[
@@ -427,7 +427,7 @@ export function CustomerDetailScreen() {
                     <View className={`px-2 py-0.5 rounded-full mr-2 ${sc.bg}`}>
                       <Text className={`text-[10px] font-semibold capitalize ${sc.text}`}>{inv.status}</Text>
                     </View>
-                    <Text className="text-sm font-bold text-indigo-600">{formatCurrency(toFloat(inv.total))}</Text>
+                    <Text className="text-sm font-bold text-primary">{formatCurrency(toFloat(inv.total))}</Text>
                   </TouchableOpacity>
                 );
               })
@@ -591,13 +591,13 @@ export function CustomerDetailScreen() {
                         active
                           ? tag === 'Blacklist'
                             ? 'border-red-400 bg-red-50'
-                            : 'border-indigo-400 bg-indigo-50'
+                            : 'border-primary/40 bg-primary/10'
                           : 'border-slate-200 bg-slate-50'
                       }`}
                     >
                       <Text className={`text-xs font-medium ${
                         active
-                          ? tag === 'Blacklist' ? 'text-red-600' : 'text-indigo-600'
+                          ? tag === 'Blacklist' ? 'text-red-600' : 'text-primary'
                           : 'text-slate-500'
                       }`}>{tag}</Text>
                     </TouchableOpacity>
@@ -745,7 +745,7 @@ export function CustomerDetailScreen() {
             <View className="border border-slate-200 rounded-xl p-3 mb-3 gap-2">
               <View className="flex-row items-center justify-between">
                 <Text className="text-sm font-medium text-slate-700">WhatsApp</Text>
-                <Switch value={pWaEnabled} onValueChange={setPWaEnabled} trackColor={{ true: '#6366f1' }} />
+                <Switch value={pWaEnabled} onValueChange={setPWaEnabled} trackColor={{ true: '#e67e22' }} />
               </View>
               {pWaEnabled && (
                 <TextInput
@@ -762,7 +762,7 @@ export function CustomerDetailScreen() {
             <View className="border border-slate-200 rounded-xl p-3 mb-3 gap-2">
               <View className="flex-row items-center justify-between">
                 <Text className="text-sm font-medium text-slate-700">Email Reminders</Text>
-                <Switch value={pEmailEnabled} onValueChange={setPEmailEnabled} trackColor={{ true: '#6366f1' }} />
+                <Switch value={pEmailEnabled} onValueChange={setPEmailEnabled} trackColor={{ true: '#e67e22' }} />
               </View>
               {pEmailEnabled && (
                 <TextInput
@@ -779,7 +779,7 @@ export function CustomerDetailScreen() {
             {/* SMS */}
             <View className="border border-slate-200 rounded-xl p-3 mb-3 flex-row items-center justify-between">
               <Text className="text-sm font-medium text-slate-700">SMS Reminders</Text>
-              <Switch value={pSmsEnabled} onValueChange={setPSmsEnabled} trackColor={{ true: '#6366f1' }} />
+              <Switch value={pSmsEnabled} onValueChange={setPSmsEnabled} trackColor={{ true: '#e67e22' }} />
             </View>
             {/* Language */}
             <Text className="text-xs font-medium text-slate-600 mb-2">Preferred Language</Text>
@@ -788,7 +788,7 @@ export function CustomerDetailScreen() {
                 <TouchableOpacity
                   key={lang}
                   onPress={() => setPLang(lang)}
-                  className={`px-3 py-1.5 rounded-full border ${pLang === lang ? 'bg-indigo-600 border-indigo-600' : 'border-slate-200 bg-slate-50'}`}
+                  className={`px-3 py-1.5 rounded-full border ${pLang === lang ? 'bg-indigo-600 border-primary' : 'border-slate-200 bg-slate-50'}`}
                 >
                   <Text className={`text-xs font-medium ${pLang === lang ? 'text-white' : 'text-slate-600'}`}>
                     {LANG_LABELS[lang]}

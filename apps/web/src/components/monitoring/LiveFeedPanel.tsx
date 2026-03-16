@@ -13,12 +13,14 @@ import { useQuery } from '@tanstack/react-query';
 import { monitoringApi } from '@/lib/api';
 import { LiveStreamSender } from './LiveStreamSender';
 import { LiveStreamViewer } from './LiveStreamViewer';
+import type { FaceRegistry } from './FaceTransactionTracker';
 
 interface Props {
   mode?: 'sender' | 'viewer';
+  onRegistry?: (reg: FaceRegistry) => void;
 }
 
-export function LiveFeedPanel({ mode = 'viewer' }: Props) {
+export function LiveFeedPanel({ mode = 'viewer', onRegistry }: Props) {
   const [localMode, setLocalMode] = useState<'sender' | 'viewer'>(mode);
 
   const { data } = useQuery({
@@ -87,7 +89,9 @@ export function LiveFeedPanel({ mode = 'viewer' }: Props) {
         </button>
       </div>
 
-      {localMode === 'sender' ? <LiveStreamSender /> : <LiveStreamViewer />}
+      {localMode === 'sender'
+        ? <LiveStreamSender onRegistry={onRegistry} />
+        : <LiveStreamViewer />}
 
       <p className="text-xs text-muted-foreground text-center opacity-70">
         {localMode === 'sender'

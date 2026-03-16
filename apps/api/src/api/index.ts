@@ -25,6 +25,10 @@ import { draftRoutes } from './routes/draft.routes';
 import { portalRoutes } from './routes/portal.routes';
 import { creditNoteRoutes } from './routes/credit-note.routes';
 import { monitoringRoutes } from './routes/monitoring.routes';
+import { feedbackRoutes } from './routes/feedback.routes';
+import { pushRoutes } from './routes/push.routes';
+import { supplierRoutes } from './routes/supplier.routes';
+import { purchaseOrderRoutes } from './routes/purchase-order.routes';
 
 export async function registerRoutes(fastify: FastifyInstance) {
 	// ── BullMQ queue dashboard (/admin/queues) — protected by admin key ──────
@@ -95,6 +99,10 @@ export async function registerRoutes(fastify: FastifyInstance) {
 		await scope.register(draftRoutes); // Draft/Staging system
 		await scope.register(creditNoteRoutes);
 		await scope.register(monitoringRoutes);
+		await scope.register(feedbackRoutes);
+		await scope.register(pushRoutes);
+		await scope.register(supplierRoutes);
+		await scope.register(purchaseOrderRoutes);
 	});
 
 	// ── Admin routes (platform-level, auth enforced inside via hook) ─────────

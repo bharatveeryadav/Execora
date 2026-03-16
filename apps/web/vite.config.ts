@@ -37,6 +37,7 @@ export default defineConfig(({ mode }) => ({
       manifest: false, // use public/manifest.webmanifest directly
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4 MiB (main chunk ~2.2 MB)
         skipWaiting: true,
         clientsClaim: true,
         runtimeCaching: [

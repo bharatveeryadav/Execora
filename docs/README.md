@@ -68,6 +68,15 @@ monitoring/     Prometheus, Grafana, Loki config
 
 ---
 
+## Mobile App
+
+| Doc                                                                 | Purpose                              |
+| ------------------------------------------------------------------- | ------------------------------------ |
+| [REACT_NATIVE_SPRINT_PLAN.md](REACT_NATIVE_SPRINT_PLAN.md)          | Full sprint plan (53 routes, features) |
+| [MOBILE_APP_IMPLEMENTATION_STATUS.md](MOBILE_APP_IMPLEMENTATION_STATUS.md) | Current implementation status (`apps/mobile/`) |
+
+---
+
 ## Development
 
 | Doc                                                                                  | Purpose                 |

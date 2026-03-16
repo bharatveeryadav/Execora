@@ -108,7 +108,7 @@ export function OverdueScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Overdue / Udhaar</Text>
         {isFetching && !refreshing ? (
-          <ActivityIndicator size="small" color="#6366f1" />
+          <ActivityIndicator size="small" color="#e67e22" />
         ) : null}
       </View>
 
@@ -134,7 +134,7 @@ export function OverdueScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#6366f1"
+            tintColor="#e67e22"
           />
         }
         ListEmptyComponent={

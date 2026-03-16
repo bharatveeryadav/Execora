@@ -2,6 +2,10 @@
  * Shared formatting helpers for mobile screens.
  */
 
+export function cn(...classes: (string | undefined | null | false)[]): string {
+  return classes.filter(Boolean).join(" ");
+}
+
 export function formatCurrency(amount: number | string | undefined | null): string {
   const n = typeof amount === 'string' ? parseFloat(amount) : (amount ?? 0);
   return new Intl.NumberFormat('en-IN', {

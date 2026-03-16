@@ -504,6 +504,11 @@ export const invoiceApi = {
     request<{ invoice: Invoice }>(`/api/v1/invoices/${id}/cancel`, {
       method: "POST",
     }),
+  reversePayment: (id: string, amount: number) =>
+    request<{ ok: boolean; newPaid: number; newStatus: string }>(
+      `/api/v1/invoices/${id}/reverse-payment`,
+      { method: "POST", body: JSON.stringify({ amount }) },
+    ),
   sendEmail: (id: string) =>
     request<{ ok: boolean; invoiceId: string }>(
       `/api/v1/invoices/${id}/send-email`,
@@ -973,11 +978,12 @@ export interface CashEntry {
 // ── Expense API ───────────────────────────────────────────────────────────────
 
 export const expenseApi = {
-  list: (params: { from?: string; to?: string; category?: string } = {}) => {
+  list: (params: { from?: string; to?: string; category?: string; type?: "expense" | "income" } = {}) => {
     const q = new URLSearchParams();
     if (params.from) q.set("from", params.from);
     if (params.to) q.set("to", params.to);
     if (params.category) q.set("category", params.category);
+    if (params.type) q.set("type", params.type);
     const s = q.toString();
     return request<{ expenses: Expense[]; total: number; count: number }>(
       `/api/v1/expenses${s ? `?${s}` : ""}`,
@@ -989,6 +995,7 @@ export const expenseApi = {
     note?: string;
     vendor?: string;
     date?: string;
+    type?: "expense" | "income";
   }) =>
     request<{ expense: Expense }>("/api/v1/expenses", {
       method: "POST",
@@ -1007,6 +1014,111 @@ export const expenseApi = {
       count: number;
     }>(`/api/v1/expenses/summary${s ? `?${s}` : ""}`);
   },
+};
+
+// ── Supplier API ────────────────────────────────────────────────────────────
+
+export interface Supplier {
+  id: string;
+  name: string;
+  companyName?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  address?: string | null;
+  gstin?: string | null;
+}
+
+export const supplierApi = {
+  list: (params?: { q?: string; limit?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.q) q.set("q", params.q);
+    if (params?.limit) q.set("limit", String(params.limit));
+    const s = q.toString();
+    return request<{ suppliers: Supplier[] }>(`/api/v1/suppliers${s ? `?${s}` : ""}`);
+  },
+  create: (data: { name: string; companyName?: string; phone?: string; email?: string; address?: string; gstin?: string }) =>
+    request<{ supplier: Supplier }>("/api/v1/suppliers", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+};
+
+// ── Purchase Order API ───────────────────────────────────────────────────────
+
+export interface PurchaseOrderItem {
+  id: string;
+  productId: string;
+  quantity: number;
+  receivedQuantity: number;
+  unitPrice: number;
+  total: number;
+  batchNo?: string | null;
+  expiryDate?: string | null;
+  product?: { id: string; name: string; sku?: string; unit?: string };
+}
+
+export interface PurchaseOrder {
+  id: string;
+  poNo: string;
+  supplierId?: string | null;
+  orderDate: string;
+  expectedDate?: string | null;
+  receivedDate?: string | null;
+  subtotal: number;
+  tax: number;
+  total: number;
+  status: string;
+  notes?: string | null;
+  supplier?: { id: string; name: string; phone?: string } | null;
+  items: PurchaseOrderItem[];
+}
+
+export const purchaseOrderApi = {
+  list: (params?: { status?: string; supplierId?: string; limit?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.status) q.set("status", params.status);
+    if (params?.supplierId) q.set("supplierId", params.supplierId);
+    if (params?.limit) q.set("limit", String(params.limit));
+    const s = q.toString();
+    return request<{ purchaseOrders: PurchaseOrder[] }>(`/api/v1/purchase-orders${s ? `?${s}` : ""}`);
+  },
+  getById: (id: string) =>
+    request<{ purchaseOrder: PurchaseOrder }>(`/api/v1/purchase-orders/${id}`),
+  create: (data: {
+    supplierId?: string;
+    expectedDate?: string;
+    notes?: string;
+    status?: "draft" | "pending";
+    items: Array<{ productId: string; quantity: number; unitPrice: number; batchNo?: string; expiryDate?: string }>;
+  }) =>
+    request<{ purchaseOrder: PurchaseOrder }>("/api/v1/purchase-orders", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  update: (id: string, data: Partial<Parameters<typeof purchaseOrderApi.create>[0]>) =>
+    request<{ purchaseOrder: PurchaseOrder }>(`/api/v1/purchase-orders/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }),
+  receive: (id: string, receipts: Array<{ itemId: string; receivedQty: number; batchNo?: string; expiryDate?: string }>) =>
+    request<{ purchaseOrder: PurchaseOrder }>(`/api/v1/purchase-orders/${id}/receive`, {
+      method: "POST",
+      body: JSON.stringify({ receipts }),
+    }),
+  cancel: (id: string) =>
+    request<{ purchaseOrder: PurchaseOrder }>(`/api/v1/purchase-orders/${id}/cancel`, {
+      method: "POST",
+    }),
+};
+
+// ── Feedback API ─────────────────────────────────────────────────────────────
+
+export const feedbackApi = {
+  submit: (data: { npsScore: number; text?: string }) =>
+    request<{ feedback: { id: string; npsScore: number; text: string | null; createdAt: string } }>(
+      "/api/v1/feedback",
+      { method: "POST", body: JSON.stringify(data) },
+    ),
 };
 
 // ── Purchases API ─────────────────────────────────────────────────────────────
@@ -1388,6 +1500,23 @@ export interface MonitoringStats {
   byType: Record<string, number>;
   byEmployee: Record<string, { bills: number; payments: number; cancellations: number; totalAmount: number }>;
   total: number;
+  totalBillAmount: number;
+  avgBillAmount: number;
+  footfall: number;
+  conversionRate: number | null;
+  hourlyBills: Record<string, number>;
+  peakHour: number | null;
+}
+
+export interface CashReconciliation {
+  id: string;
+  eventType: string;
+  entityId: string;
+  amount: number;
+  description: string;
+  meta: { expected: number; actual: number; discrepancy: number; note?: string };
+  severity: string;
+  createdAt: string;
 }
 
 export const monitoringApi = {
@@ -1459,4 +1588,15 @@ export const monitoringApi = {
 
   getSnapUrl: (snapKey: string) =>
     request<{ url: string }>(`/api/v1/monitoring/snap/${snapKey}`),
+
+  recordCashRecon: (body: { date: string; actual: number; expected: number; note?: string }) =>
+    request<{ ok: true }>("/api/v1/monitoring/cash-reconciliation", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  getCashRecon: (date: string) =>
+    request<{ reconciliation: CashReconciliation | null }>(
+      `/api/v1/monitoring/cash-reconciliation/${date}`
+    ),
 };

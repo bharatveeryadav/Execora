@@ -47,7 +47,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useMe } from "@/hooks/useQueries";
+import { useMe, useUpdateProfile } from "@/hooks/useQueries";
 import { customerApi, invoiceApi, productApi } from "@/lib/api";
 import { printThermalReceipt } from "@/lib/thermalReceipt";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -248,6 +248,7 @@ export default function ClassicBilling() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: me } = useMe();
+  const updateProfile = useUpdateProfile();
 
   // ── Product catalog — preloaded once so ItemRow gets instant client results ──
   const { data: catalogData } = useQuery({
@@ -457,6 +458,8 @@ export default function ClassicBilling() {
     })();
     stored.invoiceTemplate = t;
     localStorage.setItem(BIZ_STORAGE_KEY, JSON.stringify(stored));
+    // Persist to Tenant.settings for cross-device sync
+    updateProfile.mutate({ tenant: { settings: { invoiceTemplate: t } } });
   };
 
   // ── Computed totals ───────────────────────────────────────────────────

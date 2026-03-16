@@ -12,12 +12,16 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 import { customerApi } from "../lib/api";
+import { useWsInvalidation } from "../hooks/useWsInvalidation";
 import { inr, type Customer } from "@execora/shared";
+import { EmptyState } from "../components/ui/EmptyState";
 
 export function CustomersScreen() {
   const navigation = useNavigation<any>();
   const qc = useQueryClient();
+  useWsInvalidation(["customers", "summary"]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
@@ -33,20 +37,21 @@ export function CustomersScreen() {
   const customers: Customer[] = data?.customers ?? [];
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      {/* Header */}
-      <View className="px-4 pt-4 pb-2 border-b border-slate-100">
+    <SafeAreaView className="flex-1 bg-background">
+      {/* Header — matches web list headers */}
+      <View className="px-4 pt-4 pb-3 border-b border-slate-200 bg-card">
         <View className="flex-row items-center justify-between mb-3">
-          <Text className="text-xl font-black text-slate-800">Customers</Text>
+          <Text className="text-xl font-bold tracking-tight text-slate-800">Parties</Text>
           <TouchableOpacity
             onPress={() => navigation.navigate("Overdue")}
-            className="flex-row items-center gap-1 bg-red-50 border border-red-100 rounded-lg px-3 py-1.5"
+            activeOpacity={0.7}
+            className="flex-row items-center gap-1.5 bg-red-50 border border-red-100 rounded-xl px-4 min-h-[44px] justify-center"
           >
             <Text className="text-xs font-bold text-red-600">Udhaar List</Text>
           </TouchableOpacity>
         </View>
         <View className="flex-row items-center border border-slate-200 rounded-xl bg-slate-50 px-3">
-          <Text className="text-slate-400 mr-2">🔍</Text>
+          <Ionicons name="search" size={18} color="#94a3b8" style={{ marginRight: 8 }} />
           <TextInput
             value={search}
             onChangeText={(t) => {
@@ -57,7 +62,7 @@ export function CustomersScreen() {
             placeholderTextColor="#94a3b8"
             className="flex-1 h-11 text-sm text-slate-800"
           />
-          {isFetching && <ActivityIndicator size="small" color="#6366f1" />}
+          {isFetching && <ActivityIndicator size="small" color="#e67e22" />}
         </View>
       </View>
 
@@ -67,23 +72,23 @@ export function CustomersScreen() {
         refreshControl={
           <RefreshControl refreshing={isFetching} onRefresh={refetch} />
         }
-        contentContainerStyle={{ padding: 16 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
         ItemSeparatorComponent={() => <View className="h-2" />}
         ListEmptyComponent={
-          <View className="py-10 items-center">
-            <Text className="text-slate-400 text-sm">
-              {search ? "No customers found" : "No customers yet"}
-            </Text>
-          </View>
+          <EmptyState
+            icon={search ? "🔍" : "👥"}
+            title={search ? "No customers found" : "No customers yet"}
+            description={search ? "Try a different search term" : "Add your first customer to get started"}
+          />
         }
         renderItem={({ item: c }) => (
           <TouchableOpacity
-            className="flex-row items-center rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm"
+            className="flex-row items-center rounded-xl border border-slate-200 bg-card px-4 py-3 shadow-sm"
             activeOpacity={0.7}
             onPress={() => navigation.navigate("CustomerDetail", { id: c.id })}
           >
-            <View className="w-10 h-10 rounded-full bg-indigo-100 items-center justify-center mr-3">
-              <Text className="text-indigo-600 font-bold">
+            <View className="w-10 h-10 rounded-full bg-primary/20 items-center justify-center mr-3">
+              <Text className="text-primary font-bold">
                 {c.name.charAt(0).toUpperCase()}
               </Text>
             </View>

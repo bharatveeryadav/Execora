@@ -19,6 +19,7 @@ WORKDIR /app
 # Copy workspace manifests first (layer caching)
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY packages/types/package.json       ./packages/types/package.json
+COPY packages/shared/package.json      ./packages/shared/package.json
 COPY packages/infrastructure/package.json ./packages/infrastructure/package.json
 COPY packages/modules/package.json     ./packages/modules/package.json
 COPY apps/api/package.json             ./apps/api/package.json
@@ -33,6 +34,9 @@ RUN pnpm db:generate
 # Copy all source files
 COPY packages/types/src        ./packages/types/src
 COPY packages/types/tsconfig.json ./packages/types/tsconfig.json
+
+COPY packages/shared/src       ./packages/shared/src
+COPY packages/shared/tsconfig.json ./packages/shared/tsconfig.json
 
 COPY packages/infrastructure/src       ./packages/infrastructure/src
 COPY packages/infrastructure/tsconfig.json ./packages/infrastructure/tsconfig.json
@@ -61,6 +65,7 @@ WORKDIR /app
 # Copy manifests
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY packages/types/package.json       ./packages/types/package.json
+COPY packages/shared/package.json      ./packages/shared/package.json
 COPY packages/infrastructure/package.json ./packages/infrastructure/package.json
 COPY packages/modules/package.json     ./packages/modules/package.json
 COPY apps/api/package.json             ./apps/api/package.json
@@ -72,6 +77,7 @@ RUN pnpm db:generate
 
 # Copy compiled artifacts
 COPY --from=builder /app/packages/types/dist        ./packages/types/dist
+COPY --from=builder /app/packages/shared/dist       ./packages/shared/dist
 COPY --from=builder /app/packages/infrastructure/dist ./packages/infrastructure/dist
 COPY --from=builder /app/packages/modules/dist      ./packages/modules/dist
 COPY --from=builder /app/apps/api/dist              ./apps/api/dist

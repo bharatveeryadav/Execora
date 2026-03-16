@@ -1,10 +1,12 @@
 /**
- * /monitoring — Owner Security & Transaction Dashboard
+ * /monitoring — Kirana Owner Security & Transaction Dashboard
  *
  * Sprint M2 — Dashboard UI
  * Sprint M3 — Camera snapshots + browser notifications
+ * Sprint M4 — WebRTC live feed + AI detection
+ * Sprint M5 — Kirana cash monitoring (footfall, drawer, reconciliation)
  *
- * Access: owner + admin roles only.
+ * Access: owner + admin + manager roles.
  */
 import { useEffect, useState } from 'react';
 import { Shield, Settings2, RefreshCw, Eye, EyeOff } from 'lucide-react';
@@ -17,17 +19,22 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useToast } from '@/hooks/use-toast';
 
-import { AlertPanel } from '@/components/monitoring/AlertPanel';
-import { EventFeed } from '@/components/monitoring/EventFeed';
+import { AlertPanel }                from '@/components/monitoring/AlertPanel';
+import { EventFeed }                 from '@/components/monitoring/EventFeed';
 import { ActivityFilters, type Filters } from '@/components/monitoring/ActivityFilters';
-import { ActivityTable } from '@/components/monitoring/ActivityTable';
-import { EmployeeSummary } from '@/components/monitoring/EmployeeSummary';
-import { LiveFeedPanel } from '@/components/monitoring/LiveFeedPanel';
-import { MonitoringSettings } from '@/components/monitoring/MonitoringSettings';
-import { CameraCapture } from '@/components/monitoring/CameraCapture';
-import { SnapGallery } from '@/components/monitoring/SnapGallery';
+import { ActivityTable }             from '@/components/monitoring/ActivityTable';
+import { EmployeeSummary }           from '@/components/monitoring/EmployeeSummary';
+import { LiveFeedPanel }             from '@/components/monitoring/LiveFeedPanel';
+import { MonitoringSettings }        from '@/components/monitoring/MonitoringSettings';
+import { CameraCapture }             from '@/components/monitoring/CameraCapture';
+import { SnapGallery }               from '@/components/monitoring/SnapGallery';
+import { KiranaStatsBar }            from '@/components/monitoring/KiranaStatsBar';
+import { HourlyBillsChart }          from '@/components/monitoring/HourlyBillsChart';
+import { CashReconciliationWidget }  from '@/components/monitoring/CashReconciliationWidget';
+import { DrawerAlertWidget }         from '@/components/monitoring/DrawerAlertWidget';
+import { FaceActivityPanel }         from '@/components/monitoring/FaceActivityPanel';
+import type { FaceRegistry }         from '@/components/monitoring/FaceTransactionTracker';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -99,60 +106,26 @@ function EventDetailDialog({
   );
 }
 
-// ── Stats bar ─────────────────────────────────────────────────────────────────
-function StatsBar() {
-  const { data } = useQuery({
-    queryKey: ['monitoring', 'stats', today(), undefined],
-    queryFn: () =>
-      monitoringApi.stats(`${today()}T00:00:00.000Z`),
-    refetchInterval: 30_000,
-  });
-
-  const byType = data?.byType ?? {};
-  const bills    = byType['bill.created']      ?? 0;
-  const payments = byType['payment.recorded']  ?? 0;
-  const cancels  = byType['bill.cancelled']    ?? 0;
-  const total    = data?.total ?? 0;
-
-  return (
-    <div className="grid grid-cols-4 gap-3">
-      {[
-        { label: 'Bills Today',    value: bills,    color: 'text-blue-600' },
-        { label: 'Payments',       value: payments, color: 'text-green-600' },
-        { label: 'Cancellations',  value: cancels,  color: 'text-red-600' },
-        { label: 'Total Events',   value: total,    color: 'text-muted-foreground' },
-      ].map((s) => (
-        <Card key={s.label} className="border shadow-none">
-          <CardContent className="p-3 text-center">
-            <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{s.label}</p>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-}
-
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function Monitoring() {
   const { user } = useAuth();
   const navigate  = useNavigate();
   const qc        = useQueryClient();
-  const { toast } = useToast();
 
-  const [filters, setFilters] = useState<Filters>({ from: today() });
+  const [filters, setFilters]           = useState<Filters>({ from: today() });
   const [selectedEvent, setSelectedEvent] = useState<MonitoringEventItem | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [hideLive, setHideLive] = useState(false);
+  const [hideLive, setHideLive]         = useState(false);
+  const [faceRegistry, setFaceRegistry] = useState<FaceRegistry>(new Map());
 
-  // Request browser notification permission once when owner opens the page
+  // Request browser notification permission once
   useEffect(() => {
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
   }, []);
 
-  // Access guard — redirect staff/viewer
+  // Access guard
   if (user && user.role !== 'owner' && user.role !== 'admin' && user.role !== 'manager') {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-2 text-muted-foreground">
@@ -180,18 +153,19 @@ export default function Monitoring() {
 
   return (
     <div className="p-4 md:p-6 max-w-screen-xl mx-auto space-y-5">
-      {/* Header */}
+
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-red-50">
             <Shield className="h-5 w-5 text-red-600" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">Monitoring</h1>
-            <p className="text-xs text-muted-foreground">Owner security dashboard</p>
+            <h1 className="text-xl font-bold">Store Monitor</h1>
+            <p className="text-xs text-muted-foreground">Cash · Camera · Alerts · Footfall</p>
           </div>
           {unreadCount > 0 && (
-            <Badge className="bg-red-600 text-white">{unreadCount} unread</Badge>
+            <Badge className="bg-red-600 text-white">{unreadCount} alert{unreadCount > 1 ? 's' : ''}</Badge>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -210,7 +184,7 @@ export default function Monitoring() {
           <Button
             variant="outline" size="sm"
             onClick={() => setHideLive((v) => !v)}
-            title="Toggle live feed panel"
+            title="Toggle camera panel"
           >
             {hideLive ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
           </Button>
@@ -221,44 +195,53 @@ export default function Monitoring() {
         </div>
       </div>
 
-      {/* Stats row */}
-      <StatsBar />
+      {/* ── KPI bar ─────────────────────────────────────────────────────────── */}
+      <KiranaStatsBar />
 
-      {/* Main grid */}
+      {/* ── Main grid ───────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Left: live feed + alerts */}
+
+        {/* Left column: camera + drawer + reconciliation */}
         <div className="space-y-4">
           {!hideLive && (
             <Card className="border shadow-none">
               <CardHeader className="pb-2 pt-3 px-4">
-                <CardTitle className="text-sm">Live Feed</CardTitle>
+                <CardTitle className="text-sm">Live Camera</CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-4">
-                <LiveFeedPanel />
+                <LiveFeedPanel onRegistry={setFaceRegistry} />
               </CardContent>
             </Card>
           )}
 
-          <AlertPanel onAlertClick={setSelectedEvent} />
+          <DrawerAlertWidget />
+          <CashReconciliationWidget />
         </div>
 
-        {/* Right: activity feed (real-time) */}
-        <div className="lg:col-span-2">
+        {/* Right column: hourly chart + alerts + live feed */}
+        <div className="lg:col-span-2 space-y-4">
+          <HourlyBillsChart />
+
+          {unreadCount > 0 && (
+            <AlertPanel onAlertClick={setSelectedEvent} />
+          )}
+
           <Card className="border shadow-none">
             <CardHeader className="pb-2 pt-3 px-4">
               <CardTitle className="text-sm">Activity Feed (live)</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <EventFeed filters={filters} limit={30} onEventClick={setSelectedEvent} />
+              <EventFeed filters={filters} limit={25} onEventClick={setSelectedEvent} />
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Tabbed section: full table + snapshots + employee summary */}
+      {/* ── Tabs ────────────────────────────────────────────────────────────── */}
       <Tabs defaultValue="table">
         <TabsList>
           <TabsTrigger value="table">Activity Log</TabsTrigger>
+          <TabsTrigger value="faces">Faces</TabsTrigger>
           <TabsTrigger value="snapshots">Snapshots</TabsTrigger>
           <TabsTrigger value="employees">Employee Summary</TabsTrigger>
         </TabsList>
@@ -266,6 +249,10 @@ export default function Monitoring() {
         <TabsContent value="table" className="mt-4 space-y-3">
           <ActivityFilters filters={filters} onChange={setFilters} />
           <ActivityTable filters={filters} onEventClick={setSelectedEvent} />
+        </TabsContent>
+
+        <TabsContent value="faces" className="mt-4">
+          <FaceActivityPanel liveRegistry={faceRegistry} />
         </TabsContent>
 
         <TabsContent value="snapshots" className="mt-4">
@@ -277,13 +264,9 @@ export default function Monitoring() {
         </TabsContent>
       </Tabs>
 
-      {/* Event detail dialog */}
+      {/* Dialogs & hidden components */}
       <EventDetailDialog event={selectedEvent} onClose={() => setSelectedEvent(null)} />
-
-      {/* Settings dialog */}
       <MonitoringSettings open={settingsOpen} onOpenChange={setSettingsOpen} />
-
-      {/* Hidden camera capture component — runs on counter device */}
       <CameraCapture />
     </div>
   );

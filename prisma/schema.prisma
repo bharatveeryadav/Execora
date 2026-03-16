@@ -239,6 +239,8 @@ model Tenant {
   creditNotes            CreditNote[]
   monitoringEvents       MonitoringEvent[]
   monitoringConfig       MonitoringConfig?
+  feedback               Feedback[]
+  pushDevices            PushDevice[]
 
   @@index([status, plan])
   @@index([createdAt])
@@ -1475,7 +1477,7 @@ model InvoiceCounter {
 model Expense {
   id           String    @id @default(uuid())
   tenantId     String    @map("tenant_id")
-  type         String    @default("expense")  // "expense" | "purchase"
+  type         String    @default("expense")  // "expense" | "purchase" | "income"
   category     String    @default("Miscellaneous")
   amount       Decimal
   note         String?
@@ -1622,4 +1624,40 @@ model MonitoringConfig {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("monitoring_config")
+}
+
+// =====================================================
+// MODEL: FEEDBACK (NPS + text)
+// =====================================================
+model Feedback {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  userId    String?  @map("user_id")
+  npsScore  Int      @map("nps_score") // 0-10
+  text      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@map("feedback")
+}
+
+// =====================================================
+// MODEL: PUSH DEVICE (Sprint 15 — mobile push tokens)
+// =====================================================
+model PushDevice {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  userId    String   @map("user_id")
+  token     String   // Expo push token (ExponentPushToken[...])
+  platform  String?  // ios | android
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId, token])
+  @@index([tenantId])
+  @@map("push_devices")
 }

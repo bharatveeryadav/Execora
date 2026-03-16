@@ -12,6 +12,8 @@ import {
 	expenseApi,
 	purchaseApi,
 	cashbookApi,
+	supplierApi,
+	purchaseOrderApi,
 	type Customer,
 	type Invoice,
 	type Product,
@@ -22,6 +24,7 @@ import {
 	type SummaryRange,
 	type Gstr1Report,
 	type PnlReport,
+	type ItemwisePnlReport,
 	type ReportParams,
 	type AppUser,
 	type Expense,
@@ -542,6 +545,19 @@ export function usePnlReport(params: ReportParams & { compareFrom?: string; comp
 	});
 }
 
+export function useItemwisePnlReport(params: ReportParams = {}) {
+	const key = params.from ?? params.to ?? params.fy ?? 'current';
+	return useQuery<ItemwisePnlReport>({
+		queryKey: ['reports', 'itemwise-pnl', key],
+		queryFn: async () => {
+			const data = await reportApi.getItemwisePnl(params);
+			return data.report;
+		},
+		staleTime: 300_000,
+		refetchOnWindowFocus: false,
+	});
+}
+
 export function useEmailReport() {
 	return useMutation({
 		mutationFn: (data: {
@@ -674,6 +690,112 @@ export function useDeleteExpense() {
 	return useMutation({
 		mutationFn: (id: string) => expenseApi.remove(id),
 		onSuccess: () => qc.invalidateQueries({ queryKey: EXP_KEY }),
+	});
+}
+
+// ── Incomes (Indirect Income — reuse Expense with type=income) ──────────────────
+
+const INC_KEY = ['incomes'] as const;
+
+export function useIncomes(params: { from?: string; to?: string; category?: string } = {}) {
+	return useQuery<{ expenses: Expense[]; total: number; count: number }>({
+		queryKey: [...INC_KEY, params.from, params.to, params.category],
+		queryFn: () => expenseApi.list({ ...params, type: 'income' }),
+		staleTime: 60_000,
+	});
+}
+
+export function useCreateIncome() {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (data: { category: string; amount: number; note?: string; vendor?: string; date?: string }) =>
+			expenseApi.create({ ...data, type: 'income' }),
+		onSuccess: () => {
+			qc.invalidateQueries({ queryKey: INC_KEY });
+			qc.invalidateQueries({ queryKey: ['cashbook'] });
+		},
+	});
+}
+
+export function useDeleteIncome() {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (id: string) => expenseApi.remove(id),
+		onSuccess: () => {
+			qc.invalidateQueries({ queryKey: INC_KEY });
+			qc.invalidateQueries({ queryKey: ['cashbook'] });
+		},
+	});
+}
+
+// ── Suppliers ─────────────────────────────────────────────────────────────────
+
+export function useSuppliers(params?: { q?: string; limit?: number }) {
+	return useQuery({
+		queryKey: ['suppliers', params?.q ?? '', params?.limit ?? 50],
+		queryFn: () => supplierApi.list(params),
+		staleTime: 60_000,
+	});
+}
+
+export function useCreateSupplier() {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (data: { name: string; companyName?: string; phone?: string; email?: string; address?: string; gstin?: string }) =>
+			supplierApi.create(data),
+		onSuccess: () => qc.invalidateQueries({ queryKey: ['suppliers'] }),
+	});
+}
+
+// ── Purchase Orders ───────────────────────────────────────────────────────────
+
+export function usePurchaseOrders(params?: { status?: string; supplierId?: string; limit?: number }) {
+	return useQuery({
+		queryKey: ['purchase-orders', params?.status ?? '', params?.supplierId ?? '', params?.limit ?? 50],
+		queryFn: () => purchaseOrderApi.list(params),
+		staleTime: 30_000,
+	});
+}
+
+export function usePurchaseOrder(id: string | undefined) {
+	return useQuery({
+		queryKey: ['purchase-order', id],
+		queryFn: () => purchaseOrderApi.getById(id!),
+		enabled: !!id,
+		staleTime: 30_000,
+	});
+}
+
+export function useCreatePurchaseOrder() {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (data: Parameters<typeof purchaseOrderApi.create>[0]) => purchaseOrderApi.create(data),
+		onSuccess: () => qc.invalidateQueries({ queryKey: ['purchase-orders'] }),
+	});
+}
+
+export function useReceivePurchaseOrder() {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: ({ id, receipts }: { id: string; receipts: Parameters<typeof purchaseOrderApi.receive>[1] }) =>
+			purchaseOrderApi.receive(id, receipts),
+		onSuccess: (_, { id }) => {
+			qc.invalidateQueries({ queryKey: ['purchase-orders'] });
+			qc.invalidateQueries({ queryKey: ['purchase-order', id] });
+			qc.invalidateQueries({ queryKey: ['products'] });
+			qc.invalidateQueries({ queryKey: ['lowStock'] });
+		},
+	});
+}
+
+export function useCancelPurchaseOrder() {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (id: string) => purchaseOrderApi.cancel(id),
+		onSuccess: (_, id) => {
+			qc.invalidateQueries({ queryKey: ['purchase-orders'] });
+			qc.invalidateQueries({ queryKey: ['purchase-order', id] });
+		},
 	});
 }
 

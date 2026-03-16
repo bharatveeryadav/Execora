@@ -1,5 +1,6 @@
 {
   "expo": {
+    "newArchEnabled": true,
     "name": "Execora",
     "slug": "execora",
     "version": "1.0.0",
@@ -21,12 +22,26 @@
       "versionCode": 1,
       "permissions": [
         "CAMERA",
+        "POST_NOTIFICATIONS",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
         "VIBRATE"
       ]
     },
     "plugins": [
+      [
+        "expo-notifications",
+        {
+          "defaultChannel": "default",
+          "color": "#e67e22"
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Execora to access your camera to scan product barcodes."
+        }
+      ],
       "expo-font",
       [
         "expo-splash-screen",

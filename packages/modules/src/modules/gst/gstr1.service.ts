@@ -615,6 +615,76 @@ class Gstr1Service {
       totals:  { ...totals, collectionRate },
     };
   }
+
+  /**
+   * Itemwise Profit & Loss — group invoice items by product, sum sales vs cost.
+   * Returns productName, totalSales, totalCost, grossProfit, marginPct.
+   */
+  async getItemwisePnlReport(
+    tenantId: string,
+    from: Date,
+    to: Date,
+  ): Promise<{ period: { from: string; to: string }; items: ItemwisePnlEntry[] }> {
+    const fromDate = new Date(from); fromDate.setHours(0, 0, 0, 0);
+    const toDate   = new Date(to);   toDate.setHours(23, 59, 59, 999);
+
+    const items = await prisma.invoiceItem.findMany({
+      where: {
+        invoice: {
+          tenantId,
+          status: { notIn: ['cancelled', 'draft'] },
+          invoiceDate: { gte: fromDate, lte: toDate },
+        },
+      },
+      select: {
+        productId:   true,
+        productName: true,
+        quantity:    true,
+        total:       true,
+        product:     { select: { cost: true } },
+      },
+    });
+
+    const byProduct = new Map<string, { name: string; sales: number; cost: number }>();
+    for (const i of items) {
+      const key = i.productId ?? `adhoc:${i.productName}`;
+      const costPerUnit = i.product?.cost != null ? Number(i.product.cost) : 0;
+      const qty = Number(i.quantity);
+      const sales = round2(Number(i.total));
+      const cost = round2(qty * costPerUnit);
+
+      const existing = byProduct.get(key);
+      if (existing) {
+        existing.sales = round2(existing.sales + sales);
+        existing.cost  = round2(existing.cost  + cost);
+      } else {
+        byProduct.set(key, { name: i.productName, sales, cost });
+      }
+    }
+
+    const entries: ItemwisePnlEntry[] = [...byProduct.entries()]
+      .map(([, v]) => ({
+        productName:  v.name,
+        totalSales:   v.sales,
+        totalCost:    v.cost,
+        grossProfit:  round2(v.sales - v.cost),
+        marginPct:   v.sales > 0 ? round2(((v.sales - v.cost) / v.sales) * 100) : 0,
+      }))
+      .sort((a, b) => b.totalSales - a.totalSales);
+
+    return {
+      period: { from: fromDate.toISOString(), to: toDate.toISOString() },
+      items:  entries,
+    };
+  }
+}
+
+export interface ItemwisePnlEntry {
+  productName: string;
+  totalSales: number;
+  totalCost: number;
+  grossProfit: number;
+  marginPct: number;
 }
 
 function pctChange(current: number, previous: number): number {

@@ -2248,8 +2248,11 @@ Features completed across Sprints 8–10 (February–March 2026) that are new si
 - Auto-records ledger payment + fires `payment:recorded` WS event for Sound Box
 
 **Mobile React Native App** (`apps/mobile/`)
-- 10 screens wired into navigation: Login, Dashboard, BillingScreen, InvoiceList, InvoiceDetail, CustomerList, CustomerDetail, Payment, Overdue, Voice
-- Bottom tab navigator: Dashboard, Billing, Customers, Invoices, Voice
+- 21 screens: Login, Dashboard, BillingScreen, InvoiceList, InvoiceDetail, CustomerList, CustomerDetail, Payment, Overdue, Items, Voice, More, Expenses, CashBook, DayBook, Reports, Purchases, Recurring, Monitoring, Settings, ComingSoon
+- Tab bar: Dashboard, Billing, Customers, Invoices, Items, More
+- Design system (Button, Input, Card, Badge, Chip, Skeleton, EmptyState, Header, StatusBadge, AmountText)
+- WebSocket layer (ws.ts, useWsInvalidation, WSProvider)
+- See [MOBILE_APP_IMPLEMENTATION_STATUS.md](MOBILE_APP_IMPLEMENTATION_STATUS.md) for full status
 
 **ClassicBilling Single-Screen Counter UI** — `apps/web/src/pages/ClassicBilling.tsx`
 - Route `/billing`, walk-in 1-tap, all billing on one screen
@@ -2323,7 +2326,7 @@ Features that are critical for the kirana/SME launch but are missing or unwired:
 | 3 | UPDATE_STOCK voice intent wired | `executeUpdateStock` handler exists in product.handler.ts but voice engine switch and LLM prompt not updated | 3h | Both |
 | 4 | Sentry / error tracking | No `@sentry/node` in API, no `@sentry/react` in web; production errors invisible | 1h | All |
 | 5 | Mobile-responsive layout (S10-03) | Web app desktop-first; BottomNav exists but breakpoints not enforced; touch targets < 44px | 2d | Segment A |
-| 6 | Mobile ClassicBillingScreen (React Native) | Web ClassicBilling exists; RN equivalent not built; kirana primary device is Android | 3d | Segment A |
+| 6 | Mobile ClassicBillingScreen (React Native) | ✅ BillingScreen 3-step wizard exists; further polish possible | — | Segment A |
 | 7 | Offline mode — PWA + IndexedDB | No service worker, no manifest.json, no IndexedDB outbox; 22% of users cite as dealbreaker | 5d | Segment A |
 | 8 | Razorpay subscription integration | Webhook handler exists; plan billing (subscriptions) not integrated; zero monetization | 2d | All |
 | 9 | GSTIN checksum validation | B2B invoice accepts any 15-char string as GSTIN; no format/state-code validation | 2h | Segment B |

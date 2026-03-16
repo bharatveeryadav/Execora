@@ -132,6 +132,29 @@ class MonitoringService {
 			byType[e.eventType] = (byType[e.eventType] ?? 0) + 1;
 		}
 
+		// Kirana metrics
+		let totalBillAmount = 0;
+		let billCount = 0;
+		const hourlyBills: Record<number, number> = {};
+		for (const e of events) {
+			if (e.eventType === 'bill.created') {
+				billCount++;
+				if (e.amount) totalBillAmount += parseFloat(e.amount.toString());
+				const hour = new Date(e.createdAt).getHours();
+				hourlyBills[hour] = (hourlyBills[hour] ?? 0) + 1;
+			}
+		}
+		const footfall = byType['person.detected'] ?? 0;
+		const avgBillAmount = billCount > 0 ? Math.round(totalBillAmount / billCount) : 0;
+		const conversionRate = footfall > 0 ? Math.round((billCount / footfall) * 100) : null;
+
+		// Peak hour (hour with most bills)
+		let peakHour: number | null = null;
+		let peakCount = 0;
+		for (const [h, c] of Object.entries(hourlyBills)) {
+			if (c > peakCount) { peakCount = c; peakHour = parseInt(h); }
+		}
+
 		// Per-employee summary
 		const byEmployee: Record<string, { bills: number; payments: number; cancellations: number; totalAmount: number }> = {};
 		for (const e of events) {
@@ -144,7 +167,54 @@ class MonitoringService {
 			if (e.amount) emp.totalAmount += parseFloat(e.amount.toString());
 		}
 
-		return { byType, byEmployee, total: events.length };
+		return {
+			byType, byEmployee, total: events.length,
+			totalBillAmount: Math.round(totalBillAmount),
+			avgBillAmount,
+			footfall,
+			conversionRate,
+			hourlyBills,
+			peakHour,
+		};
+	}
+
+	/**
+	 * Record end-of-day cash reconciliation.
+	 * Stored as a monitoring event (eventType: cash.reconciliation) so no schema change needed.
+	 */
+	async recordCashReconciliation(
+		tenantId: string,
+		userId: string | undefined,
+		date: string,
+		actual: number,
+		expected: number,
+		note?: string,
+	): Promise<void> {
+		const discrepancy = actual - expected;
+		const severity = Math.abs(discrepancy) > 500 ? 'alert' : Math.abs(discrepancy) > 100 ? 'warning' : 'info';
+		await this.recordEvent({
+			tenantId,
+			userId,
+			eventType:  'cash.reconciliation',
+			entityType: 'daily',
+			entityId:   date,
+			amount:     discrepancy,
+			description: discrepancy === 0
+				? `EOD cash balanced — ₹${actual.toLocaleString('en-IN')}`
+				: `EOD cash ${discrepancy > 0 ? 'surplus' : 'short'} ₹${Math.abs(discrepancy).toLocaleString('en-IN')} (expected ₹${expected.toLocaleString('en-IN')}, actual ₹${actual.toLocaleString('en-IN')})`,
+			meta:     { expected, actual, discrepancy, note: note ?? '' },
+			severity,
+		});
+	}
+
+	/**
+	 * Get the latest cash reconciliation record for a given date.
+	 */
+	async getCashReconciliation(tenantId: string, date: string) {
+		return prisma.monitoringEvent.findFirst({
+			where: { tenantId, eventType: 'cash.reconciliation', entityId: date },
+			orderBy: { createdAt: 'desc' },
+		});
 	}
 
 	async getConfig(tenantId: string) {
