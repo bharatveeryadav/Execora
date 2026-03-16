@@ -372,17 +372,19 @@ export function DashboardScreen() {
               <View className="w-10 h-1 rounded-full bg-slate-200 self-center mb-4" />
               <Text className={`${TYPO.sectionTitle} mb-3`}>Select Business</Text>
               <View className="rounded-xl border border-slate-200 bg-slate-50 p-3 mb-6">
-                <Text className={TYPO.labelBold}>{businessName}</Text>
-                <View className="flex-row gap-2 mt-3">
+                <View className="flex-row items-center justify-between">
+                  <Text className={TYPO.labelBold}>{businessName}</Text>
+                  <Ionicons name="radio-button-on" size={22} color="#e67e22" />
+                </View>
+                <View className="flex-row gap-4 mt-2">
                   <TouchableOpacity
                     onPress={() => {
                       setBusinessMenuOpen(false);
                       navigation.navigate("MoreTab", { screen: "CompanyProfile" });
                     }}
-                    className="flex-1 flex-row items-center justify-center gap-2 py-2.5 rounded-lg bg-primary/10"
+                    activeOpacity={0.7}
                   >
-                    <Ionicons name="create-outline" size={18} color="#e67e22" />
-                    <Text className={TYPO.label}>Edit Company</Text>
+                    <Text className="text-sm font-semibold text-primary">Edit Company</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => {
@@ -399,10 +401,9 @@ export function DashboardScreen() {
                       }
                       Share.share({ message: parts.join("\n\n"), title: "Business Details" });
                     }}
-                    className="flex-1 flex-row items-center justify-center gap-2 py-2.5 rounded-lg bg-slate-100"
+                    activeOpacity={0.7}
                   >
-                    <Ionicons name="share-outline" size={18} color="#64748b" />
-                    <Text className={TYPO.label}>Share</Text>
+                    <Text className="text-sm font-semibold text-primary">Share</Text>
                   </TouchableOpacity>
                 </View>
               </View>
