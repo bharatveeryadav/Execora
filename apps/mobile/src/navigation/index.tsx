@@ -316,12 +316,12 @@ function MainTabs() {
         tabBarStyle: {
           borderTopColor: "#e2e8f0",
           paddingBottom: Math.max(insets.bottom, 8),
-          paddingTop: 6,
-          height: 52 + Math.max(insets.bottom, 8),
-          minHeight: 52 + Math.max(insets.bottom, 8),
+          paddingTop: 8,
+          height: 60 + Math.max(insets.bottom, 8),
+          minHeight: 60 + Math.max(insets.bottom, 8),
         },
         tabBarLabelStyle: {
-          fontSize: 9,
+          fontSize: 11,
           fontWeight: "600",
           marginTop: 2,
         },
@@ -341,12 +341,12 @@ function MainTabs() {
       <Tab.Screen
         name="CustomersTab"
         component={CustomersNavigator}
-        options={{ tabBarLabel: "Cust" }}
+        options={{ tabBarLabel: "Customers" }}
       />
       <Tab.Screen
         name="InvoicesTab"
         component={InvoicesNavigator}
-        options={{ tabBarLabel: "Invs" }}
+        options={{ tabBarLabel: "Bills" }}
       />
       <Tab.Screen
         name="MoreTab"

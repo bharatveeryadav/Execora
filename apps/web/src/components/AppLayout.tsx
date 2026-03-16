@@ -271,7 +271,7 @@ export function AppLayout() {
     return (
       <div className="flex flex-col min-h-svh">
         <OfflineBanner />
-        <div className="flex-1 pt-safe pb-[56px]">
+        <div className="flex-1 pt-safe pb-[68px]">
           <Outlet />
         </div>
         <BottomNav />
@@ -289,7 +289,7 @@ export function AppLayout() {
       </Sidebar>
       <SidebarInset>
         <OfflineBanner />
-        <div className="flex flex-1 flex-col min-h-svh pb-[56px]">
+        <div className="flex flex-1 flex-col min-h-svh pb-[68px]">
           <Outlet />
         </div>
       </SidebarInset>

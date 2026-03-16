@@ -82,21 +82,21 @@ const BottomNav = () => {
   return (
     <>
       {/* Bottom nav — label BELOW icon per iOS HIG / Material Design / React Navigation below-icon */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-sm pb-safe pt-1">
-        <div className="grid grid-cols-5 min-h-[56px]">
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-sm pb-safe pt-2 overflow-visible">
+        <div className="grid grid-cols-5 min-h-[64px]">
           {NAV_ITEMS.map((item) => {
             if (item.path === "__more__") {
               return (
                 <button
                   key="more"
                   onClick={() => setMoreOpen((v) => !v)}
-                  className={`flex flex-col items-center justify-center gap-1 min-h-[52px] py-2 text-[11px] transition-colors touch-manipulation ${
+                  className={`flex flex-col items-center justify-center gap-1 min-h-[56px] py-2 text-[11px] transition-colors touch-manipulation overflow-visible ${
                     moreOpen ? "text-slate-800 font-semibold" : "text-slate-600"
                   }`}
                   style={{ flexDirection: "column" }}
                 >
                   <MoreHorizontal className="h-6 w-6 shrink-0 order-first" />
-                  <span className="order-last text-center leading-snug">More</span>
+                  <span className="order-last text-center leading-snug whitespace-nowrap overflow-visible">More</span>
                 </button>
               );
             }
@@ -114,13 +114,13 @@ const BottomNav = () => {
               <button
                 key={item.label}
                 onClick={() => navigate(item.path)}
-                className={`flex flex-col items-center justify-center gap-1 min-h-[52px] py-2 text-[11px] transition-colors touch-manipulation ${
+                className={`flex flex-col items-center justify-center gap-1 min-h-[56px] py-2 text-[11px] transition-colors touch-manipulation overflow-visible ${
                   isActive ? "text-slate-800 font-semibold" : "text-slate-600"
                 }`}
                 style={{ flexDirection: "column" }}
               >
                 <item.icon className="h-6 w-6 shrink-0 order-first" />
-                <span className="order-last text-center leading-snug">{item.label}</span>
+                <span className="order-last text-center leading-snug whitespace-nowrap overflow-visible">{item.label}</span>
               </button>
             );
           })}
