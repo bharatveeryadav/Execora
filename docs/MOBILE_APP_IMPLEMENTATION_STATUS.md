@@ -150,6 +150,14 @@ This document tracks what has been **actually implemented** in `apps/mobile/` (R
 - **API:** productExtApi.expiryPage, writeOffBatch; reportsApi.pnl
 - **More grid:** Expiry, Bank Recon, Balance (BalanceSheet) tiles
 
+### Sprint 22 — Advanced Features ✅
+- **GstrScreen:** GSTR-1 summary (B2B, B2CS, HSN counts)
+- **CreditNotesScreen:** Credit notes list
+- **PurchaseOrdersScreen:** Purchase orders list
+- **IndirectIncomeScreen:** Income-type expenses with period filter
+- **Import, E-Invoicing:** Coming Soon placeholders
+- **API:** reportsApi.gstr1, creditNoteApi, purchaseOrderApi
+
 ---
 
 ## API Clients (apps/mobile/src/lib/api.ts)
@@ -211,8 +219,8 @@ This document tracks what has been **actually implemented** in `apps/mobile/` (R
 | Order | Sprint | Focus |
 |-------|--------|-------|
 | 1 | **22** | Advanced features (import, e-invoice, GSTR-3B, etc.) |
-| 3 | **23** | Feedback + Coming Soon screens |
-| **4 (last)** | **14** | **Store Monitoring** (KPI bar, hourly chart, employee cards, camera) |
+| 2 | **23** | Feedback + Coming Soon screens |
+| **2 (last)** | **14** | **Store Monitoring** (KPI bar, hourly chart, employee cards, camera) |
 
 ---
 

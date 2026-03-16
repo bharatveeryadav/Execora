@@ -261,6 +261,16 @@ export const productExtApi = {
 // ── Reports API (PnL, etc.) ───────────────────────────────────────────────────
 
 export const reportsApi = {
+  gstr1: (params?: { from?: string; to?: string; fy?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.from) q.set("from", params.from);
+    if (params?.to) q.set("to", params.to);
+    if (params?.fy) q.set("fy", params.fy);
+    const s = q.toString();
+    return apiFetch<{ report: { fy: string; b2b: unknown[]; b2cs: unknown[]; hsn: unknown[] } }>(
+      `/api/v1/reports/gstr1${s ? `?${s}` : ""}`,
+    );
+  },
   pnl: (params?: { from?: string; to?: string; fy?: string }) => {
     const q = new URLSearchParams();
     if (params?.from) q.set("from", params.from);
@@ -292,6 +302,50 @@ export const reportsApi = {
         };
       };
     }>(`/api/v1/reports/pnl${s ? `?${s}` : ""}`);
+  },
+};
+
+// ── Credit Notes API ─────────────────────────────────────────────────────────
+
+export const creditNoteApi = {
+  list: (params?: { limit?: number; customerId?: string; status?: string }) => {
+    const q = new URLSearchParams();
+    if (params?.limit) q.set("limit", String(params.limit));
+    if (params?.customerId) q.set("customerId", params.customerId);
+    if (params?.status) q.set("status", params.status);
+    const s = q.toString();
+    return apiFetch<{
+      creditNotes: Array<{
+        id: string;
+        creditNoteNo: string;
+        status: string;
+        total: number;
+        customer?: { name: string };
+        invoice?: { invoiceNo: string };
+        createdAt: string;
+      }>;
+    }>(`/api/v1/credit-notes${s ? `?${s}` : ""}`);
+  },
+};
+
+// ── Purchase Orders API ──────────────────────────────────────────────────────
+
+export const purchaseOrderApi = {
+  list: (params?: { status?: string; limit?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.status) q.set("status", params.status);
+    if (params?.limit) q.set("limit", String(params.limit ?? 50));
+    const s = q.toString();
+    return apiFetch<{
+      purchaseOrders: Array<{
+        id: string;
+        poNo: string;
+        status: string;
+        total: number;
+        supplier?: { name: string };
+        createdAt: string;
+      }>;
+    }>(`/api/v1/purchase-orders${s ? `?${s}` : ""}`);
   },
 };
 

@@ -31,6 +31,10 @@ import { SettingsThermalScreen } from "../screens/SettingsThermalScreen";
 import { ExpiryScreen } from "../screens/ExpiryScreen";
 import { BalanceSheetScreen } from "../screens/BalanceSheetScreen";
 import { BankReconScreen } from "../screens/BankReconScreen";
+import { GstrScreen } from "../screens/GstrScreen";
+import { CreditNotesScreen } from "../screens/CreditNotesScreen";
+import { PurchaseOrdersScreen } from "../screens/PurchaseOrdersScreen";
+import { IndirectIncomeScreen } from "../screens/IndirectIncomeScreen";
 
 // ── Param lists ───────────────────────────────────────────────────────────────
 
@@ -69,6 +73,12 @@ export type MoreStackParams = {
   Expiry: undefined;
   BalanceSheet: undefined;
   BankRecon: undefined;
+  Gstr: undefined;
+  CreditNotes: undefined;
+  PurchaseOrders: undefined;
+  Import: { title?: string };
+  EInvoicing: { title?: string };
+  IndirectIncome: undefined;
 };
 
 export type BillingStackParams = {
@@ -202,6 +212,22 @@ function MoreNavigator() {
       <MoreStack.Screen name="Expiry" component={ExpiryScreen} options={{ title: "Product Expiry" }} />
       <MoreStack.Screen name="BalanceSheet" component={BalanceSheetScreen} options={{ title: "Balance / P&L" }} />
       <MoreStack.Screen name="BankRecon" component={BankReconScreen} options={{ title: "Bank Reconciliation" }} />
+      <MoreStack.Screen name="Gstr" component={GstrScreen} options={{ title: "GSTR Reports" }} />
+      <MoreStack.Screen name="CreditNotes" component={CreditNotesScreen} options={{ title: "Credit Notes" }} />
+      <MoreStack.Screen name="PurchaseOrders" component={PurchaseOrdersScreen} options={{ title: "Purchase Orders" }} />
+      <MoreStack.Screen
+        name="Import"
+        component={ComingSoonScreen}
+        initialParams={{ title: "Import" }}
+        options={{ title: "Import" }}
+      />
+      <MoreStack.Screen
+        name="EInvoicing"
+        component={ComingSoonScreen}
+        initialParams={{ title: "E-Invoicing / IRN" }}
+        options={{ title: "E-Invoicing" }}
+      />
+      <MoreStack.Screen name="IndirectIncome" component={IndirectIncomeScreen} options={{ title: "Indirect Income" }} />
       <MoreStack.Screen name="Settings" component={SettingsScreen} options={{ title: "Settings" }} />
       <MoreStack.Screen
         name="ComingSoon"

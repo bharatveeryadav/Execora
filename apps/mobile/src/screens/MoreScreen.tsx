@@ -44,13 +44,16 @@ const TILES: Tile[][] = [
     { icon: "settings", label: "Settings", route: "Settings", color: "#64748b" },
   ],
   [
-    { icon: "download", label: "Import", route: "ComingSoon", color: TILE_COLORS.secondary, params: { title: "Import" } },
-    { icon: "document-text", label: "GST", route: "ComingSoon", color: TILE_COLORS.primary, params: { title: "GSTR Reports" } },
+    { icon: "download", label: "Import", route: "Import", color: TILE_COLORS.secondary },
+    { icon: "document-text", label: "GST", route: "Gstr", color: TILE_COLORS.primary },
+    { icon: "receipt", label: "Credit Notes", route: "CreditNotes", color: TILE_COLORS.secondary },
+    { icon: "clipboard", label: "POs", route: "PurchaseOrders", color: TILE_COLORS.primary },
+    { icon: "document-attach", label: "E-Invoice", route: "EInvoicing", color: TILE_COLORS.info },
   ],
   [
     { icon: "wallet", label: "Balance", route: "BalanceSheet", color: TILE_COLORS.success },
     { icon: "document-text", label: "Aging", route: "ComingSoon", color: TILE_COLORS.warning, params: { title: "Aging Report" } },
-    { icon: "notifications", label: "Alerts", route: "ComingSoon", color: TILE_COLORS.destructive, params: { title: "Alerts" } },
+    { icon: "cash", label: "Indirect Income", route: "IndirectIncome", color: TILE_COLORS.success },
     { icon: "chatbubble", label: "Feedback", route: "Feedback", color: TILE_COLORS.primary },
   ],
 ];
