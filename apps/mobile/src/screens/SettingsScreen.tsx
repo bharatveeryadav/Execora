@@ -30,7 +30,10 @@ export function SettingsScreen() {
 
       <ScrollView contentContainerStyle={{ padding: 16 }}>
         <Text className="text-sm font-semibold text-slate-500 uppercase mb-2">Profile</Text>
-        <TouchableOpacity className="p-4 bg-slate-50 rounded-xl border border-slate-100 mb-4">
+        <TouchableOpacity
+          onPress={() => (navigation as any).navigate("CompanyProfile")}
+          className="p-4 bg-slate-50 rounded-xl border border-slate-100 mb-4"
+        >
           <Text className="font-medium text-slate-800">Business Profile</Text>
           <Text className="text-sm text-slate-500">Company name, GSTIN, address</Text>
         </TouchableOpacity>

@@ -36,6 +36,7 @@ import { GstrScreen } from "../screens/GstrScreen";
 import { CreditNotesScreen } from "../screens/CreditNotesScreen";
 import { PurchaseOrdersScreen } from "../screens/PurchaseOrdersScreen";
 import { IndirectIncomeScreen } from "../screens/IndirectIncomeScreen";
+import { CompanyProfileScreen } from "../screens/CompanyProfileScreen";
 
 // ── Param lists ───────────────────────────────────────────────────────────────
 
@@ -60,6 +61,7 @@ export type MainTabParams = {
 export type MoreStackParams = {
   More: undefined;
   Items: undefined;
+  CompanyProfile: undefined;
   SettingsThermal: undefined;
   Reports: undefined;
   DayBook: undefined;
@@ -211,6 +213,7 @@ function MoreNavigator() {
     >
       <MoreStack.Screen name="More" component={MoreScreen} options={{ headerShown: false }} />
       <MoreStack.Screen name="Items" component={ItemsScreen} options={{ headerShown: false }} />
+      <MoreStack.Screen name="CompanyProfile" component={CompanyProfileScreen} options={{ headerShown: false }} />
       <MoreStack.Screen name="SettingsThermal" component={SettingsThermalScreen} options={{ headerShown: false }} />
       <MoreStack.Screen name="Reports" component={ReportsScreen} options={{ title: "Reports" }} />
       <MoreStack.Screen name="DayBook" component={DayBookScreen} options={{ title: "Day Book" }} />

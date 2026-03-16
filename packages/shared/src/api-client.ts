@@ -139,6 +139,27 @@ export const authApi = {
       { method: "POST", body: JSON.stringify({ email, password }) },
     ),
   me: () => apiFetch<{ user: unknown }>("/api/v1/auth/me"),
+  updateProfile: (data: {
+    name?: string;
+    phone?: string;
+    preferences?: Record<string, unknown>;
+    tenant?: {
+      name?: string;
+      legalName?: string;
+      tradeName?: string;
+      gstin?: string;
+      currency?: string;
+      timezone?: string;
+      language?: string;
+      dateFormat?: string;
+      settings?: Record<string, unknown>;
+      logoUrl?: string;
+    };
+  }) =>
+    apiFetch<{ user: unknown }>("/api/v1/auth/me/profile", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
 };
 
 // ── Customers ────────────────────────────────────────────────────────────────

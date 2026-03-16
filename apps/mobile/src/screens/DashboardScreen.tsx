@@ -14,6 +14,7 @@ import {
   useWindowDimensions,
   Alert,
   ActivityIndicator,
+  Share,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -25,6 +26,7 @@ import {
   summaryApi,
   productExtApi,
   reminderApi,
+  authApi,
 } from "../lib/api";
 import { inr } from "@execora/shared";
 import { useWsInvalidation } from "../hooks/useWsInvalidation";
@@ -112,6 +114,29 @@ export function DashboardScreen() {
 
   const padding = Math.max(HORIZONTAL_PADDING, Math.min(screenWidth * 0.04, 24));
   const contentWidth = Math.min(screenWidth - padding * 2, MAX_CONTENT_WIDTH);
+
+  const { data: meData } = useQuery({
+    queryKey: ["auth", "me"],
+    queryFn: () => authApi.me(),
+    staleTime: 5 * 60_000,
+  });
+  const meUser = meData?.user as {
+    tenant?: {
+      name?: string;
+      legalName?: string;
+      tradeName?: string;
+      gstin?: string;
+      settings?: Record<string, string | boolean>;
+    };
+  } | undefined;
+  const tenant = meUser?.tenant;
+  const settings = (tenant?.settings ?? {}) as Record<string, string>;
+  const businessName = tenant?.legalName ?? tenant?.tradeName ?? tenant?.name ?? "My Business";
+  const gstin = tenant?.gstin ?? "";
+  const bankName = settings.bankName ?? "";
+  const bankAccountNo = settings.bankAccountNo ?? "";
+  const bankIfsc = settings.bankIfsc ?? "";
+  const bankAccountHolder = settings.bankAccountHolder ?? "";
 
   const { data: summary, isLoading: isLoadingSummary, isFetching: sumFetching, dataUpdatedAt: sumAt } = useQuery({
     queryKey: ["summary", "daily"],
@@ -201,6 +226,7 @@ export function DashboardScreen() {
 
   const [cmdSetIdx, setCmdSetIdx] = useState(0);
   const [cmdItemIdx, setCmdItemIdx] = useState(0);
+  const [businessMenuOpen, setBusinessMenuOpen] = useState(false);
   const [expirySelected, setExpirySelected] = useState<{
     id: string;
     batchNo: string;
@@ -306,10 +332,6 @@ export function DashboardScreen() {
     if (route === "Purchases") return navigation.navigate("MoreTab", { screen: "Purchases" });
   };
 
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning ☀️" : hour < 17 ? "Good afternoon 🙏" : "Good evening 🌙";
-  const firstName = user?.name?.split(" ")[0] ?? "there";
-  const dateStr = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" });
   const currentSet = COMMAND_SETS[cmdSetIdx];
   const currentCmd = currentSet.items[cmdItemIdx];
 
@@ -328,20 +350,77 @@ export function DashboardScreen() {
         }
       >
         <View style={{ width: "100%", maxWidth: contentWidth }}>
-        {/* 1 — Greeting (matches web DashboardGreeting) */}
-        <View className="flex-row items-center justify-between mb-1" style={{ gap: 8 }}>
-          <View className="flex-row items-center gap-2 flex-1 min-w-0">
-            <Text className={TYPO.pageTitle} numberOfLines={1}>
-              {greeting}, {firstName} Ji!
+        {/* 1 — Header bar: Business name, tap for options */}
+        <TouchableOpacity
+          onPress={() => setBusinessMenuOpen(true)}
+          activeOpacity={0.8}
+          className="flex-row items-center gap-2 mb-4 py-2"
+        >
+          <View className="flex-1 min-w-0 flex-row items-center gap-2">
+            <View className={`h-2 w-2 rounded-full shrink-0 ${isConnected ? "bg-green-500" : "bg-amber-500"}`} style={{ opacity: isConnected ? 1 : 0.8 }} />
+            <Text className={TYPO.sectionTitle} numberOfLines={1}>
+              {businessName}
             </Text>
-            <View
-              className={`h-2 w-2 rounded-full ${isConnected ? "bg-green-500" : "bg-amber-500"}`}
-              style={{ opacity: isConnected ? 1 : 0.8 }}
-            />
           </View>
-          <Text className={`${TYPO.bodyMuted} shrink-0`}>📅 {dateStr}</Text>
-        </View>
-        <Text className={`${TYPO.caption} mb-4`}>Dashboard</Text>
+          <Ionicons name="chevron-down" size={18} color="#94a3b8" />
+        </TouchableOpacity>
+
+        {/* Business menu modal */}
+        <Modal visible={businessMenuOpen} transparent animationType="fade">
+          <Pressable className="flex-1 bg-black/50 justify-end" onPress={() => setBusinessMenuOpen(false)}>
+            <Pressable onPress={(e) => e.stopPropagation()} className="bg-white rounded-t-2xl p-4 pb-8">
+              <View className="w-10 h-1 rounded-full bg-slate-200 self-center mb-4" />
+              <Text className={`${TYPO.sectionTitle} mb-3`}>Select Business</Text>
+              <View className="rounded-xl border border-slate-200 bg-slate-50 p-3 mb-6">
+                <Text className={TYPO.labelBold}>{businessName}</Text>
+                <View className="flex-row gap-2 mt-3">
+                  <TouchableOpacity
+                    onPress={() => {
+                      setBusinessMenuOpen(false);
+                      navigation.navigate("MoreTab", { screen: "CompanyProfile" });
+                    }}
+                    className="flex-1 flex-row items-center justify-center gap-2 py-2.5 rounded-lg bg-primary/10"
+                  >
+                    <Ionicons name="create-outline" size={18} color="#e67e22" />
+                    <Text className={TYPO.label}>Edit Company</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setBusinessMenuOpen(false);
+                      const parts: string[] = [businessName];
+                      if (gstin) parts.push(`GSTIN: ${gstin}`);
+                      if (bankAccountHolder || bankName || bankAccountNo || bankIfsc) {
+                        const bankLines: string[] = [];
+                        if (bankAccountHolder) bankLines.push(`A/c Holder: ${bankAccountHolder}`);
+                        if (bankName) bankLines.push(`Bank: ${bankName}`);
+                        if (bankAccountNo) bankLines.push(`A/c No: ${bankAccountNo}`);
+                        if (bankIfsc) bankLines.push(`IFSC: ${bankIfsc}`);
+                        if (bankLines.length) parts.push("Bank Details:\n" + bankLines.join("\n"));
+                      }
+                      Share.share({ message: parts.join("\n\n"), title: "Business Details" });
+                    }}
+                    className="flex-1 flex-row items-center justify-center gap-2 py-2.5 rounded-lg bg-slate-100"
+                  >
+                    <Ionicons name="share-outline" size={18} color="#64748b" />
+                    <Text className={TYPO.label}>Share</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              <View className="items-center">
+                <TouchableOpacity
+                  onPress={() => {
+                    setBusinessMenuOpen(false);
+                    navigation.navigate("MoreTab", { screen: "CompanyProfile" });
+                  }}
+                  className="flex-row items-center gap-2 py-3 px-6 rounded-xl bg-primary/10"
+                >
+                  <Ionicons name="add" size={20} color="#e67e22" />
+                  <Text className={TYPO.label}>Add New Business</Text>
+                </TouchableOpacity>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
 
         {/* 2 — Business Health Score */}
         <View
