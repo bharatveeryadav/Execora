@@ -455,6 +455,28 @@ export const monitoringApi = {
 
 // Re-export the API functions so screens import from one place
 export const authExtApi = {
+  uploadLogo: async (uri: string, mimeType = "image/jpeg"): Promise<{ logoObjectKey: string }> => {
+    const base = getApiBaseUrl();
+    const token = tokenStorage.getToken();
+    if (!token) throw new Error("Not authenticated");
+    const ext = mimeType.split("/")[1] ?? "jpg";
+    const formData = new FormData();
+    formData.append("file", {
+      uri,
+      name: `logo.${ext}`,
+      type: mimeType,
+    } as any);
+    const res = await fetch(`${base}/api/v1/auth/me/logo`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error((err as { error?: string }).error ?? "Upload failed");
+    }
+    return res.json();
+  },
   updateProfile: (data: {
     name?: string;
     phone?: string;

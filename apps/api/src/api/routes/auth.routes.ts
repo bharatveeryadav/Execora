@@ -11,9 +11,7 @@
  */
 import { Prisma } from '@prisma/client';
 import { FastifyInstance, FastifyRequest } from 'fastify';
-import { prisma } from '@execora/infrastructure';
-import { logger } from '@execora/infrastructure';
-import { config } from '@execora/infrastructure';
+import { prisma, minioClient, logger, config } from '@execora/infrastructure';
 import {
 	generateTokens,
 	verifyPassword,
@@ -325,6 +323,66 @@ export async function authRoutes(fastify: FastifyInstance) {
 			return reply.send({ user: updatedUser });
 		}
 	);
+
+	// ── POST /api/v1/auth/me/logo ───────────────────────────────────────────────
+	// Upload company logo (multipart). Stores in MinIO, updates tenant.logoUrl with presigned URL.
+	fastify.post('/api/v1/auth/me/logo', { preHandler: [requireAuth] }, async (request, reply) => {
+		const tenantId = request.user!.tenantId;
+		const role = request.user!.role;
+		if (role !== 'owner' && role !== 'admin') {
+			return reply.code(403).send({ error: 'Only owner/admin can update company logo' });
+		}
+		const data = await (request as any).file();
+		if (!data) return reply.code(400).send({ error: 'No image file provided' });
+		const mimeType = (data.mimetype as string) || 'image/jpeg';
+		if (!mimeType.startsWith('image/')) {
+			return reply.code(400).send({ error: 'File must be an image (jpeg, png, webp)' });
+		}
+		const chunks: Buffer[] = [];
+		let totalSize = 0;
+		for await (const chunk of data.file) {
+			totalSize += chunk.length;
+			if (totalSize > 2 * 1024 * 1024) {
+				return reply.code(413).send({ error: 'Image too large (max 2 MB)' });
+			}
+			chunks.push(chunk);
+		}
+		const imageBuffer = Buffer.concat(chunks);
+		const ext = mimeType.split('/')[1] ?? 'jpg';
+		const imageKey = `tenant/logo/${tenantId}.${ext}`;
+		await minioClient.uploadFile(imageKey, imageBuffer, { contentType: mimeType });
+		const tenant = await prisma.tenant.findUnique({ where: { id: tenantId }, select: { settings: true } });
+		const currentSettings = (tenant?.settings as Record<string, unknown>) ?? {};
+		await prisma.tenant.update({
+			where: { id: tenantId },
+			data: {
+				settings: { ...currentSettings, logoObjectKey: imageKey } as any,
+			},
+		});
+		logger.info({ tenantId }, 'Company logo uploaded');
+		return reply.send({ logoObjectKey: imageKey });
+	});
+
+	// ── GET /api/v1/tenant/logo ────────────────────────────────────────────────
+	// Stream tenant logo from MinIO. Requires auth; uses requester's tenant.
+	fastify.get('/api/v1/tenant/logo', { preHandler: [requireAuth] }, async (request, reply) => {
+		const tenantId = request.user!.tenantId;
+		const tenant = await prisma.tenant.findUnique({
+			where: { id: tenantId },
+			select: { settings: true },
+		});
+		const settings = (tenant?.settings as Record<string, string> | null) ?? {};
+		const logoKey = settings.logoObjectKey;
+		if (!logoKey) return reply.code(404).send({ error: 'No logo uploaded' });
+		try {
+			const buffer = await minioClient.getFile(logoKey);
+			const ext = logoKey.split('.').pop() ?? 'jpg';
+			const contentType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+			return reply.type(contentType).send(buffer);
+		} catch {
+			return reply.code(404).send({ error: 'Logo not found' });
+		}
+	});
 
 	// ── PUT /api/v1/auth/me/password ───────────────────────────────────────────
 	fastify.put(

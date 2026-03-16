@@ -61,6 +61,12 @@
     },
     "plugins": [
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Execora to access your photos to upload your company logo."
+        }
+      ],
+      [
         "expo-notifications",
         {
           "defaultChannel": "default",

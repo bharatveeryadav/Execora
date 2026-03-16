@@ -1,6 +1,6 @@
 /**
  * CompanyProfileScreen — Edit business/company details.
- * Business name, GST, address, shipping, optional fields, business type.
+ * Logo upload, business name, GST, address, bank, business type (modal picker).
  */
 import React, { useState, useEffect } from "react";
 import {
@@ -15,10 +15,13 @@ import {
   Share,
   KeyboardAvoidingView,
   Platform,
+  Modal,
+  Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { authApi, authExtApi } from "../lib/api";
 import { TYPO } from "../lib/typography";
@@ -54,6 +57,9 @@ type MeUser = {
   };
 };
 
+const LABEL = "text-sm font-medium text-slate-600";
+const INPUT = "border border-slate-200 rounded-xl px-4 py-3.5 text-base text-slate-800";
+
 export function CompanyProfileScreen() {
   const navigation = useNavigation();
   const qc = useQueryClient();
@@ -83,6 +89,9 @@ export function CompanyProfileScreen() {
   const [bankName, setBankName] = useState("");
   const [bankAccountNo, setBankAccountNo] = useState("");
   const [bankIfsc, setBankIfsc] = useState("");
+  const [logoObjectKey, setLogoObjectKey] = useState<string | null>(null);
+  const [businessTypeModalOpen, setBusinessTypeModalOpen] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
 
   useEffect(() => {
     if (tenant) {
@@ -102,8 +111,36 @@ export function CompanyProfileScreen() {
       setBankName(String(settings.bankName ?? ""));
       setBankAccountNo(String(settings.bankAccountNo ?? ""));
       setBankIfsc(String(settings.bankIfsc ?? ""));
+      setLogoObjectKey((settings.logoObjectKey as string) ?? null);
     }
   }, [tenant, settings]);
+
+  const pickLogo = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission needed", "Allow access to photos to upload your logo.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    const { uri, mimeType } = result.assets[0];
+    setLogoUploading(true);
+    try {
+      const { logoObjectKey: key } = await authExtApi.uploadLogo(uri, mimeType ?? "image/jpeg");
+      setLogoObjectKey(key);
+      void qc.invalidateQueries({ queryKey: ["auth", "me"] });
+      Alert.alert("", "Logo uploaded successfully");
+    } catch (e) {
+      Alert.alert("Upload failed", (e as Error).message ?? "Please try again.");
+    } finally {
+      setLogoUploading(false);
+    }
+  };
 
   const updateProfile = useMutation({
     mutationFn: (data: Parameters<typeof authExtApi.updateProfile>[0]) =>
@@ -183,43 +220,69 @@ export function CompanyProfileScreen() {
 
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+          contentContainerStyle={{ padding: 20, paddingBottom: 48 }}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Upload company logo */}
+          <View className="mb-6">
+            <Text className={`${LABEL} mb-3`}>Company Logo</Text>
+            <TouchableOpacity
+              onPress={logoUploading ? undefined : pickLogo}
+              disabled={logoUploading}
+              className="w-24 h-24 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 items-center justify-center overflow-hidden"
+            >
+              {logoObjectKey ? (
+                <View className="items-center">
+                  <View className="w-12 h-12 rounded-full bg-primary/20 items-center justify-center">
+                    <Ionicons name="checkmark" size={28} color="#e67e22" />
+                  </View>
+                  <Text className="text-xs font-medium text-slate-600 mt-1">Logo set</Text>
+                </View>
+              ) : logoUploading ? (
+                <ActivityIndicator size="large" color="#e67e22" />
+              ) : (
+                <View className="items-center">
+                  <Ionicons name="business" size={36} color="#94a3b8" />
+                  <Text className="text-xs font-medium text-slate-500 mt-1">Upload</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+
           {/* Business / Company name */}
-          <Text className={`${TYPO.label} mb-1`}>Business / Company Name</Text>
+          <Text className={`${LABEL} mb-2`}>Business / Company Name</Text>
           <TextInput
             value={companyName}
             onChangeText={setCompanyName}
             placeholder="Enter business name"
-            className="border border-slate-200 rounded-xl px-4 py-3 mb-4"
+            className={`${INPUT} mb-4`}
             placeholderTextColor="#94a3b8"
           />
 
           {/* Trade or Brand name */}
-          <Text className={`${TYPO.label} mb-1`}>Trade / Brand Name</Text>
+          <Text className={`${LABEL} mb-2`}>Trade / Brand Name</Text>
           <TextInput
             value={tradeName}
             onChangeText={setTradeName}
             placeholder="Optional"
-            className="border border-slate-200 rounded-xl px-4 py-3 mb-4"
+            className={`${INPUT} mb-4`}
             placeholderTextColor="#94a3b8"
           />
 
           {/* GST toggle */}
           <View className="flex-row items-center justify-between mb-2">
-            <Text className={TYPO.label}>GST Registered</Text>
+            <Text className={LABEL}>GST Registered</Text>
             <Switch value={gstEnabled} onValueChange={setGstEnabled} trackColor={{ false: "#cbd5e1", true: "#e67e22" }} thumbColor="#fff" />
           </View>
           {gstEnabled && (
             <>
-              <Text className={`${TYPO.label} mb-1`}>GSTIN</Text>
+              <Text className={`${LABEL} mb-2`}>GSTIN</Text>
               <View className="flex-row gap-2 mb-4">
                 <TextInput
                   value={gstin}
                   onChangeText={setGstin}
                   placeholder="15-digit GSTIN"
-                  className="flex-1 border border-slate-200 rounded-xl px-4 py-3"
+                  className={`flex-1 ${INPUT}`}
                   placeholderTextColor="#94a3b8"
                   maxLength={15}
                 />
@@ -231,28 +294,28 @@ export function CompanyProfileScreen() {
           )}
 
           {/* Phone & Email */}
-          <Text className={`${TYPO.label} mb-1`}>Business Phone</Text>
+          <Text className={`${LABEL} mb-2`}>Business Phone</Text>
           <TextInput
             value={phone}
             onChangeText={setPhone}
             placeholder="Phone number"
-            className="border border-slate-200 rounded-xl px-4 py-3 mb-4"
+            className={`${INPUT} mb-4`}
             placeholderTextColor="#94a3b8"
             keyboardType="phone-pad"
           />
-          <Text className={`${TYPO.label} mb-1`}>Business Email</Text>
+          <Text className={`${LABEL} mb-2`}>Business Email</Text>
           <TextInput
             value={email}
             onChangeText={setEmail}
             placeholder="Email"
-            className="border border-slate-200 rounded-xl px-4 py-3 mb-4"
+            className={`${INPUT} mb-4`}
             placeholderTextColor="#94a3b8"
             keyboardType="email-address"
           />
 
           {/* Billing Address */}
-          <View className="flex-row items-center justify-between mb-1">
-            <Text className={TYPO.label}>Billing Address</Text>
+          <View className="flex-row items-center justify-between mb-2">
+            <Text className={LABEL}>Billing Address</Text>
             <View className="flex-row gap-2">
               <TouchableOpacity onPress={shareAddress} className="flex-row items-center gap-1">
                 <Ionicons name="share-outline" size={16} color="#64748b" />
@@ -268,74 +331,102 @@ export function CompanyProfileScreen() {
             value={billingAddress}
             onChangeText={setBillingAddress}
             placeholder="Full billing address"
-            className="border border-slate-200 rounded-xl px-4 py-3 mb-4"
+            className={`${INPUT} mb-4`}
             placeholderTextColor="#94a3b8"
             multiline
             numberOfLines={3}
           />
 
           {/* Shipping Address */}
-          <Text className={`${TYPO.label} mb-1`}>Shipping Address</Text>
+          <Text className={`${LABEL} mb-2`}>Shipping Address</Text>
           <TextInput
             value={shippingAddress}
             onChangeText={setShippingAddress}
             placeholder="Same as billing or different"
-            className="border border-slate-200 rounded-xl px-4 py-3 mb-4"
+            className={`${INPUT} mb-4`}
             placeholderTextColor="#94a3b8"
             multiline
             numberOfLines={3}
           />
 
           {/* Bank Account Details */}
-          <Text className={`${TYPO.label} mb-1`}>Bank Account Holder</Text>
+          <Text className={`${LABEL} mb-2`}>Bank Account Holder</Text>
           <TextInput
             value={bankAccountHolder}
             onChangeText={setBankAccountHolder}
             placeholder="Account holder name"
-            className="border border-slate-200 rounded-xl px-4 py-3 mb-4"
+            className={`${INPUT} mb-4`}
             placeholderTextColor="#94a3b8"
           />
-          <Text className={`${TYPO.label} mb-1`}>Bank Name</Text>
+          <Text className={`${LABEL} mb-2`}>Bank Name</Text>
           <TextInput
             value={bankName}
             onChangeText={setBankName}
             placeholder="e.g. State Bank of India"
-            className="border border-slate-200 rounded-xl px-4 py-3 mb-4"
+            className={`${INPUT} mb-4`}
             placeholderTextColor="#94a3b8"
           />
-          <Text className={`${TYPO.label} mb-1`}>Account Number</Text>
+          <Text className={`${LABEL} mb-2`}>Account Number</Text>
           <TextInput
             value={bankAccountNo}
             onChangeText={setBankAccountNo}
             placeholder="Bank account number"
-            className="border border-slate-200 rounded-xl px-4 py-3 mb-4"
+            className={`${INPUT} mb-4`}
             placeholderTextColor="#94a3b8"
             keyboardType="numeric"
           />
-          <Text className={`${TYPO.label} mb-1`}>IFSC (Branch)</Text>
+          <Text className={`${LABEL} mb-2`}>IFSC (Branch)</Text>
           <TextInput
             value={bankIfsc}
             onChangeText={(t) => setBankIfsc(t.toUpperCase())}
             placeholder="e.g. SBIN0001234"
-            className="border border-slate-200 rounded-xl px-4 py-3 mb-4"
+            className={`${INPUT} mb-4`}
             placeholderTextColor="#94a3b8"
             autoCapitalize="characters"
             maxLength={11}
           />
 
           {/* Business Type */}
-          <Text className={`${TYPO.label} mb-1`}>Business Type</Text>
-          <View className="flex-row flex-wrap gap-2 mb-4">
-            {BUSINESS_TYPES.map((t) => (
-              <TouchableOpacity
-                key={t}
-                onPress={() => setBusinessType(businessType === t ? "" : t)}
-                style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: businessType === t ? "#e67e22" : "#e2e8f0", backgroundColor: businessType === t ? "#fff5f0" : "#f8fafc" }}
-              >
-                <Text className={`text-xs ${businessType === t ? "text-primary font-semibold" : "text-slate-600"}`}>{t}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <Text className={`${LABEL} mb-2`}>Business Type</Text>
+          <TouchableOpacity
+            onPress={() => setBusinessTypeModalOpen(true)}
+            className={`${INPUT} mb-4 flex-row items-center justify-between`}
+          >
+            <Text className={businessType ? "text-base font-medium text-slate-800" : "text-slate-400"}>
+              {businessType || "Select business type"}
+            </Text>
+            <Ionicons name="chevron-down" size={20} color="#94a3b8" />
+          </TouchableOpacity>
+
+          <Modal visible={businessTypeModalOpen} transparent animationType="slide">
+            <Pressable className="flex-1 bg-black/50 justify-end" onPress={() => setBusinessTypeModalOpen(false)}>
+              <Pressable onPress={(e) => e.stopPropagation()} className="bg-white rounded-t-2xl max-h-[70%]">
+                <View className="flex-row items-center justify-between px-4 py-3 border-b border-slate-100">
+                  <Text className="text-lg font-semibold text-slate-800">Business Type</Text>
+                  <TouchableOpacity onPress={() => setBusinessTypeModalOpen(false)}>
+                    <Ionicons name="close" size={24} color="#64748b" />
+                  </TouchableOpacity>
+                </View>
+                <ScrollView className="max-h-80" keyboardShouldPersistTaps="handled">
+                  {BUSINESS_TYPES.map((t) => (
+                    <TouchableOpacity
+                      key={t}
+                      onPress={() => {
+                        setBusinessType(t);
+                        setBusinessTypeModalOpen(false);
+                      }}
+                      className="flex-row items-center justify-between px-4 py-3.5 border-b border-slate-50"
+                    >
+                      <Text className="text-base font-medium text-slate-800">{t}</Text>
+                      {businessType === t && (
+                        <Ionicons name="checkmark-circle" size={22} color="#e67e22" />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </Pressable>
+            </Pressable>
+          </Modal>
 
           {/* Optional fields toggle */}
           <TouchableOpacity
@@ -343,34 +434,34 @@ export function CompanyProfileScreen() {
             className="flex-row items-center gap-2 mb-4"
           >
             <Ionicons name={showOptional ? "chevron-down" : "chevron-forward"} size={18} color="#64748b" />
-            <Text className={TYPO.label}>Optional fields</Text>
+            <Text className={LABEL}>Optional fields</Text>
           </TouchableOpacity>
           {showOptional && (
             <>
-              <Text className={`${TYPO.label} mb-1`}>PAN</Text>
+              <Text className={`${LABEL} mb-2`}>PAN</Text>
               <TextInput
                 value={pan}
                 onChangeText={setPan}
                 placeholder="10-char PAN"
-                className="border border-slate-200 rounded-xl px-4 py-3 mb-4"
+                className={`${INPUT} mb-4`}
                 placeholderTextColor="#94a3b8"
                 maxLength={10}
               />
-              <Text className={`${TYPO.label} mb-1`}>Alternate Contact</Text>
+              <Text className={`${LABEL} mb-2`}>Alternate Contact</Text>
               <TextInput
                 value={altContact}
                 onChangeText={setAltContact}
                 placeholder="Alternate phone"
-                className="border border-slate-200 rounded-xl px-4 py-3 mb-4"
+                className={`${INPUT} mb-4`}
                 placeholderTextColor="#94a3b8"
                 keyboardType="phone-pad"
               />
-              <Text className={`${TYPO.label} mb-1`}>Website</Text>
+              <Text className={`${LABEL} mb-2`}>Website</Text>
               <TextInput
                 value={website}
                 onChangeText={setWebsite}
                 placeholder="https://..."
-                className="border border-slate-200 rounded-xl px-4 py-3 mb-4"
+                className={`${INPUT} mb-4`}
                 placeholderTextColor="#94a3b8"
                 keyboardType="url"
               />

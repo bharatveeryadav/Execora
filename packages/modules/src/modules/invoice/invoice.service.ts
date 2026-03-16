@@ -1333,12 +1333,18 @@ class InvoiceService {
       };
       const accentColor = TEMPLATE_COLORS[invoiceTemplate] ?? '#374151';
 
-      // S12-05: Fetch logo for PDF when tenant has logoUrl
+      // S12-05: Fetch logo for PDF — prefer logoObjectKey (uploaded) else logoUrl (external)
       let logoBuffer: Buffer | undefined;
-      const logoUrl = tenant?.logoUrl;
-      if (logoUrl) {
+      const logoObjectKey = settings.logoObjectKey as string | undefined;
+      if (logoObjectKey) {
         try {
-          const res = await fetch(logoUrl);
+          logoBuffer = await minioClient.getFile(logoObjectKey);
+        } catch {
+          /* non-fatal: PDF will render without logo */
+        }
+      } else if (tenant?.logoUrl) {
+        try {
+          const res = await fetch(tenant.logoUrl);
           if (res.ok) logoBuffer = Buffer.from(await res.arrayBuffer());
         } catch {
           /* non-fatal: PDF will render without logo */

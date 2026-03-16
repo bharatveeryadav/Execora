@@ -28,6 +28,7 @@
     "expo-device": "^55.0.9",
     "expo-font": "~13.0.0",
     "expo-haptics": "~13.0.1",
+    "expo-image-picker": "^55.0.12",
     "expo-notifications": "~0.28.19",
     "expo-print": "~13.0.1",
     "expo-sharing": "~12.0.1",
