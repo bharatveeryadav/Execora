@@ -1,15 +1,13 @@
 /**
  * PartiesScreen — Customers + Vendors tabs (matches web Parties.tsx).
- * Customers: filters (All, Has Due, Clear, Aging), summary, Add Customer, list.
- * Vendors: Collect & Pay, View Purchases, View Expenses.
+ * Modern UI/UX: TYPO scale, 44pt touch targets (iOS HIG), 8px spacing grid.
  */
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  FlatList,
   ScrollView,
   Modal,
   Pressable,
@@ -17,6 +15,8 @@ import {
   ActivityIndicator,
   Linking,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -30,7 +30,11 @@ import { useWsInvalidation } from "../hooks/useWsInvalidation";
 import { inr, type Customer } from "@execora/shared";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ErrorCard } from "../components/ui/ErrorCard";
+import { TYPO } from "../lib/typography";
 import type { CustomersStackParams } from "../navigation";
+
+const MIN_TOUCH = 44;
+const SPACING = 16;
 
 type Tab = "customers" | "vendors";
 type FilterTab = "all" | "outstanding" | "clear" | "aging";
@@ -197,11 +201,17 @@ export function PartiesScreen({ navigation }: Props) {
 
   // ── Export & Import helpers ─────────────────────────────────────────────
 
-  const tabNav = (navigation.getParent as any)?.();
+  function getTabNav() {
+    try {
+      return (navigation.getParent as any)?.();
+    } catch {
+      return undefined;
+    }
+  }
 
   function navigateToImport(type: "customers" | "vendors") {
     setMenuOpen(false);
-    tabNav?.navigate("MoreTab", { screen: "Import", params: { type } });
+    getTabNav()?.navigate("MoreTab", { screen: "Import", params: { type } });
   }
 
   function exportCustomersCsv() {
@@ -279,137 +289,143 @@ export function PartiesScreen({ navigation }: Props) {
     const balance = parseFloat(String(c.balance));
     const hasOutstanding = balance > 0;
     const ageDays = (c as any).ageDays ?? 0;
+    const hitSlop = { top: 12, bottom: 12, left: 12, right: 12 };
     return (
-      <TouchableOpacity
+      <Pressable
         key={c.id}
-        className="flex-row items-center gap-2 p-3 border-b border-slate-100"
-        activeOpacity={0.7}
+        className="flex-row items-center gap-3 px-4 py-3.5 border-b border-slate-100 bg-white"
         onPress={() => navigation.navigate("CustomerDetail", { id: c.id })}
+        style={({ pressed }) => ({ backgroundColor: pressed ? "#f8fafc" : "#fff" })}
       >
-        <View className={`w-10 h-10 rounded-full items-center justify-center ${hasOutstanding ? "bg-red-100" : "bg-green-100"}`}>
-          <Text className={`font-bold text-sm ${hasOutstanding ? "text-red-600" : "text-green-600"}`}>
+        <View className={`w-12 h-12 rounded-full items-center justify-center ${hasOutstanding ? "bg-red-50" : "bg-green-50"}`}>
+          <Text className={`font-bold text-base ${hasOutstanding ? "text-red-600" : "text-green-600"}`}>
             {c.name?.charAt(0)?.toUpperCase() ?? "?"}
           </Text>
         </View>
         <View className="flex-1 min-w-0">
-          <View className="flex-row items-center gap-1.5">
-            <Text className="text-sm font-semibold text-slate-800 truncate">{c.name}</Text>
+          <View className="flex-row items-center gap-2">
+            <Text className={TYPO.labelBold} numberOfLines={1}>{c.name}</Text>
             {((c as any).tags ?? []).includes("VIP") && (
-              <View className="bg-amber-100 px-1.5 py-0.5 rounded">
-                <Text className="text-[9px] font-semibold text-amber-700">VIP</Text>
+              <View className="bg-amber-100 px-2 py-0.5 rounded-full">
+                <Text className="text-[10px] font-semibold text-amber-700">VIP</Text>
               </View>
             )}
             {((c as any).tags ?? []).includes("Blacklist") && (
-              <Text className="text-[9px]">⛔</Text>
+              <Text className="text-xs">⛔</Text>
             )}
           </View>
-          <Text className="text-xs text-slate-500">
+          <Text className={TYPO.caption} numberOfLines={1}>
             {filter === "aging"
-              ? ageDays === 0
-                ? "Today"
-                : `${ageDays}d overdue`
+              ? ageDays === 0 ? "Today" : `${ageDays}d overdue`
               : c.phone ?? "No phone"}
             {filter === "aging" && c.phone ? ` · ${c.phone}` : ""}
           </Text>
         </View>
         <View className="items-end min-w-[4rem]">
           {hasOutstanding ? (
-            <Text className={`text-sm font-bold tabular-nums ${filter === "aging" ? "text-red-600" : "text-red-600"}`}>
-              ₹{inr(balance)}
-            </Text>
+            <Text className="text-sm font-bold tabular-nums text-red-600">₹{inr(balance)}</Text>
           ) : (
-            <View className="flex-row items-center gap-0.5 bg-green-100 px-2 py-0.5 rounded-full">
+            <View className="flex-row items-center gap-1 bg-green-50 px-2.5 py-1 rounded-full">
               <Ionicons name="checkmark-circle" size={12} color="#16a34a" />
-              <Text className="text-[10px] font-medium text-green-700">Clear</Text>
+              <Text className="text-[11px] font-medium text-green-700">Clear</Text>
             </View>
           )}
         </View>
         <View className="flex-row gap-1">
           {c.phone && (
-            <TouchableOpacity
+            <Pressable
               onPress={(e) => {
                 e.stopPropagation();
                 Linking.openURL(`https://wa.me/91${c.phone!.replace(/\D/g, "")}`);
               }}
-              className="w-7 h-7 rounded-full bg-green-100 items-center justify-center"
+              hitSlop={hitSlop}
+              className="w-10 h-10 rounded-full bg-green-50 items-center justify-center"
+              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
             >
-              <Ionicons name="logo-whatsapp" size={14} color="#16a34a" />
-            </TouchableOpacity>
+              <Ionicons name="logo-whatsapp" size={18} color="#16a34a" />
+            </Pressable>
           )}
           {c.phone && (
-            <TouchableOpacity
+            <Pressable
               onPress={(e) => {
                 e.stopPropagation();
                 Linking.openURL(`tel:${c.phone}`);
               }}
-              className="w-7 h-7 rounded-full bg-slate-100 items-center justify-center"
+              hitSlop={hitSlop}
+              className="w-10 h-10 rounded-full bg-slate-100 items-center justify-center"
+              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
             >
-              <Ionicons name="call" size={12} color="#475569" />
-            </TouchableOpacity>
+              <Ionicons name="call" size={16} color="#475569" />
+            </Pressable>
           )}
         </View>
-      </TouchableOpacity>
+      </Pressable>
     );
   };
 
   // ── Main render ─────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={["top", "bottom"]}>
-      {/* Header */}
-      <View className="px-4 pt-4 pb-2 border-b border-slate-200 bg-card">
-        <View className="flex-row items-center justify-between mb-3">
-          <Text className="text-xl font-bold tracking-tight text-slate-800">👥 Parties</Text>
+    <SafeAreaView className="flex-1 bg-slate-50" edges={["top", "bottom"]}>
+      {/* Header — TYPO scale, 8px grid */}
+      <View className="px-4 pt-4 pb-3 border-b border-slate-200/80 bg-white">
+        <View className="flex-row items-center justify-between mb-4">
+          <Text className={TYPO.pageTitle}>Parties</Text>
           <View className="flex-row items-center gap-2">
             {tab === "customers" && (
-              <TouchableOpacity
+              <Pressable
                 onPress={() => navigation.navigate("Overdue")}
-                activeOpacity={0.7}
-                className="flex-row items-center gap-1.5 bg-red-50 border border-red-100 rounded-xl px-3 py-2"
+                className="flex-row items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-4 py-2.5 min-h-[44]"
+                style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
               >
-                <Text className="text-xs font-bold text-red-600">Udhaar List</Text>
-              </TouchableOpacity>
+                <Ionicons name="alert-circle" size={16} color="#dc2626" />
+                <Text className="text-xs font-bold text-red-600">Udhaar</Text>
+              </Pressable>
             )}
-            <TouchableOpacity
+            <Pressable
               onPress={() => setMenuOpen(true)}
-              className="w-9 h-9 rounded-full bg-slate-100 items-center justify-center"
+              className="w-11 h-11 rounded-full bg-slate-100 items-center justify-center"
+              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="ellipsis-horizontal" size={20} color="#475569" />
-            </TouchableOpacity>
+              <Ionicons name="ellipsis-horizontal" size={22} color="#475569" />
+            </Pressable>
           </View>
         </View>
 
-        {/* Tabs */}
-        <View className="flex-row rounded-xl border bg-slate-100 p-1 gap-1">
-          <TouchableOpacity
+        {/* Segmented control — 44pt touch targets */}
+        <View className="flex-row rounded-2xl bg-slate-100 p-1">
+          <Pressable
             onPress={() => setTab("customers")}
-            className={`flex-1 flex-row items-center justify-center gap-2 py-2 rounded-lg ${tab === "customers" ? "bg-white shadow-sm" : ""}`}
+            className={`flex-1 flex-row items-center justify-center gap-2 py-3 rounded-xl min-h-[44] ${tab === "customers" ? "bg-white shadow-sm" : ""}`}
+            style={({ pressed }) => ({ opacity: pressed && tab !== "customers" ? 0.7 : 1 })}
           >
-            <Ionicons name="people" size={18} color={tab === "customers" ? "#0f172a" : "#64748b"} />
-            <Text className={`text-sm font-medium ${tab === "customers" ? "text-slate-800" : "text-slate-500"}`}>Customers</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+            <Ionicons name="people" size={20} color={tab === "customers" ? "#0f172a" : "#64748b"} />
+            <Text className={`text-sm font-semibold ${tab === "customers" ? "text-slate-800" : "text-slate-500"}`}>Customers</Text>
+          </Pressable>
+          <Pressable
             onPress={() => setTab("vendors")}
-            className={`flex-1 flex-row items-center justify-center gap-2 py-2 rounded-lg ${tab === "vendors" ? "bg-white shadow-sm" : ""}`}
+            className={`flex-1 flex-row items-center justify-center gap-2 py-3 rounded-xl min-h-[44] ${tab === "vendors" ? "bg-white shadow-sm" : ""}`}
+            style={({ pressed }) => ({ opacity: pressed && tab !== "vendors" ? 0.7 : 1 })}
           >
-            <Ionicons name="cube" size={18} color={tab === "vendors" ? "#0f172a" : "#64748b"} />
-            <Text className={`text-sm font-medium ${tab === "vendors" ? "text-slate-800" : "text-slate-500"}`}>Vendors</Text>
-          </TouchableOpacity>
+            <Ionicons name="cube" size={20} color={tab === "vendors" ? "#0f172a" : "#64748b"} />
+            <Text className={`text-sm font-semibold ${tab === "vendors" ? "text-slate-800" : "text-slate-500"}`}>Vendors</Text>
+          </Pressable>
         </View>
       </View>
 
       {tab === "customers" && (
         <>
-          {/* Search */}
-          <View className="px-4 py-2 border-b border-slate-100 bg-card">
-            <View className="flex-row items-center border border-slate-200 rounded-xl bg-slate-50 px-3">
-              <Ionicons name="search" size={18} color="#94a3b8" style={{ marginRight: 8 }} />
+          {/* Search — 48pt min height for touch */}
+          <View className="px-4 py-3 bg-white border-b border-slate-100">
+            <View className="flex-row items-center rounded-2xl bg-slate-100 px-4 min-h-[48]">
+              <Ionicons name="search" size={20} color="#94a3b8" style={{ marginRight: 12 }} />
               <TextInput
                 value={search}
                 onChangeText={setSearch}
                 placeholder="Search by name or phone…"
                 placeholderTextColor="#94a3b8"
-                className="flex-1 h-11 text-sm text-slate-800"
+                className="flex-1 text-base text-slate-800 py-0"
               />
               {isFetching && <ActivityIndicator size="small" color="#e67e22" />}
             </View>
@@ -417,62 +433,69 @@ export function PartiesScreen({ navigation }: Props) {
 
           <ScrollView
             className="flex-1"
-            contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
-            refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} />}
+            contentContainerStyle={{ padding: SPACING, paddingBottom: 100 }}
+            refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor="#e67e22" />}
           >
-            {/* Summary strip */}
-            <View className="flex-row gap-2 mb-3">
-              <View className="flex-1 rounded-xl border bg-card p-3 items-center">
-                <Ionicons name="people" size={20} color="#64748b" />
-                <Text className="text-sm font-semibold text-slate-800 mt-0.5">{customers.length}</Text>
-                <Text className="text-[10px] text-slate-500">Total</Text>
+            {/* Summary cards — visual hierarchy */}
+            <View className="flex-row gap-3 mb-4">
+              <View className="flex-1 rounded-2xl bg-white border border-slate-200/80 p-4 items-center shadow-sm">
+                <View className="w-10 h-10 rounded-full bg-slate-100 items-center justify-center mb-2">
+                  <Ionicons name="people" size={20} color="#64748b" />
+                </View>
+                <Text className={TYPO.value}>{customers.length}</Text>
+                <Text className={TYPO.caption}>Total</Text>
               </View>
-              <View className="flex-1 rounded-xl border bg-card p-3 items-center">
-                <Ionicons name="alert-circle" size={20} color="#dc2626" />
-                <Text className="text-sm font-semibold text-red-600 mt-0.5">{outCount}</Text>
-                <Text className="text-[10px] text-slate-500">Has Due</Text>
+              <View className="flex-1 rounded-2xl bg-white border border-red-100 p-4 items-center shadow-sm">
+                <View className="w-10 h-10 rounded-full bg-red-50 items-center justify-center mb-2">
+                  <Ionicons name="alert-circle" size={20} color="#dc2626" />
+                </View>
+                <Text className="text-base font-bold text-red-600">{outCount}</Text>
+                <Text className={TYPO.caption}>Has Due</Text>
               </View>
-              <View className="flex-1 rounded-xl border bg-card p-3 items-center">
-                <Text className="text-sm font-bold text-red-600 mt-0.5">₹{inr(outstanding)}</Text>
-                <Text className="text-[10px] text-slate-500">Outstanding</Text>
+              <View className="flex-1 rounded-2xl bg-white border border-red-100 p-4 items-center shadow-sm">
+                <Text className="text-base font-bold text-red-600 mb-0.5">₹{inr(outstanding)}</Text>
+                <Text className={TYPO.caption}>Outstanding</Text>
               </View>
             </View>
 
-            {/* Filter tabs */}
-            <View className="flex-row rounded-xl border bg-slate-100 p-1 gap-1 mb-3">
+            {/* Filter chips — 44pt touch targets */}
+            <View className="flex-row rounded-2xl bg-slate-100 p-1 mb-4">
               {[
                 { key: "all" as FilterTab, label: "All", count: customers.length },
                 { key: "outstanding" as FilterTab, label: "Has Due", count: outCount },
                 { key: "clear" as FilterTab, label: "Clear", count: clearCount },
                 { key: "aging" as FilterTab, label: "Aging", count: agingCustomers.length },
               ].map(({ key, label, count }) => (
-                <TouchableOpacity
+                <Pressable
                   key={key}
                   onPress={() => setFilter(key)}
-                  className={`flex-1 items-center justify-center py-1.5 rounded-lg ${filter === key ? "bg-white shadow-sm" : ""}`}
+                  className={`flex-1 items-center justify-center py-2.5 rounded-xl min-h-[44] ${filter === key ? "bg-white shadow-sm" : ""}`}
+                  style={({ pressed }) => ({ opacity: pressed && filter !== key ? 0.7 : 1 })}
                 >
-                  <Text className={`text-xs font-medium ${filter === key ? "text-slate-800" : "text-slate-500"}`}>{label}</Text>
-                  <View className={`rounded-full px-1.5 py-0.5 mt-0.5 ${filter === key ? "bg-primary/10" : "bg-slate-200"}`}>
-                    <Text className={`text-[10px] font-semibold ${filter === key ? "text-primary" : "text-slate-500"}`}>{count}</Text>
+                  <Text className={`text-xs font-semibold ${filter === key ? "text-slate-800" : "text-slate-500"}`}>{label}</Text>
+                  <View className={`rounded-full px-2 py-0.5 mt-1 ${filter === key ? "bg-primary/15" : "bg-slate-200"}`}>
+                    <Text className={`text-[11px] font-bold ${filter === key ? "text-primary" : "text-slate-500"}`}>{count}</Text>
                   </View>
-                </TouchableOpacity>
+                </Pressable>
               ))}
             </View>
 
             {/* Aging buckets */}
             {filter === "aging" && (
-              <View className="gap-3 mb-3">
+              <View className="gap-4 mb-4">
                 {agingCustomers.length === 0 ? (
-                  <View className="rounded-xl border bg-card py-14 items-center">
-                    <Ionicons name="checkmark-circle" size={40} color="#22c55e" />
-                    <Text className="text-sm text-slate-500 mt-2">No outstanding balances</Text>
+                  <View className="rounded-2xl border border-slate-200/80 bg-white py-16 items-center shadow-sm">
+                    <View className="w-16 h-16 rounded-full bg-green-50 items-center justify-center mb-3">
+                      <Ionicons name="checkmark-circle" size={40} color="#22c55e" />
+                    </View>
+                    <Text className={TYPO.bodyMuted}>No outstanding balances</Text>
                   </View>
                 ) : (
                   agingBuckets.map(
                     (bucket) =>
                       bucket.items.length > 0 && (
-                        <View key={bucket.label} className={`rounded-xl border overflow-hidden`}>
-                          <View className={`flex-row items-center justify-between px-4 py-2 ${bucket.bg}`}>
+                        <View key={bucket.label} className="rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm mb-4">
+                          <View className={`flex-row items-center justify-between px-4 py-3 ${bucket.bg}`}>
                             <Text className={`text-sm font-semibold ${bucket.color}`}>{bucket.label}</Text>
                             <View className={`rounded-full px-2 py-0.5 ${bucket.bg}`}>
                               <Text className={`text-[10px] font-bold ${bucket.color}`}>{bucket.items.length}</Text>
@@ -490,17 +513,19 @@ export function PartiesScreen({ navigation }: Props) {
 
             {/* Customer list */}
             {filter !== "aging" && (
-              <View className="rounded-xl border bg-card overflow-hidden">
+              <View className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
                 {isError ? (
                   <View className="py-8 px-4">
                     <ErrorCard message="Failed to load customers" onRetry={() => refetch()} />
                   </View>
                 ) : filtered.length === 0 ? (
-                  <View className="py-14 items-center">
+                  <View className="py-14 items-center rounded-2xl bg-white border border-slate-200/80">
                     <EmptyState
                       icon={search ? "🔍" : "👥"}
                       title={search ? "No customers found" : "No customers yet"}
                       description={search ? "Try a different search" : "Add your first customer"}
+                      actionLabel={!search ? "Add Customer" : undefined}
+                      onAction={!search ? openAdd : undefined}
                     />
                   </View>
                 ) : (
@@ -510,72 +535,79 @@ export function PartiesScreen({ navigation }: Props) {
             )}
           </ScrollView>
 
-          {/* FAB */}
-          <TouchableOpacity
+          {/* FAB — 56pt for prominence (Material Design) */}
+          <Pressable
             onPress={openAdd}
-            className="absolute bottom-6 right-4 w-12 h-12 rounded-full bg-primary items-center justify-center shadow-lg"
+            className="absolute bottom-6 right-4 w-14 h-14 rounded-full bg-primary items-center justify-center shadow-lg"
+            style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
           >
             <Ionicons name="add" size={28} color="#fff" />
-          </TouchableOpacity>
+          </Pressable>
         </>
       )}
 
       {tab === "vendors" && (
         <>
-        <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
+        <ScrollView className="flex-1" contentContainerStyle={{ padding: SPACING, paddingBottom: 100 }}>
           {/* Collect & Pay */}
-          <View className="rounded-xl border bg-card p-3 mb-4">
-            <Text className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 mb-2">Collect & Pay</Text>
-            <View className="flex-row gap-2">
-              <View className="flex-1 rounded-lg border border-red-200 bg-red-50 p-3 flex-row items-center gap-2">
-                <Ionicons name="arrow-up" size={20} color="#dc2626" />
+          <View className="rounded-2xl border border-slate-200/80 bg-white p-4 mb-4 shadow-sm">
+            <Text className={TYPO.sectionTitle}>Collect & Pay</Text>
+            <View className="flex-row gap-3 mt-3">
+              <View className="flex-1 rounded-xl border border-red-100 bg-red-50 p-4 flex-row items-center gap-3">
+                <View className="w-10 h-10 rounded-full bg-red-100 items-center justify-center">
+                  <Ionicons name="arrow-up" size={20} color="#dc2626" />
+                </View>
                 <View>
-                  <Text className="text-[10px] text-slate-500">To Pay</Text>
-                  <Text className="text-sm font-bold text-red-600">₹{inr(toPay)}</Text>
+                  <Text className={TYPO.caption}>To Pay</Text>
+                  <Text className="text-base font-bold text-red-600">₹{inr(toPay)}</Text>
                 </View>
               </View>
-              <View className="flex-1 rounded-lg border border-green-200 bg-green-50 p-3 flex-row items-center gap-2">
-                <Ionicons name="arrow-down" size={20} color="#16a34a" />
+              <View className="flex-1 rounded-xl border border-green-100 bg-green-50 p-4 flex-row items-center gap-3">
+                <View className="w-10 h-10 rounded-full bg-green-100 items-center justify-center">
+                  <Ionicons name="arrow-down" size={20} color="#16a34a" />
+                </View>
                 <View>
-                  <Text className="text-[10px] text-slate-500">To Collect</Text>
-                  <Text className="text-sm font-bold text-green-600">₹{inr(toCollect)}</Text>
+                  <Text className={TYPO.caption}>To Collect</Text>
+                  <Text className="text-base font-bold text-green-600">₹{inr(toCollect)}</Text>
                 </View>
               </View>
             </View>
           </View>
 
-          {/* Quick links */}
-          <View className="flex-row flex-wrap gap-2 mb-4">
-            <TouchableOpacity
-              onPress={() => tabNav?.navigate("MoreTab", { screen: "Purchases" })}
-              className="flex-row items-center gap-1.5 border border-slate-200 rounded-xl px-4 py-2.5 bg-white"
+          {/* Quick links — 44pt touch targets */}
+          <View className="flex-row flex-wrap gap-3 mb-4">
+            <Pressable
+              onPress={() => getTabNav()?.navigate("MoreTab", { screen: "Purchases" })}
+              className="flex-row items-center gap-2 border border-slate-200 rounded-xl px-4 py-3 min-h-[44] bg-white"
+              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
             >
-              <Ionicons name="cube" size={18} color="#64748b" />
-              <Text className="text-sm font-medium text-slate-700">View Purchases</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => tabNav?.navigate("MoreTab", { screen: "Expenses" })}
-              className="flex-row items-center gap-1.5 border border-slate-200 rounded-xl px-4 py-2.5 bg-white"
+              <Ionicons name="cube" size={20} color="#64748b" />
+              <Text className={TYPO.body}>View Purchases</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => getTabNav()?.navigate("MoreTab", { screen: "Expenses" })}
+              className="flex-row items-center gap-2 border border-slate-200 rounded-xl px-4 py-3 min-h-[44] bg-white"
+              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
             >
-              <Ionicons name="receipt" size={18} color="#64748b" />
-              <Text className="text-sm font-medium text-slate-700">View Expenses</Text>
-            </TouchableOpacity>
+              <Ionicons name="receipt" size={20} color="#64748b" />
+              <Text className={TYPO.body}>View Expenses</Text>
+            </Pressable>
           </View>
 
           {/* Vendor search */}
-          <View className="flex-row items-center border border-slate-200 rounded-xl bg-slate-50 px-3 mb-4">
-            <Ionicons name="search" size={18} color="#94a3b8" style={{ marginRight: 8 }} />
+          <View className="flex-row items-center rounded-2xl bg-slate-100 px-4 min-h-[48] mb-4">
+            <Ionicons name="search" size={20} color="#94a3b8" style={{ marginRight: 12 }} />
             <TextInput
               value={vendorSearch}
               onChangeText={setVendorSearch}
               placeholder="Search vendors…"
               placeholderTextColor="#94a3b8"
-              className="flex-1 h-11 text-sm text-slate-800"
+              className="flex-1 text-base text-slate-800 py-0"
             />
           </View>
 
           {/* Vendor list */}
-          <View className="rounded-xl border bg-card overflow-hidden">
+          <View className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
             {suppliers.length === 0 ? (
               <View className="py-14 items-center">
                 <EmptyState
@@ -588,51 +620,54 @@ export function PartiesScreen({ navigation }: Props) {
               </View>
             ) : (
               suppliers.map((s) => (
-                <TouchableOpacity
+                <Pressable
                   key={s.id}
-                  className="flex-row items-center justify-between p-4 border-b border-slate-100"
-                  onPress={() => tabNav?.navigate("MoreTab", { screen: "Purchases" })}
+                  className="flex-row items-center justify-between px-4 py-3.5 border-b border-slate-100 min-h-[56]"
+                  onPress={() => getTabNav()?.navigate("MoreTab", { screen: "Purchases" })}
+                  style={({ pressed }) => ({ backgroundColor: pressed ? "#f8fafc" : "#fff" })}
                 >
-                  <View className="flex-1">
-                    <Text className="text-base font-semibold text-slate-800">{s.name}</Text>
+                  <View className="flex-1 min-w-0">
+                    <Text className={TYPO.labelBold} numberOfLines={1}>{s.name}</Text>
                     {(s.companyName || s.phone) && (
-                      <Text className="text-xs text-slate-500 mt-0.5">
+                      <Text className={TYPO.caption} numberOfLines={1}>
                         {[s.companyName, s.phone].filter(Boolean).join(" · ")}
                       </Text>
                     )}
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
-                </TouchableOpacity>
+                  <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+                </Pressable>
               ))
             )}
           </View>
 
           {/* Add Vendor FAB */}
-          <TouchableOpacity
+          <Pressable
             onPress={() => setAddVendorOpen(true)}
-            className="absolute bottom-6 right-4 w-12 h-12 rounded-full bg-primary items-center justify-center shadow-lg"
+            className="absolute bottom-6 right-4 w-14 h-14 rounded-full bg-primary items-center justify-center shadow-lg"
+            style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
           >
             <Ionicons name="add" size={28} color="#fff" />
-          </TouchableOpacity>
+          </Pressable>
         </ScrollView>
 
         {/* Add Vendor Modal */}
         <Modal visible={addVendorOpen} transparent animationType="slide">
-          <View className="flex-1 justify-end">
-            <Pressable className="absolute inset-0 bg-black/40" onPress={() => setAddVendorOpen(false)} />
-            <View className="bg-white rounded-t-3xl px-5 pt-5 pb-8 max-h-[90%]">
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text className="text-base font-bold text-slate-800 mb-4">Add Vendor</Text>
-              <Text className="text-xs font-semibold text-slate-500 mb-1">Name *</Text>
-              <TextInput value={vendorName} onChangeText={setVendorName} placeholder="e.g. Ramesh Traders" className="border border-slate-200 rounded-xl px-3 h-12 text-base text-slate-800 mb-3" placeholderTextColor="#94a3b8" />
-              <Text className="text-xs font-semibold text-slate-500 mb-1">Company Name</Text>
-              <TextInput value={vendorCompany} onChangeText={setVendorCompany} placeholder="e.g. Ramesh Pvt Ltd" className="border border-slate-200 rounded-xl px-3 h-12 text-base text-slate-800 mb-3" placeholderTextColor="#94a3b8" />
-              <Text className="text-xs font-semibold text-slate-500 mb-1">Phone</Text>
-              <TextInput value={vendorPhone} onChangeText={setVendorPhone} placeholder="10-digit mobile" keyboardType="phone-pad" className="border border-slate-200 rounded-xl px-3 h-12 text-base text-slate-800 mb-3" placeholderTextColor="#94a3b8" />
-              <Text className="text-xs font-semibold text-slate-500 mb-1">Email</Text>
-              <TextInput value={vendorEmail} onChangeText={setVendorEmail} placeholder="email@example.com" keyboardType="email-address" className="border border-slate-200 rounded-xl px-3 h-12 text-base text-slate-800 mb-3" placeholderTextColor="#94a3b8" />
-              <Text className="text-xs font-semibold text-slate-500 mb-1">Address</Text>
-              <TextInput value={vendorAddress} onChangeText={setVendorAddress} placeholder="Full address" className="border border-slate-200 rounded-xl px-3 h-12 text-base text-slate-800 mb-4" placeholderTextColor="#94a3b8" />
+          <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 justify-end">
+            <Pressable className="absolute inset-0 bg-black/50" onPress={() => setAddVendorOpen(false)} />
+            <View className="bg-white rounded-t-3xl px-5 pt-5 pb-10 max-h-[90%]">
+            <View className="w-10 h-1 rounded-full bg-slate-200 self-center mb-4" />
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <Text className={TYPO.pageTitle + " mb-4"}>Add Vendor</Text>
+              <Text className={TYPO.label + " mb-1"}>Name *</Text>
+              <TextInput value={vendorName} onChangeText={setVendorName} placeholder="e.g. Ramesh Traders" className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800 mb-3" placeholderTextColor="#94a3b8" />
+              <Text className={TYPO.label + " mb-1"}>Company Name</Text>
+              <TextInput value={vendorCompany} onChangeText={setVendorCompany} placeholder="e.g. Ramesh Pvt Ltd" className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800 mb-3" placeholderTextColor="#94a3b8" />
+              <Text className={TYPO.label + " mb-1"}>Phone</Text>
+              <TextInput value={vendorPhone} onChangeText={setVendorPhone} placeholder="10-digit mobile" keyboardType="phone-pad" className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800 mb-3" placeholderTextColor="#94a3b8" />
+              <Text className={TYPO.label + " mb-1"}>Email</Text>
+              <TextInput value={vendorEmail} onChangeText={setVendorEmail} placeholder="email@example.com" keyboardType="email-address" className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800 mb-3" placeholderTextColor="#94a3b8" />
+              <Text className={TYPO.label + " mb-1"}>Address</Text>
+              <TextInput value={vendorAddress} onChangeText={setVendorAddress} placeholder="Full address" className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800 mb-4" placeholderTextColor="#94a3b8" />
               <View className="flex-row gap-2">
                 <TouchableOpacity onPress={() => setAddVendorOpen(false)} className="flex-1 border border-slate-200 rounded-xl py-3 items-center">
                   <Text className="text-sm font-semibold text-slate-600">Cancel</Text>
@@ -647,115 +682,98 @@ export function PartiesScreen({ navigation }: Props) {
               </View>
             </ScrollView>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
         </>
       )}
 
-      {/* Menu Modal */}
+      {/* Menu Modal — bottom sheet */}
       <Modal visible={menuOpen} transparent animationType="fade">
         <View className="flex-1 justify-end">
-          <Pressable className="absolute inset-0 bg-black/40" onPress={() => setMenuOpen(false)} />
-          <View className="bg-white rounded-t-2xl px-4 pt-4 pb-8 max-h-[70%]">
-          <Text className="text-base font-bold text-slate-800 mb-4">
+          <Pressable className="absolute inset-0 bg-black/50" onPress={() => setMenuOpen(false)} />
+          <View className="bg-white rounded-t-3xl px-5 pt-5 pb-10 max-h-[70%]">
+          <View className="w-10 h-1 rounded-full bg-slate-200 self-center mb-4" />
+          <Text className={TYPO.pageTitle + " mb-4"}>
             {tab === "customers" ? "Customers" : "Vendors"}
           </Text>
           {tab === "customers" ? (
             <>
-              <TouchableOpacity
-                onPress={() => navigateToImport("customers")}
-                className="flex-row items-center gap-3 py-3 border-b border-slate-100"
-              >
+              <Pressable onPress={() => navigateToImport("customers")} className="flex-row items-center gap-3 py-3.5 min-h-[48] border-b border-slate-100" style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
                 <Ionicons name="cloud-upload" size={22} color="#64748b" />
-                <Text className="text-base text-slate-800">Import Customers</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => {
-                  setMenuOpen(false);
-                  Alert.alert("Coming soon", "Merge customers feature is coming soon. You'll be able to combine duplicate customer records.");
-                }}
-                className="flex-row items-center gap-3 py-3 border-b border-slate-100"
-              >
+                <Text className={TYPO.body}>Import Customers</Text>
+              </Pressable>
+              <Pressable onPress={() => { setMenuOpen(false); Alert.alert("Coming soon", "Merge customers feature is coming soon."); }} className="flex-row items-center gap-3 py-3.5 min-h-[48] border-b border-slate-100" style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
                 <Ionicons name="git-merge" size={22} color="#64748b" />
-                <Text className="text-base text-slate-800">Merge Customers</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={exportCustomersCsv}
-                className="flex-row items-center gap-3 py-3 border-b border-slate-100"
-              >
+                <Text className={TYPO.body}>Merge Customers</Text>
+              </Pressable>
+              <Pressable onPress={exportCustomersCsv} className="flex-row items-center gap-3 py-3.5 min-h-[48] border-b border-slate-100" style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
                 <Ionicons name="document-text" size={22} color="#64748b" />
-                <Text className="text-base text-slate-800">Download Excel (CSV)</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={exportCustomersPdf}
-                className="flex-row items-center gap-3 py-3 border-b border-slate-100"
-              >
+                <Text className={TYPO.body}>Download Excel (CSV)</Text>
+              </Pressable>
+              <Pressable onPress={exportCustomersPdf} className="flex-row items-center gap-3 py-3.5 min-h-[48] border-b border-slate-100" style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
                 <Ionicons name="document" size={22} color="#64748b" />
-                <Text className="text-base text-slate-800">Download PDF</Text>
-              </TouchableOpacity>
+                <Text className={TYPO.body}>Download PDF</Text>
+              </Pressable>
             </>
           ) : (
-            <TouchableOpacity
-              onPress={() => navigateToImport("vendors")}
-              className="flex-row items-center gap-3 py-3 border-b border-slate-100"
-            >
+            <Pressable onPress={() => navigateToImport("vendors")} className="flex-row items-center gap-3 py-3.5 min-h-[48] border-b border-slate-100" style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
               <Ionicons name="cloud-upload" size={22} color="#64748b" />
-              <Text className="text-base text-slate-800">Import Vendors</Text>
-            </TouchableOpacity>
+              <Text className={TYPO.body}>Import Vendors</Text>
+            </Pressable>
           )}
-          <TouchableOpacity
-            onPress={() => setMenuOpen(false)}
-            className="mt-4 py-3 rounded-xl border border-slate-200 items-center"
-          >
-            <Text className="text-slate-600 font-medium">Cancel</Text>
-          </TouchableOpacity>
+          <Pressable onPress={() => setMenuOpen(false)} className="mt-5 py-3.5 rounded-xl border border-slate-200 items-center min-h-[44]" style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+            <Text className={TYPO.body}>Cancel</Text>
+          </Pressable>
           </View>
         </View>
       </Modal>
 
-      {/* Add Customer Modal */}
+      {/* Add Customer Modal — KeyboardAvoidingView per React Native docs */}
       <Modal visible={addOpen} transparent animationType="slide">
-        <Pressable className="flex-1 bg-black/40" onPress={() => setAddOpen(false)} />
-        <View className="bg-white rounded-t-3xl px-5 pt-5 pb-8 max-h-[90%]">
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <Text className="text-base font-bold text-slate-800 mb-4">Add Customer</Text>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1 justify-end">
+          <Pressable className="absolute inset-0 bg-black/50" onPress={() => setAddOpen(false)} />
+          <View className="bg-white rounded-t-3xl px-5 pt-5 pb-10 max-h-[90%]">
+          <View className="w-10 h-1 rounded-full bg-slate-200 self-center mb-4" />
+          <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <Text className={TYPO.pageTitle + " mb-4"}>Add Customer</Text>
 
-            <Text className="text-xs font-semibold text-slate-500 mb-1">Name *</Text>
-            <TextInput value={newName} onChangeText={setNewName} placeholder="e.g. Ramesh Kumar" className="border border-slate-200 rounded-xl px-3 h-12 text-base text-slate-800 mb-3" placeholderTextColor="#94a3b8" />
+            <Text className={TYPO.label + " mb-1"}>Name *</Text>
+            <TextInput value={newName} onChangeText={setNewName} placeholder="e.g. Ramesh Kumar" className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800 mb-3" placeholderTextColor="#94a3b8" />
 
-            <Text className="text-xs font-semibold text-slate-500 mb-1">Phone</Text>
-            <TextInput value={newPhone} onChangeText={setNewPhone} placeholder="10-digit mobile" keyboardType="phone-pad" className="border border-slate-200 rounded-xl px-3 h-12 text-base text-slate-800 mb-3" placeholderTextColor="#94a3b8" />
+            <Text className={TYPO.label + " mb-1"}>Phone</Text>
+            <TextInput value={newPhone} onChangeText={setNewPhone} placeholder="10-digit mobile" keyboardType="phone-pad" className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800 mb-3" placeholderTextColor="#94a3b8" />
 
-            <Text className="text-xs font-semibold text-slate-500 mb-1">Email</Text>
-            <TextInput value={newEmail} onChangeText={setNewEmail} placeholder="email@example.com" keyboardType="email-address" className="border border-slate-200 rounded-xl px-3 h-12 text-base text-slate-800 mb-3" placeholderTextColor="#94a3b8" />
+            <Text className={TYPO.label + " mb-1"}>Email</Text>
+            <TextInput value={newEmail} onChangeText={setNewEmail} placeholder="email@example.com" keyboardType="email-address" className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800 mb-3" placeholderTextColor="#94a3b8" />
 
-            <Text className="text-xs font-semibold text-slate-500 mb-1">Nickname</Text>
-            <TextInput value={newNickname} onChangeText={setNewNickname} placeholder="e.g. Ramesh bhai" className="border border-slate-200 rounded-xl px-3 h-12 text-base text-slate-800 mb-3" placeholderTextColor="#94a3b8" />
+            <Text className={TYPO.label + " mb-1"}>Nickname</Text>
+            <TextInput value={newNickname} onChangeText={setNewNickname} placeholder="e.g. Ramesh bhai" className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800 mb-3" placeholderTextColor="#94a3b8" />
 
-            <Text className="text-xs font-semibold text-slate-500 mb-1">Landmark / Area</Text>
-            <TextInput value={newLandmark} onChangeText={setNewLandmark} placeholder="e.g. near Rajiv Chowk" className="border border-slate-200 rounded-xl px-3 h-12 text-base text-slate-800 mb-3" placeholderTextColor="#94a3b8" />
+            <Text className={TYPO.label + " mb-1"}>Landmark / Area</Text>
+            <TextInput value={newLandmark} onChangeText={setNewLandmark} placeholder="e.g. near Rajiv Chowk" className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800 mb-3" placeholderTextColor="#94a3b8" />
 
-            <Text className="text-xs font-semibold text-slate-500 mb-1">Opening Balance ₹</Text>
-            <TextInput value={newOpeningBal} onChangeText={setNewOpeningBal} placeholder="0.00" keyboardType="decimal-pad" className="border border-slate-200 rounded-xl px-3 h-12 text-base text-slate-800 mb-3" placeholderTextColor="#94a3b8" />
+            <Text className={TYPO.label + " mb-1"}>Opening Balance ₹</Text>
+            <TextInput value={newOpeningBal} onChangeText={setNewOpeningBal} placeholder="0.00" keyboardType="decimal-pad" className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800 mb-3" placeholderTextColor="#94a3b8" />
 
-            <Text className="text-xs font-semibold text-slate-500 mb-1">Credit Limit ₹</Text>
-            <TextInput value={newCreditLimit} onChangeText={setNewCreditLimit} placeholder="No limit" keyboardType="decimal-pad" className="border border-slate-200 rounded-xl px-3 h-12 text-base text-slate-800 mb-3" placeholderTextColor="#94a3b8" />
+            <Text className={TYPO.label + " mb-1"}>Credit Limit ₹</Text>
+            <TextInput value={newCreditLimit} onChangeText={setNewCreditLimit} placeholder="No limit" keyboardType="decimal-pad" className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800 mb-3" placeholderTextColor="#94a3b8" />
 
-            <Text className="text-xs font-semibold text-slate-500 mb-1">Notes</Text>
-            <TextInput value={newNotes} onChangeText={setNewNotes} placeholder="Any notes…" multiline className="border border-slate-200 rounded-xl px-3 py-3 text-base text-slate-800 min-h-[60px] mb-3" placeholderTextColor="#94a3b8" />
+            <Text className={TYPO.label + " mb-1"}>Notes</Text>
+            <TextInput value={newNotes} onChangeText={setNewNotes} placeholder="Any notes…" multiline className="border border-slate-200 rounded-xl px-4 py-3 text-base text-slate-800 min-h-[60px] mb-3" placeholderTextColor="#94a3b8" />
 
-            <Text className="text-xs font-semibold text-slate-500 mb-1.5">Tags</Text>
+            <Text className={TYPO.label + " mb-2"}>Tags</Text>
             <View className="flex-row flex-wrap gap-2 mb-4">
-              {CUSTOMER_TAGS.map((tag) => {
+                  {CUSTOMER_TAGS.map((tag) => {
                 const active = newTags.includes(tag);
                 return (
-                  <TouchableOpacity
+                  <Pressable
                     key={tag}
                     onPress={() => toggleTag(tag)}
-                    className={`rounded-full border px-3 py-1.5 ${active ? "border-primary bg-primary/10" : "border-slate-200 bg-slate-50"}`}
+                    className={`rounded-full border px-4 py-2 min-h-[36] items-center justify-center ${active ? "border-primary bg-primary/10" : "border-slate-200 bg-slate-50"}`}
+                    style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
                   >
-                    <Text className={`text-xs font-medium ${active ? "text-primary" : "text-slate-500"}`}>{tag}</Text>
-                  </TouchableOpacity>
+                    <Text className={`text-xs font-semibold ${active ? "text-primary" : "text-slate-500"}`}>{tag}</Text>
+                  </Pressable>
                 );
               })}
             </View>
@@ -777,7 +795,8 @@ export function PartiesScreen({ navigation }: Props) {
               </TouchableOpacity>
             </View>
           </ScrollView>
-        </View>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
