@@ -4,6 +4,8 @@
 **Audit Date**: March 2026  
 **Scope**: ClassicBilling, InvoiceTemplatePreview, PDF generation, API, GSTR-1 export
 
+**See also**: `docs/INVOICE_REQUIREMENTS.md` — full improvement checklist (quick wins, UX, user-requested, competitor parity).
+
 ---
 
 ## Summary
@@ -206,17 +208,29 @@
 9. **Batch/Expiry** — For pharma/FMCG.  
 10. **E-invoice / E-Way** — Planned.
 
+### Invoice UX Improvements (see INVOICE_REQUIREMENTS.md)
+
+11. **Amount in words on PDF** — `toIndianWords()` exists; wire to PDF template. Est: 4h.  
+12. **Total items / total qty** — Add to TotalsBlock in preview + PDF. Est: 2h.  
+13. **"ORIGINAL FOR RECIPIENT"** — Show when B2B. Est: 1h.  
+14. **Supplier email** — Add to Settings; show in PDF footer. Est: 2h.  
+15. **Payment status badge** — "Paid" / "Partial" / "Balance Due" on invoice. Est: 2h.  
+16. **Recipient phone/email** — Optional; useful for delivery. Est: 4h.  
+17. **Buyer PO number** — Optional B2B field. Est: 4h.
+
 ---
 
 ## Files to Audit/Modify
 
 | File | Purpose |
 |------|---------|
-| `apps/web/src/pages/Settings.tsx` | Biz profile: address, city, state, pincode |
-| `packages/infrastructure/src/pdf.ts` | PDF: supplier address, composition text, recipient address |
-| `apps/web/src/components/InvoiceTemplatePreview.tsx` | Preview: supplier address, composition text |
-| `apps/web/src/pages/ClassicBilling.tsx` | Recipient address override when B2B |
+| `apps/web/src/pages/Settings.tsx` | Biz profile: address, city, state, pincode, email |
+| `packages/infrastructure/src/pdf.ts` | PDF: supplier address, composition text, recipient address, amount in words, total items/qty, ORIGINAL FOR RECIPIENT |
+| `apps/web/src/components/InvoiceTemplatePreview.tsx` | Preview: supplier address, composition text, TotalsBlock, payment status |
+| `apps/mobile/src/components/InvoiceTemplatePreview.tsx` | Mobile preview parity |
+| `apps/web/src/pages/ClassicBilling.tsx` | Recipient address override when B2B, buyer PO number |
 
 ---
 
 *Audit based on `docs/INDIAN_GST_BILLING_REFERENCE.md` Section 10 (Complete Invoice Field Reference).*
+*Full requirements: `docs/INVOICE_REQUIREMENTS.md` — quick wins, UX, user-requested, competitor parity.*

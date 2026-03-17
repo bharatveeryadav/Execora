@@ -5,7 +5,9 @@
 > It covers **what we are building, why, for whom, and exactly how** — grounded in real Indian SME use cases.
 >
 > **Maintained by**: Update this document whenever a feature ships, a use case is validated, or competitive landscape shifts.
-> **Version**: 2.9 — 2026-03-12
+> **Version**: 2.10 — 2026-03-17
+>
+> **Invoice requirements**: See `docs/INVOICE_REQUIREMENTS.md` for full improvement checklist (quick wins, GST compliance, user-requested, competitor parity).
 
 ---
 

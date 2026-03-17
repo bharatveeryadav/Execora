@@ -1,5 +1,7 @@
 # Execora — Launch Checklist
-## Last Updated: March 15, 2026
+## Last Updated: March 17, 2026
+
+**Invoice requirements**: See `docs/INVOICE_REQUIREMENTS.md` for full improvement checklist.
 
 ---
 
@@ -120,9 +122,10 @@
 - [ ] **Customer statement / ledger export** — Add `GET /api/v1/customers/:id/statement?from=&to=` returning PDF + CSV. CAs require this weekly. Est: 1 day
 - [ ] **GSTR-1 JSON in official GSTN schema** — Current report is CSV. Build JSON export matching GSTN's official schema (B2B/B2CS/CDNR/HSN sections). Required for GST portal upload. Est: 2 days
 - [ ] **Round-off on invoice total** — Add `roundOff` boolean to invoice; calculate and store `roundOffAmount`; print on PDF. Est: 2h
-- [ ] **Amount in words on PDF** — `ClassicBilling.tsx` shows amount-in-words in UI but `generateInvoicePdf()` does not print it. Add to PDF template. Est: 4h
+- [ ] **Amount in words on PDF** — `ClassicBilling.tsx` shows amount-in-words in UI but `generateInvoicePdf()` does not print it. Add to PDF template. Est: 4h. See `docs/INVOICE_REQUIREMENTS.md` IW-01.
 - [x] ~~**Terms & conditions on invoice**~~ **CONFIRMED BUILT**: `termsAndConditions` in tenant.settings; Settings UI; PDF footer in `packages/infrastructure/src/pdf.ts`
 - [x] ~~WhatsApp auto-send invoice~~ — **CONFIRMED BUILT** (see P0 section above). Just needs Meta env vars.
+- [ ] **Invoice quick wins** — See `docs/INVOICE_REQUIREMENTS.md`: Total items/qty (2h), ORIGINAL FOR RECIPIENT (1h), Payment status badge (2h), Supplier email (2h).
 
 ### 🟡 Important (Build Week 2–4 Post SME Launch)
 

@@ -59,6 +59,8 @@ monitoring/     Prometheus, Grafana, Loki config
 | Doc                                                                        | Purpose                          |
 | -------------------------------------------------------------------------- | -------------------------------- |
 | [FEATURES.md](FEATURES.md)                                                 | Feature overview                 |
+| [INVOICE_REQUIREMENTS.md](INVOICE_REQUIREMENTS.md)                         | Invoice improvement checklist (quick wins, GST, UX, competitor parity) |
+| [INVOICE_GST_COMPLIANCE_AUDIT.md](INVOICE_GST_COMPLIANCE_AUDIT.md)         | Invoice vs Indian GST standard audit |
 | [features/AUDIO_INTEGRATION.md](features/AUDIO_INTEGRATION.md)             | Audio / STT / TTS integration    |
 | [features/CONVERSATION_MEMORY.md](features/CONVERSATION_MEMORY.md)         | Conversation memory architecture |
 | [features/ERROR_HANDLING.md](features/ERROR_HANDLING.md)                   | Error handling patterns          |

@@ -1,7 +1,9 @@
 # Execora — Product Requirements & Sprint Master
-## Consolidated PRD + Sprint Plan | March 2026 (Updated March 15)
+## Consolidated PRD + Sprint Plan | March 2026 (Updated March 17)
 
 > **Purpose**: Single source of truth for all product requirements, organized as sprint-ready user stories. Derived from `PRODUCT_STRATEGY_2026.md`, `PRODUCT_REQUIREMENTS.md`, and `LAUNCH_CHECKLIST.md`.
+>
+> **Invoice requirements**: See `docs/INVOICE_REQUIREMENTS.md` for full improvement checklist (quick wins, GST compliance, user-requested, competitor parity).
 
 ---
 
@@ -124,7 +126,21 @@
 | S14-06 | **GSTR-1 JSON (GSTN schema)** | 2d | JSON export matching GSTN B2B/B2CS/CDNR/HSN. |
 | S14-07 | **Round-off on invoice** | 2h | `roundOff` boolean; `roundOffAmount`; print on PDF. |
 | S14-08 | **Amount in words on PDF** | 4h | Add to PDF template (ClassicBilling has it in UI). |
+| S14-08a | **Total items/qty in totals block** | 2h | Add "Total: X items, Y units" to TotalsBlock in preview + PDF. See INVOICE_REQUIREMENTS.md. |
+| S14-08b | **ORIGINAL FOR RECIPIENT stamp** | 1h | Show when B2B (buyerGstin present). |
+| S14-08c | **Payment status badge** | 2h | "Paid" / "Partial" / "Balance Due" on invoice. |
 | S14-09 | **Terms & conditions** | 4h | ✅ `termsAndConditions` on Tenant; Settings; PDF footer. |
+
+### Invoice Improvements (see docs/INVOICE_REQUIREMENTS.md)
+
+| # | Story | Est. | Notes |
+|---|-------|------|-------|
+| INV-01 | Supplier email on invoice | 2h | Add to Settings; PDF footer |
+| INV-02 | Recipient phone/email | 4h | Optional; delivery |
+| INV-03 | Buyer PO number | 4h | Optional B2B |
+| INV-04 | Template builder (logo, colors, columns) | 2d | S12-05 |
+| INV-05 | E-invoicing (IRN + QR) | 1w | S13-01 |
+| INV-06 | E-Way Bill | 1w | S13-02 |
 
 ### Important (Week 2–4 Post SME)
 

@@ -2225,47 +2225,52 @@ function MobileItemRow({
               <Ionicons name="chevron-up" size={18} color="#64748b" />
             </TouchableOpacity>
           </View>
-          <View className="flex-row gap-2 mb-2">
-            <View className="flex-1">
-              <Text className="text-[10px] text-slate-500 mb-0.5">Qty</Text>
-              <TextInput
-                value={item.qty}
-                onChangeText={(v) => onUpdate({ qty: v })}
-                keyboardType="decimal-pad"
-                className="border border-slate-200 rounded-lg px-2 h-9 text-sm text-center"
-              />
+          {/* 2x2 grid so Qty/Unit/Rate/Disc have room for full text */}
+          <View className="gap-2 mb-2">
+            <View className="flex-row gap-2">
+              <View className="flex-1 min-w-0">
+                <Text className="text-[10px] text-slate-500 mb-0.5">Qty</Text>
+                <TextInput
+                  value={item.qty}
+                  onChangeText={(v) => onUpdate({ qty: v })}
+                  keyboardType="decimal-pad"
+                  className="border border-slate-200 rounded-lg px-2 h-9 text-sm"
+                />
+              </View>
+              <View className="flex-1 min-w-0">
+                <Text className="text-[10px] text-slate-500 mb-0.5">Unit</Text>
+                <TextInput
+                  value={item.unit}
+                  onChangeText={(v) => onUpdate({ unit: v })}
+                  placeholder="pcs"
+                  placeholderTextColor="#94a3b8"
+                  className="border border-slate-200 rounded-lg px-2 h-9 text-sm"
+                />
+              </View>
             </View>
-            <View className="flex-1">
-              <Text className="text-[10px] text-slate-500 mb-0.5">Unit</Text>
-              <TextInput
-                value={item.unit}
-                onChangeText={(v) => onUpdate({ unit: v })}
-                placeholder="pcs"
-                placeholderTextColor="#94a3b8"
-                className="border border-slate-200 rounded-lg px-2 h-9 text-sm"
-              />
-            </View>
-            <View className="flex-1">
-              <Text className="text-[10px] text-slate-500 mb-0.5">Rate ₹</Text>
-              <TextInput
-                value={item.rate}
-                onChangeText={(v) => onUpdate({ rate: v })}
-                keyboardType="decimal-pad"
-                placeholder="0"
-                placeholderTextColor="#94a3b8"
-                className="border border-slate-200 rounded-lg px-2 h-9 text-sm"
-              />
-            </View>
-            <View className="flex-1">
-              <Text className="text-[10px] text-slate-500 mb-0.5">Disc %</Text>
-              <TextInput
-                value={item.discount}
-                onChangeText={(v) => onUpdate({ discount: v })}
-                keyboardType="decimal-pad"
-                placeholder="0"
-                placeholderTextColor="#94a3b8"
-                className="border border-slate-200 rounded-lg px-2 h-9 text-sm"
-              />
+            <View className="flex-row gap-2">
+              <View className="flex-1 min-w-0">
+                <Text className="text-[10px] text-slate-500 mb-0.5">Rate ₹</Text>
+                <TextInput
+                  value={item.rate}
+                  onChangeText={(v) => onUpdate({ rate: v })}
+                  keyboardType="decimal-pad"
+                  placeholder="0"
+                  placeholderTextColor="#94a3b8"
+                  className="border border-slate-200 rounded-lg px-2 h-9 text-sm"
+                />
+              </View>
+              <View className="flex-1 min-w-0">
+                <Text className="text-[10px] text-slate-500 mb-0.5">Disc %</Text>
+                <TextInput
+                  value={item.discount}
+                  onChangeText={(v) => onUpdate({ discount: v })}
+                  keyboardType="decimal-pad"
+                  placeholder="0"
+                  placeholderTextColor="#94a3b8"
+                  className="border border-slate-200 rounded-lg px-2 h-9 text-sm"
+                />
+              </View>
             </View>
           </View>
           <View className="flex-row items-center justify-between">
