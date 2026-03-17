@@ -14,55 +14,10 @@ import {
   Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { storage, DOC_SETTINGS_KEY, INV_TEMPLATE_KEY, BIZ_STORAGE_KEY } from "../lib/storage";
-import {
-  TEMPLATES,
-  InvoiceTemplatePreview,
-  TemplateThumbnail,
-  type TemplateId,
-  type PreviewData,
-} from "../components/InvoiceTemplatePreview";
-
-const SAMPLE_ITEMS: PreviewData["items"] = [
-  { name: "Rice 1kg", qty: 5, unit: "pcs", rate: 80, discount: 0, amount: 400, hsnCode: "1006" },
-  { name: "Dal Toor 500g", qty: 3, unit: "pcs", rate: 120, discount: 5, amount: 342, hsnCode: "1904" },
-  { name: "Oil Sunflower 1L", qty: 2, unit: "pcs", rate: 180, discount: 0, amount: 360, hsnCode: "1507" },
-];
-
-const SAMPLE_INVOICE: PreviewData = {
-  invoiceNo: "INV-2024-001",
-  date: "14-Mar-2025",
-  shopName: "My Store",
-  customerName: "Ramesh Kumar",
-  supplierGstin: "07ABCDE1234F1Z5",
-  supplierAddress: "123 Main St, Bangalore, Karnataka 560001",
-  recipientAddress: "45 MG Road, Bangalore 560001",
-  items: SAMPLE_ITEMS,
-  subtotal: 1102,
-  discountAmt: 55,
-  cgst: 52.35,
-  sgst: 52.35,
-  total: 1151.7,
-  amountInWords: "One Thousand One Hundred Fifty One Rupees Seventy Paise Only",
-  paymentMode: "UPI",
-  notes: "Thank you for your business!",
-  gstin: "29XYZAB5678K1Z2",
-};
-
-const SAMPLE_PURCHASE: PreviewData = {
-  ...SAMPLE_INVOICE,
-  shopName: "ABC Suppliers Pvt Ltd",
-  customerName: "My Store",
-  supplierAddress: "456 Industrial Area, Bangalore 560058",
-  recipientAddress: "123 Main St, Bangalore 560001",
-};
-
-const SAMPLE_QUOTATION: PreviewData = {
-  ...SAMPLE_INVOICE,
-  invoiceNo: "QT-2024-042",
-};
+import { TEMPLATES, type TemplateId } from "../components/InvoiceTemplatePreview";
 
 export interface DocumentSettings {
   themeColor: string;
@@ -206,8 +161,6 @@ export function DocumentSettingsScreen() {
   const navigation = useNavigation();
   const [settings, save] = useDocumentSettings();
   const [invoiceTemplate, setInvoiceTemplate] = useState<TemplateId>("classic");
-  const [showTemplateModal, setShowTemplateModal] = useState(false);
-  const [templateTab, setTemplateTab] = useState<"invoice" | "purchase" | "quotation">("invoice");
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showFontSizeModal, setShowFontSizeModal] = useState(false);
   const [showFontStyleModal, setShowFontStyleModal] = useState(false);
@@ -215,27 +168,12 @@ export function DocumentSettingsScreen() {
   const [showDecimalsModal, setShowDecimalsModal] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
-  useEffect(() => {
-    const t = storage.getString(INV_TEMPLATE_KEY) as TemplateId | undefined;
-    if (t && TEMPLATES.some((x) => x.id === t)) setInvoiceTemplate(t);
-  }, []);
-
-  const handleTemplateSelect = (t: TemplateId) => {
-    setInvoiceTemplate(t);
-    storage.set(INV_TEMPLATE_KEY, t);
-    const stored = (() => {
-      try {
-        const raw = storage.getString(BIZ_STORAGE_KEY);
-        return raw ? JSON.parse(raw) : {};
-      } catch {
-        return {};
-      }
-    })();
-    stored.invoiceTemplate = t;
-    storage.set(BIZ_STORAGE_KEY, JSON.stringify(stored));
-    setShowTemplateModal(false);
-    setHasChanges(true);
-  };
+  useFocusEffect(
+    useCallback(() => {
+      const t = storage.getString(INV_TEMPLATE_KEY) as TemplateId | undefined;
+      if (t && TEMPLATES.some((x) => x.id === t)) setInvoiceTemplate(t);
+    }, []),
+  );
 
   const handleUpdate = () => {
     setHasChanges(false);
@@ -247,7 +185,7 @@ export function DocumentSettingsScreen() {
       <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Document Templates — Invoice, Purchase, Quotation */}
         <TouchableOpacity
-          onPress={() => setShowTemplateModal(true)}
+          onPress={() => (navigation as any).navigate("DocumentTemplates")}
           className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200"
         >
           <View className="flex-row items-center justify-between">
@@ -468,103 +406,6 @@ export function DocumentSettingsScreen() {
           </Text>
         </TouchableOpacity>
       </View>
-
-      {/* Document Templates Modal — Invoice | Purchase | Quotation */}
-      <Modal visible={showTemplateModal} transparent animationType="slide">
-        <Pressable className="flex-1 bg-black/40" onPress={() => setShowTemplateModal(false)} />
-        <View className="bg-white rounded-t-3xl max-h-[90%] flex-1">
-          <View className="px-5 py-4 border-b border-slate-200">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-lg font-bold text-slate-800">Document Templates</Text>
-              <TouchableOpacity onPress={() => setShowTemplateModal(false)}>
-                <Ionicons name="close" size={24} color="#64748b" />
-              </TouchableOpacity>
-            </View>
-            <Text className="text-xs text-slate-500 mt-0.5">
-              Same templates for invoices, purchase orders, and quotations
-            </Text>
-          </View>
-          {/* Tabs */}
-          <View className="flex-row border-b border-slate-200">
-            <TouchableOpacity
-              onPress={() => setTemplateTab("invoice")}
-              className={`flex-1 py-3 flex-row items-center justify-center gap-1.5 ${templateTab === "invoice" ? "border-b-2 border-primary" : ""}`}
-            >
-              <Ionicons name="document-text-outline" size={18} color={templateTab === "invoice" ? "#e67e22" : "#64748b"} />
-              <Text className={`font-medium text-sm ${templateTab === "invoice" ? "text-primary" : "text-slate-600"}`}>
-                Invoice
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setTemplateTab("purchase")}
-              className={`flex-1 py-3 flex-row items-center justify-center gap-1.5 ${templateTab === "purchase" ? "border-b-2 border-primary" : ""}`}
-            >
-              <Ionicons name="cube-outline" size={18} color={templateTab === "purchase" ? "#e67e22" : "#64748b"} />
-              <Text className={`font-medium text-sm ${templateTab === "purchase" ? "text-primary" : "text-slate-600"}`}>
-                Purchase
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setTemplateTab("quotation")}
-              className={`flex-1 py-3 flex-row items-center justify-center gap-1.5 ${templateTab === "quotation" ? "border-b-2 border-primary" : ""}`}
-            >
-              <Ionicons name="chatbubble-ellipses-outline" size={18} color={templateTab === "quotation" ? "#e67e22" : "#64748b"} />
-              <Text className={`font-medium text-sm ${templateTab === "quotation" ? "text-primary" : "text-slate-600"}`}>
-                Quotation
-              </Text>
-            </TouchableOpacity>
-          </View>
-          {/* Tab content */}
-          <ScrollView className="flex-1 px-4 py-4" showsVerticalScrollIndicator={true}>
-            {templateTab === "invoice" && (
-              <View className="gap-6 pb-4">
-                {TEMPLATES.map((t) => (
-                  <View key={t.id} className="gap-1">
-                    <View className="flex-row items-center justify-between">
-                      <Text className="font-semibold text-slate-800">{t.label}</Text>
-                      <TouchableOpacity
-                        onPress={() => handleTemplateSelect(t.id)}
-                        className={`px-3 py-1.5 rounded-full border ${invoiceTemplate === t.id ? "border-primary bg-primary/10" : "border-slate-300"}`}
-                      >
-                        <Text className={`text-xs font-medium ${invoiceTemplate === t.id ? "text-primary" : "text-slate-600"}`}>
-                          {invoiceTemplate === t.id ? "Selected" : "Use this"}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                    <View className="rounded-xl border border-slate-200 bg-slate-50/50 p-2 overflow-hidden">
-                      <InvoiceTemplatePreview template={t.id} data={SAMPLE_INVOICE} />
-                    </View>
-                  </View>
-                ))}
-              </View>
-            )}
-            {templateTab === "purchase" && (
-              <View className="gap-6 pb-4">
-                {TEMPLATES.map((t) => (
-                  <View key={t.id} className="gap-1">
-                    <Text className="font-semibold text-slate-800">{t.label}</Text>
-                    <View className="rounded-xl border border-slate-200 bg-slate-50/50 p-2 overflow-hidden">
-                      <InvoiceTemplatePreview template={t.id} data={SAMPLE_PURCHASE} />
-                    </View>
-                  </View>
-                ))}
-              </View>
-            )}
-            {templateTab === "quotation" && (
-              <View className="gap-6 pb-4">
-                {TEMPLATES.map((t) => (
-                  <View key={t.id} className="gap-1">
-                    <Text className="font-semibold text-slate-800">{t.label}</Text>
-                    <View className="rounded-xl border border-slate-200 bg-slate-50/50 p-2 overflow-hidden">
-                      <InvoiceTemplatePreview template={t.id} data={SAMPLE_QUOTATION} />
-                    </View>
-                  </View>
-                ))}
-              </View>
-            )}
-          </ScrollView>
-        </View>
-      </Modal>
 
       {/* Language Modal */}
       <Modal visible={showLanguageModal} transparent animationType="fade">

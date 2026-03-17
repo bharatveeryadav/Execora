@@ -43,6 +43,7 @@ import { PurchaseOrdersScreen } from "../screens/PurchaseOrdersScreen";
 import { IndirectIncomeScreen } from "../screens/IndirectIncomeScreen";
 import { CompanyProfileScreen } from "../screens/CompanyProfileScreen";
 import { DocumentSettingsScreen } from "../screens/DocumentSettingsScreen";
+import { DocumentTemplatesScreen } from "../screens/DocumentTemplatesScreen";
 
 // ── Param lists ───────────────────────────────────────────────────────────────
 
@@ -86,6 +87,7 @@ export type MoreStackParams = {
   Monitoring: undefined;
   Settings: undefined;
   DocumentSettings: undefined;
+  DocumentTemplates: undefined;
   ComingSoon: { title?: string; emoji?: string };
   Feedback: undefined;
   Expiry: undefined;
@@ -326,6 +328,7 @@ function MoreNavigator() {
       <MoreStack.Screen name="Tutorial" component={ComingSoonScreen} initialParams={{ title: "Tutorial" }} options={{ title: "Tutorial" }} />
       <MoreStack.Screen name="Settings" component={SettingsScreen} options={{ title: "Settings" }} />
       <MoreStack.Screen name="DocumentSettings" component={DocumentSettingsScreen} options={{ title: "Document Settings" }} />
+      <MoreStack.Screen name="DocumentTemplates" component={DocumentTemplatesScreen} options={{ title: "Document Templates" }} />
       <MoreStack.Screen
         name="ComingSoon"
         component={ComingSoonScreen}
