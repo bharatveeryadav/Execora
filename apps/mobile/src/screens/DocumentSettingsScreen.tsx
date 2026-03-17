@@ -17,7 +17,34 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { storage, DOC_SETTINGS_KEY, INV_TEMPLATE_KEY, BIZ_STORAGE_KEY } from "../lib/storage";
-import { TEMPLATES, type TemplateId } from "../components/InvoiceTemplatePreview";
+import {
+  TEMPLATES,
+  InvoicePreviewThumbnail,
+  type TemplateId,
+  type PreviewData,
+} from "../components/InvoiceTemplatePreview";
+
+const SAMPLE_PREVIEW: PreviewData = {
+  invoiceNo: "INV-001",
+  date: "14-Mar-2025",
+  shopName: "My Store",
+  customerName: "Ramesh Kumar",
+  supplierGstin: "07ABCDE1234F1Z5",
+  supplierAddress: "123 Main St, Bangalore",
+  recipientAddress: "45 MG Road, Bangalore",
+  items: [
+    { name: "Rice 1kg", qty: 5, unit: "pcs", rate: 80, discount: 0, amount: 400, hsnCode: "1006" },
+    { name: "Dal 500g", qty: 2, unit: "pcs", rate: 120, discount: 0, amount: 240, hsnCode: "1904" },
+  ],
+  subtotal: 640,
+  discountAmt: 0,
+  cgst: 30.4,
+  sgst: 30.4,
+  total: 700.8,
+  amountInWords: "Seven Hundred Rupees Only",
+  paymentMode: "UPI",
+  gstin: "29XYZAB5678K1Z2",
+};
 
 export interface DocumentSettings {
   themeColor: string;
@@ -188,13 +215,23 @@ export function DocumentSettingsScreen() {
           onPress={() => (navigation as any).navigate("DocumentTemplates")}
           className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200"
         >
-          <View className="flex-row items-center justify-between">
-            <View className="flex-1">
+          <View className="flex-row items-center gap-4">
+            {/* Demo invoice preview thumbnail (left) — shows selected template */}
+            <InvoicePreviewThumbnail
+              template={invoiceTemplate}
+              data={SAMPLE_PREVIEW}
+              width={72}
+              height={96}
+            />
+            <View className="flex-1 min-w-0">
               <Text className="font-semibold text-slate-800">Document Templates</Text>
               <Text className="text-sm text-slate-500 mt-0.5">
                 Invoice, Purchase, Quotation — 7 ready templates
               </Text>
-              <Text className="text-sm text-primary font-medium mt-1">
+              <Text
+                className="text-sm font-medium mt-1"
+                style={{ color: TEMPLATES.find((t) => t.id === invoiceTemplate)?.color ?? "#16a34a" }}
+              >
                 {TEMPLATES.find((t) => t.id === invoiceTemplate)?.label ?? "Classic"}
               </Text>
             </View>

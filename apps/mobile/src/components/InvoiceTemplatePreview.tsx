@@ -420,6 +420,57 @@ export function InvoiceTemplatePreview({
   );
 }
 
+/** Compact invoice preview thumbnail for settings/cards — shows actual template */
+export function InvoicePreviewThumbnail({
+  template,
+  data,
+  width = 72,
+  height = 96,
+}: {
+  template: TemplateId;
+  data: PreviewData;
+  width?: number;
+  height?: number;
+}) {
+  const scale = Math.min(width / 320, height / 200, 0.28);
+  const origW = 320;
+  const origH = 200;
+  const translateX = -(origW * (1 - scale)) / 2;
+  const translateY = -(origH * (1 - scale)) / 2;
+  return (
+    <View
+      style={{
+        width,
+        height,
+        borderRadius: 8,
+        overflow: "hidden",
+        backgroundColor: "#fff",
+        borderWidth: 1,
+        borderColor: "#e2e8f0",
+      }}
+    >
+      <View
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          transform: [{ translateX }, { translateY }, { scale }],
+        }}
+      >
+        <PreviewSettingsContext.Provider value={{}}>
+          {template === "classic" && <ClassicPreview d={data} />}
+          {template === "modern" && <ModernPreview d={data} />}
+          {template === "vyapari" && <VyapariPreview d={data} />}
+          {template === "thermal" && <ThermalPreview d={data} />}
+          {template === "ecom" && <EcomPreview d={data} />}
+          {template === "flipkart" && <FlipkartPreview d={data} />}
+          {template === "minimal" && <MinimalPreview d={data} />}
+        </PreviewSettingsContext.Provider>
+      </View>
+    </View>
+  );
+}
+
 /** Template thumbnail for picker */
 export function TemplateThumbnail({
   template,
