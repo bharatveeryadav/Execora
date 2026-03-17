@@ -46,6 +46,8 @@ export interface InvoiceOptions {
   discountPercent?: number;
   /** Bill-level flat discount (overrides discountPercent if both provided). */
   discountAmount?: number;
+  /** Invoice tags (e.g. B2B, B2C, COD, Urgent) — shown on PDF. */
+  tags?: string[];
   /** Enable GST calculation on line items. Default false (non-GST/retail billing). */
   withGst?: boolean;
   /** INTRASTATE = CGST+SGST; INTERSTATE = IGST. Defaults to INTRASTATE. */
@@ -712,6 +714,7 @@ class InvoiceService {
             recipientAddress: opts.recipientAddress ?? null,
             reverseCharge: opts.reverseCharge ?? false,
             notes,
+            tags: opts.tags ?? [],
             items: {
               create: resolvedItems.map((i) => ({
                 productId: i.productId,
@@ -1430,6 +1433,7 @@ class InvoiceService {
           bankIfsc,
           bankAccountHolder,
           termsAndConditions,
+          tags: (invoice as { tags?: string[] }).tags ?? [],
         });
       } catch (err) {
         log.error({ err }, "PDF generation failed — skipping email");

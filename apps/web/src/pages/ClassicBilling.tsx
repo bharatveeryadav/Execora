@@ -38,6 +38,7 @@ import {
   Smartphone,
   CreditCard,
   Wallet,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -242,6 +243,12 @@ function saveRecentId(id: string) {
 }
 
 const DRAFT_KEY = "cb_billing_draft_v1";
+const INVOICE_BAR_KEY = "cb_invoice_bar_v1";
+
+type DocumentTitle = "invoice" | "billOfSupply";
+type DiscountOnType = "unit_price" | "price_with_tax" | "net_amount" | "total_amount";
+
+const DUE_DATE_PRESETS = [15, 30, 60] as const;
 
 // ── Main component ───────────────────────────────────────────────────────────
 
@@ -410,6 +417,59 @@ export default function ClassicBilling() {
   const [draftBanner, setDraftBanner] = useState(false);
   const [billingSetupExpanded, setBillingSetupExpanded] = useState(false);
   const [invoiceStyleExpanded, setInvoiceStyleExpanded] = useState(false);
+  const [showInvoiceBarEdit, setShowInvoiceBarEdit] = useState(false);
+
+  // ── Invoice bar (Indian standard) — persisted to localStorage ─────────────
+  const readInvoiceBar = useCallback(() => {
+    try {
+      return JSON.parse(localStorage.getItem(INVOICE_BAR_KEY) ?? "{}") as Record<string, unknown>;
+    } catch { return {}; }
+  }, []);
+  const [invoicePrefix, setInvoicePrefix] = useState(() =>
+    (readInvoiceBar().invoicePrefix as string) ?? "INV-",
+  );
+  const [documentDate, setDocumentDate] = useState(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return (readInvoiceBar().documentDate as string) ?? today;
+  });
+  const [dueDateDays, setDueDateDays] = useState<number | "custom">(() => {
+    const v = readInvoiceBar().dueDateDays;
+    return v === "custom" || (typeof v === "number" && [15, 30, 60].includes(v))
+      ? (v as number | "custom")
+      : 15;
+  });
+  const [customDueDays, setCustomDueDays] = useState(() =>
+    String((readInvoiceBar().customDueDays as number) ?? 45),
+  );
+  const [documentTitle, setDocumentTitle] = useState<DocumentTitle>(() => {
+    const v = readInvoiceBar().documentTitle as string;
+    return v === "billOfSupply" ? "billOfSupply" : "invoice";
+  });
+  const [discountOnType, setDiscountOnType] = useState<DiscountOnType>(() => {
+    const v = readInvoiceBar().discountOnType as string;
+    return ["unit_price", "price_with_tax", "net_amount", "total_amount"].includes(v)
+      ? (v as DiscountOnType)
+      : "net_amount";
+  });
+
+  const persistInvoiceBar = useCallback(() => {
+    const stored = readInvoiceBar();
+    stored.invoicePrefix = invoicePrefix;
+    stored.documentDate = documentDate;
+    stored.dueDateDays = dueDateDays;
+    stored.customDueDays = parseInt(customDueDays, 10) || 15;
+    stored.documentTitle = documentTitle;
+    stored.discountOnType = discountOnType;
+    localStorage.setItem(INVOICE_BAR_KEY, JSON.stringify(stored));
+  }, [invoicePrefix, documentDate, dueDateDays, customDueDays, documentTitle, discountOnType, readInvoiceBar]);
+
+  const computedDueDate = useMemo(() => {
+    const base = new Date(documentDate);
+    const days = dueDateDays === "custom" ? (parseInt(customDueDays, 10) || 0) : dueDateDays;
+    if (days <= 0) return "";
+    base.setDate(base.getDate() + days);
+    return base.toISOString().slice(0, 10);
+  }, [documentDate, dueDateDays, customDueDays]);
 
   // Sync billing setup from localStorage when returning from Settings (e.g. visibility change)
   useEffect(() => {
@@ -472,11 +532,12 @@ export default function ClassicBilling() {
     [items],
   );
 
+  // Discount: net_amount = on subtotal (default). Other types (total_amount, etc.) can be extended.
   const discountAmt = useMemo(() => {
     if (discountPct && parseFloat(discountPct) > 0)
       return Math.round(subtotal * (parseFloat(discountPct) / 100) * 100) / 100;
     if (discountFlat && parseFloat(discountFlat) > 0)
-      return parseFloat(discountFlat);
+      return Math.min(parseFloat(discountFlat), subtotal);
     return 0;
   }, [subtotal, discountPct, discountFlat]);
 
@@ -585,8 +646,8 @@ export default function ClassicBilling() {
 
   // ── Preview data ──────────────────────────────────────────────────────
   const previewData: PreviewData = {
-    invoiceNo: "DRAFT",
-    date: new Date().toLocaleDateString("en-IN"),
+    invoiceNo: `${invoicePrefix}DRAFT`,
+    date: new Date(documentDate).toLocaleDateString("en-IN"),
     shopName,
     customerName: selectedCustomer?.name ?? "Walk-in Customer",
     ...(supplierGstin && { supplierGstin }),
@@ -788,10 +849,11 @@ export default function ClassicBilling() {
       const walkIn = await createWalkIn.mutateAsync();
       customerId = walkIn.id;
     }
+    const effectiveDueDate = computedDueDate || dueDate;
     const notesWithDue = [
       notes.trim(),
-      dueDate
-        ? `Due: ${new Date(dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}`
+      effectiveDueDate
+        ? `Due: ${new Date(effectiveDueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}`
         : "",
     ]
       .filter(Boolean)
@@ -1128,6 +1190,59 @@ export default function ClassicBilling() {
             ))}
           </div>
         </div>
+
+        {/* ── Invoice Bar (Indian standard — click to edit) ───────────── */}
+        <button
+          type="button"
+          onClick={() => setShowInvoiceBarEdit(true)}
+          className="w-full flex items-center gap-3 rounded-xl border-2 border-border/80 bg-card px-4 py-3 text-left hover:border-primary/40 hover:bg-muted/30 transition-colors"
+        >
+          <div className="flex-1 min-w-0 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1">
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                {documentTitle === "billOfSupply" ? "Bill of Supply" : "Invoice"} #
+              </p>
+              <p className="text-sm font-bold truncate">
+                {invoicePrefix}DRAFT
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                Document Date
+              </p>
+              <p className="text-sm font-medium">
+                {new Date(documentDate).toLocaleDateString("en-IN", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                Due Date
+              </p>
+              <p className="text-sm font-medium">
+                {computedDueDate
+                  ? new Date(computedDueDate).toLocaleDateString("en-IN", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })
+                  : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                Discount on
+              </p>
+              <p className="text-sm font-medium capitalize">
+                {discountOnType.replace(/_/g, " ")}
+              </p>
+            </div>
+          </div>
+          <Pencil className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </button>
 
         {/* ── Customer Search ──────────────────────────────────────── */}
         <div className="cust-wrap space-y-1.5">
@@ -1828,11 +1943,11 @@ export default function ClassicBilling() {
                     <span className="font-medium">{selectedCustomer.name}</span>
                   </div>
                 )}
-                {dueDate && (
+                {(computedDueDate || dueDate) && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Due</span>
                     <span className="font-medium">
-                      {new Date(dueDate).toLocaleDateString("en-IN", {
+                      {new Date(computedDueDate || dueDate).toLocaleDateString("en-IN", {
                         day: "2-digit",
                         month: "short",
                         year: "numeric",
@@ -1849,7 +1964,7 @@ export default function ClassicBilling() {
               </div>
               {selectedCustomer?.phone && (
                 <a
-                  href={`https://wa.me/91${selectedCustomer.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Invoice #${savedInvoice.no}\nAmount: ₹${inr(savedInvoice.total)}\nFrom: My Shop${dueDate ? `\nDue: ${new Date(dueDate).toLocaleDateString("en-IN")}` : ""}`)}`}
+                  href={`https://wa.me/91${selectedCustomer.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Invoice #${savedInvoice.no}\nAmount: ₹${inr(savedInvoice.total)}\nFrom: My Shop${(computedDueDate || dueDate) ? `\nDue: ${new Date(computedDueDate || dueDate).toLocaleDateString("en-IN")}` : ""}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full flex items-center justify-center gap-2 rounded-xl bg-success hover:bg-success/90 text-success-foreground font-semibold py-2.5 text-sm transition-colors"
@@ -1906,6 +2021,162 @@ export default function ClassicBilling() {
         </Dialog>
       )}
 
+
+      {/* ── Invoice Bar Edit Dialog ───────────────────────────────────── */}
+      <Dialog open={showInvoiceBarEdit} onOpenChange={setShowInvoiceBarEdit}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Invoice Details
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-1">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Invoice Prefix
+              </label>
+              <Input
+                value={invoicePrefix}
+                onChange={(e) => setInvoicePrefix(e.target.value)}
+                placeholder="e.g. INV-, BOS-"
+                maxLength={16}
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Shown before invoice number (actual # generated on save)
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Document Date
+                </label>
+                <input
+                  type="date"
+                  value={documentDate}
+                  onChange={(e) => setDocumentDate(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Due Date (days)
+                </label>
+                <div className="flex gap-1">
+                  {DUE_DATE_PRESETS.map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setDueDateDays(d)}
+                      className={`flex-1 rounded-lg border border-input px-2 py-2 text-xs font-medium ${
+                        dueDateDays === d
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "hover:bg-muted/60"
+                      }`}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setDueDateDays("custom")}
+                    className={`flex-1 rounded-lg border border-input px-2 py-2 text-xs font-medium ${
+                      dueDateDays === "custom"
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "hover:bg-muted/60"
+                    }`}
+                  >
+                    Custom
+                  </button>
+                </div>
+                {dueDateDays === "custom" && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={365}
+                      value={customDueDays}
+                      onChange={(e) => setCustomDueDays(e.target.value)}
+                      className="h-9 w-20"
+                    />
+                    <span className="text-xs text-muted-foreground">days</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Document Title
+              </label>
+              <div className="flex gap-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="documentTitle"
+                    checked={documentTitle === "invoice"}
+                    onChange={() => setDocumentTitle("invoice")}
+                    className="rounded-full"
+                  />
+                  <span className="text-sm">Invoice</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="documentTitle"
+                    checked={documentTitle === "billOfSupply"}
+                    onChange={() => setDocumentTitle("billOfSupply")}
+                    className="rounded-full"
+                  />
+                  <span className="text-sm">Bill of Supply</span>
+                </label>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Bill of Supply = for exempt/composition scheme (no GST)
+              </p>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Discount on (base for bill discount)
+              </label>
+              <select
+                value={discountOnType}
+                onChange={(e) => setDiscountOnType(e.target.value as DiscountOnType)}
+                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="unit_price">Unit Price</option>
+                <option value="price_with_tax">Price with Tax</option>
+                <option value="net_amount">Net Amount</option>
+                <option value="total_amount">Total Amount</option>
+              </select>
+              <p className="text-[10px] text-muted-foreground">
+                Base on which discount % or ₹ is applied
+              </p>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowInvoiceBarEdit(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={() => {
+                  persistInvoiceBar();
+                  setShowInvoiceBarEdit(false);
+                  if (documentTitle === "billOfSupply") {
+                    setCompositionScheme(true);
+                    setWithGst(false);
+                  }
+                }}
+              >
+                Save
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ── New Customer Dialog ────────────────────────────────────── */}
       <Dialog open={showNewCustDialog} onOpenChange={setShowNewCustDialog}>

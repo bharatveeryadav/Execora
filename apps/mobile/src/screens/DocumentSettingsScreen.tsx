@@ -23,28 +23,26 @@ import {
   type TemplateId,
   type PreviewData,
 } from "../components/InvoiceTemplatePreview";
+import { DEMO_KIRANA, type DemoInvoiceData } from "@execora/shared";
 
-const SAMPLE_PREVIEW: PreviewData = {
-  invoiceNo: "INV-001",
-  date: "14-Mar-2025",
-  shopName: "My Store",
-  customerName: "Ramesh Kumar",
-  supplierGstin: "07ABCDE1234F1Z5",
-  supplierAddress: "123 Main St, Bangalore",
-  recipientAddress: "45 MG Road, Bangalore",
-  items: [
-    { name: "Rice 1kg", qty: 5, unit: "pcs", rate: 80, discount: 0, amount: 400, hsnCode: "1006" },
-    { name: "Dal 500g", qty: 2, unit: "pcs", rate: 120, discount: 0, amount: 240, hsnCode: "1904" },
-  ],
-  subtotal: 640,
-  discountAmt: 0,
-  cgst: 30.4,
-  sgst: 30.4,
-  total: 700.8,
-  amountInWords: "Seven Hundred Rupees Only",
-  paymentMode: "UPI",
-  gstin: "29XYZAB5678K1Z2",
-};
+function toPreviewData(d: DemoInvoiceData): PreviewData {
+  return {
+    ...d,
+    cgst: d.cgst ?? 0,
+    sgst: d.sgst ?? 0,
+    items: d.items.map((i) => ({
+      name: i.name,
+      qty: i.qty,
+      unit: i.unit,
+      rate: i.rate,
+      discount: i.discount,
+      amount: i.amount,
+      hsnCode: i.hsnCode,
+    })),
+  };
+}
+
+const SAMPLE_PREVIEW = toPreviewData(DEMO_KIRANA);
 
 export interface DocumentSettings {
   themeColor: string;
@@ -220,8 +218,8 @@ export function DocumentSettingsScreen() {
             <InvoicePreviewThumbnail
               template={invoiceTemplate}
               data={SAMPLE_PREVIEW}
-              width={72}
-              height={96}
+              width={88}
+              height={120}
             />
             <View className="flex-1 min-w-0">
               <Text className="font-semibold text-slate-800">Document Templates</Text>

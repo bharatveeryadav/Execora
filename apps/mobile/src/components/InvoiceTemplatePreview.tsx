@@ -3,7 +3,7 @@
  * Matches web InvoiceTemplatePreview (7 templates).
  */
 import React, { createContext, useContext } from "react";
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Image } from "react-native";
 
 export interface PreviewSettings {
   themeColor?: string;
@@ -22,7 +22,14 @@ export type TemplateId =
   | "thermal"
   | "ecom"
   | "flipkart"
-  | "minimal";
+  | "minimal"
+  | "amazon"
+  | "tata"
+  | "dmart"
+  | "nike"
+  | "instagram"
+  | "unilever"
+  | "service";
 
 export const TEMPLATES: Array<{
   id: TemplateId;
@@ -37,6 +44,13 @@ export const TEMPLATES: Array<{
   { id: "ecom", label: "E-Com", desc: "Amazon-style", color: "#ff9900" },
   { id: "flipkart", label: "Flipkart", desc: "Blue e-com", color: "#2874f0" },
   { id: "minimal", label: "Minimal", desc: "Typography", color: "#6d28d9" },
+  { id: "amazon", label: "Amazon", desc: "E-commerce", color: "#ff9900" },
+  { id: "tata", label: "Tata", desc: "Corporate", color: "#0066b3" },
+  { id: "dmart", label: "DMart", desc: "Retail", color: "#e31837" },
+  { id: "nike", label: "Nike", desc: "Sportswear", color: "#111827" },
+  { id: "instagram", label: "Instagram", desc: "Landscape", color: "#e4405f" },
+  { id: "unilever", label: "Unilever", desc: "FMCG", color: "#0066b3" },
+  { id: "service", label: "Service", desc: "Bill To / Ship To", color: "#059669" },
 ];
 
 export interface PreviewItem {
@@ -47,6 +61,7 @@ export interface PreviewItem {
   discount: number;
   amount: number;
   hsnCode?: string;
+  mrp?: number;
 }
 
 export interface PreviewData {
@@ -71,6 +86,17 @@ export interface PreviewData {
   upiId?: string;
   gstin?: string;
   reverseCharge?: boolean;
+  tags?: string[];
+  logoPlaceholder?: string;
+  shipToAddress?: string;
+  themeLabel?: string;
+  placeOfSupply?: string;
+  dueDate?: string;
+  upiId?: string;
+  bankName?: string;
+  bankAccountNo?: string;
+  bankIfsc?: string;
+  bankBranch?: string;
 }
 
 const formatInr = (n: number, decimals = 2) =>
@@ -86,14 +112,24 @@ function TotalsBlock({
   d,
   accentColor = "#374151",
   thermal = false,
+  showTotalItems = false,
 }: {
   d: PreviewData;
   accentColor?: string;
   thermal?: boolean;
+  showTotalItems?: boolean;
 }) {
   const fmt = useFormatInr();
+  const totalQty = d.items.reduce((s, i) => s + i.qty, 0);
   return (
     <View style={[styles.totalsBlock, thermal && styles.totalsBlockThermal]}>
+      {showTotalItems && !thermal && (
+        <View style={styles.totalsRow}>
+          <Text style={styles.totalsLabel}>
+            Total Items / Qty: {d.items.length} / {totalQty.toFixed(3)}
+          </Text>
+        </View>
+      )}
       <View style={styles.totalsRow}>
         <Text style={thermal ? styles.thermalText : styles.totalsLabel}>Subtotal</Text>
         <Text style={thermal ? styles.thermalText : styles.totalsValue}>{fmt(d.subtotal)}</Text>
@@ -163,6 +199,9 @@ function ClassicPreview({ d }: { d: PreviewData }) {
         <View style={{ alignItems: "flex-end" }}>
           <Text style={styles.metaBold}>Invoice #: {d.invoiceNo}</Text>
           <Text style={styles.metaBold}>Date: {d.date}</Text>
+          {d.tags && d.tags.length > 0 && (
+            <Text style={[styles.metaSmall, { marginTop: 2 }]}>{d.tags.join(" • ")}</Text>
+          )}
         </View>
       </View>
       <ItemsTable items={d.items} thermal={false} showHsn={showItemHsn ?? false} />
@@ -336,27 +375,496 @@ function MinimalPreview({ d }: { d: PreviewData }) {
   );
 }
 
+// ── Pay using UPI + QR + Bank Details (matches sample invoice format) ───────────
+function PaymentSection({ d }: { d: PreviewData }) {
+  const hasUpi = !!d.upiId;
+  const hasBank = !!(d.bankName && d.bankAccountNo && d.bankIfsc);
+  if (!hasUpi && !hasBank) return null;
+  const upiUrl = hasUpi
+    ? `upi://pay?pa=${encodeURIComponent(d.upiId!)}&pn=${encodeURIComponent(d.shopName)}&am=${d.total.toFixed(2)}&cu=INR`
+    : "";
+  const qrUri = hasUpi
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=80x80&margin=2&data=${encodeURIComponent(upiUrl)}`
+    : null;
+  return (
+    <View style={{ flexDirection: "row", padding: 10, backgroundColor: "#f8fafc", borderTopWidth: 1, borderTopColor: "#e2e8f0", gap: 12 }}>
+      {qrUri && (
+        <View>
+          <Text style={[styles.metaBold, { fontSize: 8, marginBottom: 4 }]}>Pay using UPI</Text>
+          <Image source={{ uri: qrUri }} style={{ width: 64, height: 64, backgroundColor: "#fff", borderRadius: 4 }} />
+        </View>
+      )}
+      {hasBank && (
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.metaBold, { fontSize: 8, marginBottom: 4 }]}>Bank Details</Text>
+          <Text style={{ fontSize: 9 }}>Bank: {d.bankName}</Text>
+          <Text style={{ fontSize: 9 }}>Account #: {d.bankAccountNo}</Text>
+          <Text style={{ fontSize: 9 }}>IFSC: {d.bankIfsc}</Text>
+          {d.bankBranch && <Text style={{ fontSize: 9 }}>Branch: {d.bankBranch}</Text>}
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ── Demo logo placeholder (brand-style) ───────────────────────────────────────
+const LOGO_STYLES: Record<string, { bg: string; text: string; label: string }> = {
+  amazon: { bg: "#ff9900", text: "#fff", label: "a" },
+  tata: { bg: "#0066b3", text: "#fff", label: "T" },
+  dmart: { bg: "#e31837", text: "#fff", label: "D" },
+  nike: { bg: "#111827", text: "#fff", label: "✓" },
+  instagram: { bg: "#e4405f", text: "#fff", label: "📷" },
+  unilever: { bg: "#0066b3", text: "#fff", label: "U" },
+  service: { bg: "#059669", text: "#fff", label: "S" },
+};
+
+function DemoLogo({ placeholder, size = 36 }: { placeholder?: string; size?: number }) {
+  if (!placeholder) return null;
+  const s = LOGO_STYLES[placeholder] ?? LOGO_STYLES.amazon;
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: 6,
+        backgroundColor: s.bg,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <Text style={{ color: s.text, fontSize: size * 0.5, fontWeight: "800" }}>{s.label}</Text>
+    </View>
+  );
+}
+
+// ── Amazon template (with logo) ───────────────────────────────────────────────
+function AmazonPreview({ d }: { d: PreviewData }) {
+  const accent = "#ff9900";
+  return (
+    <View style={[styles.card, styles.ecomCard]}>
+      {d.themeLabel ? (
+        <Text style={{ textAlign: "center", fontSize: 9, fontWeight: "700", color: "#888", letterSpacing: 2, marginBottom: 4 }}>
+          {d.themeLabel}
+        </Text>
+      ) : null}
+      <View style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 10, marginBottom: 4 }}>
+        <Text style={{ fontSize: 9, color: "#64748b" }}>TAX INVOICE</Text>
+        <Text style={{ fontSize: 8, color: "#94a3b8" }}>ORIGINAL FOR RECIPIENT</Text>
+      </View>
+      <View style={[styles.ecomHeader, { flexDirection: "row", alignItems: "center", gap: 10 }]}>
+        <DemoLogo placeholder={d.logoPlaceholder} size={32} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.ecomShopName}>{d.shopName}</Text>
+          {d.supplierGstin && <Text style={[styles.ecomInvLabel, { fontSize: 9 }]}>GSTIN {d.supplierGstin}</Text>}
+        </View>
+        <View style={{ alignItems: "flex-end" }}>
+          <Text style={styles.ecomInvNo}>Invoice #: {d.invoiceNo}</Text>
+          <Text style={[styles.ecomInvLabel, { fontSize: 9 }]}>Invoice Date: {d.date}</Text>
+          {d.dueDate && <Text style={[styles.ecomInvLabel, { fontSize: 9 }]}>Due Date: {d.dueDate}</Text>}
+          {d.placeOfSupply && <Text style={[styles.ecomInvLabel, { fontSize: 9 }]}>Place of Supply: {d.placeOfSupply}</Text>}
+        </View>
+      </View>
+      <View style={styles.ecomStripe} />
+      <View style={styles.ecomBillTo}>
+        <View>
+          <Text style={styles.ecomLabel}>BILL TO</Text>
+          <Text style={styles.ecomValue}>{d.customerName}</Text>
+          {d.recipientAddress && <Text style={styles.ecomSub}>{d.recipientAddress}</Text>}
+        </View>
+        {d.shipToAddress && (
+          <View>
+            <Text style={styles.ecomLabel}>SHIP TO</Text>
+            <Text style={styles.ecomValue}>{d.customerName}</Text>
+            <Text style={styles.ecomSub}>{d.shipToAddress}</Text>
+          </View>
+        )}
+      </View>
+      <ItemsTable items={d.items} thermal={false} />
+      <TotalsBlock d={d} accentColor={accent} showTotalItems />
+      <View style={{ flexDirection: "row", padding: 8, borderTopWidth: 1, borderTopColor: "#e2e8f0", alignItems: "center", gap: 8 }}>
+        <View style={{ flex: 1 }} />
+        <Text style={{ fontSize: 9, color: "#64748b" }}>For {d.shopName}</Text>
+        <View style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: "#cbd5e1", alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ fontSize: 8, color: "#94a3b8" }}>✓</Text>
+        </View>
+      </View>
+      <View style={{ paddingHorizontal: 10, paddingBottom: 4 }}>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>Authorised Signatory</Text>
+      </View>
+      <PaymentSection d={d} />
+    </View>
+  );
+}
+
+// ── Tata template ────────────────────────────────────────────────────────────
+function TataPreview({ d }: { d: PreviewData }) {
+  const blue = "#0066b3";
+  return (
+    <View style={[styles.card, { borderWidth: 1, borderColor: "#e5e7eb", overflow: "hidden", borderRadius: 8 }]}>
+      {d.themeLabel ? (
+        <Text style={{ textAlign: "center", fontSize: 9, fontWeight: "700", color: "#888", letterSpacing: 2, marginBottom: 4 }}>
+          {d.themeLabel}
+        </Text>
+      ) : null}
+      <View style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 10, paddingTop: 4 }}>
+        <Text style={{ fontSize: 9, color: "#64748b" }}>TAX INVOICE</Text>
+        <Text style={{ fontSize: 8, color: "#94a3b8" }}>ORIGINAL FOR RECIPIENT</Text>
+      </View>
+      <View style={{ flexDirection: "row", alignItems: "center", padding: 12, backgroundColor: blue }}>
+        <DemoLogo placeholder={d.logoPlaceholder} size={40} />
+        <View style={{ marginLeft: 10, flex: 1 }}>
+          <Text style={{ fontSize: 16, fontWeight: "800", color: "#fff" }}>{d.shopName}</Text>
+          {d.supplierGstin && <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.9)" }}>GSTIN: {d.supplierGstin}</Text>}
+        </View>
+        <View style={{ alignItems: "flex-end" }}>
+          <Text style={{ fontSize: 10, fontWeight: "700", color: "#fff" }}>Invoice #: {d.invoiceNo}</Text>
+          <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.9)" }}>Invoice Date: {d.date}</Text>
+          {d.dueDate && <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.9)" }}>Due Date: {d.dueDate}</Text>}
+          {d.placeOfSupply && <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.9)" }}>Place of Supply: {d.placeOfSupply}</Text>}
+        </View>
+      </View>
+      <View style={{ flexDirection: "row", padding: 10, backgroundColor: "#f8fafc", borderBottomWidth: 1, borderBottomColor: "#e2e8f0" }}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.metaBold, { fontSize: 9 }]}>BILL TO</Text>
+          <Text style={{ fontSize: 11 }}>{d.customerName}</Text>
+          {d.recipientAddress && <Text style={styles.metaSmall}>{d.recipientAddress}</Text>}
+        </View>
+        {d.shipToAddress && (
+          <View style={{ flex: 1, borderLeftWidth: 1, borderLeftColor: "#e2e8f0", paddingLeft: 8 }}>
+            <Text style={[styles.metaBold, { fontSize: 9 }]}>SHIP TO</Text>
+            <Text style={{ fontSize: 11 }}>{d.customerName}</Text>
+            <Text style={styles.metaSmall}>{d.shipToAddress}</Text>
+          </View>
+        )}
+      </View>
+      <ItemsTable items={d.items} thermal={false} />
+      <TotalsBlock d={d} accentColor={blue} showTotalItems />
+      <View style={{ flexDirection: "row", padding: 8, borderTopWidth: 1, borderTopColor: "#e2e8f0", alignItems: "center", gap: 8 }}>
+        <View style={{ flex: 1 }} />
+        <Text style={{ fontSize: 9, color: "#64748b" }}>For {d.shopName}</Text>
+        <View style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: "#cbd5e1", alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ fontSize: 8, color: "#94a3b8" }}>✓</Text>
+        </View>
+      </View>
+      <View style={{ paddingHorizontal: 10, paddingBottom: 4 }}>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>Authorised Signatory</Text>
+      </View>
+      <PaymentSection d={d} />
+    </View>
+  );
+}
+
+// ── DMart template ───────────────────────────────────────────────────────────
+function DmartPreview({ d }: { d: PreviewData }) {
+  const red = "#e31837";
+  const showMrp = d.items.some((i) => i.mrp != null);
+  return (
+    <View style={[styles.card, { borderWidth: 2, borderColor: red, borderRadius: 4 }]}>
+      {d.themeLabel ? (
+        <View style={{ backgroundColor: red, paddingVertical: 6, marginBottom: 0 }}>
+          <Text style={{ textAlign: "center", fontSize: 12, fontWeight: "900", color: "#fff", letterSpacing: 1 }}>
+            {d.themeLabel}
+          </Text>
+        </View>
+      ) : null}
+      <View style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 10, paddingTop: 4 }}>
+        <Text style={{ fontSize: 9, color: "#64748b" }}>TAX INVOICE</Text>
+        <Text style={{ fontSize: 8, color: "#94a3b8" }}>ORIGINAL FOR RECIPIENT</Text>
+      </View>
+      <View style={{ flexDirection: "row", alignItems: "center", padding: 10, backgroundColor: red }}>
+        <DemoLogo placeholder={d.logoPlaceholder} size={36} />
+        <View style={{ marginLeft: 8, flex: 1 }}>
+          <Text style={{ fontSize: 18, fontWeight: "900", color: "#fff" }}>{d.shopName}</Text>
+          {d.supplierGstin && <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.9)" }}>GSTIN {d.supplierGstin}</Text>}
+        </View>
+        <View style={{ alignItems: "flex-end" }}>
+          <Text style={{ fontSize: 10, fontWeight: "700", color: "#fff" }}>Invoice #: {d.invoiceNo}</Text>
+          <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.9)" }}>Invoice Date: {d.date}</Text>
+          {d.dueDate && <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.9)" }}>Due Date: {d.dueDate}</Text>}
+          {d.placeOfSupply && <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.9)" }}>Place of Supply: {d.placeOfSupply}</Text>}
+        </View>
+      </View>
+      <View style={{ flexDirection: "row", padding: 10, backgroundColor: "#fef2f2", borderBottomWidth: 1, borderBottomColor: "#fecaca" }}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.metaBold, { fontSize: 9 }]}>BILL TO</Text>
+          <Text style={{ fontSize: 11 }}>{d.customerName}</Text>
+          {d.recipientAddress && <Text style={styles.metaSmall}>{d.recipientAddress}</Text>}
+        </View>
+        {d.shipToAddress && (
+          <View style={{ flex: 1, borderLeftWidth: 1, borderLeftColor: "#fecaca", paddingLeft: 8 }}>
+            <Text style={[styles.metaBold, { fontSize: 9 }]}>SHIP TO</Text>
+            <Text style={{ fontSize: 11 }}>{d.customerName}</Text>
+            <Text style={styles.metaSmall}>{d.shipToAddress}</Text>
+          </View>
+        )}
+      </View>
+      <ItemsTable items={d.items} thermal={false} showMrp={showMrp} />
+      <TotalsBlock d={d} accentColor={red} showTotalItems />
+      <View style={{ flexDirection: "row", padding: 8, borderTopWidth: 1, borderTopColor: "#e2e8f0", alignItems: "center", gap: 8 }}>
+        <View style={{ flex: 1 }} />
+        <Text style={{ fontSize: 9, color: "#64748b" }}>For {d.shopName}</Text>
+        <View style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: "#cbd5e1", alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ fontSize: 8, color: "#94a3b8" }}>✓</Text>
+        </View>
+      </View>
+      <View style={{ paddingHorizontal: 10, paddingBottom: 4 }}>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>Authorised Signatory</Text>
+      </View>
+      <PaymentSection d={d} />
+    </View>
+  );
+}
+
+// ── Nike template ────────────────────────────────────────────────────────────
+function NikePreview({ d }: { d: PreviewData }) {
+  return (
+    <View style={[styles.card, { borderWidth: 1, borderColor: "#111", backgroundColor: "#fff" }]}>
+      {d.themeLabel ? (
+        <Text style={{ textAlign: "center", fontSize: 9, fontWeight: "700", color: "#888", letterSpacing: 2, marginBottom: 4 }}>
+          {d.themeLabel}
+        </Text>
+      ) : null}
+      <View style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 10, paddingTop: 4 }}>
+        <Text style={{ fontSize: 9, color: "#64748b" }}>TAX INVOICE</Text>
+        <Text style={{ fontSize: 8, color: "#94a3b8" }}>ORIGINAL FOR RECIPIENT</Text>
+      </View>
+      <View style={{ flexDirection: "row", alignItems: "center", padding: 12, backgroundColor: "#111" }}>
+        <DemoLogo placeholder={d.logoPlaceholder} size={36} />
+        <View style={{ marginLeft: 10, flex: 1 }}>
+          <Text style={{ fontSize: 16, fontWeight: "900", color: "#fff", letterSpacing: 1 }}>{d.shopName.toUpperCase()}</Text>
+          {d.supplierGstin && <Text style={{ fontSize: 9, color: "#94a3b8" }}>GSTIN {d.supplierGstin}</Text>}
+        </View>
+        <View style={{ alignItems: "flex-end" }}>
+          <Text style={{ fontSize: 10, fontWeight: "700", color: "#fff" }}>Invoice #: {d.invoiceNo}</Text>
+          <Text style={{ fontSize: 9, color: "#94a3b8" }}>Invoice Date: {d.date}</Text>
+          {d.dueDate && <Text style={{ fontSize: 9, color: "#94a3b8" }}>Due Date: {d.dueDate}</Text>}
+          {d.placeOfSupply && <Text style={{ fontSize: 9, color: "#94a3b8" }}>Place of Supply: {d.placeOfSupply}</Text>}
+        </View>
+      </View>
+      <View style={{ flexDirection: "row", padding: 10, borderBottomWidth: 1, borderBottomColor: "#e5e7eb" }}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.metaBold, { fontSize: 9 }]}>BILL TO</Text>
+          <Text style={{ fontSize: 12 }}>{d.customerName}</Text>
+          {d.recipientAddress && <Text style={styles.metaSmall}>{d.recipientAddress}</Text>}
+        </View>
+        {d.shipToAddress && (
+          <View style={{ flex: 1, borderLeftWidth: 1, borderLeftColor: "#e5e7eb", paddingLeft: 8 }}>
+            <Text style={[styles.metaBold, { fontSize: 9 }]}>SHIP TO</Text>
+            <Text style={{ fontSize: 12 }}>{d.customerName}</Text>
+            <Text style={styles.metaSmall}>{d.shipToAddress}</Text>
+          </View>
+        )}
+      </View>
+      <ItemsTable items={d.items} thermal={false} />
+      <TotalsBlock d={d} accentColor="#111" showTotalItems />
+      <View style={{ flexDirection: "row", padding: 8, borderTopWidth: 1, borderTopColor: "#e2e8f0", alignItems: "center", gap: 8 }}>
+        <View style={{ flex: 1 }} />
+        <Text style={{ fontSize: 9, color: "#64748b" }}>For {d.shopName}</Text>
+        <View style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: "#cbd5e1", alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ fontSize: 8, color: "#94a3b8" }}>✓</Text>
+        </View>
+      </View>
+      <View style={{ paddingHorizontal: 10, paddingBottom: 4 }}>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>Authorised Signatory</Text>
+      </View>
+      <PaymentSection d={d} />
+    </View>
+  );
+}
+
+// ── Instagram template (landscape / wider) ────────────────────────────────────
+function InstagramPreview({ d }: { d: PreviewData }) {
+  return (
+    <View style={[styles.card, { minWidth: 420, borderWidth: 1, borderColor: "#e2e8f0", overflow: "hidden", borderRadius: 12 }]}>
+      {d.themeLabel ? (
+        <View style={{ backgroundColor: "#e4405f", paddingVertical: 6, marginBottom: 0 }}>
+          <Text style={{ textAlign: "center", fontSize: 10, fontWeight: "800", color: "#fff", letterSpacing: 1 }}>
+            {d.themeLabel}
+          </Text>
+        </View>
+      ) : null}
+      <View style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 10, paddingTop: 4 }}>
+        <Text style={{ fontSize: 9, color: "#64748b" }}>TAX INVOICE</Text>
+        <Text style={{ fontSize: 8, color: "#94a3b8" }}>ORIGINAL FOR RECIPIENT</Text>
+      </View>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          padding: 14,
+          backgroundColor: "#e4405f",
+        }}
+      >
+        <DemoLogo placeholder={d.logoPlaceholder} size={40} />
+        <View style={{ marginLeft: 12, flex: 1 }}>
+          <Text style={{ fontSize: 18, fontWeight: "800", color: "#fff" }}>{d.shopName}</Text>
+          {d.supplierGstin && <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.9)" }}>GSTIN {d.supplierGstin}</Text>}
+        </View>
+        <View style={{ alignItems: "flex-end" }}>
+          <Text style={{ fontSize: 10, fontWeight: "700", color: "#fff" }}>Invoice #: {d.invoiceNo}</Text>
+          <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.9)" }}>Invoice Date: {d.date}</Text>
+          {d.dueDate && <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.9)" }}>Due Date: {d.dueDate}</Text>}
+          {d.placeOfSupply && <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.9)" }}>Place of Supply: {d.placeOfSupply}</Text>}
+        </View>
+      </View>
+      <View style={{ flexDirection: "row", padding: 10, backgroundColor: "#f8fafc" }}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.metaBold, { fontSize: 9 }]}>BILL TO</Text>
+          <Text style={{ fontSize: 11 }}>{d.customerName}</Text>
+          {d.gstin && <Text style={styles.metaSmall}>GSTIN: {d.gstin}</Text>}
+          {d.recipientAddress && <Text style={styles.metaSmall}>{d.recipientAddress}</Text>}
+        </View>
+        {d.shipToAddress && (
+          <View style={{ flex: 1, borderLeftWidth: 1, borderLeftColor: "#e2e8f0", paddingLeft: 8 }}>
+            <Text style={[styles.metaBold, { fontSize: 9 }]}>SHIP TO</Text>
+            <Text style={[styles.metaSmall, { fontSize: 10 }]}>{d.shipToAddress}</Text>
+          </View>
+        )}
+      </View>
+      <ItemsTable items={d.items} thermal={false} serviceStyle />
+      <TotalsBlock d={d} accentColor="#e4405f" showTotalItems />
+      <View style={{ flexDirection: "row", padding: 8, borderTopWidth: 1, borderTopColor: "#e2e8f0", alignItems: "center", gap: 8 }}>
+        <View style={{ flex: 1 }} />
+        <Text style={{ fontSize: 9, color: "#64748b" }}>For {d.shopName}</Text>
+        <View style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: "#cbd5e1", alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ fontSize: 8, color: "#94a3b8" }}>✓</Text>
+        </View>
+      </View>
+      <View style={{ paddingHorizontal: 10, paddingBottom: 4 }}>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>Authorised Signatory</Text>
+      </View>
+      <PaymentSection d={d} />
+    </View>
+  );
+}
+
+// ── Unilever template ────────────────────────────────────────────────────────
+function UnileverPreview({ d }: { d: PreviewData }) {
+  const blue = "#0066b3";
+  return (
+    <View style={[styles.card, { borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 8 }]}>
+      <View style={{ flexDirection: "row", alignItems: "center", padding: 12, backgroundColor: blue }}>
+        <DemoLogo placeholder={d.logoPlaceholder} size={38} />
+        <View style={{ marginLeft: 10, flex: 1 }}>
+          <Text style={{ fontSize: 15, fontWeight: "800", color: "#fff" }}>{d.shopName}</Text>
+          {d.supplierAddress && <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.9)" }}>{d.supplierAddress}</Text>}
+        </View>
+        <View style={{ alignItems: "flex-end" }}>
+          <Text style={{ fontSize: 10, fontWeight: "700", color: "#fff" }}>TAX INVOICE</Text>
+          <Text style={{ fontSize: 10, color: "rgba(255,255,255,0.9)" }}>{d.invoiceNo} • {d.date}</Text>
+        </View>
+      </View>
+      <View style={styles.modernBillTo}>
+        <Text><Text style={styles.metaBold}>Bill To:</Text> {d.customerName}</Text>
+        {d.recipientAddress && <Text style={styles.metaSmall}>{d.recipientAddress}</Text>}
+        {d.gstin && <Text style={styles.metaSmall}>GSTIN: {d.gstin}</Text>}
+      </View>
+      <ItemsTable items={d.items} thermal={false} />
+      <TotalsBlock d={d} accentColor={blue} showTotalItems />
+      <View style={{ flexDirection: "row", padding: 8, borderTopWidth: 1, borderTopColor: "#e2e8f0", alignItems: "center", gap: 8 }}>
+        <View style={{ flex: 1 }} />
+        <Text style={{ fontSize: 9, color: "#64748b" }}>For {d.shopName}</Text>
+        <View style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: "#cbd5e1", alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ fontSize: 8, color: "#94a3b8" }}>✓</Text>
+        </View>
+      </View>
+      <View style={{ paddingHorizontal: 10, paddingBottom: 4 }}>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>Authorised Signatory</Text>
+      </View>
+      <PaymentSection d={d} />
+    </View>
+  );
+}
+
+// ── Service template (compact Bill To / Ship To) ──────────────────────────────
+function ServicePreview({ d }: { d: PreviewData }) {
+  const green = "#059669";
+  return (
+    <View style={[styles.card, { borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 8 }]}>
+      <View style={{ flexDirection: "row", alignItems: "center", padding: 10, backgroundColor: green }}>
+        <DemoLogo placeholder={d.logoPlaceholder} size={36} />
+        <View style={{ marginLeft: 8, flex: 1 }}>
+          <Text style={{ fontSize: 16, fontWeight: "800", color: "#fff" }}>{d.shopName}</Text>
+          <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.9)" }}>SERVICE INVOICE</Text>
+        </View>
+        <View style={{ alignItems: "flex-end" }}>
+          <Text style={{ fontSize: 11, fontWeight: "700", color: "#fff" }}>{d.invoiceNo}</Text>
+          <Text style={{ fontSize: 9, color: "rgba(255,255,255,0.9)" }}>{d.date}</Text>
+        </View>
+      </View>
+      <View style={{ flexDirection: "row", padding: 8, backgroundColor: "#f0fdf4", borderBottomWidth: 1, borderBottomColor: "#bbf7d0" }}>
+        <View style={{ flex: 1, paddingRight: 8 }}>
+          <Text style={[styles.metaBold, { fontSize: 8, color: green }]}>BILL TO</Text>
+          <Text style={{ fontSize: 10 }}>{d.customerName}</Text>
+          {d.recipientAddress && <Text style={[styles.metaSmall, { fontSize: 9 }]}>{d.recipientAddress}</Text>}
+        </View>
+        {d.shipToAddress && (
+          <View style={{ flex: 1, borderLeftWidth: 1, borderLeftColor: "#bbf7d0", paddingLeft: 8 }}>
+            <Text style={[styles.metaBold, { fontSize: 8, color: green }]}>SHIP TO</Text>
+            <Text style={{ fontSize: 10 }}>{d.customerName}</Text>
+            <Text style={[styles.metaSmall, { fontSize: 9 }]}>{d.shipToAddress}</Text>
+          </View>
+        )}
+      </View>
+      <ItemsTable items={d.items} thermal={false} />
+      <TotalsBlock d={d} accentColor={green} showTotalItems />
+      <View style={{ flexDirection: "row", padding: 8, borderTopWidth: 1, borderTopColor: "#e2e8f0", alignItems: "center", gap: 8 }}>
+        <View style={{ flex: 1 }} />
+        <Text style={{ fontSize: 9, color: "#64748b" }}>For {d.shopName}</Text>
+        <View style={{ width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: "#cbd5e1", alignItems: "center", justifyContent: "center" }}>
+          <Text style={{ fontSize: 8, color: "#94a3b8" }}>✓</Text>
+        </View>
+      </View>
+      <View style={{ paddingHorizontal: 10, paddingBottom: 4 }}>
+        <Text style={{ fontSize: 7, color: "#94a3b8" }}>Authorised Signatory</Text>
+      </View>
+      <PaymentSection d={d} />
+    </View>
+  );
+}
+
 // ── Items table (shared) ──────────────────────────────────────────────────────
 function ItemsTable({
   items,
   thermal,
   showHsn = false,
+  showMrp = false,
+  serviceStyle = false,
 }: {
   items: PreviewItem[];
   thermal: boolean;
   showHsn?: boolean;
+  showMrp?: boolean;
+  serviceStyle?: boolean;
 }) {
   const fmt = useFormatInr();
   if (thermal) return null; // Thermal uses custom item layout
-  const headers = showHsn
-    ? ["Sl", "Item", "HSN", "Qty", "Rate", "Disc", "Total"]
-    : ["#", "Item", "Qty", "Rate", "Disc%", "Amount"];
-  const colFlex = showHsn ? [0.6, 1.5, 0.6, 0.7, 0.7, 0.5, 0.9] : [0.6, 1.8, 0.8, 0.8, 0.6, 0.9];
+  const headers = serviceStyle
+    ? ["#", "Description", "HSN/SAC", "Amount"]
+    : showMrp
+      ? ["#", "Item", "HSN", "MRP", "Selling Price", "Qty", "Amount"]
+      : showHsn
+        ? ["Sl", "Item", "HSN", "Qty", "Rate", "Disc", "Total"]
+        : ["#", "Item", "Qty", "Rate", "Disc%", "Amount"];
+  const colFlex = serviceStyle
+    ? [0.5, 2, 0.8, 0.9]
+    : showMrp
+      ? [0.5, 1.2, 0.6, 0.7, 0.8, 0.5, 0.8]
+      : showHsn
+        ? [0.6, 1.5, 0.6, 0.7, 0.7, 0.5, 0.9]
+        : [0.6, 1.8, 0.8, 0.8, 0.6, 0.9];
   return (
     <View style={styles.itemsTable}>
-      <View style={styles.itemsHeader}>
+      <View style={[styles.itemsHeader, serviceStyle && { backgroundColor: "#e4405f" }]}>
         {headers.map((h, idx) => (
-          <Text key={h} style={[styles.itemsHeaderCell, { flex: colFlex[idx] ?? 1 }]}>
+          <Text
+            key={h}
+            style={[
+              styles.itemsHeaderCell,
+              { flex: colFlex[idx] ?? 1 },
+              serviceStyle && { color: "#fff", fontWeight: "700" },
+            ]}
+          >
             {h}
           </Text>
         ))}
@@ -364,24 +872,52 @@ function ItemsTable({
       {items.map((it, i) => (
         <View key={i} style={[styles.itemsRow, i % 2 === 1 && styles.itemsRowAlt]}>
           <Text style={[styles.itemsCell, { flex: colFlex[0] }]}>{i + 1}</Text>
-          <Text style={[styles.itemsCell, styles.itemsName, { flex: colFlex[1] }]} numberOfLines={1}>
+          <Text
+            style={[styles.itemsCell, styles.itemsName, { flex: colFlex[1] }]}
+            numberOfLines={serviceStyle ? 4 : 1}
+          >
             {it.name}
           </Text>
-          {showHsn && (
-            <Text style={[styles.itemsCell, { flex: colFlex[2] }]}>{it.hsnCode || "-"}</Text>
+          {serviceStyle ? (
+            <>
+              <Text style={[styles.itemsCell, { flex: colFlex[2] }]}>{it.hsnCode || "-"}</Text>
+              <Text style={[styles.itemsCell, styles.itemsRight, styles.itemsAmount, { flex: colFlex[3] }]}>
+                {fmt(it.amount)}
+              </Text>
+            </>
+          ) : showMrp ? (
+            <>
+              <Text style={[styles.itemsCell, { flex: colFlex[2] }]}>{it.hsnCode || "-"}</Text>
+              <Text style={[styles.itemsCell, styles.itemsRight, { flex: colFlex[3] }]}>
+                {it.mrp != null ? fmt(it.mrp) : "-"}
+              </Text>
+              <Text style={[styles.itemsCell, styles.itemsRight, { flex: colFlex[4] }]}>{fmt(it.rate)}</Text>
+              <Text style={[styles.itemsCell, styles.itemsRight, { flex: colFlex[5] }]}>
+                {it.qty} {it.unit}
+              </Text>
+              <Text style={[styles.itemsCell, styles.itemsRight, styles.itemsAmount, { flex: colFlex[6] }]}>
+                {fmt(it.amount)}
+              </Text>
+            </>
+          ) : (
+            <>
+              {showHsn && (
+                <Text style={[styles.itemsCell, { flex: colFlex[2] }]}>{it.hsnCode || "-"}</Text>
+              )}
+              <Text style={[styles.itemsCell, styles.itemsRight, { flex: showHsn ? colFlex[3] : colFlex[2] }]}>
+                {it.qty} {it.unit}
+              </Text>
+              <Text style={[styles.itemsCell, styles.itemsRight, { flex: showHsn ? colFlex[4] : colFlex[3] }]}>
+                {fmt(it.rate)}
+              </Text>
+              <Text style={[styles.itemsCell, styles.itemsRight, { flex: showHsn ? colFlex[5] : colFlex[4] }]}>
+                {it.discount > 0 ? `${it.discount}%` : "-"}
+              </Text>
+              <Text style={[styles.itemsCell, styles.itemsRight, styles.itemsAmount, { flex: showHsn ? colFlex[6] : colFlex[5] }]}>
+                {fmt(it.amount)}
+              </Text>
+            </>
           )}
-          <Text style={[styles.itemsCell, styles.itemsRight, { flex: showHsn ? colFlex[3] : colFlex[2] }]}>
-            {it.qty} {it.unit}
-          </Text>
-          <Text style={[styles.itemsCell, styles.itemsRight, { flex: showHsn ? colFlex[4] : colFlex[3] }]}>
-            {fmt(it.rate)}
-          </Text>
-          <Text style={[styles.itemsCell, styles.itemsRight, { flex: showHsn ? colFlex[5] : colFlex[4] }]}>
-            {it.discount > 0 ? `${it.discount}%` : "-"}
-          </Text>
-          <Text style={[styles.itemsCell, styles.itemsRight, styles.itemsAmount, { flex: showHsn ? colFlex[6] : colFlex[5] }]}>
-            {fmt(it.amount)}
-          </Text>
         </View>
       ))}
     </View>
@@ -407,6 +943,13 @@ export function InvoiceTemplatePreview({
       {template === "ecom" && <EcomPreview d={data} />}
       {template === "flipkart" && <FlipkartPreview d={data} />}
       {template === "minimal" && <MinimalPreview d={data} />}
+      {template === "amazon" && <AmazonPreview d={data} />}
+      {template === "tata" && <TataPreview d={data} />}
+      {template === "dmart" && <DmartPreview d={data} />}
+      {template === "nike" && <NikePreview d={data} />}
+      {template === "instagram" && <InstagramPreview d={data} />}
+      {template === "unilever" && <UnileverPreview d={data} />}
+      {template === "service" && <ServicePreview d={data} />}
     </PreviewSettingsContext.Provider>
   );
   return (
@@ -420,7 +963,7 @@ export function InvoiceTemplatePreview({
   );
 }
 
-/** Compact invoice preview thumbnail for settings/cards — shows actual template */
+/** Compact invoice preview thumbnail for settings/cards — full invoice scaled to fit */
 export function InvoicePreviewThumbnail({
   template,
   data,
@@ -432,9 +975,9 @@ export function InvoicePreviewThumbnail({
   width?: number;
   height?: number;
 }) {
-  const scale = Math.min(width / 320, height / 200, 0.28);
   const origW = 320;
-  const origH = 200;
+  const origH = 420; // approx full invoice height (header + items + totals)
+  const scale = Math.min(width / origW, height / origH);
   const translateX = -(origW * (1 - scale)) / 2;
   const translateY = -(origH * (1 - scale)) / 2;
   return (
@@ -465,6 +1008,13 @@ export function InvoicePreviewThumbnail({
           {template === "ecom" && <EcomPreview d={data} />}
           {template === "flipkart" && <FlipkartPreview d={data} />}
           {template === "minimal" && <MinimalPreview d={data} />}
+          {template === "amazon" && <AmazonPreview d={data} />}
+          {template === "tata" && <TataPreview d={data} />}
+          {template === "dmart" && <DmartPreview d={data} />}
+          {template === "nike" && <NikePreview d={data} />}
+          {template === "instagram" && <InstagramPreview d={data} />}
+          {template === "unilever" && <UnileverPreview d={data} />}
+          {template === "service" && <ServicePreview d={data} />}
         </PreviewSettingsContext.Provider>
       </View>
     </View>

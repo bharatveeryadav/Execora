@@ -69,6 +69,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 						recipientAddress: { type: 'string', maxLength: 500 },
 						reverseCharge: { type: 'boolean' },
 						overrideCreditLimit: { type: 'boolean' },
+						tags: { type: 'array', items: { type: 'string', maxLength: 50 }, maxItems: 10 },
 						// Partial payment at billing
 						initialPayment: {
 							type: 'object',
@@ -99,6 +100,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 					recipientAddress?: string;
 					reverseCharge?: boolean;
 					overrideCreditLimit?: boolean;
+					tags?: string[];
 					initialPayment?: { amount: number; method: 'cash' | 'upi' | 'card' | 'other' };
 				};
 			}>,
@@ -189,6 +191,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 						buyerGstin: { type: 'string', maxLength: 15 },
 						placeOfSupply: { type: 'string', maxLength: 2 },
 						reverseCharge: { type: 'boolean' },
+						tags: { type: 'array', items: { type: 'string', maxLength: 50 }, maxItems: 10 },
 					},
 					additionalProperties: false,
 				},
@@ -207,6 +210,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
 					buyerGstin?: string;
 					placeOfSupply?: string;
 					reverseCharge?: boolean;
+					tags?: string[];
 				};
 			}>,
 			reply

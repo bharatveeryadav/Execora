@@ -760,6 +760,7 @@ model Invoice {
   dueDate             DateTime?      @map("due_date")
   paidAt              DateTime?      @map("paid_at")
   notes               String?
+  tags                String[]       @default([])
   pdfObjectKey        String?        @map("pdf_object_key")
   pdfUrl              String?        @map("pdf_url")
   createdBy           String?        @map("created_by")

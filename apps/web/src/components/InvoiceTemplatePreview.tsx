@@ -12,7 +12,14 @@ export type TemplateId =
   | "thermal"
   | "ecom"
   | "flipkart"
-  | "minimal";
+  | "minimal"
+  | "amazon"
+  | "tata"
+  | "dmart"
+  | "nike"
+  | "instagram"
+  | "unilever"
+  | "service";
 
 export const TEMPLATES: Array<{
   id: TemplateId;
@@ -20,48 +27,20 @@ export const TEMPLATES: Array<{
   desc: string;
   color: string;
 }> = [
-  {
-    id: "classic",
-    label: "Classic",
-    desc: "Traditional B&W invoice",
-    color: "#374151",
-  },
-  {
-    id: "modern",
-    label: "Modern",
-    desc: "Clean blue professional",
-    color: "#1e40af",
-  },
-  {
-    id: "vyapari",
-    label: "Vyapari",
-    desc: "Indian market style",
-    color: "#c2410c",
-  },
-  {
-    id: "thermal",
-    label: "Thermal",
-    desc: "80mm receipt format",
-    color: "#111827",
-  },
-  {
-    id: "ecom",
-    label: "E-Com",
-    desc: "Amazon-style order invoice",
-    color: "#ff9900",
-  },
-  {
-    id: "flipkart",
-    label: "Flipkart",
-    desc: "Blue e-commerce receipt",
-    color: "#2874f0",
-  },
-  {
-    id: "minimal",
-    label: "Minimal",
-    desc: "Clean typographic style",
-    color: "#6d28d9",
-  },
+  { id: "classic", label: "Classic", desc: "Traditional B&W", color: "#374151" },
+  { id: "modern", label: "Modern", desc: "Clean blue", color: "#1e40af" },
+  { id: "vyapari", label: "Vyapari", desc: "Indian market", color: "#c2410c" },
+  { id: "thermal", label: "Thermal", desc: "80mm receipt", color: "#111827" },
+  { id: "ecom", label: "E-Com", desc: "Amazon-style", color: "#ff9900" },
+  { id: "flipkart", label: "Flipkart", desc: "Blue e-com", color: "#2874f0" },
+  { id: "minimal", label: "Minimal", desc: "Typography", color: "#6d28d9" },
+  { id: "amazon", label: "Amazon", desc: "E-commerce", color: "#ff9900" },
+  { id: "tata", label: "Tata", desc: "Corporate", color: "#0066b3" },
+  { id: "dmart", label: "DMart", desc: "Retail", color: "#e31837" },
+  { id: "nike", label: "Nike", desc: "Sportswear", color: "#111827" },
+  { id: "instagram", label: "Instagram", desc: "Landscape", color: "#e4405f" },
+  { id: "unilever", label: "Unilever", desc: "FMCG", color: "#0066b3" },
+  { id: "service", label: "Service", desc: "Bill To / Ship To", color: "#059669" },
 ];
 
 export interface PreviewItem {
@@ -72,6 +51,7 @@ export interface PreviewItem {
   discount: number;
   amount: number;
   hsnCode?: string;
+  mrp?: number;
 }
 
 export interface PreviewData {
@@ -103,6 +83,23 @@ export interface PreviewData {
   gstin?: string;
   /** Reverse Charge — show "Tax is payable on Reverse Charge" when true */
   reverseCharge?: boolean;
+  /** Invoice tags (e.g. B2B, B2C, COD) */
+  tags?: string[];
+  /** Demo logo placeholder */
+  logoPlaceholder?: string;
+  /** Ship To address */
+  shipToAddress?: string;
+  /** Theme label (MODERN, ELEGANT, MRP + DISCOUNT, etc.) */
+  themeLabel?: string;
+  upiId?: string;
+  bankName?: string;
+  bankAccountNo?: string;
+  bankIfsc?: string;
+  bankBranch?: string;
+  /** Place of supply (e.g. 09-UTTARPRADESH) */
+  placeOfSupply?: string;
+  /** Due date */
+  dueDate?: string;
 }
 
 // ── Indian ₹ formatter ───────────────────────────────────────────────────────
@@ -557,12 +554,20 @@ function ThermalPreview({ d }: { d: PreviewData }) {
 function TotalsBlock({
   d,
   accentColor = "#374151",
+  showTotalItems = false,
 }: {
   d: PreviewData;
   accentColor?: string;
+  showTotalItems?: boolean;
 }) {
+  const totalQty = d.items.reduce((s, i) => s + i.qty, 0);
   return (
     <div style={{ marginLeft: "auto", width: 200, fontSize: 11 }}>
+      {showTotalItems && (
+        <div style={{ marginBottom: 4, fontSize: 10, color: "#64748b" }}>
+          Total Items / Qty: {d.items.length} / {totalQty.toFixed(3)}
+        </div>
+      )}
       <Row label="Subtotal" value={inr(d.subtotal)} />
       {d.discountAmt > 0 && (
         <Row
@@ -1240,6 +1245,276 @@ function MinimalPreview({ d }: { d: PreviewData }) {
   );
 }
 
+// ── Brand-style preview (Amazon, Tata, DMart, Nike, Instagram, Unilever, Service) ─
+const BRAND_COLORS: Record<string, string> = {
+  amazon: "#ff9900",
+  tata: "#0066b3",
+  dmart: "#e31837",
+  nike: "#111827",
+  instagram: "#e4405f",
+  unilever: "#0066b3",
+  service: "#059669",
+};
+
+const LOGO_LABELS: Record<string, string> = {
+  amazon: "a",
+  tata: "T",
+  dmart: "D",
+  nike: "✓",
+  instagram: "IG",
+  unilever: "U",
+  service: "S",
+};
+
+function BrandPreview({
+  template,
+  d,
+}: {
+  template: TemplateId;
+  d: PreviewData;
+}) {
+  const color = BRAND_COLORS[template] ?? "#374151";
+  const logoLabel = LOGO_LABELS[template] ?? d.logoPlaceholder?.charAt(0).toUpperCase() ?? "B";
+  const showMrp = template === "dmart" && d.items.some((i) => (i as any).mrp != null);
+  const serviceStyle = template === "instagram";
+  const headers = serviceStyle
+    ? ["#", "Description", "HSN/SAC", "Amount"]
+    : showMrp
+      ? ["#", "Item", "HSN", "MRP", "Selling Price", "Qty", "Amount"]
+      : ["#", "Item", "Qty", "Rate", "Disc", "Amount"];
+  return (
+    <div
+      style={{
+        fontFamily: "Arial, sans-serif",
+        fontSize: 11,
+        color: "#111",
+        background: "#fff",
+        width: template === "instagram" ? 620 : 560,
+        border: "1px solid #e5e7eb",
+        borderRadius: 8,
+        overflow: "hidden",
+      }}
+    >
+      {d.themeLabel && (
+        <div
+          style={{
+            textAlign: "center",
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: 2,
+            padding: "6px 0",
+            borderBottom: template === "dmart" || template === "instagram" ? "none" : "1px solid #f1f5f9",
+            background: template === "dmart" || template === "instagram" ? color : "#fff",
+            color: template === "dmart" || template === "instagram" ? "#fff" : "#64748b",
+          }}
+        >
+          {d.themeLabel}
+        </div>
+      )}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          padding: "4px 16px 0",
+          fontSize: 9,
+          color: "#64748b",
+        }}
+      >
+        <span>TAX INVOICE</span>
+        <span style={{ color: "#94a3b8" }}>ORIGINAL FOR RECIPIENT</span>
+      </div>
+      {/* Header with logo */}
+      <div
+        style={{
+          background: color,
+          padding: "12px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <div
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 6,
+            background: "rgba(255,255,255,0.2)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#fff",
+            fontWeight: 800,
+            fontSize: 18,
+          }}
+        >
+          {logoLabel}
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ color: "#fff", fontWeight: 800, fontSize: 16 }}>
+            {d.shopName}
+          </div>
+          {d.supplierGstin && (
+            <div style={{ color: "rgba(255,255,255,0.9)", fontSize: 9 }}>
+              GSTIN: {d.supplierGstin}
+            </div>
+          )}
+        </div>
+        <div style={{ color: "#fff", textAlign: "right", fontSize: 10 }}>
+          <div style={{ fontWeight: 700 }}>Invoice #: {d.invoiceNo}</div>
+          <div style={{ opacity: 0.9 }}>Invoice Date: {d.date}</div>
+          {d.dueDate && <div style={{ opacity: 0.9 }}>Due Date: {d.dueDate}</div>}
+          {d.placeOfSupply && <div style={{ opacity: 0.9 }}>Place of Supply: {d.placeOfSupply}</div>}
+        </div>
+      </div>
+      {/* Bill To / Ship To */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: d.shipToAddress ? "1fr 1fr" : "1fr",
+          gap: 0,
+          borderBottom: "1px solid #e5e7eb",
+          background: "#f8fafc",
+        }}
+      >
+        <div style={{ padding: "10px 16px", borderRight: d.shipToAddress ? "1px solid #e2e8f0" : "none" }}>
+          <div style={{ fontSize: 9, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>BILL TO</div>
+          <div style={{ fontWeight: 600 }}>{d.customerName}</div>
+          {d.recipientAddress && <div style={{ fontSize: 10, color: "#64748b" }}>{d.recipientAddress}</div>}
+        </div>
+        {d.shipToAddress && (
+          <div style={{ padding: "10px 16px" }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: "#64748b", marginBottom: 4 }}>SHIP TO</div>
+            <div style={{ fontWeight: 600 }}>{d.customerName}</div>
+            <div style={{ fontSize: 10, color: "#64748b" }}>{d.shipToAddress}</div>
+          </div>
+        )}
+      </div>
+      {/* Items */}
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead>
+          <tr style={{ background: serviceStyle ? color : "#f1f5f9", borderBottom: "1px solid #e2e8f0" }}>
+            {headers.map((h) => (
+              <th
+                key={h}
+                style={{
+                  padding: "6px 8px",
+                  textAlign: ["Rate", "Amount", "Disc", "MRP", "Selling Price", "Qty"].includes(h) ? "right" : "left",
+                  fontSize: 10,
+                  color: serviceStyle ? "#fff" : "#475569",
+                  fontWeight: 700,
+                }}
+              >
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {d.items.map((it, i) => (
+            <tr key={i} style={{ borderBottom: "1px solid #f1f5f9" }}>
+              <td style={{ padding: "5px 8px", color: "#94a3b8" }}>{i + 1}</td>
+              <td style={{ padding: "5px 8px", whiteSpace: "pre-line" }}>{it.name}</td>
+              {serviceStyle ? (
+                <>
+                  <td style={{ padding: "5px 8px" }}>{(it as any).hsnCode || "-"}</td>
+                  <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 600 }}>{inr(it.amount)}</td>
+                </>
+              ) : showMrp ? (
+                <>
+                  <td style={{ padding: "5px 8px" }}>{it.hsnCode || "-"}</td>
+                  <td style={{ padding: "5px 8px", textAlign: "right" }}>
+                    {(it as any).mrp != null ? inr((it as any).mrp) : "-"}
+                  </td>
+                  <td style={{ padding: "5px 8px", textAlign: "right" }}>{inr(it.rate)}</td>
+                  <td style={{ padding: "5px 8px", textAlign: "right" }}>{it.qty} {it.unit}</td>
+                  <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 600 }}>{inr(it.amount)}</td>
+                </>
+              ) : (
+                <>
+                  <td style={{ padding: "5px 8px", textAlign: "right" }}>{it.qty} {it.unit}</td>
+                  <td style={{ padding: "5px 8px", textAlign: "right" }}>{inr(it.rate)}</td>
+                  <td style={{ padding: "5px 8px", textAlign: "right" }}>{it.discount > 0 ? `${it.discount}%` : "-"}</td>
+                  <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: 600 }}>{inr(it.amount)}</td>
+                </>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {/* Totals */}
+      <div style={{ padding: "12px 16px", display: "flex", justifyContent: "flex-end" }}>
+        <div style={{ minWidth: 200 }}>
+          <TotalsBlock d={d} accentColor={color} showTotalItems />
+        </div>
+      </div>
+      {/* For [Brand] + Authorised Signatory */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          gap: 12,
+          padding: "8px 16px",
+          borderTop: "1px solid #e2e8f0",
+        }}
+      >
+        <span style={{ fontSize: 9, color: "#64748b" }}>For {d.shopName}</span>
+        <div
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: "50%",
+            border: "1px solid #cbd5e1",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 8,
+            color: "#94a3b8",
+          }}
+        >
+          ✓
+        </div>
+      </div>
+      <div style={{ padding: "0 16px 4px", fontSize: 7, color: "#94a3b8" }}>Authorised Signatory</div>
+      {/* Pay using UPI + QR + Bank Details (matches sample invoice format) */}
+      {(d.upiId || (d.bankName && d.bankAccountNo && d.bankIfsc)) && (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "row",
+            gap: 16,
+            padding: "12px 16px",
+            background: "#f8fafc",
+            borderTop: "1px solid #e2e8f0",
+          }}
+        >
+          {d.upiId && (
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 700, color: "#475569", marginBottom: 6 }}>Pay using UPI</div>
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&margin=2&data=${encodeURIComponent(
+                  `upi://pay?pa=${encodeURIComponent(d.upiId)}&pn=${encodeURIComponent(d.shopName)}&am=${d.total.toFixed(2)}&cu=INR`
+                )}`}
+                alt="UPI QR"
+                style={{ width: 64, height: 64, background: "#fff", borderRadius: 4 }}
+              />
+            </div>
+          )}
+          {d.bankName && d.bankAccountNo && d.bankIfsc && (
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: "#475569", marginBottom: 6 }}>Bank Details</div>
+              <div style={{ fontSize: 10 }}>Bank: {d.bankName}</div>
+              <div style={{ fontSize: 10 }}>Account #: {d.bankAccountNo}</div>
+              <div style={{ fontSize: 10 }}>IFSC: {d.bankIfsc}</div>
+              {d.bankBranch && <div style={{ fontSize: 10 }}>Branch: {d.bankBranch}</div>}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
 
 export function InvoiceTemplatePreview({
@@ -1268,6 +1543,9 @@ export function InvoiceTemplatePreview({
       {template === "ecom" && <EcomPreview d={data} />}
       {template === "flipkart" && <FlipkartPreview d={data} />}
       {template === "minimal" && <MinimalPreview d={data} />}
+      {(template === "amazon" || template === "tata" || template === "dmart" || template === "nike" || template === "instagram" || template === "unilever" || template === "service") && (
+        <BrandPreview template={template} d={data} />
+      )}
     </div>
   );
 }

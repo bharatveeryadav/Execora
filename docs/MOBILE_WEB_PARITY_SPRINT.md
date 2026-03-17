@@ -24,7 +24,7 @@ The web app (`apps/web`) has features that are not yet in the mobile app. This d
 | Walk-in quick button | ✅ | ✅ | Done |
 | Split payment progress bar | ✅ | ✅ | Done |
 | Price tier (Retail/Wholesale/Dealer) | ✅ | ✅ | Done |
-| Billing setup collapsible | ✅ | 🔲 | Sprint 24 |
+| Billing setup collapsible | ✅ | ✅ | Done |
 
 ---
 
@@ -36,6 +36,10 @@ The web app (`apps/web`) has features that are not yet in the mobile app. This d
 | Modern payment mode icons | ✅ | ✅ | Done |
 | "Fill ₹X" for split remaining | ✅ | ✅ | Done |
 | New Invoice header | ✅ | 🔲 | Sprint 25 |
+| Invoice templates (7 styles) | ✅ | ✅ | Done |
+| Template selection in preview | ✅ | ✅ | Done |
+| Billing setup collapsible | ✅ | ✅ | Done |
+| Invoice style collapsible | ✅ | ✅ | Done |
 
 ---
 

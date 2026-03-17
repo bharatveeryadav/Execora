@@ -139,6 +139,8 @@ export interface InvoicePdfData {
 	accentColor?: string;
 	/** S12-05: Logo image buffer — when set, shown in header */
 	logoBuffer?: Buffer;
+	/** Invoice tags (e.g. B2B, B2C, COD, Urgent) — shown on PDF */
+	tags?: string[];
 }
 
 // ── S12-05: Template accent colours (match InvoiceTemplatePreview.tsx) ────────
@@ -331,16 +333,20 @@ export async function generateInvoicePdf(data: InvoicePdfData): Promise<Buffer> 
 				.font('Helvetica')
 				.text(hasTax ? 'Type: GST Invoice' : 'Type: Retail Invoice', 315, infoTop + 23, { width: 220 });
 
+			let invDetailY = infoTop + 37;
+			if (data.tags && data.tags.length > 0) {
+				doc.fillColor('#64748b').fontSize(7).text(`Tags: ${data.tags.join(', ')}`, 315, invDetailY, { width: 220 });
+				invDetailY += 12;
+			}
 			if (hasTax) {
-				let invDetailY = infoTop + 37;
 				doc.text(
 					`Supply: ${isInterstate ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)'}`,
 					315,
 					invDetailY,
 					{ width: 220 }
 				);
+				invDetailY += 12;
 				if (data.placeOfSupply) {
-					invDetailY += 12;
 					doc.text(`Place of Supply: ${data.placeOfSupply}`, 315, invDetailY, { width: 220 });
 				}
 			}
