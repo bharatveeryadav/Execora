@@ -128,7 +128,7 @@ const productExtApi = {
 
 type FilterMode = "all" | "low" | "out" | "favorites";
 
-type SortMode = "name" | "stockAsc" | "stockDesc" | "price";
+type SortMode = "name" | "stockAsc" | "stockDesc" | "price" | "priceDesc" | "category";
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 
@@ -138,6 +138,7 @@ export function ItemsScreen() {
   useWsInvalidation(["products", "lowStock"]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterMode>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortMode>("name");
   const [addOpen, setAddOpen] = useState(false);
   const [showHint, setShowHint] = useState(
@@ -204,6 +205,15 @@ export function ItemsScreen() {
     [lowData],
   );
 
+  const categories = useMemo(() => {
+    const cats = new Set<string>();
+    allProducts.forEach((p) => {
+      const c = (p.category ?? "").trim();
+      if (c) cats.add(c);
+    });
+    return Array.from(cats).sort();
+  }, [allProducts]);
+
   const filtered = useMemo(() => {
     let list = allProducts;
     if (search.trim()) {
@@ -219,16 +229,25 @@ export function ItemsScreen() {
     else if (filter === "favorites")
       list = list.filter((p) => (p as Product & { isFeatured?: boolean }).isFeatured);
 
+    if (categoryFilter) {
+      list = list.filter((p) => (p.category ?? "").trim() === categoryFilter);
+    }
+
     // Sort (Sprint 24 — Vyapar complaint: no sort by quantity)
     const sorted = [...list].sort((a, b) => {
       if (sortBy === "name") return a.name.localeCompare(b.name);
       if (sortBy === "stockAsc") return num(a.stock) - num(b.stock);
       if (sortBy === "stockDesc") return num(b.stock) - num(a.stock);
       if (sortBy === "price") return num(a.price) - num(b.price);
+      if (sortBy === "priceDesc") return num(b.price) - num(a.price);
+      if (sortBy === "category") {
+        const ca = (a.category ?? "").localeCompare(b.category ?? "");
+        return ca !== 0 ? ca : a.name.localeCompare(b.name);
+      }
       return 0;
     });
     return sorted;
-  }, [allProducts, search, filter, lowStockIds, sortBy]);
+  }, [allProducts, search, filter, categoryFilter, lowStockIds, sortBy]);
 
   const outCount = allProducts.filter((p) => num(p.stock) <= 0).length;
   const lowCount = lowData?.products.length ?? 0;
@@ -361,6 +380,42 @@ export function ItemsScreen() {
           ))}
         </View>
 
+        {/* Category filter chips */}
+        {categories.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="flex-row gap-2 mt-2 -mx-4 px-4"
+            contentContainerStyle={{ gap: 8 }}
+          >
+            <TouchableOpacity
+              onPress={() => setCategoryFilter(null)}
+              activeOpacity={0.7}
+              className={`px-3 py-1.5 rounded-full border items-center justify-center min-h-[32px] ${
+                !categoryFilter ? "bg-slate-700 border-slate-700" : "bg-white border-slate-200"
+              }`}
+            >
+              <Text className={`text-xs font-medium ${!categoryFilter ? "text-white" : "text-slate-600"}`}>
+                All
+              </Text>
+            </TouchableOpacity>
+            {categories.map((cat) => (
+              <TouchableOpacity
+                key={cat}
+                onPress={() => setCategoryFilter(categoryFilter === cat ? null : cat)}
+                activeOpacity={0.7}
+                className={`px-3 py-1.5 rounded-full border items-center justify-center min-h-[32px] ${
+                  categoryFilter === cat ? "bg-slate-700 border-slate-700" : "bg-white border-slate-200"
+                }`}
+              >
+                <Text className={`text-xs font-medium ${categoryFilter === cat ? "text-white" : "text-slate-600"}`}>
+                  {cat}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+
         {/* Sort chips (Sprint 24 — sort by quantity) */}
         <View className="flex-row gap-2 mt-2 flex-wrap">
           {(
@@ -368,7 +423,9 @@ export function ItemsScreen() {
               { key: "name" as SortMode, label: "Name" },
               { key: "stockAsc" as SortMode, label: "Stock ↑" },
               { key: "stockDesc" as SortMode, label: "Stock ↓" },
-              { key: "price" as SortMode, label: "Price" },
+              { key: "price" as SortMode, label: "Price ↑" },
+              { key: "priceDesc" as SortMode, label: "Price ↓" },
+              { key: "category" as SortMode, label: "Category" },
             ] as Array<{ key: SortMode; label: string }>
           ).map(({ key, label }) => (
             <TouchableOpacity
