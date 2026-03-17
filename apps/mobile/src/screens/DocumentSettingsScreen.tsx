@@ -199,15 +199,6 @@ export function DocumentSettingsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
-      <View className="flex-row items-center border-b border-slate-200 px-4 py-3">
-        <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 -ml-2">
-          <Ionicons name="arrow-back" size={24} color="#0f172a" />
-        </TouchableOpacity>
-        <Text className="text-lg font-bold text-slate-800 flex-1 ml-2">
-          Document Settings
-        </Text>
-      </View>
-
       <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Invoice Templates */}
         <TouchableOpacity

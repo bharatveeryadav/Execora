@@ -163,8 +163,6 @@ export function BillingScreen() {
     total: number;
     fromOffline?: boolean;
   } | null>(null);
-  // More options menu (top right)
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   // Billing setup & invoice style collapsibles
   const [billingSetupExpanded, setBillingSetupExpanded] = useState(false);
@@ -336,33 +334,21 @@ export function BillingScreen() {
   const outstandingBalance =
     parseFloat(String(selectedCustomer?.balance ?? 0)) || 0;
 
-  // ── Header: Preview (left) + More options (right) ─────────────────────────
+  // ── Header: More (Document Settings) only ─────────────────────────────────
   useLayoutEffect(() => {
     (navigation as any).setOptions({
       headerRight: () => (
-        <View className="flex-row items-center gap-1">
-          <TouchableOpacity
-            onPress={() => validItemCount > 0 && setShowPreview(true)}
-            className="p-2 -m-2"
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            disabled={validItemCount === 0}
-            style={{ opacity: validItemCount === 0 ? 0.5 : 1 }}
-            accessibilityLabel="Preview"
-          >
-            <Ionicons name="eye-outline" size={22} color="#0f172a" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setShowMoreMenu(true)}
-            className="p-2 -m-2"
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            accessibilityLabel="More options"
-          >
-            <Ionicons name="ellipsis-horizontal" size={22} color="#0f172a" />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          onPress={() => (navigation as any).getParent()?.navigate("DocumentSettings")}
+          className="p-2 -m-2"
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          accessibilityLabel="Document Settings"
+        >
+          <Ionicons name="ellipsis-horizontal" size={22} color="#0f172a" />
+        </TouchableOpacity>
       ),
     });
-  }, [navigation, validItemCount]);
+  }, [navigation]);
 
   // ── Item helpers ──────────────────────────────────────────────────────────
   const updateItem = useCallback((id: number, patch: Partial<BillingItem>) => {
@@ -1477,30 +1463,6 @@ export function BillingScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-
-      {/* ── More Options Menu (top right) ───────────────────────────────── */}
-      <Modal visible={showMoreMenu} transparent animationType="fade">
-        <Pressable
-          className="flex-1 bg-black/30"
-          onPress={() => setShowMoreMenu(false)}
-        />
-        <View className="absolute top-14 right-4 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden min-w-[220]">
-          <TouchableOpacity
-            onPress={() => {
-              setShowMoreMenu(false);
-              (navigation as any).getParent()?.navigate("DocumentSettings");
-            }}
-            className="flex-row items-center gap-3 px-4 py-3"
-          >
-            <Ionicons name="document-text-outline" size={20} color="#64748b" />
-            <View className="flex-1">
-              <Text className="text-sm font-medium text-slate-800">Document Settings</Text>
-              <Text className="text-xs text-slate-500 mt-0.5">Templates, fonts, layout</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
-          </TouchableOpacity>
-        </View>
-      </Modal>
 
       {/* ── Preview Modal (with template switching) ────────────────────── */}
       <Modal visible={showPreview} transparent animationType="slide">
