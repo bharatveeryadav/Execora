@@ -17,23 +17,27 @@ import {
   ArrowLeft,
   Plus,
   Trash2,
-  User,
+  UserCircle2,
   Search,
   Loader2,
-  CheckCircle2,
+  CircleCheck,
   Eye,
-  Receipt,
-  Package,
+  ReceiptText,
+  Package2,
   IndianRupee,
   FileText,
   X,
-  Calendar,
+  CalendarDays,
   MessageCircle,
   UserPlus,
   Printer,
   Settings,
   ChevronDown,
   ChevronUp,
+  Banknote,
+  Smartphone,
+  CreditCard,
+  Wallet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -99,10 +103,10 @@ const newSplit = (mode: PaymentMode = "cash"): PaymentSplit => ({
 });
 
 const PAY_MODES = [
-  { id: "cash" as PaymentMode, label: "Cash", icon: "💵" },
-  { id: "upi" as PaymentMode, label: "UPI", icon: "📱" },
-  { id: "card" as PaymentMode, label: "Card", icon: "💳" },
-  { id: "credit" as PaymentMode, label: "Credit", icon: "📒" },
+  { id: "cash" as PaymentMode, label: "Cash", Icon: Banknote },
+  { id: "upi" as PaymentMode, label: "UPI", Icon: Smartphone },
+  { id: "card" as PaymentMode, label: "Card", Icon: CreditCard },
+  { id: "credit" as PaymentMode, label: "Credit", Icon: Wallet },
 ];
 
 let _id = 1;
@@ -1128,12 +1132,12 @@ export default function ClassicBilling() {
         {/* ── Customer Search ──────────────────────────────────────── */}
         <div className="cust-wrap space-y-1.5">
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-            <User className="h-3.5 w-3.5" />
+            <UserCircle2 className="h-3.5 w-3.5" />
             Customer
           </label>
           {selectedCustomer ? (
             <div className="flex items-center gap-2 rounded-xl border border-primary/40 bg-primary/5 px-3 py-2.5">
-              <User className="h-4 w-4 text-primary shrink-0" />
+              <UserCircle2 className="h-4 w-4 text-primary shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate">
                   {selectedCustomer.name}
@@ -1196,7 +1200,7 @@ export default function ClassicBilling() {
                         }}
                         className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-muted transition-colors"
                       >
-                        <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <UserCircle2 className="h-4 w-4 text-muted-foreground shrink-0" />
                         <div>
                           <p className="text-sm font-medium">{c.name}</p>
                           {c.phone && (
@@ -1235,7 +1239,7 @@ export default function ClassicBilling() {
         {/* ── Items Table ──────────────────────────────────────────── */}
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-            <Package className="h-3.5 w-3.5" />
+            <Package2 className="h-3.5 w-3.5" />
             Items
           </label>
 
@@ -1540,14 +1544,14 @@ export default function ClassicBilling() {
           {!splitEnabled && (
             <>
               <div className="grid grid-cols-4 gap-2">
-                {PAY_MODES.map(({ id, label, icon }) => (
+                {PAY_MODES.map(({ id, label, Icon }) => (
                   <button
                     key={id}
                     type="button"
                     onClick={() => setPaymentMode(id)}
-                    className={`flex flex-col items-center justify-center rounded-xl border-2 py-3 px-1 text-xs font-semibold transition-all min-h-[56px] ${paymentMode === id ? "border-primary bg-primary/5 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}
+                    className={`flex flex-col items-center justify-center gap-1 rounded-xl border-2 py-3 px-1 text-xs font-semibold transition-all min-h-[56px] ${paymentMode === id ? "border-primary bg-primary/5 text-primary" : "border-border text-muted-foreground hover:border-primary/40"}`}
                   >
-                    <span className="text-lg mb-0.5">{icon}</span>
+                    <Icon className="h-5 w-5 shrink-0" strokeWidth={1.75} />
                     {label}
                   </button>
                 ))}
@@ -1616,16 +1620,18 @@ export default function ClassicBilling() {
                 >
                   {/* Mode selector pills */}
                   <div className="flex gap-1">
-                    {PAY_MODES.map(({ id, icon, label }) => (
+                    {PAY_MODES.map(({ id, Icon, label }) => (
                       <button
                         key={id}
                         type="button"
                         onClick={() => updateSplit(sp.id, { mode: id })}
                         title={label}
-                        className={`text-base rounded-lg px-2 py-1 border-2 transition-all
-													${sp.mode === id ? "border-primary bg-primary/10" : "border-transparent hover:border-border"}`}
+                        className={`flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium border-2 transition-all ${
+                          sp.mode === id ? "border-primary bg-primary/10 text-primary" : "border-transparent hover:bg-muted/60 text-muted-foreground"
+                        }`}
                       >
-                        {icon}
+                        <Icon className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+                        <span className="hidden sm:inline">{label}</span>
                       </button>
                     ))}
                   </div>
@@ -1703,7 +1709,7 @@ export default function ClassicBilling() {
         {/* ── Notes + Due Date ───────────────────────────────────── */}
         <div className="space-y-2">
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-            <Receipt className="h-3.5 w-3.5" />
+            <ReceiptText className="h-3.5 w-3.5" />
             Notes / Remarks (optional)
           </label>
           <Textarea
@@ -1715,7 +1721,7 @@ export default function ClassicBilling() {
           />
           {/* Due date inline row */}
           <div className="flex items-center gap-3 rounded-xl border px-3 py-2.5">
-            <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+            <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
             <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
               Due Date
             </span>
@@ -1752,7 +1758,7 @@ export default function ClassicBilling() {
             </>
           ) : (
             <>
-              <CheckCircle2 className="h-5 w-5" />
+              <CircleCheck className="h-5 w-5" />
               {validItemCount > 0
                 ? `Create Invoice — ₹${inr(finalTotal)}`
                 : "Create Invoice"}
@@ -1806,7 +1812,7 @@ export default function ClassicBilling() {
           <DialogContent className="max-w-sm">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-success">
-                <CheckCircle2 className="h-5 w-5" />
+                <CircleCheck className="h-5 w-5" />
                 Invoice Created!
               </DialogTitle>
             </DialogHeader>
