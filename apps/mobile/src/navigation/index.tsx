@@ -17,6 +17,7 @@ import { CustomerDetailScreen } from "../screens/CustomerDetailScreen";
 import { PaymentScreen } from "../screens/PaymentScreen";
 import { OverdueScreen } from "../screens/OverdueScreen";
 import { ItemsScreen } from "../screens/ItemsScreen";
+import { ItemsMenuScreen } from "../screens/ItemsMenuScreen";
 import { ProductDetailScreen } from "../screens/ProductDetailScreen";
 import { UpdateProductScreen } from "../screens/UpdateProductScreen";
 import { MoreScreen } from "../screens/MoreScreen";
@@ -66,6 +67,7 @@ export type ItemsStackParams = {
   ItemsList: undefined;
   ProductDetail: { id: string; product?: Record<string, unknown> };
   UpdateProduct: { id: string; product?: Record<string, unknown> };
+  ItemsMenu: undefined;
 };
 
 export type MoreStackParams = {
@@ -258,6 +260,11 @@ function ItemsNavigator() {
       <ItemsStack.Screen name="ItemsList" component={ItemsScreen} />
       <ItemsStack.Screen name="ProductDetail" component={ProductDetailScreen} />
       <ItemsStack.Screen name="UpdateProduct" component={UpdateProductScreen} />
+      <ItemsStack.Screen
+        name="ItemsMenu"
+        component={ItemsMenuScreen}
+        options={{ headerShown: true, title: "More", headerBackTitle: "Items" }}
+      />
     </ItemsStack.Navigator>
   );
 }

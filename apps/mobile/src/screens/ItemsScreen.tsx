@@ -20,6 +20,7 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
+  Pressable,
   RefreshControl,
   Modal,
   ActivityIndicator,
@@ -27,6 +28,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  InteractionManager,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -319,6 +321,17 @@ export function ItemsScreen() {
               {allProducts.length} products
             </Text>
           </View>
+          <Pressable
+            onPress={() => {
+              InteractionManager.runAfterInteractions(() => {
+                navigation?.navigate?.("ItemsMenu");
+              });
+            }}
+            className="w-12 h-12 rounded-full bg-slate-100 items-center justify-center"
+            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1, backgroundColor: pressed ? "#e2e8f0" : "#f1f5f9" })}
+          >
+            <Ionicons name="ellipsis-horizontal" size={22} color="#475569" />
+          </Pressable>
         </View>
 
         {/* Search */}
