@@ -28,6 +28,7 @@ import {
   Platform,
   Image,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { productApi, apiFetch } from "@execora/shared";
@@ -132,6 +133,7 @@ type SortMode = "name" | "stockAsc" | "stockDesc" | "price";
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export function ItemsScreen() {
+  const navigation = useNavigation<any>();
   const qc = useQueryClient();
   useWsInvalidation(["products", "lowStock"]);
   const [search, setSearch] = useState("");
@@ -480,6 +482,7 @@ export function ItemsScreen() {
                 ? (product as Product & { imageUrl?: string }).imageUrl
                 : imageUrlsMap[product.id]
             }
+            onPress={() => navigation.navigate("ProductDetail" as never, { id: product.id, product } as never)}
             onAdd={() => handleQuickAdjust(product, "add")}
             onSubtract={() => handleQuickAdjust(product, "subtract")}
             adjusting={
@@ -580,6 +583,7 @@ export function ItemsScreen() {
 function ProductCard({
   product,
   imageUrl,
+  onPress,
   onAdd,
   onSubtract,
   adjusting,
@@ -588,6 +592,7 @@ function ProductCard({
 }: {
   product: Product & { minStock?: number; isFeatured?: boolean };
   imageUrl?: string | null;
+  onPress?: () => void;
   onAdd: () => void;
   onSubtract: () => void;
   adjusting: boolean;
@@ -604,11 +609,12 @@ function ProductCard({
   return (
     <TouchableOpacity
       activeOpacity={0.75}
+      onPress={onPress}
       onLongPress={onLongPress}
       delayLongPress={500}
       accessibilityLabel={a11yLabel}
       accessibilityRole="button"
-      accessibilityHint="Double tap to adjust stock quantity"
+      accessibilityHint="Tap to view details, long-press to adjust stock"
       className="bg-white rounded-2xl border border-slate-200 mb-3 overflow-hidden"
     >
       <View className="flex-row items-center px-4 py-3">

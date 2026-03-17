@@ -8,6 +8,10 @@
     "icon": "./assets/icon.png",
     "scheme": "execora",
     "userInterfaceStyle": "automatic",
+    "statusBar": {
+      "backgroundColor": "#ffffff",
+      "style": "dark"
+    },
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",

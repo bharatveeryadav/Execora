@@ -233,6 +233,10 @@ class ProductService {
 			priceTier2?: number;
 			priceTier3?: number;
 			isFeatured?: boolean;
+			gstRate?: number;
+			hsnCode?: string;
+			cost?: number;
+			mrp?: number;
 		}
 	) {
 		const updateData: Record<string, unknown> = {};
@@ -249,6 +253,10 @@ class ProductService {
 		if (data.priceTier2 !== undefined) updateData.priceTier2 = data.priceTier2 != null ? new Decimal(data.priceTier2) : null;
 		if (data.priceTier3 !== undefined) updateData.priceTier3 = data.priceTier3 != null ? new Decimal(data.priceTier3) : null;
 		if (data.isFeatured !== undefined) updateData.isFeatured = data.isFeatured;
+		if (data.gstRate !== undefined) updateData.gstRate = new Decimal(data.gstRate);
+		if (data.hsnCode !== undefined) updateData.hsnCode = data.hsnCode || null;
+		if (data.cost !== undefined) updateData.cost = data.cost != null ? new Decimal(data.cost) : null;
+		if (data.mrp !== undefined) updateData.mrp = data.mrp != null ? new Decimal(data.mrp) : null;
 
 		const { tenantId } = tenantContext.get();
 		const existing = await prisma.product.findFirst({ where: { id: productId, tenantId } });

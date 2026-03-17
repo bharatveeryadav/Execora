@@ -320,6 +320,10 @@ export async function productRoutes(fastify: FastifyInstance) {
       priceTier2?: number;
       priceTier3?: number;
       isFeatured?: boolean;
+      gstRate?: number;
+      hsnCode?: string;
+      cost?: number;
+      mrp?: number;
     };
   }>(
     "/api/v1/products/:id",
@@ -341,6 +345,10 @@ export async function productRoutes(fastify: FastifyInstance) {
             priceTier2: { type: "number", minimum: 0 },
             priceTier3: { type: "number", minimum: 0 },
             isFeatured: { type: "boolean" },
+            gstRate: { type: "number", minimum: 0, maximum: 28 },
+            hsnCode: { type: "string", maxLength: 20 },
+            cost: { type: "number", minimum: 0 },
+            mrp: { type: "number", minimum: 0 },
           },
           additionalProperties: false,
         },
