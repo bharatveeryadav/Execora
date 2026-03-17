@@ -14,7 +14,8 @@ import {
   Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect } from "@react-navigation/native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { storage, DOC_SETTINGS_KEY, INV_TEMPLATE_KEY, BIZ_STORAGE_KEY } from "../lib/storage";
 import {
@@ -182,8 +183,9 @@ function SectionTitle({ title }: { title: string }) {
   );
 }
 
-export function DocumentSettingsScreen() {
-  const navigation = useNavigation();
+type Props = NativeStackScreenProps<import("../navigation").MoreStackParams, "DocumentSettings">;
+
+export function DocumentSettingsScreen({ navigation }: Props) {
   const [settings, save] = useDocumentSettings();
   const [invoiceTemplate, setInvoiceTemplate] = useState<TemplateId>("classic");
   const [showLanguageModal, setShowLanguageModal] = useState(false);
@@ -434,9 +436,10 @@ export function DocumentSettingsScreen() {
       <View className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200">
         <TouchableOpacity
           onPress={handleUpdate}
-          className={`py-4 rounded-xl items-center justify-center ${hasChanges ? "bg-primary" : "bg-slate-200"}`}
+          className="py-4 rounded-xl items-center justify-center"
+          style={{ backgroundColor: hasChanges ? "#e67e22" : "#e2e8f0" }}
         >
-          <Text className={`font-bold text-base ${hasChanges ? "text-white" : "text-slate-500"}`}>
+          <Text style={{ fontWeight: "700", fontSize: 16, color: hasChanges ? "#fff" : "#64748b" }}>
             Update Document Settings
           </Text>
         </TouchableOpacity>

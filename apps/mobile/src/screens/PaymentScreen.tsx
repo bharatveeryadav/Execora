@@ -13,7 +13,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { customerApi, paymentApi } from '../lib/api';
@@ -21,7 +21,7 @@ import { formatCurrency, toFloat } from '../lib/utils';
 import { hapticSuccess, hapticError } from '../lib/haptics';
 import type { CustomersStackParams } from '../navigation';
 
-type RouteProps = RouteProp<CustomersStackParams, 'Payment'>;
+type Props = NativeStackScreenProps<CustomersStackParams, 'Payment'>;
 
 const PAYMENT_METHODS = [
   { value: 'cash',          label: '💵 Cash' },
@@ -31,9 +31,7 @@ const PAYMENT_METHODS = [
   { value: 'cheque',        label: '📝 Cheque' },
 ] as const;
 
-export function PaymentScreen() {
-  const navigation = useNavigation<any>();
-  const route = useRoute<RouteProps>();
+export function PaymentScreen({ navigation, route }: Props) {
   const { customerId } = route.params ?? {};
   const qc = useQueryClient();
 

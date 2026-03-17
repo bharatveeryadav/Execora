@@ -30,7 +30,7 @@ import {
   Image,
   InteractionManager,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { productApi, apiFetch } from "@execora/shared";
@@ -132,10 +132,11 @@ type FilterMode = "all" | "low" | "out" | "favorites";
 
 type SortMode = "name" | "stockAsc" | "stockDesc" | "price" | "priceDesc" | "category";
 
+type Props = NativeStackScreenProps<import("../navigation").ItemsStackParams, "ItemsList">;
+
 // ── Main screen ───────────────────────────────────────────────────────────────
 
-export function ItemsScreen() {
-  const navigation = useNavigation<any>();
+export function ItemsScreen({ navigation }: Props) {
   const qc = useQueryClient();
   useWsInvalidation(["products", "lowStock"]);
   const [search, setSearch] = useState("");

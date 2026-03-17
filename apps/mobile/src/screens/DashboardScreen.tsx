@@ -18,7 +18,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigation } from "@react-navigation/native";
+import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import {
   invoiceApi,
@@ -104,9 +104,10 @@ const SECTION_GAP = 16;
 const HORIZONTAL_PADDING = 16;
 const MAX_CONTENT_WIDTH = 480;
 
-export function DashboardScreen() {
+type Props = BottomTabScreenProps<import("../navigation").MainTabParams, "Dashboard">;
+
+export function DashboardScreen({ navigation }: Props) {
   const { width: screenWidth } = useWindowDimensions();
-  const navigation = useNavigation<any>();
   const qc = useQueryClient();
   const { user } = useAuth();
   const { isConnected } = useWS();

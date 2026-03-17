@@ -20,7 +20,7 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@execora/shared";
 import { inr } from "@execora/shared";
@@ -37,8 +37,9 @@ interface OverdueCustomer {
 
 // ── OverdueScreen ─────────────────────────────────────────────────────────────
 
-export function OverdueScreen() {
-  const navigation = useNavigation<any>();
+type Props = NativeStackScreenProps<import("../navigation").InvoicesStackParams, "Overdue">;
+
+export function OverdueScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
 
   const { data, isFetching, refetch } = useQuery({
@@ -65,7 +66,7 @@ export function OverdueScreen() {
   }
 
   function openCustomer(id: string) {
-    navigation.navigate("CustomersTab", {
+    (navigation.getParent() as any)?.navigate("CustomersTab", {
       screen: "CustomerDetail",
       params: { id },
     });

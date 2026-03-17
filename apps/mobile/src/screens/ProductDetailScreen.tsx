@@ -12,7 +12,7 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { productApi, apiFetch } from "@execora/shared";
 import { Ionicons } from "@expo/vector-icons";
@@ -39,12 +39,12 @@ function useDoubleTap(onDoubleTap: () => void) {
   };
 }
 
-export function ProductDetailScreen() {
-  const navigation = useNavigation<any>();
-  const route = useRoute<any>();
+type Props = NativeStackScreenProps<import("../navigation").ItemsStackParams, "ProductDetail">;
+
+export function ProductDetailScreen({ navigation, route }: Props) {
   const qc = useQueryClient();
   useWsInvalidation(["products", "lowStock"]);
-  const params = route.params as { id?: string; product?: Record<string, unknown> } | undefined;
+  const params = route.params;
   const id = params?.id ?? "";
   const passedProduct = params?.product;
 
@@ -80,19 +80,19 @@ export function ProductDetailScreen() {
   const { data: imageUrlData } = useQuery({
     queryKey: ["productImageUrl", id],
     queryFn: () => apiFetch<{ url: string }>(`/api/v1/products/${id}/image-url`),
-    enabled: !!id && !!rawImageUrl && needsPresigned,
+    enabled: Boolean(id && rawImageUrl && needsPresigned),
     retry: false,
   });
-  const imageUrl = rawImageUrl?.startsWith("http") ? rawImageUrl : imageUrlData?.url;
+  const imageUrl = rawImageUrl?.startsWith("http") ? rawImageUrl : (imageUrlData as { url?: string } | undefined)?.url;
 
   useEffect(() => {
     if (product) {
       setName(String(product.name ?? ""));
-      setPrice(String(num(product.price) ?? ""));
-      setGstRate(String(num(product.gstRate) ?? ""));
-      setCost(String(num(product.cost) ?? ""));
-      setMrp(String(num(product.mrp) ?? ""));
-      setStock(String(num(product.stock) ?? ""));
+      setPrice(String(num(product.price as number) ?? ""));
+      setGstRate(String(num(product.gstRate as number) ?? ""));
+      setCost(String(num(product.cost as number) ?? ""));
+      setMrp(String(num(product.mrp as number) ?? ""));
+      setStock(String(num(product.stock as number) ?? ""));
       setUnit(String(product.unit ?? "piece"));
       setCategory(String(product.category ?? ""));
       setHsnCode(String(product.hsnCode ?? ""));

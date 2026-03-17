@@ -14,7 +14,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRoute, useNavigation, RouteProp } from "@react-navigation/native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -80,9 +80,9 @@ const STATUS_CFG: Record<string, { label: string; bg: string; text: string }> = 
 
 export type PubInvoiceParams = { id: string; token: string };
 
-export function PubInvoiceScreen() {
-  const route = useRoute<RouteProp<{ PubInvoice: PubInvoiceParams }, "PubInvoice">>();
-  const navigation = useNavigation();
+type Props = NativeStackScreenProps<import("../navigation").RootStackParams, "PubInvoice">;
+
+export function PubInvoiceScreen({ navigation, route }: Props) {
   const { id, token } = route.params;
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({

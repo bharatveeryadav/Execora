@@ -16,8 +16,7 @@ import {
   InteractionManager,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { invoiceApi, purchaseApi } from "../lib/api";
@@ -63,13 +62,13 @@ const STATUS_TABS: StatusTab[] = ["All", "Draft", "Pending", "Partial", "Paid", 
 
 const MIN_TOUCH = 44;
 
-const STATUS_STYLES: Record<string, { bg: string; text: string; icon: string; iconColor: string }> = {
-  paid: { bg: "bg-green-100", text: "text-green-700", icon: "checkmark-circle", iconColor: "#16a34a" },
-  pending: { bg: "bg-amber-100", text: "text-amber-700", icon: "time", iconColor: "#d97706" },
-  partial: { bg: "bg-amber-100", text: "text-amber-700", icon: "ellipse", iconColor: "#d97706" },
-  draft: { bg: "bg-slate-100", text: "text-slate-500", icon: "document-outline", iconColor: "#64748b" },
-  proforma: { bg: "bg-blue-100", text: "text-blue-700", icon: "document-text", iconColor: "#2563eb" },
-  cancelled: { bg: "bg-red-100", text: "text-red-700", icon: "close-circle", iconColor: "#94a3b8" },
+const STATUS_STYLES: Record<string, { bg: string; text: string; icon: string; iconColor: string; bgColor: string; textColor: string }> = {
+  paid: { bg: "bg-green-100", text: "text-green-700", icon: "checkmark-circle", iconColor: "#16a34a", bgColor: "#dcfce7", textColor: "#15803d" },
+  pending: { bg: "bg-amber-100", text: "text-amber-700", icon: "time", iconColor: "#d97706", bgColor: "#fef3c7", textColor: "#b45309" },
+  partial: { bg: "bg-amber-100", text: "text-amber-700", icon: "ellipse", iconColor: "#d97706", bgColor: "#fef3c7", textColor: "#b45309" },
+  draft: { bg: "bg-slate-100", text: "text-slate-500", icon: "document-outline", iconColor: "#64748b", bgColor: "#f1f5f9", textColor: "#64748b" },
+  proforma: { bg: "bg-blue-100", text: "text-blue-700", icon: "document-text", iconColor: "#2563eb", bgColor: "#dbeafe", textColor: "#1d4ed8" },
+  cancelled: { bg: "bg-red-100", text: "text-red-700", icon: "close-circle", iconColor: "#94a3b8", bgColor: "#fee2e2", textColor: "#94a3b8" },
 };
 
 function getDateRange(filter: DateFilter): { from: Date; to: Date } | null {
@@ -144,8 +143,9 @@ function formatDate(d: string | Date | undefined): string {
   }
 }
 
-export function InvoiceListScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<InvoicesStackParams, "InvoiceList">>();
+type Props = NativeStackScreenProps<InvoicesStackParams, "InvoiceList">;
+
+export function InvoiceListScreen({ navigation }: Props) {
   const [docTypeTab, setDocTypeTab] = useState<DocTypeTab>("sales");
   const [statusTab, setStatusTab] = useState<StatusTab>("All");
   const [search, setSearch] = useState("");
@@ -278,12 +278,7 @@ export function InvoiceListScreen() {
     const invAny = inv as any;
     const status = invAny.status ?? "draft";
     const s = STATUS_STYLES[status] ?? STATUS_STYLES.draft;
-    const amtColor =
-      status === "paid"
-        ? "text-green-600"
-        : status === "cancelled"
-          ? "text-slate-400 line-through"
-          : "text-slate-800";
+    const amtColor = status === "paid" ? "#16a34a" : status === "cancelled" ? "#94a3b8" : "#0f172a";
 
     return (
       <Pressable
@@ -298,14 +293,8 @@ export function InvoiceListScreen() {
           minHeight: MIN_TOUCH + 8,
         })}
       >
-        <View
-          className={`w-11 h-11 rounded-xl items-center justify-center ${s.bg}`}
-        >
-          <Ionicons
-            name={s.icon as any}
-            size={20}
-            color={s.iconColor}
-          />
+        <View style={{ width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: s.bgColor }}>
+          <Ionicons name={s.icon as any} size={20} color={s.iconColor} />
         </View>
         <View className="flex-1 min-w-0">
           <Text className={TYPO.labelBold} numberOfLines={1}>
@@ -315,10 +304,10 @@ export function InvoiceListScreen() {
             {invAny.customer?.name ?? "Walk-in"} · {formatDate(inv.createdAt)}
           </Text>
         </View>
-        <View className={`rounded-full px-2.5 py-1 ${s.bg} ${s.text}`}>
-          <Text className="text-[10px] font-semibold capitalize">{status}</Text>
+        <View style={{ borderRadius: 9999, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: s.bgColor }}>
+          <Text style={{ fontSize: 10, fontWeight: "600", color: s.textColor, textTransform: "capitalize" }}>{status}</Text>
         </View>
-        <Text className={`text-sm font-bold tabular-nums ${amtColor}`}>
+        <Text style={{ fontSize: 14, fontWeight: "700", color: amtColor, textDecorationLine: status === "cancelled" ? "line-through" : undefined }}>
           ₹{inr(inv.total)}
         </Text>
         <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
@@ -407,7 +396,7 @@ export function InvoiceListScreen() {
           </Pressable>
         </View>
 
-        {/* Doc type tabs */}
+        {/* Doc type tabs — avoid conditional className (NativeWind breaks nav context) */}
         <View className="flex-row rounded-2xl bg-slate-100 p-1.5">
           {[
             { id: "sales" as DocTypeTab, label: "Sales", icon: "add" },
@@ -417,10 +406,12 @@ export function InvoiceListScreen() {
             <Pressable
               key={id}
               onPress={() => setDocTypeTab(id)}
-              className={`flex-1 flex-row items-center justify-center gap-2 py-3 rounded-xl ${docTypeTab === id ? "bg-white shadow-sm" : ""}`}
+              className="flex-1 flex-row items-center justify-center gap-2 py-3 rounded-xl"
               style={({ pressed }) => ({
                 opacity: pressed && docTypeTab !== id ? 0.7 : 1,
                 minHeight: MIN_TOUCH,
+                backgroundColor: docTypeTab === id ? "#fff" : "transparent",
+                ...(docTypeTab === id && { shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 }),
               })}
             >
               <Ionicons
@@ -428,7 +419,7 @@ export function InvoiceListScreen() {
                 size={18}
                 color={docTypeTab === id ? "#0f172a" : "#64748b"}
               />
-              <Text className={`text-xs font-semibold ${docTypeTab === id ? "text-slate-800" : "text-slate-500"}`}>
+              <Text style={{ fontSize: 12, fontWeight: "600", color: docTypeTab === id ? "#0f172a" : "#64748b" }}>
                 {label}
               </Text>
               {docTypeCounts[id] > 0 && (
@@ -452,19 +443,24 @@ export function InvoiceListScreen() {
             {STATUS_TABS.map((tab) => {
               const key = tab.toLowerCase();
               const count = tab === "All" ? invoicesByDate.length : (counts[key] ?? 0);
+              const active = statusTab === tab;
               return (
                 <Pressable
                   key={tab}
                   onPress={() => setStatusTab(tab)}
-                  className={`flex-row items-center gap-1.5 px-3.5 py-2 rounded-full ${statusTab === tab ? "bg-primary" : "bg-slate-100"}`}
-                  style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1, minHeight: MIN_TOUCH - 4 })}
+                  className="flex-row items-center gap-1.5 px-3.5 py-2 rounded-full"
+                  style={({ pressed }) => ({
+                    opacity: pressed ? 0.8 : 1,
+                    minHeight: MIN_TOUCH - 4,
+                    backgroundColor: active ? "#e67e22" : "#f1f5f9",
+                  })}
                 >
-                  <Text className={`text-xs font-semibold ${statusTab === tab ? "text-white" : "text-slate-600"}`}>
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: active ? "#fff" : "#475569" }}>
                     {tab}
                   </Text>
                   {count > 0 && (
-                    <View className={`rounded-full px-2 py-0.5 ${statusTab === tab ? "bg-white/25" : "bg-slate-200"}`}>
-                      <Text className={`text-[10px] font-bold ${statusTab === tab ? "text-white" : "text-slate-600"}`}>
+                    <View style={{ borderRadius: 9999, paddingHorizontal: 8, paddingVertical: 2, backgroundColor: active ? "rgba(255,255,255,0.25)" : "#e2e8f0" }}>
+                      <Text style={{ fontSize: 10, fontWeight: "700", color: active ? "#fff" : "#475569" }}>
                         {count}
                       </Text>
                     </View>
@@ -497,18 +493,25 @@ export function InvoiceListScreen() {
             contentContainerStyle={{ paddingRight: 16 }}
           >
             <View className="flex-row gap-2">
-            {DATE_FILTERS.filter((f) => f !== "custom").map((f) => (
-              <Pressable
-                key={f}
-                onPress={() => setDateFilter(f)}
-                className={`px-4 py-2 rounded-xl ${dateFilter === f ? "bg-primary" : "bg-slate-100"}`}
-                style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1, minHeight: MIN_TOUCH - 4 })}
-              >
-                <Text className={`text-xs font-semibold ${dateFilter === f ? "text-white" : "text-slate-600"}`}>
-                  {DATE_LABELS[f]}
-                </Text>
-              </Pressable>
-            ))}
+            {DATE_FILTERS.filter((f) => f !== "custom").map((f) => {
+              const active = dateFilter === f;
+              return (
+                <Pressable
+                  key={f}
+                  onPress={() => setDateFilter(f)}
+                  className="px-4 py-2 rounded-xl"
+                  style={({ pressed }) => ({
+                    opacity: pressed ? 0.8 : 1,
+                    minHeight: MIN_TOUCH - 4,
+                    backgroundColor: active ? "#e67e22" : "#f1f5f9",
+                  })}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: "600", color: active ? "#fff" : "#475569" }}>
+                    {DATE_LABELS[f]}
+                  </Text>
+                </Pressable>
+              );
+            })}
             </View>
           </ScrollView>
         )}

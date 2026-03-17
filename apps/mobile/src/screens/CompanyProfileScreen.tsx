@@ -20,7 +20,7 @@ import {
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
@@ -62,8 +62,9 @@ type MeUser = {
 const LABEL = "text-sm font-medium text-slate-600";
 const INPUT = "border border-slate-200 rounded-xl px-4 py-3.5 text-base text-slate-800";
 
-export function CompanyProfileScreen() {
-  const navigation = useNavigation();
+type Props = NativeStackScreenProps<import("../navigation").MoreStackParams, "CompanyProfile">;
+
+export function CompanyProfileScreen({ navigation }: Props) {
   const qc = useQueryClient();
   const { data: meData, isLoading } = useQuery({
     queryKey: ["auth", "me"],

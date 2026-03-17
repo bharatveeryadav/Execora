@@ -6,7 +6,7 @@
 import React from "react";
 import { View, Text, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { TYPO } from "../lib/typography";
 
@@ -86,19 +86,21 @@ const SECTIONS: Section[] = [
   },
 ];
 
-export function MoreScreen() {
-  const navigation = useNavigation<any>();
+type Props = NativeStackScreenProps<import("../navigation").MoreStackParams, "More">;
+
+export function MoreScreen({ navigation }: Props) {
 
   const handlePress = (tile: Tile) => {
+    const parent = navigation.getParent() as any;
     if (tile.route === "Payment") {
-      navigation.getParent()?.navigate("CustomersTab" as never, { screen: "Payment" } as never);
+      parent?.navigate("CustomersTab", { screen: "Payment" });
       return;
     }
     if (tile.route === "Overdue") {
-      navigation.getParent()?.navigate("CustomersTab" as never, { screen: "Overdue" } as never);
+      parent?.navigate("CustomersTab", { screen: "Overdue" });
       return;
     }
-    navigation.navigate(tile.route as never, (tile.params ?? {}) as never);
+    navigation.navigate(tile.route as any, (tile.params ?? {}) as any);
   };
 
   return (
@@ -128,10 +130,12 @@ export function MoreScreen() {
                   <Pressable
                     key={tile.route + tile.label}
                     onPress={() => handlePress(tile)}
-                    className={`flex-row items-center gap-3 px-4 py-3.5 ${idx < section.tiles.length - 1 ? "border-b border-slate-100" : ""}`}
+                    className="flex-row items-center gap-3 px-4 py-3.5"
                     style={({ pressed }) => ({
                       backgroundColor: pressed ? "#f8fafc" : "#fff",
                       minHeight: MIN_TOUCH + 8,
+                      borderBottomWidth: idx < section.tiles.length - 1 ? 1 : 0,
+                      borderBottomColor: "#f1f5f9",
                     })}
                   >
                     <View

@@ -19,7 +19,7 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { productApi, apiFetch } from "@execora/shared";
 import * as ImagePicker from "expo-image-picker";
@@ -53,13 +53,11 @@ function num(v: string | number | undefined | null): number {
   return isFinite(n) ? n : 0;
 }
 
-export function UpdateProductScreen() {
-  const navigation = useNavigation<any>();
-  const route = useRoute<any>();
+type Props = NativeStackScreenProps<import("../navigation").ItemsStackParams, "UpdateProduct">;
+
+export function UpdateProductScreen({ navigation, route }: Props) {
   const qc = useQueryClient();
-  const params = route.params as { id?: string; product?: Record<string, unknown> } | undefined;
-  const id = params?.id ?? "";
-  const passedProduct = params?.product;
+  const { id = "", product: passedProduct } = route.params ?? {};
 
   const [type, setType] = useState<"product" | "service">("product");
   const [name, setName] = useState("");
@@ -91,16 +89,16 @@ export function UpdateProductScreen() {
   useEffect(() => {
     if (product) {
       setName(String(product.name ?? ""));
-      setPrice(String(num(product.price) ?? ""));
-      setGstRate(String(num(product.gstRate) ?? ""));
-      setCost(String(num(product.cost) ?? ""));
-      setStock(String(num(product.stock) ?? ""));
+      setPrice(String(num(product.price as number) ?? ""));
+      setGstRate(String(num(product.gstRate as number) ?? ""));
+      setCost(String(num(product.cost as number) ?? ""));
+      setStock(String(num(product.stock as number) ?? ""));
       setUnit(String(product.unit ?? "piece"));
       setCategory(String(product.category ?? ""));
       setHsnCode(String(product.hsnCode ?? ""));
       setBarcode(String(product.barcode ?? ""));
       setDescription(String(product.description ?? ""));
-      setMinStock(String(num(product.minStock) ?? ""));
+      setMinStock(String(num(product.minStock as number) ?? ""));
       setIsFeatured((product.isFeatured as boolean) ?? true);
     }
   }, [product]);

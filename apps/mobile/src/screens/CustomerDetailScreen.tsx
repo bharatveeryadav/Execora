@@ -18,13 +18,13 @@ import {
   Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { customerApi, invoiceApi, reminderApi, customerExtApi } from '../lib/api';
 import { formatCurrency, formatDate, formatDateTime, toFloat } from '../lib/utils';
 import type { CustomersStackParams } from '../navigation';
 
-type RouteProps = RouteProp<CustomersStackParams, 'CustomerDetail'>;
+type Props = NativeStackScreenProps<CustomersStackParams, 'CustomerDetail'>;
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -46,9 +46,7 @@ const LANG_LABELS: Record<string, string> = { hi: 'Hindi', en: 'English', mr: 'M
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function CustomerDetailScreen() {
-  const navigation = useNavigation<any>();
-  const route = useRoute<RouteProps>();
+export function CustomerDetailScreen({ navigation, route }: Props) {
   const { id } = route.params;
   const qc = useQueryClient();
 

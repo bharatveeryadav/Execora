@@ -3,12 +3,13 @@
  */
 import React from "react";
 import { View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../contexts/AuthContext";
 
-export function SettingsScreen() {
-  const navigation = useNavigation();
+type Props = NativeStackScreenProps<import("../navigation").MoreStackParams, "Settings">;
+
+export function SettingsScreen({ navigation }: Props) {
   const { logout } = useAuth();
 
   const handleLogout = () => {

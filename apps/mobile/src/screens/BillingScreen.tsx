@@ -36,7 +36,7 @@ import {
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   amountInWords,
@@ -118,9 +118,9 @@ function persistInvoiceBar(data: Record<string, unknown>) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function BillingScreen() {
-  const navigation = useNavigation();
-  const route = useRoute<RouteProp<BillingStackParams, "BillingForm">>();
+type BillingProps = NativeStackScreenProps<BillingStackParams, "BillingForm">;
+
+export function BillingScreen({ navigation, route }: BillingProps) {
   const qc = useQueryClient();
   const { isOffline } = useOffline();
   const startAsWalkIn = route.params?.startAsWalkIn;

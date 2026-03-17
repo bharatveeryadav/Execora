@@ -70,8 +70,12 @@ export function BillsMenuScreen({ navigation }: Props) {
             <Pressable
               key={item.id}
               onPress={() => handleMenuPress(item)}
-              className={`flex-row items-center gap-3 px-4 py-3.5 min-h-[52] ${idx < MENU_ITEMS.length - 1 ? "border-b border-slate-100" : ""}`}
-              style={({ pressed }) => ({ backgroundColor: pressed ? "#f8fafc" : "#fff" })}
+              className="flex-row items-center gap-3 px-4 py-3.5 min-h-[52]"
+              style={({ pressed }) => ({
+                backgroundColor: pressed ? "#f8fafc" : "#fff",
+                borderBottomWidth: idx < MENU_ITEMS.length - 1 ? 1 : 0,
+                borderBottomColor: "#f1f5f9",
+              })}
             >
               <View className="w-10 h-10 rounded-lg bg-slate-100 items-center justify-center">
                 <Ionicons name={item.icon as any} size={20} color="#64748b" />

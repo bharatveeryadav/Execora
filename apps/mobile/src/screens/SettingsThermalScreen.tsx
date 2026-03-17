@@ -11,7 +11,7 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import {
   getThermalConfig,
@@ -21,8 +21,9 @@ import {
 import { printReceipt } from "../lib/printReceipt";
 import type { ReceiptData } from "../lib/thermalReceipt";
 
-export function SettingsThermalScreen() {
-  const navigation = useNavigation();
+type Props = NativeStackScreenProps<import("../navigation").MoreStackParams, "SettingsThermal">;
+
+export function SettingsThermalScreen({ navigation }: Props) {
   const [width, setWidth] = useState<58 | 80>(80);
   const [header, setHeader] = useState("");
   const [footer, setFooter] = useState("Thank you! Visit again.");

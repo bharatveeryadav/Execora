@@ -13,7 +13,7 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
@@ -84,11 +84,11 @@ function buildTemplateCsv(config: ImportConfig): string {
 
 type ImportRouteParams = { type?: EntityType };
 
-export function ImportScreen() {
-  const navigation = useNavigation<any>();
-  const route = useRoute<RouteProp<{ params: ImportRouteParams }, "params">>();
+type Props = NativeStackScreenProps<import("../navigation").MoreStackParams, "Import">;
+
+export function ImportScreen({ navigation, route }: Props) {
   const qc = useQueryClient();
-  const typeParam = (route.params as ImportRouteParams)?.type;
+  const typeParam = route.params?.type;
   const initialType: EntityType =
     typeParam === "customers" || typeParam === "vendors" ? typeParam : "customers";
 

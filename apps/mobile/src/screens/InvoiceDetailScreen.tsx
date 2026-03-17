@@ -18,14 +18,14 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invoiceApi, invoiceExtApi } from '../lib/api';
 import { formatCurrency, formatDate, toFloat } from '../lib/utils';
 import { useWsInvalidation } from '../hooks/useWsInvalidation';
 import type { InvoicesStackParams } from '../navigation';
 
-type RouteProps = RouteProp<InvoicesStackParams, 'InvoiceDetail'>;
+type Props = NativeStackScreenProps<InvoicesStackParams, 'InvoiceDetail'>;
 
 // ── Status config ─────────────────────────────────────────────────────────────
 
@@ -47,9 +47,7 @@ const PAYMENT_METHODS = [
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function InvoiceDetailScreen() {
-  const navigation = useNavigation();
-  const route = useRoute<RouteProps>();
+export function InvoiceDetailScreen({ navigation, route }: Props) {
   const { id } = route.params;
   const qc = useQueryClient();
   useWsInvalidation(['invoices']);

@@ -5,15 +5,14 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 type RouteParams = { title?: string; emoji?: string };
+type Props = NativeStackScreenProps<Record<string, RouteParams | undefined>, string>;
 
-export function ComingSoonScreen() {
-  const navigation = useNavigation();
-  const route = useRoute<RouteProp<{ params: RouteParams }, "params">>();
-  const title = (route.params as RouteParams)?.title ?? "Coming Soon";
-  const emoji = (route.params as RouteParams)?.emoji ?? "🚧";
+export function ComingSoonScreen({ navigation, route }: Props) {
+  const title = route.params?.title ?? "Coming Soon";
+  const emoji = route.params?.emoji ?? "🚧";
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={["top", "bottom"]}>

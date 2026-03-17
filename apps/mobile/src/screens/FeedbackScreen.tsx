@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import { View, Text, TouchableOpacity, TextInput, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigation } from "@react-navigation/native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { feedbackApi } from "../lib/api";
 import { Button } from "../components/ui/Button";
 
@@ -15,8 +15,9 @@ const NPS_LABELS: Record<number, string> = {
   10: "Extremely likely",
 };
 
-export function FeedbackScreen() {
-  const navigation = useNavigation();
+type Props = NativeStackScreenProps<import("../navigation").MoreStackParams, "Feedback">;
+
+export function FeedbackScreen({ navigation }: Props) {
   const [npsScore, setNpsScore] = useState<number | null>(null);
   const [text, setText] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -79,11 +80,10 @@ export function FeedbackScreen() {
             <TouchableOpacity
               key={n}
               onPress={() => setNpsScore(n)}
-              className={`w-10 h-10 rounded-full items-center justify-center ${
-                npsScore === n ? "bg-primary" : "bg-slate-100"
-              }`}
+              className="w-10 h-10 rounded-full items-center justify-center"
+              style={{ backgroundColor: npsScore === n ? "#e67e22" : "#f1f5f9" }}
             >
-              <Text className={npsScore === n ? "text-white font-semibold" : "text-slate-600 font-semibold"}>
+              <Text style={{ color: npsScore === n ? "#fff" : "#475569", fontWeight: "600" }}>
                 {n}
               </Text>
             </TouchableOpacity>
