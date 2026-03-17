@@ -17,6 +17,8 @@ import { CustomerDetailScreen } from "../screens/CustomerDetailScreen";
 import { PaymentScreen } from "../screens/PaymentScreen";
 import { OverdueScreen } from "../screens/OverdueScreen";
 import { ItemsScreen } from "../screens/ItemsScreen";
+import { ProductDetailScreen } from "../screens/ProductDetailScreen";
+import { UpdateProductScreen } from "../screens/UpdateProductScreen";
 import { MoreScreen } from "../screens/MoreScreen";
 import { ExpensesScreen } from "../screens/ExpensesScreen";
 import { CashBookScreen } from "../screens/CashBookScreen";
@@ -58,6 +60,12 @@ export type MainTabParams = {
   CustomersTab: undefined;
   InvoicesTab: undefined;
   MoreTab: undefined;
+};
+
+export type ItemsStackParams = {
+  ItemsList: undefined;
+  ProductDetail: { id: string; product?: Record<string, unknown> };
+  UpdateProduct: { id: string; product?: Record<string, unknown> };
 };
 
 export type MoreStackParams = {
@@ -129,6 +137,7 @@ const Tab = createBottomTabNavigator<MainTabParams>();
 const BillingStack = createNativeStackNavigator<BillingStackParams>();
 const InvoicesStack = createNativeStackNavigator<InvoicesStackParams>();
 const CustomersStack = createNativeStackNavigator<CustomersStackParams>();
+const ItemsStack = createNativeStackNavigator<ItemsStackParams>();
 const MoreStack = createNativeStackNavigator<MoreStackParams>();
 
 // ── Auth stack ────────────────────────────────────────────────────────────────
@@ -237,6 +246,22 @@ function CustomersNavigator() {
   );
 }
 
+// ── Items stack (Items list + Product detail) ───────────────────────────────────
+
+function ItemsNavigator() {
+  return (
+    <ItemsStack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <ItemsStack.Screen name="ItemsList" component={ItemsScreen} />
+      <ItemsStack.Screen name="ProductDetail" component={ProductDetailScreen} />
+      <ItemsStack.Screen name="UpdateProduct" component={UpdateProductScreen} />
+    </ItemsStack.Navigator>
+  );
+}
+
 // ── More stack ────────────────────────────────────────────────────────────────
 
 function MoreNavigator() {
@@ -251,7 +276,7 @@ function MoreNavigator() {
     >
       <MoreStack.Screen name="More" component={MoreScreen} options={{ headerShown: false }} />
       <MoreStack.Screen name="Billing" component={BillingNavigator} options={{ headerShown: false }} />
-      <MoreStack.Screen name="Items" component={ItemsScreen} options={{ headerShown: false }} />
+      <MoreStack.Screen name="Items" component={ItemsNavigator} options={{ headerShown: false }} />
       <MoreStack.Screen name="CompanyProfile" component={CompanyProfileScreen} options={{ headerShown: false }} />
       <MoreStack.Screen name="SettingsThermal" component={SettingsThermalScreen} options={{ headerShown: false }} />
       <MoreStack.Screen name="Reports" component={ReportsScreen} options={{ title: "Reports" }} />
@@ -385,7 +410,7 @@ function MainTabs() {
       />
       <Tab.Screen
         name="ItemsTab"
-        component={ItemsScreen}
+        component={ItemsNavigator}
         options={{ tabBarLabel: "Items" }}
       />
       <Tab.Screen
