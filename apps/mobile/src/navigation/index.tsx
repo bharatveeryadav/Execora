@@ -10,6 +10,7 @@ import { DashboardScreen } from "../screens/DashboardScreen";
 import { BillingScreen } from "../screens/BillingScreen";
 import { PartiesScreen } from "../screens/PartiesScreen";
 import { InvoiceListScreen } from "../screens/InvoiceListScreen";
+import { BillsMenuScreen } from "../screens/BillsMenuScreen";
 import { LoginScreen } from "../screens/LoginScreen";
 import { InvoiceDetailScreen } from "../screens/InvoiceDetailScreen";
 import { CustomerDetailScreen } from "../screens/CustomerDetailScreen";
@@ -101,6 +102,15 @@ export type BillingStackParams = {
 export type InvoicesStackParams = {
   InvoiceList: undefined;
   InvoiceDetail: { id: string };
+  BillsMenu: undefined;
+  Expenses: undefined;
+  Reports: undefined;
+  Purchases: undefined;
+  EInvoicing: { title?: string };
+  Payment: { customerId?: string };
+  CreditNotes: undefined;
+  ComingSoon: { title?: string; emoji?: string };
+  Overdue: undefined;
 };
 
 export type CustomersStackParams = {
@@ -165,6 +175,10 @@ function InvoicesNavigator() {
     <InvoicesStack.Navigator
       screenOptions={{
         headerShown: false,
+        headerStyle: { backgroundColor: "#fff" },
+        headerShadowVisible: true,
+        headerTintColor: "#0f172a",
+        headerTitleStyle: { fontWeight: "700" },
       }}
     >
       <InvoicesStack.Screen name="InvoiceList" component={InvoiceListScreen} />
@@ -172,6 +186,28 @@ function InvoicesNavigator() {
         name="InvoiceDetail"
         component={InvoiceDetailScreen}
       />
+      <InvoicesStack.Screen
+        name="BillsMenu"
+        component={BillsMenuScreen}
+        options={{ headerShown: true, title: "More", headerBackTitle: "Bills" }}
+      />
+      <InvoicesStack.Screen name="Expenses" component={ExpensesScreen} options={{ headerShown: true, title: "Expenses" }} />
+      <InvoicesStack.Screen name="Reports" component={ReportsScreen} options={{ headerShown: true, title: "Reports" }} />
+      <InvoicesStack.Screen name="Purchases" component={PurchasesScreen} options={{ headerShown: true, title: "Purchases" }} />
+      <InvoicesStack.Screen
+        name="EInvoicing"
+        component={ComingSoonScreen}
+        initialParams={{ title: "E-Invoicing / IRN" }}
+        options={{ headerShown: true, title: "E-Way Bills" }}
+      />
+      <InvoicesStack.Screen name="Payment" component={PaymentScreen} options={{ headerShown: true, title: "Payments" }} />
+      <InvoicesStack.Screen name="CreditNotes" component={CreditNotesScreen} options={{ headerShown: true, title: "Credit Notes" }} />
+      <InvoicesStack.Screen
+        name="ComingSoon"
+        component={ComingSoonScreen}
+        options={({ route }) => ({ headerShown: true, title: (route.params as { title?: string })?.title ?? "Coming Soon" })}
+      />
+      <InvoicesStack.Screen name="Overdue" component={OverdueScreen} options={{ headerShown: true, title: "Overdue / Udhaar" }} />
     </InvoicesStack.Navigator>
   );
 }

@@ -10,12 +10,9 @@ import {
   TextInput,
   FlatList,
   RefreshControl,
-  TouchableOpacity,
   ActivityIndicator,
   ScrollView,
-  Modal,
   Pressable,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -150,8 +147,6 @@ export function InvoiceListScreen({ navigation }: Props) {
   const [statusTab, setStatusTab] = useState<StatusTab>("All");
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
-  const [menuOpen, setMenuOpen] = useState(false);
-
   useWsInvalidation(["invoices", "summary", "purchases"]);
 
   const { data: invData, isFetching, isError, refetch } = useQuery({
@@ -353,7 +348,7 @@ export function InvoiceListScreen({ navigation }: Props) {
           </View>
           <View className="flex-row items-center gap-2">
             <Pressable
-              onPress={() => setMenuOpen(true)}
+              onPress={() => navigation.navigate("BillsMenu")}
               className="w-11 h-11 rounded-full bg-slate-100 items-center justify-center"
               style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
             >
@@ -477,11 +472,11 @@ export function InvoiceListScreen({ navigation }: Props) {
         </View>
       )}
 
-      {/* Quick links */}
+      {/* Quick links — navigate to full screens within Bills stack */}
       {showInvoiceList && (
         <View className="mx-4 mt-3 flex-row flex-wrap gap-2">
           <Pressable
-            onPress={() => getTabNav()?.navigate("MoreTab", { screen: "Reports" })}
+            onPress={() => navigation.navigate("Reports")}
             className="flex-row items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 min-h-[40] bg-white"
             style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
           >
@@ -489,7 +484,7 @@ export function InvoiceListScreen({ navigation }: Props) {
             <Text className="text-xs font-medium text-slate-700">Reports</Text>
           </Pressable>
           <Pressable
-            onPress={() => getTabNav()?.navigate("MoreTab", { screen: "Reports" })}
+            onPress={() => navigation.navigate("Reports")}
             className="flex-row items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 min-h-[40] bg-white"
             style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
           >
@@ -497,7 +492,7 @@ export function InvoiceListScreen({ navigation }: Props) {
             <Text className="text-xs font-medium text-slate-700">Analytics</Text>
           </Pressable>
           <Pressable
-            onPress={() => getTabNav()?.navigate("MoreTab", { screen: "ComingSoon", params: { title: "Aging Report" } })}
+            onPress={() => navigation.navigate("ComingSoon", { title: "Aging Report" })}
             className="flex-row items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 min-h-[40] bg-white"
             style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
           >
@@ -505,7 +500,7 @@ export function InvoiceListScreen({ navigation }: Props) {
             <Text className="text-xs font-medium text-slate-700">Aging</Text>
           </Pressable>
           <Pressable
-            onPress={() => getTabNav()?.navigate("CustomersTab", { screen: "Overdue" })}
+            onPress={() => navigation.navigate("Overdue")}
             className="flex-row items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 min-h-[40] bg-white"
             style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
           >
@@ -586,47 +581,6 @@ export function InvoiceListScreen({ navigation }: Props) {
         <Ionicons name="add" size={28} color="#fff" />
       </Pressable>
 
-      {/* Menu Modal */}
-      <Modal visible={menuOpen} transparent animationType="fade">
-        <View className="flex-1 justify-end">
-          <Pressable className="absolute inset-0 bg-black/50" onPress={() => setMenuOpen(false)} />
-          <View className="bg-white rounded-t-3xl px-5 pt-5 pb-10 max-h-[70%]">
-            <View className="w-10 h-1 rounded-full bg-slate-200 self-center mb-4" />
-            <Text className={TYPO.pageTitle + " mb-4"}>More</Text>
-            <Pressable onPress={() => { setMenuOpen(false); getTabNav()?.navigate("MoreTab", { screen: "Expenses" }); }} className="flex-row items-center gap-3 py-3.5 min-h-[48] border-b border-slate-100" style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-              <Ionicons name="cart" size={22} color="#64748b" />
-              <Text className={TYPO.body}>Expenses</Text>
-            </Pressable>
-            <Pressable onPress={() => { setMenuOpen(false); getTabNav()?.navigate("Billing"); }} className="flex-row items-center gap-3 py-3.5 min-h-[48] border-b border-slate-100" style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-              <Ionicons name="document-text" size={22} color="#64748b" />
-              <Text className={TYPO.body}>Sales Order</Text>
-            </Pressable>
-            <Pressable onPress={() => { setMenuOpen(false); getTabNav()?.navigate("MoreTab", { screen: "Purchases" }); }} className="flex-row items-center gap-3 py-3.5 min-h-[48] border-b border-slate-100" style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-              <Ionicons name="cube" size={22} color="#64748b" />
-              <Text className={TYPO.body}>Purchase Order</Text>
-            </Pressable>
-            <Pressable onPress={() => { setMenuOpen(false); getTabNav()?.navigate("MoreTab", { screen: "EInvoicing" }); }} className="flex-row items-center gap-3 py-3.5 min-h-[48] border-b border-slate-100" style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-              <Ionicons name="car" size={22} color="#64748b" />
-              <Text className={TYPO.body}>E-Way Bills</Text>
-            </Pressable>
-            <Pressable onPress={() => { setMenuOpen(false); getTabNav()?.navigate("CustomersTab", { screen: "Payment" }); }} className="flex-row items-center gap-3 py-3.5 min-h-[48] border-b border-slate-100" style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-              <Ionicons name="wallet" size={22} color="#64748b" />
-              <Text className={TYPO.body}>Payments</Text>
-            </Pressable>
-            <Pressable onPress={() => { setMenuOpen(false); getTabNav()?.navigate("MoreTab", { screen: "CreditNotes" }); }} className="flex-row items-center gap-3 py-3.5 min-h-[48] border-b border-slate-100" style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-              <Ionicons name="receipt" size={22} color="#64748b" />
-              <Text className={TYPO.body}>Credit Notes</Text>
-            </Pressable>
-            <Pressable onPress={() => { setMenuOpen(false); Alert.alert("Coming soon", "Debit Notes"); }} className="flex-row items-center gap-3 py-3.5 min-h-[48] border-b border-slate-100" style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-              <Ionicons name="document" size={22} color="#64748b" />
-              <Text className={TYPO.body}>Debit Notes</Text>
-            </Pressable>
-            <Pressable onPress={() => setMenuOpen(false)} className="mt-5 py-3.5 rounded-xl border border-slate-200 items-center min-h-[44]" style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-              <Text className={TYPO.body}>Cancel</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
