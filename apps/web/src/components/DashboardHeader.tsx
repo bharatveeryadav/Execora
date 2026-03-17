@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import VoiceBar from '@/components/VoiceBar';
 import NotificationCenter from '@/components/NotificationCenter';
 import { DraftManagerPanel } from '@/components/DraftManagerPanel';
+import { APP_NAME } from '@/lib/app-config';
 
 // Voice command examples shown in VoiceBar hint — kept minimal
 
@@ -15,7 +16,7 @@ const DashboardHeader = () => {
 	const { isConnected, reconnect } = useWS();
 	const { theme, toggle } = useTheme();
 	const navigate = useNavigate();
-	const storeName = user?.name ? `${user.name}'s Store` : 'Execora Store';
+	const storeName = user?.name ? `${user.name}'s Store` : `${APP_NAME} Store`;
 	const openSearch = () => window.dispatchEvent(new CustomEvent('execora:search'));
 
 	return (
@@ -24,7 +25,7 @@ const DashboardHeader = () => {
 			<div className="flex items-center justify-between">
 				<div className="flex items-center gap-3">
 					<h1 className="text-xl font-bold tracking-tight md:text-2xl">
-						<span className="text-primary">EXECORA</span>
+						<span className="text-primary">{APP_NAME.toUpperCase()}</span>
 						<span className="ml-1.5 hidden rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary md:inline">
 							AI AGENT
 						</span>

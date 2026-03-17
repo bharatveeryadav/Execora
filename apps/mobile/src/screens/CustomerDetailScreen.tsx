@@ -246,7 +246,7 @@ export function CustomerDetailScreen() {
               </TouchableOpacity>
             )}
             <TouchableOpacity
-              onPress={() => navigation.navigate('Billing')}
+              onPress={() => navigation.getParent()?.navigate("MoreTab" as never, { screen: "Billing", params: { screen: "BillingForm" } } as never)}
               className="p-2"
             >
               <Text className="text-lg">🧾</Text>

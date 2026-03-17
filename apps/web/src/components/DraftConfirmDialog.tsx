@@ -9,7 +9,7 @@
  */
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, CheckCircle2, Trash2, Save } from "lucide-react";
+import { Loader2, CheckCircle2, Trash2, Save, Info } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -154,9 +160,11 @@ function PurchaseFields({
 function ProductFields({
   data,
   onChange,
+  categories = [],
 }: {
   data: Record<string, unknown>;
   onChange: (d: Record<string, unknown>) => void;
+  categories?: string[];
 }) {
   const set = (k: string, v: unknown) => onChange({ ...data, [k]: v });
   return (
@@ -171,11 +179,18 @@ function ProductFields({
       </div>
       <div>
         <Label>Category</Label>
-        <Input
+        <input
+          list="draft-category-list"
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
           value={String(data.category ?? "")}
           onChange={(e) => set("category", e.target.value)}
-          placeholder="General"
+          placeholder="Select or type new (e.g. General)"
         />
+        <datalist id="draft-category-list">
+          {[...new Set(categories)].sort().map((c) => (
+            <option key={c} value={c} />
+          ))}
+        </datalist>
       </div>
       <div>
         <Label>Unit</Label>
@@ -213,7 +228,21 @@ function ProductFields({
         />
       </div>
       <div>
-        <Label>Min Stock (Reorder)</Label>
+        <Label className="flex items-center gap-1">
+          Min Stock (Reorder)
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-help">
+                  <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Low-stock alert when quantity falls below this.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </Label>
         <Input
           type="number"
           value={String(data.minStock ?? 5)}
@@ -291,6 +320,8 @@ interface Props {
   onClose: () => void;
   onConfirmed?: (draft: Draft) => void;
   onDiscarded?: (draftId: string) => void;
+  /** Existing product categories for product draft (Sprint 28) */
+  categories?: string[];
 }
 
 export function DraftConfirmDialog({
@@ -299,6 +330,7 @@ export function DraftConfirmDialog({
   onClose,
   onConfirmed,
   onDiscarded,
+  categories = [],
 }: Props) {
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -401,7 +433,11 @@ export function DraftConfirmDialog({
             <PurchaseFields data={localData} onChange={setLocalData} />
           )}
           {draft.type === "product" && (
-            <ProductFields data={localData} onChange={setLocalData} />
+            <ProductFields
+              data={localData}
+              onChange={setLocalData}
+              categories={categories}
+            />
           )}
           {draft.type === "stock_adjustment" && (
             <StockAdjFields data={localData} onChange={setLocalData} />

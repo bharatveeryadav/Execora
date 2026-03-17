@@ -101,6 +101,9 @@ export interface PaginatedCustomers {
 export interface PaginatedProducts {
   products: Product[];
   total: number;
+  page?: number;
+  limit?: number;
+  hasMore?: boolean;
 }
 
 export interface PaginatedInvoices {

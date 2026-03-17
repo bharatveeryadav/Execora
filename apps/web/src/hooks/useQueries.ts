@@ -381,6 +381,7 @@ export function useUpdateProduct() {
 			category?: string;
 			description?: string;
 			minStock?: number;
+			isFeatured?: boolean;
 		}) => productApi.update(id, data),
 		onSuccess: () => {
 			qc.invalidateQueries({ queryKey: QK.products });
@@ -404,6 +405,46 @@ export function useAdjustStock() {
 		onSuccess: () => {
 			qc.invalidateQueries({ queryKey: QK.products });
 			qc.invalidateQueries({ queryKey: QK.lowStock });
+		},
+	});
+}
+
+export function useProductImageUrls(productIds: string[]) {
+	const ids = [...new Set(productIds)].filter(Boolean).slice(0, 100);
+	return useQuery({
+		queryKey: ['productImageUrls', ids.sort().join(',')],
+		queryFn: async () => {
+			const chunks: string[][] = [];
+			for (let i = 0; i < ids.length; i += 50) chunks.push(ids.slice(i, i + 50));
+			const results = await Promise.all(chunks.map((c) => productApi.getImageUrls(c)));
+			return Object.assign({}, ...results) as Record<string, string>;
+		},
+		enabled: ids.length > 0,
+		staleTime: 50 * 60 * 1000,
+	});
+}
+
+export function useUploadProductImage() {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: ({ productId, file }: { productId: string; file: File }) =>
+			productApi.uploadImage(productId, file),
+		onSuccess: () => {
+			qc.invalidateQueries({ queryKey: QK.products });
+			qc.invalidateQueries({ queryKey: QK.lowStock });
+			qc.invalidateQueries({ queryKey: ['productImageUrls'] });
+		},
+	});
+}
+
+export function useDeleteProductImage() {
+	const qc = useQueryClient();
+	return useMutation({
+		mutationFn: (productId: string) => productApi.deleteImage(productId),
+		onSuccess: () => {
+			qc.invalidateQueries({ queryKey: QK.products });
+			qc.invalidateQueries({ queryKey: QK.lowStock });
+			qc.invalidateQueries({ queryKey: ['productImageUrls'] });
 		},
 	});
 }

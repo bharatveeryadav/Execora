@@ -171,6 +171,33 @@ class ProductService {
 	}
 
 	/**
+	 * Get products with pagination (Sprint 27).
+	 */
+	async getProductsPaginated(page = 1, limit = 50) {
+		const tenantId = tenantContext.get().tenantId;
+		const skip = Math.max(0, (page - 1) * limit);
+		const take = Math.min(Math.max(1, limit), 500);
+
+		const [products, total] = await Promise.all([
+			prisma.product.findMany({
+				where: { tenantId, isActive: true },
+				orderBy: { name: 'asc' },
+				skip,
+				take,
+			}),
+			prisma.product.count({ where: { tenantId, isActive: true } }),
+		]);
+
+		return {
+			products,
+			total,
+			page,
+			limit: take,
+			hasMore: skip + products.length < total,
+		};
+	}
+
+	/**
 	 * Update product price — scoped to current tenant
 	 */
 	async updatePrice(productId: string, newPrice: number) {
@@ -205,6 +232,7 @@ class ProductService {
 			wholesalePrice?: number;
 			priceTier2?: number;
 			priceTier3?: number;
+			isFeatured?: boolean;
 		}
 	) {
 		const updateData: Record<string, unknown> = {};
@@ -220,6 +248,7 @@ class ProductService {
 		if (data.wholesalePrice !== undefined) updateData.wholesalePrice = data.wholesalePrice != null ? new Decimal(data.wholesalePrice) : null;
 		if (data.priceTier2 !== undefined) updateData.priceTier2 = data.priceTier2 != null ? new Decimal(data.priceTier2) : null;
 		if (data.priceTier3 !== undefined) updateData.priceTier3 = data.priceTier3 != null ? new Decimal(data.priceTier3) : null;
+		if (data.isFeatured !== undefined) updateData.isFeatured = data.isFeatured;
 
 		const { tenantId } = tenantContext.get();
 		const existing = await prisma.product.findFirst({ where: { id: productId, tenantId } });

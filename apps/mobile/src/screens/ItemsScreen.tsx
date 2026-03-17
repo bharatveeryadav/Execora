@@ -26,11 +26,14 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { productApi, apiFetch } from "@execora/shared";
 import { BarcodeScanner } from "../components/common/BarcodeScanner";
+import { hapticLight } from "../lib/haptics";
+import { storage } from "../lib/storage";
 import type { Product } from "@execora/shared";
 import { Ionicons } from "@expo/vector-icons";
 import { useWsInvalidation } from "../hooks/useWsInvalidation";
@@ -77,6 +80,11 @@ const productExtApi = {
       "/api/v1/products/low-stock",
     ),
 
+  getImageUrls: (ids: string[]) =>
+    apiFetch<Record<string, string>>(
+      `/api/v1/products/image-urls?ids=${ids.slice(0, 50).join(",")}`,
+    ),
+
   adjustStock: (
     id: string,
     quantity: number,
@@ -104,11 +112,22 @@ const productExtApi = {
       method: "POST",
       body: JSON.stringify(data),
     }),
+
+  update: (
+    id: string,
+    data: { isFeatured?: boolean; name?: string; price?: number; category?: string },
+  ) =>
+    apiFetch<{ product: Product & { minStock?: number } }>(
+      `/api/v1/products/${id}`,
+      { method: "PUT", body: JSON.stringify(data) },
+    ),
 };
 
-// ── Filter type ───────────────────────────────────────────────────────────────
+// ── Filter & sort types ────────────────────────────────────────────────────────
 
-type FilterMode = "all" | "low" | "out";
+type FilterMode = "all" | "low" | "out" | "favorites";
+
+type SortMode = "name" | "stockAsc" | "stockDesc" | "price";
 
 // ── Main screen ───────────────────────────────────────────────────────────────
 
@@ -117,22 +136,54 @@ export function ItemsScreen() {
   useWsInvalidation(["products", "lowStock"]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterMode>("all");
+  const [sortBy, setSortBy] = useState<SortMode>("name");
   const [addOpen, setAddOpen] = useState(false);
+  const [showHint, setShowHint] = useState(
+    () => !storage.getString("items-hint-dismissed"),
+  );
   const [adjustTarget, setAdjustTarget] = useState<
     (Product & { minStock?: number }) | null
   >(null);
 
   // ── Data fetching ─────────────────────────────────────────────────────────
 
+  const [page, setPage] = useState(1);
+  const [accumulatedProducts, setAccumulatedProducts] = useState<
+    Array<Product & { minStock?: number }>
+  >([]);
+
   const {
     data: allData,
     isFetching,
     refetch,
   } = useQuery({
-    queryKey: ["products", "mobile", "all"],
-    queryFn: () => productApi.list(1, 200),
+    queryKey: ["products", "mobile", "all", page],
+    queryFn: () => productApi.list(page, 50),
     staleTime: 30_000,
   });
+
+  const paginated = allData as
+    | { products: Product[]; total: number; hasMore?: boolean }
+    | undefined;
+  const hasMore = paginated?.hasMore ?? false;
+
+  // Accumulate products across pages (Sprint 27)
+  React.useEffect(() => {
+    const list = (paginated?.products ?? []) as Array<Product & { minStock?: number }>;
+    if (page === 1) {
+      setAccumulatedProducts(list);
+    } else if (list.length > 0) {
+      setAccumulatedProducts((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        const newOnes = list.filter((p) => !seen.has(p.id));
+        return [...prev, ...newOnes];
+      });
+    }
+  }, [paginated?.products, page]);
+
+  const loadMore = useCallback(() => {
+    if (hasMore && !isFetching) setPage((p) => p + 1);
+  }, [hasMore, isFetching]);
 
   const { data: lowData } = useQuery({
     queryKey: ["products", "mobile", "lowStock"],
@@ -143,7 +194,9 @@ export function ItemsScreen() {
   // ── Derived lists ─────────────────────────────────────────────────────────
 
   const allProducts: Array<Product & { minStock?: number }> =
-    (allData?.products as Array<Product & { minStock?: number }>) ?? [];
+    accumulatedProducts.length > 0
+      ? accumulatedProducts
+      : ((paginated?.products ?? []) as Array<Product & { minStock?: number }>);
   const lowStockIds = useMemo(
     () => new Set((lowData?.products ?? []).map((p) => p.id)),
     [lowData],
@@ -159,13 +212,38 @@ export function ItemsScreen() {
           (p.category ?? "").toLowerCase().includes(q),
       );
     }
-    if (filter === "out") return list.filter((p) => num(p.stock) <= 0);
-    if (filter === "low") return list.filter((p) => lowStockIds.has(p.id));
-    return list;
-  }, [allProducts, search, filter, lowStockIds]);
+    if (filter === "out") list = list.filter((p) => num(p.stock) <= 0);
+    else if (filter === "low") list = list.filter((p) => lowStockIds.has(p.id));
+    else if (filter === "favorites")
+      list = list.filter((p) => (p as Product & { isFeatured?: boolean }).isFeatured);
+
+    // Sort (Sprint 24 — Vyapar complaint: no sort by quantity)
+    const sorted = [...list].sort((a, b) => {
+      if (sortBy === "name") return a.name.localeCompare(b.name);
+      if (sortBy === "stockAsc") return num(a.stock) - num(b.stock);
+      if (sortBy === "stockDesc") return num(b.stock) - num(a.stock);
+      if (sortBy === "price") return num(a.price) - num(b.price);
+      return 0;
+    });
+    return sorted;
+  }, [allProducts, search, filter, lowStockIds, sortBy]);
 
   const outCount = allProducts.filter((p) => num(p.stock) <= 0).length;
   const lowCount = lowData?.products.length ?? 0;
+  const favoritesCount = allProducts.filter(
+    (p) => (p as Product & { isFeatured?: boolean }).isFeatured,
+  ).length;
+
+  const imageIds = useMemo(
+    () => [...new Set(filtered.map((p) => p.id))].slice(0, 50),
+    [filtered],
+  );
+  const { data: imageUrlsMap = {} } = useQuery({
+    queryKey: ["productImageUrls", imageIds.join(",")],
+    queryFn: () => productExtApi.getImageUrls(imageIds),
+    enabled: imageIds.length > 0,
+    staleTime: 50 * 60 * 1000,
+  });
 
   // ── Stock adjustment mutation ─────────────────────────────────────────────
 
@@ -187,6 +265,14 @@ export function ItemsScreen() {
     },
   });
 
+  const favoriteMutation = useMutation({
+    mutationFn: ({ id, isFeatured }: { id: string; isFeatured: boolean }) =>
+      productExtApi.update(id, { isFeatured }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["products"] });
+    },
+  });
+
   const handleQuickAdjust = useCallback(
     (product: Product & { minStock?: number }, op: "add" | "subtract") => {
       const current = num(product.stock);
@@ -199,24 +285,19 @@ export function ItemsScreen() {
     [adjustMutation],
   );
 
+  const insets = useSafeAreaInsets();
+
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
       {/* ── Header ─────────────────────────────────────────────────── */}
       <View className="bg-card px-4 pt-2 pb-3 border-b border-slate-200">
         <View className="flex-row items-center justify-between mb-3">
           <View>
-            <Text className="text-xl font-bold tracking-tight text-slate-800">Stock</Text>
+            <Text className="text-xl font-bold tracking-tight text-slate-800">Items</Text>
             <Text className="text-xs text-slate-400">
               {allProducts.length} products
             </Text>
           </View>
-          <TouchableOpacity
-            onPress={() => setAddOpen(true)}
-            activeOpacity={0.7}
-            className="bg-primary px-4 min-h-[44px] rounded-xl flex-row items-center justify-center gap-1"
-          >
-            <Text className="text-white font-bold text-sm">+ Add</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Search */}
@@ -234,7 +315,7 @@ export function ItemsScreen() {
         </View>
 
         {/* Filter chips */}
-        <View className="flex-row gap-2">
+        <View className="flex-row gap-2 flex-wrap">
           {(
             [
               { key: "all", label: `All (${allProducts.length})` },
@@ -247,6 +328,11 @@ export function ItemsScreen() {
                 key: "out",
                 label: `🔴 Out (${outCount})`,
                 disabled: outCount === 0,
+              },
+              {
+                key: "favorites",
+                label: `⭐ Fav (${favoritesCount})`,
+                disabled: favoritesCount === 0,
               },
             ] as Array<{ key: FilterMode; label: string; disabled?: boolean }>
           ).map(({ key, label, disabled }) => (
@@ -272,7 +358,53 @@ export function ItemsScreen() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* Sort chips (Sprint 24 — sort by quantity) */}
+        <View className="flex-row gap-2 mt-2 flex-wrap">
+          {(
+            [
+              { key: "name" as SortMode, label: "Name" },
+              { key: "stockAsc" as SortMode, label: "Stock ↑" },
+              { key: "stockDesc" as SortMode, label: "Stock ↓" },
+              { key: "price" as SortMode, label: "Price" },
+            ] as Array<{ key: SortMode; label: string }>
+          ).map(({ key, label }) => (
+            <TouchableOpacity
+              key={key}
+              onPress={() => setSortBy(key)}
+              activeOpacity={0.7}
+              hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+              className={`px-3 py-1.5 rounded-full border items-center justify-center min-h-[36px] ${
+                sortBy === key ? "bg-slate-600 border-slate-600" : "bg-white border-slate-200"
+              }`}
+            >
+              <Text
+                className={`text-xs font-medium ${sortBy === key ? "text-white" : "text-slate-600"}`}
+              >
+                {label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
+
+      {/* ── First-time hint (Sprint 29) ───────────────────────────── */}
+      {showHint && (
+        <View className="mx-4 mt-3 flex-row items-center justify-between rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
+          <Text className="flex-1 text-sm text-slate-800">
+            Tap <Text className="font-bold">+</Text> / <Text className="font-bold">−</Text> to adjust stock. Long-press for custom qty.
+          </Text>
+          <TouchableOpacity
+            onPress={() => {
+              setShowHint(false);
+              storage.set("items-hint-dismissed", "1");
+            }}
+            className="ml-2"
+          >
+            <Text className="text-primary text-xs font-semibold">Got it</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* ── Low-stock alert banner (PRD F-03.3) ───────────────────── */}
       {lowCount > 0 && filter === "all" && !search && (
@@ -297,8 +429,23 @@ export function ItemsScreen() {
       <ScrollView
         className="flex-1 px-4 pt-3"
         refreshControl={
-          <RefreshControl refreshing={isFetching} onRefresh={refetch} />
+          <RefreshControl
+            refreshing={isFetching && page === 1}
+            onRefresh={() => {
+              setPage(1);
+              setAccumulatedProducts([]);
+              void qc.invalidateQueries({ queryKey: ["products"] });
+            }}
+          />
         }
+        onScroll={({ nativeEvent }) => {
+          const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+          const padding = 100;
+          const isCloseToBottom =
+            layoutMeasurement.height + contentOffset.y >= contentSize.height - padding;
+          if (isCloseToBottom && hasMore && !isFetching) loadMore();
+        }}
+        scrollEventThrottle={200}
         keyboardShouldPersistTaps="handled"
       >
         {isFetching && allProducts.length === 0 && (
@@ -328,6 +475,11 @@ export function ItemsScreen() {
           <ProductCard
             key={product.id}
             product={product}
+            imageUrl={
+              (product as Product & { imageUrl?: string }).imageUrl?.startsWith("http")
+                ? (product as Product & { imageUrl?: string }).imageUrl
+                : imageUrlsMap[product.id]
+            }
             onAdd={() => handleQuickAdjust(product, "add")}
             onSubtract={() => handleQuickAdjust(product, "subtract")}
             adjusting={
@@ -335,9 +487,33 @@ export function ItemsScreen() {
               (adjustMutation.variables as any)?.id === product.id
             }
             onLongPress={() => setAdjustTarget(product)}
+            onToggleFavorite={
+              favoriteMutation.isPending
+                ? undefined
+                : () =>
+                    favoriteMutation.mutate({
+                      id: product.id,
+                      isFeatured: !(product as Product & { isFeatured?: boolean }).isFeatured,
+                    })
+            }
           />
         ))}
 
+        {hasMore && (
+          <TouchableOpacity
+            onPress={loadMore}
+            disabled={isFetching}
+            className="py-4 items-center"
+          >
+            {isFetching ? (
+              <ActivityIndicator color="#e67e22" size="small" />
+            ) : (
+              <Text className="text-primary font-semibold text-sm">
+                Load more
+              </Text>
+            )}
+          </TouchableOpacity>
+        )}
         <View className="h-6" />
       </ScrollView>
 
@@ -349,6 +525,13 @@ export function ItemsScreen() {
           void qc.invalidateQueries({ queryKey: ["products"] });
           setAddOpen(false);
         }}
+        categories={[
+          ...new Set(
+            allProducts
+              .map((p) => p.category)
+              .filter((c): c is string => !!c && c.trim() !== ""),
+          ),
+        ].sort()}
       />
 
       {/* ── Custom Quantity Adjust Modal ──────────────────────────── */}
@@ -362,6 +545,32 @@ export function ItemsScreen() {
           }}
         />
       )}
+
+      {/* ── FAB: Add Items (bottom right) ───────────────────────── */}
+      <TouchableOpacity
+        onPress={() => setAddOpen(true)}
+        activeOpacity={0.85}
+        style={{
+          position: "absolute",
+          bottom: Math.max(insets.bottom, 12),
+          right: 16,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 6,
+          paddingHorizontal: 14,
+          paddingVertical: 12,
+          borderRadius: 24,
+          backgroundColor: "#e67e22",
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.25,
+          shadowRadius: 4,
+          elevation: 5,
+        }}
+      >
+        <Ionicons name="add" size={22} color="#fff" />
+        <Text className="text-white font-bold text-sm">Add Items</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -370,40 +579,73 @@ export function ItemsScreen() {
 
 function ProductCard({
   product,
+  imageUrl,
   onAdd,
   onSubtract,
   adjusting,
   onLongPress,
+  onToggleFavorite,
 }: {
-  product: Product & { minStock?: number };
+  product: Product & { minStock?: number; isFeatured?: boolean };
+  imageUrl?: string | null;
   onAdd: () => void;
   onSubtract: () => void;
   adjusting: boolean;
   onLongPress: () => void;
+  onToggleFavorite?: () => void;
 }) {
   const status = stockStatus(product);
   const s = STATUS_STYLES[status];
   const stockVal = num(product.stock);
   const price = num(product.price);
 
+  const a11yLabel = `${product.name}, ${status === "out" ? "Out of stock" : status === "low" ? "Low stock" : "In stock"}, ${stockVal} ${product.unit ?? "units"}`;
+
   return (
     <TouchableOpacity
       activeOpacity={0.75}
       onLongPress={onLongPress}
       delayLongPress={500}
+      accessibilityLabel={a11yLabel}
+      accessibilityRole="button"
+      accessibilityHint="Double tap to adjust stock quantity"
       className="bg-white rounded-2xl border border-slate-200 mb-3 overflow-hidden"
     >
       <View className="flex-row items-center px-4 py-3">
-        {/* Category icon */}
-        <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center mr-3">
-          <Text className="text-xl">{categoryIcon(product.category)}</Text>
+        {/* Product image or category icon */}
+        <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center mr-3 overflow-hidden">
+          {imageUrl ? (
+            <Image
+              source={{ uri: imageUrl }}
+              className="w-full h-full"
+              resizeMode="cover"
+            />
+          ) : (
+            <Text className="text-xl">{categoryIcon(product.category)}</Text>
+          )}
         </View>
 
         {/* Name + meta */}
-        <View className="flex-1 mr-3">
-          <Text className="text-sm font-bold text-slate-800" numberOfLines={1}>
-            {product.name}
-          </Text>
+        <View className="flex-1 mr-2">
+          <View className="flex-row items-center gap-1">
+            <Text className="text-sm font-bold text-slate-800 flex-1" numberOfLines={1}>
+              {product.name}
+            </Text>
+            {onToggleFavorite && (
+              <TouchableOpacity
+                onPress={onToggleFavorite}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                className="p-1"
+                accessibilityLabel={product.isFeatured ? "Remove from favorites" : "Add to favorites"}
+              >
+                <Ionicons
+                  name={product.isFeatured ? "star" : "star-outline"}
+                  size={18}
+                  color={product.isFeatured ? "#f59e0b" : "#94a3b8"}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
           <View className="flex-row items-center gap-2 mt-0.5">
             {product.category ? (
               <Text className="text-xs text-slate-400">{product.category}</Text>
@@ -432,8 +674,12 @@ function ProductCard({
       {/* Quick stock actions (PRD F-03.2 — adjustment trigger) */}
       <View className="flex-row border-t border-slate-100">
         <TouchableOpacity
-          onPress={onSubtract}
+          onPress={() => {
+            hapticLight();
+            onSubtract();
+          }}
           disabled={adjusting || stockVal <= 0}
+          accessibilityLabel="Subtract one from stock"
           className="flex-1 py-2.5 items-center border-r border-slate-100"
         >
           <Text
@@ -445,14 +691,19 @@ function ProductCard({
 
         <TouchableOpacity
           onPress={onLongPress}
+          accessibilityLabel="Adjust stock with custom quantity"
           className="flex-1 py-2.5 items-center border-r border-slate-100"
         >
           <Text className="text-xs text-slate-400 font-medium">Custom qty</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={onAdd}
+          onPress={() => {
+            hapticLight();
+            onAdd();
+          }}
           disabled={adjusting}
+          accessibilityLabel="Add one to stock"
           className="flex-1 py-2.5 items-center"
         >
           <Text
@@ -472,10 +723,12 @@ function AddProductModal({
   visible,
   onClose,
   onCreated,
+  categories = [],
 }: {
   visible: boolean;
   onClose: () => void;
   onCreated: () => void;
+  categories?: string[];
 }) {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
@@ -636,9 +889,40 @@ function AddProductModal({
             </View>
 
             <FormField label="Category (optional)">
+              {categories.length > 0 && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  className="mb-2"
+                >
+                  <View className="flex-row gap-2">
+                    {categories.map((c) => (
+                      <TouchableOpacity
+                        key={c}
+                        onPress={() => setCategory(c)}
+                        className={`px-3 py-2 rounded-lg border ${
+                          category === c
+                            ? "bg-primary border-primary"
+                            : "bg-white border-slate-200"
+                        }`}
+                      >
+                        <Text
+                          className={`text-xs font-semibold ${category === c ? "text-white" : "text-slate-600"}`}
+                        >
+                          {c}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              )}
               <TextInput
                 className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800"
-                placeholder="e.g. Grocery, Dairy, Personal Care"
+                placeholder={
+                  categories.length > 0
+                    ? "Or type new category"
+                    : "e.g. Grocery, Dairy, Personal Care"
+                }
                 value={category}
                 onChangeText={setCategory}
                 autoCorrect={false}

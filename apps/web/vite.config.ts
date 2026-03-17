@@ -1,9 +1,12 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import fs from "fs";
 import { VitePWA } from "vite-plugin-pwa";
 import { componentTagger } from "lovable-tagger";
 import { visualizer } from "rollup-plugin-visualizer";
+
+const APP_NAME = process.env.VITE_APP_NAME ?? "Execora";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -31,6 +34,20 @@ export default defineConfig(({ mode }) => ({
     },
   },
   plugins: [
+    {
+      name: "app-name-transform",
+      transformIndexHtml(html) {
+        return html.replace(/\{\{APP_NAME\}\}/g, APP_NAME);
+      },
+      closeBundle() {
+        const manifestPath = path.resolve(__dirname, "public/manifest.webmanifest");
+        if (fs.existsSync(manifestPath)) {
+          let m = fs.readFileSync(manifestPath, "utf-8");
+          m = m.replace(/\{\{APP_NAME\}\}/g, APP_NAME);
+          fs.writeFileSync(path.resolve(__dirname, "dist/manifest.webmanifest"), m);
+        }
+      },
+    },
     react(),
     VitePWA({
       registerType: "autoUpdate",

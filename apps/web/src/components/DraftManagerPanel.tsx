@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { useWsInvalidation } from "@/hooks/useWsInvalidation";
+import { useProducts } from "@/hooks/useQueries";
 import { draftApi, type Draft } from "@/lib/api";
 import { DraftConfirmDialog } from "./DraftConfirmDialog";
 
@@ -907,6 +908,8 @@ function FastModeTable({
 export function DraftManagerPanel() {
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { data: products = [] } = useProducts();
+  const categories = [...new Set(products.map((p) => p.category).filter(Boolean))] as string[];
   const [open, setOpen] = useState(false);
   const [editDraft, setEditDraft] = useState<Draft | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -1197,6 +1200,7 @@ export function DraftManagerPanel() {
         onClose={() => setEditDraft(null)}
         onConfirmed={() => setEditDraft(null)}
         onDiscarded={() => setEditDraft(null)}
+        categories={categories}
       />
     </>
   );

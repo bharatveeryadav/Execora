@@ -322,9 +322,9 @@ export function DashboardScreen() {
   }, [qc]);
 
   const handleQuickAction = (route: string, params?: Record<string, unknown>) => {
-    if (route === "BillingForm") return navigation.navigate("Billing", { screen: "BillingForm", params });
+    if (route === "BillingForm") return navigation.getParent()?.navigate("MoreTab" as never, { screen: "Billing", params: { screen: "BillingForm", params } } as never);
     if (route === "Payment") return navigation.getParent()?.navigate("CustomersTab" as never, { screen: "Payment" } as never);
-    if (route === "Items") return navigation.navigate("MoreTab", { screen: "Items" });
+    if (route === "Items") return navigation.navigate("ItemsTab");
     if (route === "InvoicesTab") return navigation.navigate("InvoicesTab");
     if (route === "CustomersTab") return navigation.navigate("CustomersTab");
     if (route === "Expenses") return navigation.navigate("MoreTab", { screen: "Expenses" });

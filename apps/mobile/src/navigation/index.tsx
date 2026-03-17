@@ -54,7 +54,7 @@ export type AuthStackParams = {
 
 export type MainTabParams = {
   Dashboard: undefined;
-  Billing: undefined;
+  ItemsTab: undefined;
   CustomersTab: undefined;
   InvoicesTab: undefined;
   MoreTab: undefined;
@@ -62,6 +62,7 @@ export type MainTabParams = {
 
 export type MoreStackParams = {
   More: undefined;
+  Billing: undefined;
   Items: undefined;
   CompanyProfile: undefined;
   SettingsThermal: undefined;
@@ -249,6 +250,7 @@ function MoreNavigator() {
       }}
     >
       <MoreStack.Screen name="More" component={MoreScreen} options={{ headerShown: false }} />
+      <MoreStack.Screen name="Billing" component={BillingNavigator} options={{ headerShown: false }} />
       <MoreStack.Screen name="Items" component={ItemsScreen} options={{ headerShown: false }} />
       <MoreStack.Screen name="CompanyProfile" component={CompanyProfileScreen} options={{ headerShown: false }} />
       <MoreStack.Screen name="SettingsThermal" component={SettingsThermalScreen} options={{ headerShown: false }} />
@@ -303,18 +305,18 @@ function MoreNavigator() {
 
 const TAB_ICONS_FILLED: Record<string, keyof typeof Ionicons.glyphMap> = {
   Dashboard: "home",
-  Billing: "receipt",
+  ItemsTab: "cube",
   CustomersTab: "people",
   InvoicesTab: "document-text",
-  MoreTab: "ellipsis-horizontal",
+  MoreTab: "apps",
 };
 
 const TAB_ICONS_OUTLINE: Record<string, keyof typeof Ionicons.glyphMap> = {
   Dashboard: "home-outline",
-  Billing: "receipt-outline",
+  ItemsTab: "cube-outline",
   CustomersTab: "people-outline",
   InvoicesTab: "document-text-outline",
-  MoreTab: "ellipsis-horizontal",
+  MoreTab: "apps-outline",
 };
 
 const TAB_ACTIVE_COLOR = "#0f172a";
@@ -377,19 +379,19 @@ function MainTabs() {
         options={{ tabBarLabel: "Home" }}
       />
       <Tab.Screen
-        name="Billing"
-        component={BillingNavigator}
-        options={{ tabBarLabel: "Bill" }}
+        name="InvoicesTab"
+        component={InvoicesNavigator}
+        options={{ tabBarLabel: "Bills" }}
+      />
+      <Tab.Screen
+        name="ItemsTab"
+        component={ItemsScreen}
+        options={{ tabBarLabel: "Items" }}
       />
       <Tab.Screen
         name="CustomersTab"
         component={CustomersNavigator}
         options={{ tabBarLabel: "Parties" }}
-      />
-      <Tab.Screen
-        name="InvoicesTab"
-        component={InvoicesNavigator}
-        options={{ tabBarLabel: "Bills" }}
       />
       <Tab.Screen
         name="MoreTab"

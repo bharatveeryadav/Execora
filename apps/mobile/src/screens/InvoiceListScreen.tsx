@@ -1,9 +1,9 @@
 /**
  * InvoiceListScreen — Bills page with full web parity.
- * Doc types: Sales | Purchase | Quotation
- * Status filters, date filter, search, summary, quick links, menu.
+ * Modern UI/UX: 44pt touch targets, Pressable feedback, TYPO scale,
+ * grouped sections, refined status badges, Ionicons.
  */
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Pressable,
+  InteractionManager,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -59,13 +60,15 @@ const DATE_LABELS: Record<DateFilter, string> = {
 
 const STATUS_TABS: StatusTab[] = ["All", "Draft", "Pending", "Partial", "Paid", "Cancelled", "Proforma"];
 
-const STATUS_STYLES: Record<string, string> = {
-  paid: "bg-green-100 text-green-700",
-  pending: "bg-amber-100 text-amber-700",
-  partial: "bg-amber-100 text-amber-700",
-  draft: "bg-slate-100 text-slate-500",
-  proforma: "bg-blue-100 text-blue-700",
-  cancelled: "bg-red-100 text-red-700",
+const MIN_TOUCH = 44;
+
+const STATUS_STYLES: Record<string, { bg: string; text: string; icon: string; iconColor: string }> = {
+  paid: { bg: "bg-green-100", text: "text-green-700", icon: "checkmark-circle", iconColor: "#16a34a" },
+  pending: { bg: "bg-amber-100", text: "text-amber-700", icon: "time", iconColor: "#d97706" },
+  partial: { bg: "bg-amber-100", text: "text-amber-700", icon: "ellipse", iconColor: "#d97706" },
+  draft: { bg: "bg-slate-100", text: "text-slate-500", icon: "document-outline", iconColor: "#64748b" },
+  proforma: { bg: "bg-blue-100", text: "text-blue-700", icon: "document-text", iconColor: "#2563eb" },
+  cancelled: { bg: "bg-red-100", text: "text-red-700", icon: "close-circle", iconColor: "#94a3b8" },
 };
 
 function getDateRange(filter: DateFilter): { from: Date; to: Date } | null {
@@ -243,21 +246,24 @@ export function InvoiceListScreen({ navigation }: Props) {
 
   const showInvoiceList = docTypeTab === "sales" || docTypeTab === "quotation";
 
-  function getTabNav() {
-    try {
-      return (navigation.getParent as any)?.();
-    } catch {
-      return undefined;
-    }
-  }
+  const handleNewInvoice = useCallback(() => {
+    InteractionManager.runAfterInteractions(() => {
+      try {
+        const tabNav = (navigation.getParent as any)?.();
+        if (docTypeTab === "purchase") {
+          tabNav?.navigate("MoreTab", { screen: "Purchases" });
+        } else {
+          tabNav?.navigate("MoreTab", { screen: "Billing", params: { screen: "BillingForm" } });
+        }
+      } catch (_) {}
+    });
+  }, [docTypeTab, navigation]);
 
-  function handleNewInvoice() {
-    if (docTypeTab === "purchase") {
-      getTabNav()?.navigate("MoreTab", { screen: "Purchases" });
-    } else {
-      getTabNav()?.navigate("Billing");
-    }
-  }
+  const handleBillsMenu = useCallback(() => {
+    InteractionManager.runAfterInteractions(() => {
+      navigation?.navigate?.("BillsMenu");
+    });
+  }, [navigation]);
 
   const placeholder =
     docTypeTab === "purchase"
@@ -271,24 +277,35 @@ export function InvoiceListScreen({ navigation }: Props) {
   const renderInvoiceRow = ({ item: inv }: { item: Invoice }) => {
     const invAny = inv as any;
     const status = invAny.status ?? "draft";
-    const style = STATUS_STYLES[status] ?? "bg-slate-100 text-slate-600";
+    const s = STATUS_STYLES[status] ?? STATUS_STYLES.draft;
     const amtColor =
       status === "paid"
         ? "text-green-600"
         : status === "cancelled"
           ? "text-slate-400 line-through"
           : "text-slate-800";
-    const icon =
-      status === "paid" ? "✅" : status === "cancelled" ? "❌" : "📄";
 
     return (
       <Pressable
-        onPress={() => navigation.navigate("InvoiceDetail", { id: inv.id })}
+        onPress={() => {
+          InteractionManager.runAfterInteractions(() => {
+            navigation?.navigate?.("InvoiceDetail", { id: inv.id });
+          });
+        }}
         className="flex-row items-center gap-3 px-4 py-3.5 border-b border-slate-100 bg-white"
-        style={({ pressed }) => ({ backgroundColor: pressed ? "#f8fafc" : "#fff" })}
+        style={({ pressed }) => ({
+          backgroundColor: pressed ? "#f8fafc" : "#fff",
+          minHeight: MIN_TOUCH + 8,
+        })}
       >
-        <View className="w-10 h-10 rounded-lg bg-slate-100 items-center justify-center">
-          <Text className="text-base">{icon}</Text>
+        <View
+          className={`w-11 h-11 rounded-xl items-center justify-center ${s.bg}`}
+        >
+          <Ionicons
+            name={s.icon as any}
+            size={20}
+            color={s.iconColor}
+          />
         </View>
         <View className="flex-1 min-w-0">
           <Text className={TYPO.labelBold} numberOfLines={1}>
@@ -298,7 +315,7 @@ export function InvoiceListScreen({ navigation }: Props) {
             {invAny.customer?.name ?? "Walk-in"} · {formatDate(inv.createdAt)}
           </Text>
         </View>
-        <View className={`rounded-full px-2 py-0.5 ${style}`}>
+        <View className={`rounded-full px-2.5 py-1 ${s.bg} ${s.text}`}>
           <Text className="text-[10px] font-semibold capitalize">{status}</Text>
         </View>
         <Text className={`text-sm font-bold tabular-nums ${amtColor}`}>
@@ -313,12 +330,21 @@ export function InvoiceListScreen({ navigation }: Props) {
 
   const renderPurchaseRow = ({ item: p }: { item: any }) => (
     <Pressable
-      onPress={() => getTabNav()?.navigate("MoreTab", { screen: "Purchases" })}
+      onPress={() => {
+        InteractionManager.runAfterInteractions(() => {
+          try {
+            (navigation.getParent as any)?.()?.navigate("MoreTab", { screen: "Purchases" });
+          } catch (_) {}
+        });
+      }}
       className="flex-row items-center gap-3 px-4 py-3.5 border-b border-slate-100 bg-white"
-      style={({ pressed }) => ({ backgroundColor: pressed ? "#f8fafc" : "#fff" })}
+      style={({ pressed }) => ({
+        backgroundColor: pressed ? "#f8fafc" : "#fff",
+        minHeight: MIN_TOUCH + 8,
+      })}
     >
-      <View className="w-10 h-10 rounded-lg bg-slate-100 items-center justify-center">
-        <Text className="text-base">📦</Text>
+      <View className="w-11 h-11 rounded-xl bg-amber-100 items-center justify-center">
+        <Ionicons name="cube-outline" size={20} color="#d97706" />
       </View>
       <View className="flex-1 min-w-0">
         <Text className={TYPO.labelBold} numberOfLines={1}>
@@ -333,32 +359,56 @@ export function InvoiceListScreen({ navigation }: Props) {
     </Pressable>
   );
 
+  const navToReports = useCallback(() => {
+    InteractionManager.runAfterInteractions(() => {
+      navigation?.navigate?.("Reports");
+    });
+  }, [navigation]);
+  const navToComingSoon = useCallback(
+    (title: string) => () => {
+      InteractionManager.runAfterInteractions(() => {
+        navigation?.navigate?.("ComingSoon", { title });
+      });
+    },
+    [navigation]
+  );
+  const navToOverdue = useCallback(() => {
+    InteractionManager.runAfterInteractions(() => {
+      navigation?.navigate?.("Overdue");
+    });
+  }, [navigation]);
+
+  const QUICK_LINK_ITEMS = [
+    { id: "reports", icon: "bar-chart" as const, label: "Reports", onPress: navToReports },
+    { id: "analytics", icon: "trending-up" as const, label: "Analytics", onPress: navToReports },
+    { id: "aging", icon: "time" as const, label: "Aging", onPress: navToComingSoon("Aging Report") },
+    { id: "overdue", icon: "alert-circle" as const, label: "Overdue", onPress: navToOverdue },
+  ];
+
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={["top", "bottom"]}>
       {/* Header */}
-      <View className="px-4 pt-4 pb-3 border-b border-slate-200/80 bg-white">
+      <View className="px-4 pt-4 pb-4 border-b border-slate-200/80 bg-white">
         <View className="flex-row items-center justify-between mb-4">
           <View className="flex-1">
-            <Text className={TYPO.pageTitle}>Bills</Text>
-            <Text className={TYPO.caption}>
+            <Text className="text-xl font-bold text-slate-800">Bills</Text>
+            <Text className={TYPO.caption + " mt-0.5"}>
               {docTypeTab === "purchase"
                 ? `${filteredPurchases.length} shown · ₹${inr(purchasesTotal)} total`
                 : `${filteredInvoices.length} shown · ₹${inr(totalValue)} total`}
             </Text>
           </View>
-          <View className="flex-row items-center gap-2">
-            <Pressable
-              onPress={() => navigation.navigate("BillsMenu")}
-              className="w-11 h-11 rounded-full bg-slate-100 items-center justify-center"
-              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-            >
-              <Ionicons name="ellipsis-horizontal" size={22} color="#475569" />
-            </Pressable>
-          </View>
+          <Pressable
+            onPress={handleBillsMenu}
+            className="w-12 h-12 rounded-full bg-slate-100 items-center justify-center"
+            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1, backgroundColor: pressed ? "#e2e8f0" : "#f1f5f9" })}
+          >
+            <Ionicons name="ellipsis-horizontal" size={22} color="#475569" />
+          </Pressable>
         </View>
 
         {/* Doc type tabs */}
-        <View className="flex-row rounded-2xl bg-slate-100 p-1">
+        <View className="flex-row rounded-2xl bg-slate-100 p-1.5">
           {[
             { id: "sales" as DocTypeTab, label: "Sales", icon: "add" },
             { id: "purchase" as DocTypeTab, label: "Purchase", icon: "cube" },
@@ -367,8 +417,11 @@ export function InvoiceListScreen({ navigation }: Props) {
             <Pressable
               key={id}
               onPress={() => setDocTypeTab(id)}
-              className={`flex-1 flex-row items-center justify-center gap-1.5 py-2.5 rounded-xl min-h-[44] ${docTypeTab === id ? "bg-white shadow-sm" : ""}`}
-              style={({ pressed }) => ({ opacity: pressed && docTypeTab !== id ? 0.7 : 1 })}
+              className={`flex-1 flex-row items-center justify-center gap-2 py-3 rounded-xl ${docTypeTab === id ? "bg-white shadow-sm" : ""}`}
+              style={({ pressed }) => ({
+                opacity: pressed && docTypeTab !== id ? 0.7 : 1,
+                minHeight: MIN_TOUCH,
+              })}
             >
               <Ionicons
                 name={icon as any}
@@ -403,14 +456,14 @@ export function InvoiceListScreen({ navigation }: Props) {
                 <Pressable
                   key={tab}
                   onPress={() => setStatusTab(tab)}
-                  className={`flex-row items-center gap-1 px-3 py-1.5 rounded-full ${statusTab === tab ? "bg-primary" : "bg-slate-100"}`}
-                  style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+                  className={`flex-row items-center gap-1.5 px-3.5 py-2 rounded-full ${statusTab === tab ? "bg-primary" : "bg-slate-100"}`}
+                  style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1, minHeight: MIN_TOUCH - 4 })}
                 >
-                  <Text className={`text-xs font-medium ${statusTab === tab ? "text-white" : "text-slate-600"}`}>
+                  <Text className={`text-xs font-semibold ${statusTab === tab ? "text-white" : "text-slate-600"}`}>
                     {tab}
                   </Text>
                   {count > 0 && (
-                    <View className={`rounded-full px-1.5 py-0.5 ${statusTab === tab ? "bg-white/20" : "bg-slate-200"}`}>
+                    <View className={`rounded-full px-2 py-0.5 ${statusTab === tab ? "bg-white/25" : "bg-slate-200"}`}>
                       <Text className={`text-[10px] font-bold ${statusTab === tab ? "text-white" : "text-slate-600"}`}>
                         {count}
                       </Text>
@@ -433,85 +486,72 @@ export function InvoiceListScreen({ navigation }: Props) {
             onChangeText={setSearch}
             placeholder={placeholder}
             placeholderTextColor="#94a3b8"
-            className="flex-1 text-base text-slate-800 py-0"
+            className="flex-1 text-base text-slate-800 py-3"
           />
         </View>
         {showInvoiceList && !search.trim() && (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            className="mt-2 flex-row gap-2"
+            className="mt-3"
+            contentContainerStyle={{ paddingRight: 16 }}
           >
+            <View className="flex-row gap-2">
             {DATE_FILTERS.filter((f) => f !== "custom").map((f) => (
               <Pressable
                 key={f}
                 onPress={() => setDateFilter(f)}
-                className={`px-3 py-1.5 rounded-lg ${dateFilter === f ? "bg-primary" : "bg-slate-100"}`}
-                style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+                className={`px-4 py-2 rounded-xl ${dateFilter === f ? "bg-primary" : "bg-slate-100"}`}
+                style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1, minHeight: MIN_TOUCH - 4 })}
               >
-                <Text className={`text-xs font-medium ${dateFilter === f ? "text-white" : "text-slate-600"}`}>
+                <Text className={`text-xs font-semibold ${dateFilter === f ? "text-white" : "text-slate-600"}`}>
                   {DATE_LABELS[f]}
                 </Text>
               </Pressable>
             ))}
+            </View>
           </ScrollView>
         )}
       </View>
 
       {/* Total & Pending summary */}
       {showInvoiceList && filteredInvoices.length > 0 && (
-        <View className="mx-4 mt-3 flex-row rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+        <View className="mx-4 mt-4 flex-row rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm overflow-hidden">
           <View className="flex-1">
             <Text className={TYPO.sectionTitle}>Total</Text>
-            <Text className="text-base font-bold text-slate-800">₹{inr(totalValue)}</Text>
+            <Text className="text-lg font-bold text-slate-800 mt-1">₹{inr(totalValue)}</Text>
           </View>
-          <View className="flex-1 border-l border-slate-200 pl-4">
+          <View className="flex-1 border-l border-slate-200 pl-5">
             <Text className={TYPO.sectionTitle}>Pending</Text>
-            <Text className="text-base font-bold text-amber-600">₹{inr(pendingAmount)}</Text>
+            <Text className="text-lg font-bold text-amber-600 mt-1">₹{inr(pendingAmount)}</Text>
           </View>
         </View>
       )}
 
-      {/* Quick links — navigate to full screens within Bills stack */}
+      {/* Quick links — compact icon + text, single row */}
       {showInvoiceList && (
-        <View className="mx-4 mt-3 flex-row flex-wrap gap-2">
-          <Pressable
-            onPress={() => navigation.navigate("Reports")}
-            className="flex-row items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 min-h-[40] bg-white"
-            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-          >
-            <Ionicons name="bar-chart" size={16} color="#64748b" />
-            <Text className="text-xs font-medium text-slate-700">Reports</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => navigation.navigate("Reports")}
-            className="flex-row items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 min-h-[40] bg-white"
-            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-          >
-            <Ionicons name="trending-up" size={16} color="#64748b" />
-            <Text className="text-xs font-medium text-slate-700">Analytics</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => navigation.navigate("ComingSoon", { title: "Aging Report" })}
-            className="flex-row items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 min-h-[40] bg-white"
-            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-          >
-            <Ionicons name="time" size={16} color="#64748b" />
-            <Text className="text-xs font-medium text-slate-700">Aging</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => navigation.navigate("Overdue")}
-            className="flex-row items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 min-h-[40] bg-white"
-            style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-          >
-            <Ionicons name="alert-circle" size={16} color="#64748b" />
-            <Text className="text-xs font-medium text-slate-700">Overdue</Text>
-          </Pressable>
+        <View className="mx-4 mt-4 flex-row gap-1.5">
+          {QUICK_LINK_ITEMS.map((item) => (
+            <Pressable
+              key={item.id}
+              onPress={item.onPress}
+              className="flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-2 px-1.5 bg-white min-h-[40]"
+              style={({ pressed }) => ({
+                opacity: pressed ? 0.7 : 1,
+                backgroundColor: pressed ? "#f8fafc" : "#fff",
+              })}
+            >
+              <Ionicons name={item.icon} size={14} color="#e67e22" />
+              <Text className="text-[10px] font-semibold text-slate-700" numberOfLines={1}>
+                {item.label}
+              </Text>
+            </Pressable>
+          ))}
         </View>
       )}
 
       {/* List */}
-      <View className="flex-1 mx-4 mt-3">
+      <View className="flex-1 mx-4 mt-4">
         {docTypeTab === "purchase" ? (
           purchasesLoading ? (
             <View className="py-16 items-center">
@@ -524,16 +564,27 @@ export function InvoiceListScreen({ navigation }: Props) {
                 title={search ? "No purchases match" : "No purchases yet"}
                 description={search ? "Try a different search" : "Add your first purchase"}
                 actionLabel={!search ? "Add Purchase" : undefined}
-                onAction={!search ? () => getTabNav()?.navigate("MoreTab", { screen: "Purchases" }) : undefined}
+                onAction={
+                  !search
+                    ? () => {
+                        InteractionManager.runAfterInteractions(() => {
+                          try {
+                            (navigation.getParent as any)?.()?.navigate("MoreTab", { screen: "Purchases" });
+                          } catch (_) {}
+                        });
+                      }
+                    : undefined
+                }
               />
             </View>
           ) : (
-            <View className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
+            <View className="flex-1 rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
               <FlatList
                 data={filteredPurchases}
                 keyExtractor={(p) => p.id}
                 renderItem={renderPurchaseRow}
                 ListFooterComponent={<View className="h-4" />}
+                style={{ flex: 1 }}
               />
             </View>
           )
@@ -559,24 +610,32 @@ export function InvoiceListScreen({ navigation }: Props) {
               />
             </View>
           ) : (
-            <View className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
+            <View className="flex-1 rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
               <FlatList
                 data={filteredInvoices}
                 keyExtractor={(inv) => inv.id}
                 renderItem={renderInvoiceRow}
                 refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor="#e67e22" />}
                 ListFooterComponent={<View className="h-24" />}
+                style={{ flex: 1 }}
               />
             </View>
           )
         )}
       </View>
 
-      {/* FAB */}
+      {/* FAB — 56pt for primary action per HIG */}
       <Pressable
         onPress={handleNewInvoice}
-        className="absolute bottom-6 right-4 w-14 h-14 rounded-full bg-primary items-center justify-center shadow-lg"
-        style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
+        className="absolute bottom-6 right-4 w-14 h-14 rounded-full bg-primary items-center justify-center"
+        style={({ pressed }) => ({
+          opacity: pressed ? 0.9 : 1,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.2,
+          shadowRadius: 8,
+          elevation: 8,
+        })}
       >
         <Ionicons name="add" size={28} color="#fff" />
       </Pressable>

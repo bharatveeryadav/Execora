@@ -1,6 +1,6 @@
 {
-  "name": "Execora — Billing & GST",
-  "short_name": "Execora",
+  "name": "{{APP_NAME}} — Billing & GST",
+  "short_name": "{{APP_NAME}}",
   "description": "Voice-first billing, GST invoicing and khata management for Indian kirana stores and retailers.",
   "start_url": "/",
   "scope": "/",
@@ -50,14 +50,14 @@
       "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Execora billing on mobile"
+      "label": "{{APP_NAME}} billing on mobile"
     },
     {
       "src": "/icons/screenshot-desktop.png",
       "sizes": "1280x800",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Execora dashboard on desktop"
+      "label": "{{APP_NAME}} dashboard on desktop"
     }
   ],
   "shortcuts": [

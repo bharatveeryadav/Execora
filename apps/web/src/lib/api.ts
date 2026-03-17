@@ -249,9 +249,11 @@ export interface Product {
   minStock?: number;
   barcode?: string | null;
   sku?: string | null;
+  imageUrl?: string | null;
   wholesalePrice?: string | number | null;
   priceTier2?: string | number | null;
   priceTier3?: string | number | null;
+  isFeatured?: boolean;
   isActive: boolean;
   createdAt: string;
 }
@@ -600,6 +602,7 @@ export const productApi = {
       wholesalePrice?: number;
       priceTier2?: number;
       priceTier3?: number;
+      isFeatured?: boolean;
     },
   ) =>
     request<{ product: Product }>(`/api/v1/products/${id}`, {
@@ -614,6 +617,46 @@ export const productApi = {
       method: "PATCH",
       body: JSON.stringify(data),
     }),
+  uploadImage: async (id: string, file: File): Promise<{ imageUrl: string }> => {
+    const token = getToken();
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${API_BASE}/api/v1/products/${encodeURIComponent(id)}/image`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error((body as { error?: string }).error ?? "Upload failed");
+    }
+    return res.json() as Promise<{ imageUrl: string }>;
+  },
+  getImageUrl: (id: string) =>
+    request<{ url: string }>(`/api/v1/products/${encodeURIComponent(id)}/image-url`),
+  getImageUrls: (ids: string[]) =>
+    request<Record<string, string>>(
+      `/api/v1/products/image-urls?ids=${ids.slice(0, 50).join(",")}`,
+    ),
+  deleteImage: (id: string) =>
+    request<{ deleted: boolean }>(`/api/v1/products/${encodeURIComponent(id)}/image`, {
+      method: "DELETE",
+    }),
+  importCsv: async (file: File): Promise<{ imported: number; failed: number; errors: Array<{ row: number; message: string }> }> => {
+    const token = getToken();
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${API_BASE}/api/v1/products/import`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error((body as { error?: string }).error ?? "Import failed");
+    }
+    return res.json() as Promise<{ imported: number; failed: number; errors: Array<{ row: number; message: string }> }>;
+  },
 };
 
 export const ledgerApi = {

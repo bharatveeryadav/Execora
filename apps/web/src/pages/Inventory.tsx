@@ -18,6 +18,8 @@ import {
   ArrowUpDown,
   Share2,
   Clock,
+  Star,
+  Info,
 } from "lucide-react";
 import VoiceBar from "@/components/VoiceBar";
 import BarcodeScanner from "@/components/BarcodeScanner";
@@ -45,17 +47,22 @@ import {
   useUpdateProduct,
   useAdjustStock,
   useProductByBarcode,
+  useProductImageUrls,
+  useUploadProductImage,
+  useDeleteProductImage,
 } from "@/hooks/useQueries";
 import { useWsInvalidation } from "@/hooks/useWsInvalidation";
 import {
   formatCurrency,
   draftApi,
   aiApi,
+  productApi,
   type Product,
   type Draft,
   type OcrJob,
 } from "@/lib/api";
 import { DraftConfirmDialog } from "@/components/DraftConfirmDialog";
+import { ProductImage } from "@/components/ProductImage";
 import {
   Dialog,
   DialogContent,
@@ -63,6 +70,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useQueryClient } from "@tanstack/react-query";
 import { ReplenishmentBanner } from "@/components/ReplenishmentBanner";
 import DashboardExpiryAlert from "@/components/DashboardExpiryAlert";
@@ -156,7 +169,7 @@ const Inventory = () => {
 
   // ── Inventory filter / sort state ─────────────────────────────────────────
   const [stockFilter, setStockFilter] = useState<
-    "all" | "low" | "out" | "dead"
+    "all" | "low" | "out" | "dead" | "favorites"
   >("all");
   const [sortBy, setSortBy] = useState<"name" | "stock" | "value" | "price">(
     "name",
@@ -166,6 +179,13 @@ const Inventory = () => {
   const [topSellingDays, setTopSellingDays] = useState<7 | 30 | 90>(30);
   const [showVoiceTools, setShowVoiceTools] = useState(false);
   const [showInsights, setShowInsights] = useState(false);
+  const [showHint, setShowHint] = useState(() => {
+    try {
+      return !localStorage.getItem("inventory-hint-dismissed");
+    } catch {
+      return true;
+    }
+  });
 
   // ── Add product state ──────────────────────────────────────────────────────
   const [addProductOpen, setAddProductOpen] = useState(false);
@@ -189,6 +209,8 @@ const Inventory = () => {
 
   // ── Bulk Product Import (OCR) state ───────────────────────────────────────
   const bulkImportFileRef = useRef<HTMLInputElement>(null);
+  const csvImportFileRef = useRef<HTMLInputElement>(null);
+  const [csvImporting, setCsvImporting] = useState(false);
   const [bulkOcrJobId, setBulkOcrJobId] = useState<string | null>(null);
   const [bulkOcrJob, setBulkOcrJob] = useState<OcrJob | null>(null);
   const [bulkOcrOpen, setBulkOcrOpen] = useState(false);
@@ -227,6 +249,32 @@ const Inventory = () => {
     },
     [queryClient, toast],
   );
+
+  async function handleCsvImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setCsvImporting(true);
+    try {
+      const result = await productApi.importCsv(file);
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast({
+        title: "✅ CSV import complete",
+        description: `${result.imported} imported${result.failed > 0 ? `, ${result.failed} failed` : ""}`,
+      });
+      if (result.errors.length > 0) {
+        console.warn("Import errors:", result.errors);
+      }
+    } catch (err) {
+      toast({
+        title: "❌ CSV import failed",
+        description: err instanceof Error ? err.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setCsvImporting(false);
+    }
+  }
 
   async function handleBulkImportFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -421,6 +469,11 @@ const Inventory = () => {
   const deadCount = products.filter(
     (p) => (salesMap.get(p.name)?.units ?? 0) === 0 && p.stock > 0,
   ).length;
+  const favoritesCount = products.filter((p) => p.isFeatured).length;
+
+  const uploadProductImage = useUploadProductImage();
+  const deleteProductImage = useDeleteProductImage();
+  const editImageInputRef = useRef<HTMLInputElement>(null);
 
   // Filtered products for the main table
   const filteredProducts = products
@@ -438,6 +491,7 @@ const Inventory = () => {
       if (stockFilter === "out") matchesStockFilter = p.stock === 0;
       if (stockFilter === "dead")
         matchesStockFilter = sold === 0 && p.stock > 0;
+      if (stockFilter === "favorites") matchesStockFilter = !!p.isFeatured;
 
       return matchesSearch && matchesCategory && matchesStockFilter;
     })
@@ -453,6 +507,11 @@ const Inventory = () => {
         cmp = parseFloat(String(a.price)) - parseFloat(String(b.price));
       return sortDir === "asc" ? cmp : -cmp;
     });
+
+  const { data: imageUrlsMap = {} } = useProductImageUrls([
+    ...filteredProducts.map((p) => p.id),
+    ...lowStock.map((p) => p.id),
+  ]);
 
   // Top selling: sorted by revenue from invoices (fallback: lowest stock first)
   const topSelling = [...products]
@@ -596,21 +655,35 @@ const Inventory = () => {
               variant="outline"
               onClick={() => bulkImportFileRef.current?.click()}
               disabled={bulkUploading}
-              title="Import multiple products from a photo or image"
+              title="Import from photo (OCR)"
             >
               {bulkUploading ? (
                 <Loader2 className="mr-1 h-4 w-4 animate-spin" />
               ) : (
                 <ImagePlus className="mr-1 h-4 w-4" />
               )}
-              Import
+              Photo
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => csvImportFileRef.current?.click()}
+              disabled={csvImporting}
+              title="Import from CSV (name, price, stock, category, etc.)"
+            >
+              {csvImporting ? (
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+              ) : (
+                <Package className="mr-1 h-4 w-4" />
+              )}
+              CSV
             </Button>
             <Button size="sm" onClick={handleAddProduct}>
               <Plus className="mr-1 h-4 w-4" /> Add Product
             </Button>
           </div>
 
-          {/* Hidden file input — accept images only, no camera capture */}
+          {/* Hidden file inputs */}
           <input
             ref={bulkImportFileRef}
             type="file"
@@ -618,10 +691,40 @@ const Inventory = () => {
             className="hidden"
             onChange={handleBulkImportFile}
           />
+          <input
+            ref={csvImportFileRef}
+            type="file"
+            accept=".csv,text/csv,text/plain"
+            className="hidden"
+            onChange={handleCsvImport}
+          />
         </div>
       </header>
 
       <main className="mx-auto max-w-7xl space-y-5 p-4 pb-24 md:p-6 md:pb-6">
+        {showHint && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
+            <p className="text-sm text-foreground">
+              <span className="font-semibold">Tip:</span> Tap <strong>+ Add Product</strong> to add items. Use <strong>+</strong> / <strong>−</strong> on each row to adjust stock quickly.
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="shrink-0"
+              onClick={() => {
+                setShowHint(false);
+                try {
+                  localStorage.setItem("inventory-hint-dismissed", "1");
+                } catch {
+                  /* ignore */
+                }
+              }}
+            >
+              Dismiss
+            </Button>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-2">
           {[
             "⚡ Real-time stock",
@@ -935,7 +1038,17 @@ const Inventory = () => {
                       <TableRow key={item.id}>
                         <TableCell>{i + 1}</TableCell>
                         <TableCell className="font-medium">
-                          {categoryIcon(item.category)} {item.name}
+                          <div className="flex items-center gap-2">
+                            <ProductImage
+                              product={item}
+                              imageUrl={imageUrlsMap[item.id]}
+                              size="sm"
+                              className="shrink-0"
+                            />
+                            <span>
+                              {categoryIcon(item.category)} {item.name}
+                            </span>
+                          </div>
                         </TableCell>
                         <TableCell>
                           {item.stock} {item.unit}{" "}
@@ -1206,6 +1319,12 @@ const Inventory = () => {
                 count: deadCount,
                 color: "bg-slate-500 text-white",
               },
+              {
+                key: "favorites",
+                label: "⭐ Favorites",
+                count: favoritesCount,
+                color: "bg-amber-500 text-white",
+              },
             ] as const
           ).map((t) => (
             <button
@@ -1235,7 +1354,8 @@ const Inventory = () => {
                 {stockFilter === "all" && "📋 All Products"}
                 {stockFilter === "low" && "⚠️ Low Stock Items"}
                 {stockFilter === "out" && "🔴 Out of Stock Items"}
-                {stockFilter === "dead" && "💤 Dead / Non-Moving Stock"}{" "}
+                {stockFilter === "dead" && "💤 Dead / Non-Moving Stock"}
+                {stockFilter === "favorites" && "⭐ Favorites"}{" "}
                 <span className="text-muted-foreground font-normal">
                   ({filteredProducts.length})
                 </span>
@@ -1377,13 +1497,20 @@ const Inventory = () => {
                             />
                           </TableCell>
                           <TableCell className="font-medium">
-                            <div>
+                            <div className="flex items-center gap-2">
+                              <ProductImage
+                                product={p}
+                                imageUrl={imageUrlsMap[p.id]}
+                                size="sm"
+                                className="shrink-0"
+                              />
                               <div>
-                                <span className="mr-1">
-                                  {categoryIcon(p.category)}
-                                </span>
-                                {p.name}
-                              </div>
+                                <div>
+                                  <span className="mr-1">
+                                    {categoryIcon(p.category)}
+                                  </span>
+                                  {p.name}
+                                </div>
                               {(p.sku || p.barcode || p.minStock != null) && (
                                 <div className="mt-1 flex flex-wrap gap-1">
                                   {p.sku && (
@@ -1401,6 +1528,7 @@ const Inventory = () => {
                                   </span>
                                 </div>
                               )}
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -1485,7 +1613,23 @@ const Inventory = () => {
                             </span>
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex justify-end gap-1">
+                            <div className="flex justify-end gap-1 items-center">
+                              <button
+                                onClick={() =>
+                                  updateProduct.mutateAsync({
+                                    id: p.id,
+                                    isFeatured: !p.isFeatured,
+                                  })
+                                }
+                                disabled={updateProduct.isPending}
+                                className={`p-1 rounded hover:bg-muted ${p.isFeatured ? "text-amber-500" : "text-muted-foreground"}`}
+                                title={p.isFeatured ? "Remove from favorites" : "Add to favorites"}
+                              >
+                                <Star
+                                  className="h-4 w-4"
+                                  fill={p.isFeatured ? "currentColor" : "none"}
+                                />
+                              </button>
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -1659,6 +1803,88 @@ const Inventory = () => {
             <div className="space-y-3">
               <div>
                 <label className="mb-1 block text-xs text-muted-foreground">
+                  Product Image
+                </label>
+                <div className="flex items-center gap-3">
+                  <ProductImage
+                    product={editingProduct}
+                    imageUrl={
+                      editingProduct.imageUrl?.startsWith("http")
+                        ? editingProduct.imageUrl
+                        : imageUrlsMap[editingProduct.id]
+                    }
+                    size="lg"
+                  />
+                  <div className="flex flex-col gap-1">
+                    <input
+                      ref={editImageInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file || !editingProduct) return;
+                        e.target.value = "";
+                        try {
+                          await uploadProductImage.mutateAsync({
+                            productId: editingProduct.id,
+                            file,
+                          });
+                          queryClient.invalidateQueries({ queryKey: ["products"] });
+                          queryClient.invalidateQueries({ queryKey: ["productImageUrls"] });
+                          toast({ title: "✅ Image uploaded" });
+                        } catch (err) {
+                          toast({
+                            title: "❌ Upload failed",
+                            description: err instanceof Error ? err.message : "Unknown error",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => editImageInputRef.current?.click()}
+                      disabled={uploadProductImage.isPending}
+                    >
+                      {uploadProductImage.isPending ? (
+                        <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                      ) : (
+                        <ImagePlus className="mr-1 h-4 w-4" />
+                      )}
+                      Upload
+                    </Button>
+                    {editingProduct.imageUrl && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive"
+                        onClick={async () => {
+                          if (!editingProduct) return;
+                          try {
+                            await deleteProductImage.mutateAsync(editingProduct.id);
+                            queryClient.invalidateQueries({ queryKey: ["products"] });
+                            toast({ title: "Image removed" });
+                          } catch {
+                            toast({
+                              title: "Could not remove image",
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                        disabled={deleteProductImage.isPending}
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">
                   Name
                 </label>
                 <input
@@ -1684,14 +1910,36 @@ const Inventory = () => {
                   Category
                 </label>
                 <input
+                  list="edit-category-list"
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  placeholder="Select or type new"
                   value={editCategory}
                   onChange={(e) => setEditCategory(e.target.value)}
                 />
+                <datalist id="edit-category-list">
+                  {categories
+                    .filter((c) => c !== "All")
+                    .sort()
+                    .map((c) => (
+                      <option key={c} value={c} />
+                    ))}
+                </datalist>
               </div>
               <div>
-                <label className="mb-1 block text-xs text-muted-foreground">
+                <label className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
                   Min Stock Alert (units)
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="cursor-help">
+                          <Info className="h-3.5 w-3.5" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Reorder level — you&apos;ll get a low-stock alert when quantity falls below this.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </label>
                 <input
                   type="number"
@@ -1976,11 +2224,20 @@ const Inventory = () => {
                     Category
                   </label>
                   <input
+                    list="add-category-list"
                     className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    placeholder="e.g. Grains"
+                    placeholder="Select or type new (e.g. Grains)"
                     value={addCategory}
                     onChange={(e) => setAddCategory(e.target.value)}
                   />
+                  <datalist id="add-category-list">
+                    {categories
+                      .filter((c) => c !== "All")
+                      .sort()
+                      .map((c) => (
+                        <option key={c} value={c} />
+                      ))}
+                  </datalist>
                 </div>
               </div>
               <div>
@@ -2274,6 +2531,7 @@ const Inventory = () => {
         onClose={() => setPendingDraft(null)}
         onConfirmed={() => setPendingDraft(null)}
         onDiscarded={() => setPendingDraft(null)}
+        categories={categories.filter((c) => c !== "All")}
       />
 
     </div>

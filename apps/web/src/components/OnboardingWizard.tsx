@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Store, MapPin, CreditCard, ChevronRight, Check, Loader2 } from "lucide-react";
 import { authApi } from "@/lib/api";
+import { APP_NAME } from "@/lib/app-config";
 import { useNavigate } from "react-router-dom";
 
 const BIZ_STORAGE_KEY = "execora:bizprofile";
@@ -134,7 +135,7 @@ export function OnboardingWizard() {
       >
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">
-            Welcome to Execora
+            Welcome to {APP_NAME}
           </DialogTitle>
           <DialogDescription>
             Set up your shop in 3 quick steps to get started.

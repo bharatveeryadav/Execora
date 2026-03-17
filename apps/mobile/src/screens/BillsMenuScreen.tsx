@@ -47,7 +47,7 @@ export function BillsMenuScreen({ navigation }: Props) {
 
   function handleMenuPress(item: (typeof MENU_ITEMS)[0]) {
     if (item.action === "billing") {
-      nav.getParent()?.navigate("Billing");
+      nav.getParent()?.navigate("MoreTab", { screen: "Billing", params: { screen: "BillingForm" } });
       return;
     }
     if (item.action === "comingSoon" && item.title) {

@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { APP_NAME } from "@/lib/app-config";
 
 export default function LoginPage() {
   const { login, isAuthenticated } = useAuth();
@@ -34,7 +35,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Login to Execora</CardTitle>
+          <CardTitle>Login to {APP_NAME}</CardTitle>
           <CardDescription>Use your dashboard credentials to continue.</CardDescription>
         </CardHeader>
         <CardContent>
