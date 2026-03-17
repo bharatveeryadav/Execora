@@ -65,7 +65,7 @@ export function PurchaseOrdersScreen() {
             </View>
           ) : (
             <EmptyState
-              icon="📋"
+              iconName="document-text-outline"
               title="No purchase orders"
               description="Create POs from Purchases or web app"
             />

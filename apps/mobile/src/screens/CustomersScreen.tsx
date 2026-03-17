@@ -85,7 +85,7 @@ export function CustomersScreen() {
             </View>
           ) : (
             <EmptyState
-              icon={search ? "🔍" : "👥"}
+              iconName={search ? "search-outline" : "people-outline"}
               title={search ? "No customers found" : "No customers yet"}
               description={search ? "Try a different search term" : "Add your first customer to get started"}
             />

@@ -1,12 +1,17 @@
 /**
  * EmptyState — design system component (Sprint 2).
+ * Supports emoji (icon) or Ionicons (iconName).
  */
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { cn } from "../../lib/utils";
 
 export interface EmptyStateProps {
+  /** Emoji fallback when iconName not provided */
   icon?: string;
+  /** Ionicons name for modern icon (takes precedence over icon) */
+  iconName?: keyof typeof Ionicons.glyphMap;
   title: string;
   description?: string;
   actionLabel?: string;
@@ -16,6 +21,7 @@ export interface EmptyStateProps {
 
 export function EmptyState({
   icon = "📭",
+  iconName,
   title,
   description,
   actionLabel,
@@ -24,7 +30,13 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <View className={cn("items-center justify-center py-12 px-6", className)}>
-      <Text className="text-5xl mb-3">{icon}</Text>
+      {iconName ? (
+        <View className="mb-3">
+          <Ionicons name={iconName} size={48} color="#94a3b8" />
+        </View>
+      ) : (
+        <Text className="text-5xl mb-3">{icon}</Text>
+      )}
       <Text className="text-lg font-semibold text-slate-800 dark:text-slate-200 text-center mb-1">
         {title}
       </Text>

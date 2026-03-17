@@ -66,13 +66,13 @@ const QUICK_ACTIONS: Array<{
 ];
 
 // Command sets by category (matches web AiAgentFeed)
-const COMMAND_SETS = [
-  { category: "💰 Sales", items: ["Ramesh ka invoice banao 3 rice 50kg", "Suresh ko 3 bag diya 1200 ka", "Invoice print karo"] },
-  { category: "💸 Payment", items: ["Ramesh ne 500 diya", "Sita ka payment 2000 record karo", "Aaj kitna collection hua?"] },
-  { category: "📦 Stock", items: ["Rice kitna bacha?", "Atta ka stock low hai", "Sugar 100kg add karo"] },
-  { category: "👥 Customers", items: ["Ramesh ka balance batao", "Suresh ka udhar kitna hai?", "Naya customer Mohan add karo"] },
-  { category: "📊 Reports", items: ["Aaj ki sale kitni hui?", "Is hafte ka report dikhao", "GSTR-1 download karo"] },
-  { category: "🧾 Misc", items: ["Kaunse customers ka pesa aana baaki hai?", "Low stock alert dikhao", "Business health kaisi hai?"] },
+const COMMAND_SETS: Array<{ category: string; icon: keyof typeof Ionicons.glyphMap; items: string[] }> = [
+  { category: "Sales", icon: "receipt-outline", items: ["Ramesh ka invoice banao 3 rice 50kg", "Suresh ko 3 bag diya 1200 ka", "Invoice print karo"] },
+  { category: "Payment", icon: "wallet-outline", items: ["Ramesh ne 500 diya", "Sita ka payment 2000 record karo", "Aaj kitna collection hua?"] },
+  { category: "Stock", icon: "cube-outline", items: ["Rice kitna bacha?", "Atta ka stock low hai", "Sugar 100kg add karo"] },
+  { category: "Customers", icon: "people-outline", items: ["Ramesh ka balance batao", "Suresh ka udhar kitna hai?", "Naya customer Mohan add karo"] },
+  { category: "Reports", icon: "bar-chart-outline", items: ["Aaj ki sale kitni hui?", "Is hafte ka report dikhao", "GSTR-1 download karo"] },
+  { category: "Misc", icon: "ellipsis-horizontal", items: ["Kaunse customers ka pesa aana baaki hai?", "Low stock alert dikhao", "Business health kaisi hai?"] },
 ];
 
 function useSecondsAgo(ts: number) {
@@ -259,7 +259,7 @@ export function DashboardScreen() {
     const offs = [
       wsClient.on("invoice:confirmed", (p: unknown) => {
         const d = p as { customerName?: string; invoiceNo?: string; total?: number };
-        push("🧾", `Invoice — ${d.customerName ?? "Customer"}`, d.invoiceNo);
+        push("receipt-outline", `Invoice — ${d.customerName ?? "Customer"}`, d.invoiceNo);
         const msg = d.total
           ? `Invoice confirmed — ₹${parseFloat(String(d.total)).toLocaleString("en-IN")}`
           : "Invoice confirmed";
@@ -267,7 +267,7 @@ export function DashboardScreen() {
       }),
       wsClient.on("payment:recorded", (p: unknown) => {
         const d = p as { customerName?: string; amount?: number };
-        push("💰", `Payment from ${d.customerName ?? "Customer"}`, d.amount ? formatCurrency(d.amount) : undefined);
+        push("wallet-outline", `Payment from ${d.customerName ?? "Customer"}`, d.amount ? formatCurrency(d.amount) : undefined);
         const msg = d.amount
           ? `Payment recorded — ₹${parseFloat(String(d.amount)).toLocaleString("en-IN")}`
           : "Payment recorded";
@@ -275,11 +275,11 @@ export function DashboardScreen() {
       }),
       wsClient.on("customer:updated", (p: unknown) => {
         const d = p as { name?: string };
-        push("👤", `Customer updated — ${d.name ?? ""}`);
+        push("person-outline", `Customer updated — ${d.name ?? ""}`);
       }),
       wsClient.on("product:updated", (p: unknown) => {
         const d = p as { name?: string };
-        push("📦", `Stock updated — ${d.name ?? "Product"}`);
+        push("cube-outline", `Stock updated — ${d.name ?? "Product"}`);
       }),
     ];
     return () => offs.forEach((o) => o());
@@ -517,7 +517,10 @@ export function DashboardScreen() {
               }}
             >
               <View className="flex-row items-center justify-between mb-1">
-                <Text className={TYPO.micro}>📦 Stock</Text>
+                <View className="flex-row items-center gap-1">
+                  <Ionicons name="cube-outline" size={12} color="#64748b" />
+                  <Text className={TYPO.micro}>Stock</Text>
+                </View>
                 <Text className={`${TYPO.microBold} ${stockScore >= 80 ? "text-green-600" : stockScore >= 50 ? "text-amber-600" : "text-red-600"}`}>
                   {stockScore}%
                 </Text>
@@ -549,7 +552,10 @@ export function DashboardScreen() {
               }}
             >
               <View className="flex-row items-center justify-between mb-1">
-                <Text className={TYPO.micro}>🧾 Receivables</Text>
+                <View className="flex-row items-center gap-1">
+                  <Ionicons name="receipt-outline" size={12} color="#64748b" />
+                  <Text className={TYPO.micro}>Receivables</Text>
+                </View>
                 <Text className={`${TYPO.microBold} ${overdueScore >= 80 ? "text-green-600" : overdueScore >= 50 ? "text-amber-600" : "text-red-600"}`}>
                   {overdueScore}%
                 </Text>
@@ -574,7 +580,10 @@ export function DashboardScreen() {
               activeOpacity={0.9}
               className="flex-row flex-wrap items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 mb-2"
             >
-              <Text className={TYPO.labelBold + " text-red-700 shrink-0"}>🔴 Overdue ({overdueList.length})</Text>
+              <View className="flex-row items-center gap-1 shrink-0">
+                <Ionicons name="alert-circle" size={14} color="#dc2626" />
+                <Text className={TYPO.labelBold + " text-red-700"}>Overdue ({overdueList.length})</Text>
+              </View>
               <View className="rounded-full border border-red-200 bg-red-100 px-2 py-0.5">
                 <Text className={`${TYPO.label} text-red-700`}>
                   {(overdueList[0].name ?? "—").slice(0, 12)}{(overdueList[0].name ?? "").length > 12 ? "…" : ""} {formatCurrency(overdueList[0].balance)}
@@ -594,7 +603,10 @@ export function DashboardScreen() {
               activeOpacity={0.9}
               className="flex-row flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5"
             >
-              <Text className={TYPO.labelBold + " text-primary"}>🟡 Upcoming ({upcomingReminders.length})</Text>
+              <View className="flex-row items-center gap-1">
+                <Ionicons name="time-outline" size={14} color="#e67e22" />
+                <Text className={TYPO.labelBold + " text-primary"}>Upcoming ({upcomingReminders.length})</Text>
+              </View>
               {upcomingReminders.slice(0, 3).map((r) => {
                 const days = Math.max(0, Math.ceil((new Date(r.scheduledTime).getTime() - Date.now()) / 86400000));
                 const pillStyle = reminderPillStyle(days);
@@ -644,6 +656,9 @@ export function DashboardScreen() {
                 setCmdItemIdx(0);
               }}
               style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
                 paddingHorizontal: 12,
                 paddingVertical: 6,
                 borderRadius: 999,
@@ -652,10 +667,11 @@ export function DashboardScreen() {
                 backgroundColor: i === cmdSetIdx ? "#e67e22" : "#fafbfc",
               }}
             >
+              <Ionicons name={s.icon} size={14} color={i === cmdSetIdx ? "#fff" : "#64748b"} />
               <Text
                 className={`text-xs font-medium ${i === cmdSetIdx ? "text-white" : "text-slate-500"}`}
               >
-                {s.category.split(" ")[0]} {s.category.split(" ").slice(1).join(" ")}
+                {s.category}
               </Text>
             </TouchableOpacity>
           ))}
@@ -668,7 +684,11 @@ export function DashboardScreen() {
             </View>
             {feed.slice(0, 5).map((item) => (
               <View key={item.id} className="flex-row items-start gap-2 py-1.5">
-                <Text className="text-base">{item.icon}</Text>
+                {item.icon.includes("-") ? (
+                  <Ionicons name={item.icon as keyof typeof Ionicons.glyphMap} size={20} color="#64748b" />
+                ) : (
+                  <Text className="text-base">{item.icon}</Text>
+                )}
                 <View className="flex-1">
                   <Text className={TYPO.body} numberOfLines={1}>{item.text}</Text>
                   {item.subtext && <Text className={TYPO.caption} numberOfLines={1}>{item.subtext}</Text>}
@@ -760,23 +780,44 @@ export function DashboardScreen() {
             {isLoadingSummary ? <Skeleton className="mt-1.5 h-6 w-20 rounded" /> : (
               <Text className={`${TYPO.value} mt-1 text-right`}>{collectionRate}%</Text>
             )}
-            <Text className={`${TYPO.caption} mt-0.5 text-right ${collectionRate >= 80 ? "text-green-600" : collectionRate >= 50 ? "text-amber-600" : "text-red-600"}`}>
-              {collectionRate >= 80 ? "✅ Excellent" : collectionRate >= 50 ? "⚠️ Below target" : "🔴 Low"}
-            </Text>
+            <View className={`flex-row items-center justify-end gap-1 mt-0.5`}>
+              {collectionRate >= 80 ? (
+                <>
+                  <Ionicons name="checkmark-circle" size={14} color="#16a34a" />
+                  <Text className={`${TYPO.caption} text-green-600`}>Excellent</Text>
+                </>
+              ) : collectionRate >= 50 ? (
+                <>
+                  <Ionicons name="warning" size={14} color="#d97706" />
+                  <Text className={`${TYPO.caption} text-amber-600`}>Below target</Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="alert-circle" size={14} color="#dc2626" />
+                  <Text className={`${TYPO.caption} text-red-600`}>Low</Text>
+                </>
+              )}
+            </View>
           </PressableCard>
         </View>
 
         {/* 6 — Recent Activity (with LIVE) */}
         <View className="flex-row items-center justify-between mb-2">
           <View className="flex-row items-center gap-2">
-            <Text className={TYPO.sectionTitle}>📋 Recent Activity</Text>
+            <View className="flex-row items-center gap-1.5">
+              <Ionicons name="document-text-outline" size={18} color="#0f172a" />
+              <Text className={TYPO.sectionTitle}>Recent Activity</Text>
+            </View>
             <View className="flex-row items-center gap-1 rounded-full bg-green-100 px-2 py-0.5">
               <View className="h-1.5 w-1.5 rounded-full bg-green-500" />
               <Text className={`${TYPO.micro} font-semibold text-green-700`}>LIVE</Text>
             </View>
           </View>
           <TouchableOpacity onPress={() => void refetchInvoices()} className="flex-row items-center gap-1">
-            <Text className={TYPO.caption}>🔄 {secsAgo < 5 ? "just now" : `${secsAgo}s ago`}</Text>
+            <View className="flex-row items-center gap-1">
+              <Ionicons name="refresh-outline" size={14} color="#64748b" />
+              <Text className={TYPO.caption}>{secsAgo < 5 ? "just now" : `${secsAgo}s ago`}</Text>
+            </View>
           </TouchableOpacity>
         </View>
         <View className="rounded-xl border border-slate-200 bg-card overflow-hidden shadow-sm mb-5">

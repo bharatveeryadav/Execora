@@ -64,7 +64,7 @@ export function CreditNotesScreen() {
             </View>
           ) : (
             <EmptyState
-              icon="📄"
+              iconName="document-outline"
               title="No credit notes"
               description="Create credit notes from invoice returns"
             />

@@ -87,7 +87,7 @@ export function IndirectIncomeScreen() {
             </View>
           ) : (
             <EmptyState
-              icon="💰"
+              iconName="wallet-outline"
               title="No indirect income"
               description="Add income entries from Expenses (type: income)"
             />

@@ -197,7 +197,7 @@ export function PurchasesScreen() {
             </View>
           ) : (
             <EmptyState
-              icon="📦"
+              iconName="cube-outline"
               title="No purchases yet"
               description="Record stock purchases here"
               actionLabel="Add purchase"

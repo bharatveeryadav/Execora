@@ -521,7 +521,7 @@ export function PartiesScreen({ navigation }: Props) {
                 ) : filtered.length === 0 ? (
                   <View className="py-14 items-center rounded-2xl bg-white border border-slate-200/80">
                     <EmptyState
-                      icon={search ? "🔍" : "👥"}
+                      iconName={search ? "search-outline" : "people-outline"}
                       title={search ? "No customers found" : "No customers yet"}
                       description={search ? "Try a different search" : "Add your first customer"}
                       actionLabel={!search ? "Add Customer" : undefined}
@@ -611,7 +611,7 @@ export function PartiesScreen({ navigation }: Props) {
             {suppliers.length === 0 ? (
               <View className="py-14 items-center">
                 <EmptyState
-                  icon={vendorSearch ? "🔍" : "📦"}
+                  iconName={vendorSearch ? "search-outline" : "cube-outline"}
                   title={vendorSearch ? "No vendors found" : "No vendors yet"}
                   description={vendorSearch ? "Try a different search" : "Add your first vendor"}
                   actionLabel="Add Vendor"

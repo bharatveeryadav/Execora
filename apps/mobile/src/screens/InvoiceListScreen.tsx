@@ -560,7 +560,7 @@ export function InvoiceListScreen({ navigation }: Props) {
           ) : filteredPurchases.length === 0 ? (
             <View className="rounded-2xl border border-slate-200/80 bg-white py-16">
               <EmptyState
-                icon="📦"
+                iconName="cube-outline"
                 title={search ? "No purchases match" : "No purchases yet"}
                 description={search ? "Try a different search" : "Add your first purchase"}
                 actionLabel={!search ? "Add Purchase" : undefined}
@@ -596,7 +596,7 @@ export function InvoiceListScreen({ navigation }: Props) {
           ) : filteredInvoices.length === 0 ? (
             <View className="rounded-2xl border border-slate-200/80 bg-white py-16">
               <EmptyState
-                icon="🧾"
+                iconName="receipt-outline"
                 title={
                   search || statusTab !== "All"
                     ? `No ${docTypeTab === "quotation" ? "quotations" : "invoices"} match`
