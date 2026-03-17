@@ -721,6 +721,23 @@ export const reminderApi = {
     }),
 };
 
+/** Fetch tenant logo as data URL (for header/document icon). Returns null if no logo or fetch fails. */
+export async function fetchTenantLogoDataUrl(): Promise<string | null> {
+  const token = getToken();
+  if (!token) return null;
+  const res = await fetch(`${API_BASE}/api/v1/tenant/logo`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) return null;
+  const buf = await res.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  const base64 = btoa(binary);
+  const contentType = res.headers.get("content-type") ?? "image/jpeg";
+  return `data:${contentType};base64,${base64}`;
+}
+
 export const authApi = {
   me: () => request<{ user: AppUser }>("/api/v1/auth/me"),
   updateProfile: (data: {

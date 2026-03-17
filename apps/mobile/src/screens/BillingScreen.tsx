@@ -33,6 +33,7 @@ import {
   Pressable,
   Linking,
   Alert,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
@@ -53,8 +54,8 @@ import {
   type CreateInvoicePayload,
 } from "@execora/shared";
 import { Ionicons } from "@expo/vector-icons";
-import { customerApi, productApi, invoiceApi, authApi } from "../lib/api";
-import { storage, DRAFT_KEY, INVOICE_BAR_KEY, PRICE_TIER_KEY, INV_TEMPLATE_KEY, BIZ_STORAGE_KEY, DOC_SETTINGS_KEY } from "../lib/storage";
+import { customerApi, productApi, invoiceApi, authApi, getApiBaseUrl } from "../lib/api";
+import { storage, tokenStorage, DRAFT_KEY, INVOICE_BAR_KEY, PRICE_TIER_KEY, INV_TEMPLATE_KEY, BIZ_STORAGE_KEY, DOC_SETTINGS_KEY } from "../lib/storage";
 import { BarcodeScanner } from "../components/common/BarcodeScanner";
 import { printReceipt } from "../lib/printReceipt";
 import { useOffline } from "../contexts/OfflineContext";
@@ -334,7 +335,39 @@ export function BillingScreen() {
   const outstandingBalance =
     parseFloat(String(selectedCustomer?.balance ?? 0)) || 0;
 
-  // ── Header: More (Document Settings) only ─────────────────────────────────
+  // ── Logo for header (document icon) ───────────────────────────────────────
+  const settings = (tenant?.settings as Record<string, unknown>) ?? {};
+  const logoObjectKey = (settings.logoObjectKey ?? (bizProfile as Record<string, unknown>).logoObjectKey) as string | undefined;
+  const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!logoObjectKey) {
+      setLogoDataUrl(null);
+      return;
+    }
+    const token = tokenStorage.getToken();
+    if (!token) return;
+    let cancelled = false;
+    fetch(`${getApiBaseUrl()}/api/v1/tenant/logo`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => (res.ok ? res.arrayBuffer() : null))
+      .then((arrayBuffer) => {
+        if (cancelled || !arrayBuffer) return;
+        try {
+          const bytes = new Uint8Array(arrayBuffer);
+          let binary = "";
+          for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+          const base64 = btoa(binary);
+          if (!cancelled) setLogoDataUrl(`data:image/jpeg;base64,${base64}`);
+        } catch {
+          /* base64 conversion failed */
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [logoObjectKey]);
+
+  // ── Header: Logo (document icon) or ellipsis → Document Settings ───────────
   useLayoutEffect(() => {
     (navigation as any).setOptions({
       headerRight: () => (
@@ -344,11 +377,19 @@ export function BillingScreen() {
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           accessibilityLabel="Document Settings"
         >
-          <Ionicons name="ellipsis-horizontal" size={22} color="#0f172a" />
+          {logoDataUrl ? (
+            <Image
+              source={{ uri: logoDataUrl }}
+              style={{ width: 28, height: 28, borderRadius: 6 }}
+              resizeMode="cover"
+            />
+          ) : (
+            <Ionicons name="document-text-outline" size={24} color="#0f172a" />
+          )}
         </TouchableOpacity>
       ),
     });
-  }, [navigation]);
+  }, [navigation, logoDataUrl]);
 
   // ── Item helpers ──────────────────────────────────────────────────────────
   const updateItem = useCallback((id: number, patch: Partial<BillingItem>) => {
@@ -1958,11 +1999,11 @@ function MobileItemRow({
 
   return (
     <View
-      className={`px-3 py-2.5 ${isFirst ? "" : "border-t border-slate-100"}`}
+      className={`px-3 py-2.5 min-w-0 ${isFirst ? "" : "border-t border-slate-100"}`}
     >
       {/* Product name + scan + suggestions */}
-      <View className="relative mb-2">
-        <View className="flex-row items-center border border-slate-200 rounded-xl bg-white overflow-hidden">
+      <View className="relative mb-2 min-w-0">
+        <View className="flex-row items-center border border-slate-200 rounded-xl bg-white overflow-hidden min-w-0">
           <TextInput
             value={item.name}
             onChangeText={(t) => onUpdate({ name: t })}
@@ -1970,7 +2011,7 @@ function MobileItemRow({
             onBlur={() => setTimeout(() => setFocused(false), 200)}
             placeholder="Product name or scan barcode…"
             placeholderTextColor="#94a3b8"
-            className="flex-1 px-3 h-11 text-sm text-slate-800"
+            className="flex-1 min-w-0 px-3 h-11 text-sm text-slate-800"
             autoFocus={isFirst && item.name === ""}
           />
           <TouchableOpacity
@@ -1988,7 +2029,7 @@ function MobileItemRow({
           hint="Point at product barcode"
         />
         {focused && suggestions.length > 0 && (
-          <View className="absolute top-12 left-0 right-0 z-50 bg-white border border-slate-200 rounded-xl shadow-lg max-h-52 overflow-hidden">
+          <View className="absolute top-12 left-0 right-0 z-50 bg-white border border-slate-200 rounded-xl shadow-lg max-h-52 overflow-hidden min-w-0" style={{ elevation: 8 }}>
             <FlatList
               data={suggestions.slice(0, 6)}
               keyExtractor={(p) => p.id}
@@ -2027,29 +2068,29 @@ function MobileItemRow({
       {/* Qty / Unit / Rate / Disc in 2x2 grid */}
       {item.name.trim().length > 0 && (
         <>
-          <View className="flex-row gap-2 mb-2">
-            <View className="flex-1">
+          <View className="flex-row gap-2 mb-2 min-w-0">
+            <View className="flex-1 min-w-0">
               <Text className="text-xs text-slate-500 mb-1">Qty</Text>
               <TextInput
                 value={item.qty}
                 onChangeText={(v) => onUpdate({ qty: v })}
                 keyboardType="decimal-pad"
-                className="border border-slate-200 rounded-xl px-3 h-11 text-base text-center text-slate-800 bg-white"
+                className="border border-slate-200 rounded-xl px-3 h-11 text-base text-center text-slate-800 bg-white min-w-0"
               />
             </View>
-            <View className="flex-1">
+            <View className="flex-1 min-w-0">
               <Text className="text-xs text-slate-500 mb-1">Unit</Text>
               <TextInput
                 value={item.unit}
                 onChangeText={(v) => onUpdate({ unit: v })}
                 placeholder="pcs"
                 placeholderTextColor="#94a3b8"
-                className="border border-slate-200 rounded-xl px-3 h-11 text-base text-slate-800 bg-white"
+                className="border border-slate-200 rounded-xl px-3 h-11 text-base text-slate-800 bg-white min-w-0"
               />
             </View>
           </View>
-          <View className="flex-row gap-2">
-            <View className="flex-1">
+          <View className="flex-row gap-2 min-w-0">
+            <View className="flex-1 min-w-0">
               <Text className="text-xs text-slate-500 mb-1">Rate ₹</Text>
               <TextInput
                 value={item.rate}
@@ -2057,10 +2098,10 @@ function MobileItemRow({
                 keyboardType="decimal-pad"
                 placeholder="0.00"
                 placeholderTextColor="#94a3b8"
-                className="border border-slate-200 rounded-xl px-3 h-11 text-base text-slate-800 bg-white"
+                className="border border-slate-200 rounded-xl px-3 h-11 text-base text-slate-800 bg-white min-w-0"
               />
             </View>
-            <View className="flex-1">
+            <View className="flex-1 min-w-0">
               <Text className="text-xs text-slate-500 mb-1">Disc %</Text>
               <TextInput
                 value={item.discount}

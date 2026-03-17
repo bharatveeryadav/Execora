@@ -14,6 +14,7 @@ import {
 	cashbookApi,
 	supplierApi,
 	purchaseOrderApi,
+	fetchTenantLogoDataUrl,
 	type Customer,
 	type Invoice,
 	type Product,
@@ -623,6 +624,19 @@ export function useMe() {
 			return data.user;
 		},
 		staleTime: 60_000,
+	});
+}
+
+/** Logo data URL for header/document icon. Fetches when tenant has logoObjectKey. */
+export function useLogoDataUrl() {
+	const { data: me } = useMe();
+	const tenant = (me as { tenant?: { settings?: Record<string, unknown> } })?.tenant;
+	const logoObjectKey = tenant?.settings?.logoObjectKey as string | undefined;
+	return useQuery<string | null>({
+		queryKey: ["tenant-logo", logoObjectKey ?? "none"],
+		queryFn: () => fetchTenantLogoDataUrl(),
+		enabled: Boolean(logoObjectKey),
+		staleTime: 5 * 60_000,
 	});
 }
 

@@ -52,7 +52,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useMe, useUpdateProfile } from "@/hooks/useQueries";
+import { useMe, useUpdateProfile, useLogoDataUrl } from "@/hooks/useQueries";
 import { customerApi, invoiceApi, productApi } from "@/lib/api";
 import { printThermalReceipt } from "@/lib/thermalReceipt";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -260,6 +260,7 @@ export default function ClassicBilling() {
   const qc = useQueryClient();
   const { data: me } = useMe();
   const updateProfile = useUpdateProfile();
+  const { data: logoDataUrl } = useLogoDataUrl();
 
   // ── Product catalog — preloaded once so ItemRow gets instant client results ──
   const { data: catalogData } = useQuery({
@@ -1026,10 +1027,18 @@ export default function ClassicBilling() {
           <button
             onClick={() => navigate("/settings/billing")}
             className="touch-target flex items-center justify-center rounded-lg p-2 -m-1 hover:bg-muted transition-colors"
-            aria-label="Billing settings"
-            title="Billing settings"
+            aria-label="Document & billing settings"
+            title="Document & billing settings"
           >
-            <Settings className="h-5 w-5" />
+            {logoDataUrl ? (
+              <img
+                src={logoDataUrl}
+                alt=""
+                className="h-7 w-7 rounded-md object-cover"
+              />
+            ) : (
+              <FileText className="h-5 w-5" />
+            )}
           </button>
         </div>
       </div>
@@ -1360,15 +1369,15 @@ export default function ClassicBilling() {
 
           <div className="rounded-xl border overflow-hidden">
             {/* Column headers */}
-            <div className={`hidden sm:grid bg-muted/50 px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide gap-1 ${withGst ? "sm:grid-cols-[2fr_70px_60px_90px_60px_55px_80px_36px]" : "sm:grid-cols-[2fr_70px_60px_90px_60px_80px_36px]"}`}>
-              <span className="pl-1">Product</span>
-              <span className="text-center">Qty</span>
-              <span className="text-center">Unit</span>
-              <span className="text-right">Rate ₹</span>
-              <span className="text-right">Disc%</span>
-              {withGst && <span className="text-right">GST%</span>}
-              <span className="text-right">Amount ₹</span>
-              <span />
+            <div className={`hidden sm:grid bg-muted/50 px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide gap-1 min-w-0 ${withGst ? "sm:grid-cols-[minmax(0,2fr)_70px_60px_90px_60px_55px_80px_36px]" : "sm:grid-cols-[minmax(0,2fr)_70px_60px_90px_60px_80px_36px]"}`}>
+              <span className="pl-1 min-w-0 truncate">Product</span>
+              <span className="text-center shrink-0">Qty</span>
+              <span className="text-center shrink-0">Unit</span>
+              <span className="text-right shrink-0">Rate ₹</span>
+              <span className="text-right shrink-0">Disc%</span>
+              {withGst && <span className="text-right shrink-0">GST%</span>}
+              <span className="text-right shrink-0">Amount ₹</span>
+              <span className="shrink-0 w-9" />
             </div>
 
             {items.map((item) => (
@@ -2473,15 +2482,15 @@ function ItemRow({
       </div>
 
       {/* Desktop: grid layout */}
-      <div className={`hidden sm:grid items-center gap-1 px-2 py-1 ${withGst ? "sm:grid-cols-[2fr_70px_60px_90px_60px_55px_80px_36px]" : "sm:grid-cols-[2fr_70px_60px_90px_60px_80px_36px]"}`}>
-        <div className="relative">
+      <div className={`hidden sm:grid items-center gap-1 px-2 py-1 min-w-0 ${withGst ? "sm:grid-cols-[minmax(0,2fr)_70px_60px_90px_60px_55px_80px_36px]" : "sm:grid-cols-[minmax(0,2fr)_70px_60px_90px_60px_80px_36px]"}`}>
+        <div className="relative min-w-0">
           <Input
             value={item.name}
             onChange={(e) => onUpdate({ name: e.target.value })}
             onFocus={onFocus}
             onKeyDown={handleKeyDown}
             placeholder="Product name…"
-            className="h-8 text-sm border-0 bg-transparent focus-visible:ring-1 px-1"
+            className="h-8 text-sm border-0 bg-transparent focus-visible:ring-1 px-1 min-w-0 w-full"
             autoFocus={(isFirst || isLast) && item.name === ""}
           />
           {showSuggest && (
@@ -2511,12 +2520,12 @@ function ItemRow({
           step={0.1}
           value={item.qty}
           onChange={(e) => onUpdate({ qty: e.target.value })}
-          className="h-8 text-sm text-center border-0 bg-transparent focus-visible:ring-1 px-1"
+          className="h-8 text-sm text-center border-0 bg-transparent focus-visible:ring-1 px-1 min-w-0 shrink-0"
         />
         <Input
           value={item.unit}
           onChange={(e) => onUpdate({ unit: e.target.value })}
-          className="h-8 text-xs text-center border-0 bg-transparent focus-visible:ring-1 px-0.5"
+          className="h-8 text-xs text-center border-0 bg-transparent focus-visible:ring-1 px-0.5 min-w-0 shrink-0"
           placeholder="pcs"
         />
         <Input
@@ -2525,7 +2534,7 @@ function ItemRow({
           step={0.01}
           value={item.rate}
           onChange={(e) => onUpdate({ rate: e.target.value })}
-          className="h-8 text-sm text-right border-0 bg-transparent focus-visible:ring-1 px-1"
+          className="h-8 text-sm text-right border-0 bg-transparent focus-visible:ring-1 px-1 min-w-0 shrink-0"
           placeholder="0.00"
         />
         <Input
@@ -2535,26 +2544,26 @@ function ItemRow({
           step={0.5}
           value={item.discount}
           onChange={(e) => onUpdate({ discount: e.target.value })}
-          className="h-8 text-sm text-right border-0 bg-transparent focus-visible:ring-1 px-1"
+          className="h-8 text-sm text-right border-0 bg-transparent focus-visible:ring-1 px-1 min-w-0 shrink-0"
           placeholder="0"
         />
         {withGst && (
           <select
             value={String(item.gstRate ?? 0)}
             onChange={(e) => onUpdate({ gstRate: parseFloat(e.target.value) })}
-            className="h-8 text-sm text-right border-0 bg-transparent focus-visible:ring-1 px-1 w-full"
+            className="h-8 text-sm text-right border-0 bg-transparent focus-visible:ring-1 px-1 w-full min-w-0 shrink-0"
           >
             {[0, 5, 12, 18, 28].map((r) => (
               <option key={r} value={r}>{r}%</option>
             ))}
           </select>
         )}
-        <span className="text-sm font-semibold text-right pr-1 tabular-nums">
+        <span className="text-sm font-semibold text-right pr-1 tabular-nums shrink-0 min-w-[4.5rem]">
           {item.amount > 0 ? `₹${inr(item.amount)}` : "—"}
         </span>
         <button
           onClick={onRemove}
-          className="flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors min-h-10 min-w-10 touch-manipulation"
+          className="flex items-center justify-center text-muted-foreground hover:text-destructive transition-colors min-h-10 min-w-9 shrink-0 touch-manipulation"
           aria-label="Remove item"
         >
           <Trash2 className="h-4 w-4" />
