@@ -46,8 +46,19 @@ export function SettingsScreen() {
           <Text className="font-medium text-slate-800">Thermal Print</Text>
           <Text className="text-sm text-slate-500">58mm/80mm receipt, header, footer</Text>
         </TouchableOpacity>
-        <TouchableOpacity className="p-4 bg-slate-50 rounded-xl border border-slate-100 mb-2">
+        <TouchableOpacity
+          onPress={() => (navigation as any).navigate("DocumentSettings")}
+          className="p-4 bg-slate-50 rounded-xl border border-slate-100 mb-2"
+        >
+          <Text className="font-medium text-slate-800">Document Settings</Text>
+          <Text className="text-sm text-slate-500">Templates, appearance, layout, header & footer</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => (navigation as any).navigate("DocumentSettings")}
+          className="p-4 bg-slate-50 rounded-xl border border-slate-100 mb-2"
+        >
           <Text className="font-medium text-slate-800">Invoice Templates</Text>
+          <Text className="text-sm text-slate-500">Choose from 14+ ready templates</Text>
         </TouchableOpacity>
         <TouchableOpacity className="p-4 bg-slate-50 rounded-xl border border-slate-100 mb-4">
           <Text className="font-medium text-slate-800">Theme</Text>

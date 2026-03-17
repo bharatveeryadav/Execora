@@ -42,6 +42,7 @@ import { CreditNotesScreen } from "../screens/CreditNotesScreen";
 import { PurchaseOrdersScreen } from "../screens/PurchaseOrdersScreen";
 import { IndirectIncomeScreen } from "../screens/IndirectIncomeScreen";
 import { CompanyProfileScreen } from "../screens/CompanyProfileScreen";
+import { DocumentSettingsScreen } from "../screens/DocumentSettingsScreen";
 
 // ── Param lists ───────────────────────────────────────────────────────────────
 
@@ -84,6 +85,7 @@ export type MoreStackParams = {
   Purchases: undefined;
   Monitoring: undefined;
   Settings: undefined;
+  DocumentSettings: undefined;
   ComingSoon: { title?: string; emoji?: string };
   Feedback: undefined;
   Expiry: undefined;
@@ -323,6 +325,7 @@ function MoreNavigator() {
       <MoreStack.Screen name="MyDrive" component={ComingSoonScreen} initialParams={{ title: "My Drive" }} options={{ title: "My Drive" }} />
       <MoreStack.Screen name="Tutorial" component={ComingSoonScreen} initialParams={{ title: "Tutorial" }} options={{ title: "Tutorial" }} />
       <MoreStack.Screen name="Settings" component={SettingsScreen} options={{ title: "Settings" }} />
+      <MoreStack.Screen name="DocumentSettings" component={DocumentSettingsScreen} options={{ title: "Document Settings" }} />
       <MoreStack.Screen
         name="ComingSoon"
         component={ComingSoonScreen}

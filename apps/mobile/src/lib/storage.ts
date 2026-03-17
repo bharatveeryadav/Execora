@@ -30,6 +30,9 @@ export const USER_KEY = "execora_user";
 export const DRAFT_KEY = "execora_draft_v1";
 export const INVOICE_BAR_KEY = "execora_invoice_bar_v1";
 export const PRICE_TIER_KEY = "execora_price_tier_idx";
+export const INV_TEMPLATE_KEY = "execora_inv_template";
+export const BIZ_STORAGE_KEY = "execora_bizprofile";
+export const DOC_SETTINGS_KEY = "execora_doc_settings_v1";
 
 export const tokenStorage = {
   getToken: (): string | null => storage.getString(TOKEN_KEY) ?? null,

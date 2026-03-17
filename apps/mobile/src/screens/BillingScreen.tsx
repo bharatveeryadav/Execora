@@ -14,6 +14,7 @@ import React, {
   useState,
   useRef,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useCallback,
 } from "react";
@@ -52,8 +53,8 @@ import {
   type CreateInvoicePayload,
 } from "@execora/shared";
 import { Ionicons } from "@expo/vector-icons";
-import { customerApi, productApi, invoiceApi } from "../lib/api";
-import { storage, DRAFT_KEY, INVOICE_BAR_KEY, PRICE_TIER_KEY } from "../lib/storage";
+import { customerApi, productApi, invoiceApi, authApi } from "../lib/api";
+import { storage, DRAFT_KEY, INVOICE_BAR_KEY, PRICE_TIER_KEY, INV_TEMPLATE_KEY, BIZ_STORAGE_KEY, DOC_SETTINGS_KEY } from "../lib/storage";
 import { BarcodeScanner } from "../components/common/BarcodeScanner";
 import { printReceipt } from "../lib/printReceipt";
 import { useOffline } from "../contexts/OfflineContext";
@@ -62,6 +63,13 @@ import { hapticSuccess, hapticError, hapticLight } from "../lib/haptics";
 import { cacheProducts } from "../lib/offlineQueue";
 import type { ReceiptData } from "../lib/thermalReceipt";
 import type { BillingStackParams } from "../navigation";
+import {
+  InvoiceTemplatePreview,
+  TemplateThumbnail,
+  TEMPLATES,
+  type PreviewData,
+  type TemplateId,
+} from "../components/InvoiceTemplatePreview";
 
 // ── ID counters ───────────────────────────────────────────────────────────────
 
@@ -132,7 +140,15 @@ export function BillingScreen() {
   const [splits, setSplits] = useState<PaymentSplit[]>([newSplit("cash")]);
   const [notes, setNotes] = useState("");
   const [dueDate, setDueDate] = useState("");
-  const [roundOffEnabled, setRoundOffEnabled] = useState(false);
+  const [roundOffEnabled, setRoundOffEnabled] = useState(() => {
+    try {
+      const raw = storage.getString(BIZ_STORAGE_KEY);
+      const p = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+      return p.roundOff === true || p.roundOff === "true";
+    } catch {
+      return false;
+    }
+  });
   const [draftBanner, setDraftBanner] = useState(false);
   // Active row for product suggestions
   const [activeRow, setActiveRow] = useState<number | null>(null);
@@ -147,6 +163,59 @@ export function BillingScreen() {
     total: number;
     fromOffline?: boolean;
   } | null>(null);
+  // More options menu (top right)
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  // Billing setup & invoice style collapsibles
+  const [billingSetupExpanded, setBillingSetupExpanded] = useState(false);
+  const [invoiceStyleExpanded, setInvoiceStyleExpanded] = useState(false);
+  const [invoiceTemplate, setInvoiceTemplate] = useState<TemplateId>(() => {
+    const t = storage.getString(INV_TEMPLATE_KEY) as TemplateId | undefined;
+    return t && TEMPLATES.some((x) => x.id === t) ? t : "classic";
+  });
+  const [compositionScheme, setCompositionScheme] = useState(() => {
+    try {
+      const raw = storage.getString(BIZ_STORAGE_KEY);
+      const p = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+      return p.compositionScheme === true || p.compositionScheme === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  function readBizProfile(): Record<string, unknown> {
+    try {
+      const raw = storage.getString(BIZ_STORAGE_KEY);
+      return raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+    } catch {
+      return {};
+    }
+  }
+  function handleTemplateChange(t: TemplateId) {
+    setInvoiceTemplate(t);
+    storage.set(INV_TEMPLATE_KEY, t);
+    const stored = readBizProfile();
+    stored.invoiceTemplate = t;
+    storage.set(BIZ_STORAGE_KEY, JSON.stringify(stored));
+  }
+
+  const { data: meData } = useQuery({
+    queryKey: ["auth", "me"],
+    queryFn: () => authApi.me(),
+    staleTime: 5 * 60_000,
+  });
+  const meUser = meData?.user as { tenant?: { legalName?: string; name?: string; gstin?: string; settings?: Record<string, unknown> } } | undefined;
+  const tenant = meUser?.tenant;
+  const bizProfile = readBizProfile();
+  const shopName = ((bizProfile.legalName ?? tenant?.legalName ?? tenant?.name) as string) || "My Shop";
+  const supplierGstin = (bizProfile.gstin ?? tenant?.gstin) as string | undefined;
+  const supplierAddressParts = [
+    bizProfile.address,
+    bizProfile.city,
+    bizProfile.state,
+    bizProfile.pincode,
+  ].filter(Boolean) as string[];
+  const supplierAddress = supplierAddressParts.length > 0 ? supplierAddressParts.join(", ") : undefined;
 
   // ── Invoice bar (Indian standard) ───────────────────────────────────────
   const [showInvoiceBarEdit, setShowInvoiceBarEdit] = useState(false);
@@ -266,6 +335,34 @@ export function BillingScreen() {
   );
   const outstandingBalance =
     parseFloat(String(selectedCustomer?.balance ?? 0)) || 0;
+
+  // ── Header: Preview (left) + More options (right) ─────────────────────────
+  useLayoutEffect(() => {
+    (navigation as any).setOptions({
+      headerRight: () => (
+        <View className="flex-row items-center gap-1">
+          <TouchableOpacity
+            onPress={() => validItemCount > 0 && setShowPreview(true)}
+            className="p-2 -m-2"
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            disabled={validItemCount === 0}
+            style={{ opacity: validItemCount === 0 ? 0.5 : 1 }}
+            accessibilityLabel="Preview"
+          >
+            <Ionicons name="eye-outline" size={22} color="#0f172a" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setShowMoreMenu(true)}
+            className="p-2 -m-2"
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityLabel="More options"
+          >
+            <Ionicons name="ellipsis-horizontal" size={22} color="#0f172a" />
+          </TouchableOpacity>
+        </View>
+      ),
+    });
+  }, [navigation, validItemCount]);
 
   // ── Item helpers ──────────────────────────────────────────────────────────
   const updateItem = useCallback((id: number, patch: Partial<BillingItem>) => {
@@ -637,6 +734,113 @@ export function BillingScreen() {
               </TouchableOpacity>
             </View>
           )}
+
+          {/* ── Billing setup (collapsible) ───────────────────────────── */}
+          <TouchableOpacity
+            onPress={() => setBillingSetupExpanded((e) => !e)}
+            activeOpacity={0.7}
+            className="rounded-xl border border-slate-200 bg-white overflow-hidden mb-2"
+          >
+            <View className="flex-row items-center justify-between px-3 py-2.5">
+              <View className="flex-row items-center gap-1.5">
+                <Ionicons name="settings-outline" size={14} color="#64748b" />
+                <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  Billing setup
+                </Text>
+              </View>
+              <Text className="text-[11px] text-slate-500 truncate max-w-[45%]" numberOfLines={1}>
+                {shopName || supplierGstin ? `${shopName}${supplierGstin ? ` · ${supplierGstin}` : ""}` : "Configure in Settings"}
+              </Text>
+              <Ionicons
+                name={billingSetupExpanded ? "chevron-up" : "chevron-down"}
+                size={16}
+                color="#94a3b8"
+              />
+            </View>
+            {billingSetupExpanded && (
+              <View className="border-t border-slate-100 px-3 py-3 gap-3">
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-sm text-slate-800">Composition scheme</Text>
+                  <Switch
+                    value={compositionScheme}
+                    onValueChange={(v) => {
+                      setCompositionScheme(v);
+                      const stored = readBizProfile();
+                      stored.compositionScheme = v;
+                      storage.set(BIZ_STORAGE_KEY, JSON.stringify(stored));
+                    }}
+                    trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
+                    thumbColor={compositionScheme ? "#e67e22" : "#f4f4f5"}
+                  />
+                </View>
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-sm text-slate-800">Round off total</Text>
+                  <Switch
+                    value={roundOffEnabled}
+                    onValueChange={(v) => {
+                      setRoundOffEnabled(v);
+                      const stored = readBizProfile();
+                      stored.roundOff = v;
+                      storage.set(BIZ_STORAGE_KEY, JSON.stringify(stored));
+                    }}
+                    trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
+                    thumbColor={roundOffEnabled ? "#e67e22" : "#f4f4f5"}
+                  />
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    setBillingSetupExpanded(false);
+                    (navigation as any).getParent()?.navigate("Settings");
+                  }}
+                  className="flex-row items-center gap-2 py-2"
+                >
+                  <Ionicons name="settings-outline" size={16} color="#e67e22" />
+                  <Text className="text-sm font-medium text-primary">Billing settings (GSTIN, address, bank…)</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {/* ── Invoice Style (collapsible) ───────────────────────────── */}
+          <TouchableOpacity
+            onPress={() => setInvoiceStyleExpanded((e) => !e)}
+            activeOpacity={0.7}
+            className="rounded-xl border border-slate-200 bg-white overflow-hidden mb-2"
+          >
+            <View className="flex-row items-center justify-between px-3 py-2.5">
+              <View className="flex-row items-center gap-1.5">
+                <Ionicons name="document-text-outline" size={14} color="#64748b" />
+                <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  My Store Invoice Style
+                </Text>
+              </View>
+              <Text className="text-[11px] text-slate-500 truncate max-w-[45%]">
+                {TEMPLATES.find((t) => t.id === invoiceTemplate)?.label ?? "Classic"}
+              </Text>
+              <Ionicons
+                name={invoiceStyleExpanded ? "chevron-up" : "chevron-down"}
+                size={16}
+                color="#94a3b8"
+              />
+            </View>
+            {invoiceStyleExpanded && (
+              <View className="border-t border-slate-100 px-3 py-3">
+                <Text className="text-[11px] text-slate-500 mb-2">Tap to change — applies to all bills</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-1">
+                  <View className="flex-row gap-2 pb-1">
+                    {TEMPLATES.map((t) => (
+                      <TemplateThumbnail
+                        key={t.id}
+                        template={t}
+                        selected={invoiceTemplate === t.id}
+                        onPress={() => handleTemplateChange(t.id)}
+                      />
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+            )}
+          </TouchableOpacity>
 
           {/* ── Invoice Bar (Indian standard — tap to edit) ───────────── */}
           <TouchableOpacity
@@ -1273,6 +1477,118 @@ export function BillingScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {/* ── More Options Menu (top right) ───────────────────────────────── */}
+      <Modal visible={showMoreMenu} transparent animationType="fade">
+        <Pressable
+          className="flex-1 bg-black/30"
+          onPress={() => setShowMoreMenu(false)}
+        />
+        <View className="absolute top-14 right-4 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden min-w-[220]">
+          <TouchableOpacity
+            onPress={() => {
+              setShowMoreMenu(false);
+              (navigation as any).getParent()?.navigate("DocumentSettings");
+            }}
+            className="flex-row items-center gap-3 px-4 py-3"
+          >
+            <Ionicons name="document-text-outline" size={20} color="#64748b" />
+            <View className="flex-1">
+              <Text className="text-sm font-medium text-slate-800">Document Settings</Text>
+              <Text className="text-xs text-slate-500 mt-0.5">Templates, fonts, layout</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+          </TouchableOpacity>
+        </View>
+      </Modal>
+
+      {/* ── Preview Modal (with template switching) ────────────────────── */}
+      <Modal visible={showPreview} transparent animationType="slide">
+        <View className="flex-1 bg-black/40">
+          <Pressable className="flex-1" onPress={() => setShowPreview(false)} />
+          <View className="bg-white rounded-t-3xl max-h-[90%]">
+            <View className="flex-row items-center justify-between px-5 py-4 border-b border-slate-200">
+              <Text className="text-lg font-bold text-slate-800">
+                Invoice Preview — {TEMPLATES.find((t) => t.id === invoiceTemplate)?.label ?? "Classic"}
+              </Text>
+              <TouchableOpacity onPress={() => setShowPreview(false)} className="p-2 -m-2">
+                <Ionicons name="close" size={24} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={true} className="py-2">
+              <View className="flex-row gap-2 px-4">
+                {TEMPLATES.map((t) => (
+                  <TouchableOpacity
+                    key={t.id}
+                    onPress={() => handleTemplateChange(t.id)}
+                    className={`rounded-full border px-3 py-1.5 ${invoiceTemplate === t.id ? "border-primary bg-primary" : "border-slate-300"}`}
+                  >
+                    <Text className={`text-xs font-medium ${invoiceTemplate === t.id ? "text-white" : "text-slate-600"}`}>
+                      {t.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+            <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+              <InvoiceTemplatePreview
+                template={invoiceTemplate}
+                settings={(() => {
+                  try {
+                    const raw = storage.getString(DOC_SETTINGS_KEY);
+                    if (!raw) return undefined;
+                    const p = JSON.parse(raw) as Record<string, unknown>;
+                    return {
+                      themeColor: typeof p.themeColor === "string" ? p.themeColor : undefined,
+                      priceDecimals: typeof p.priceDecimals === "number" ? p.priceDecimals : undefined,
+                      showItemHsn: typeof p.showItemHsn === "boolean" ? p.showItemHsn : undefined,
+                      showCustomerAddress: typeof p.showCustomerAddress === "boolean" ? p.showCustomerAddress : undefined,
+                      showPaymentMode: typeof p.showPaymentMode === "boolean" ? p.showPaymentMode : undefined,
+                    };
+                  } catch {
+                    return undefined;
+                  }
+                })()}
+                data={{
+                  invoiceNo: `${invoicePrefix}DRAFT`,
+                  date: new Date(documentDate).toLocaleDateString("en-IN"),
+                  shopName,
+                  customerName: selectedCustomer?.name ?? "Walk-in Customer",
+                  ...(supplierGstin && { supplierGstin }),
+                  ...(supplierAddress && { supplierAddress }),
+                  ...(selectedCustomer
+                    ? (() => {
+                        const c = selectedCustomer as Customer & { addressLine1?: string; addressLine2?: string; city?: string; state?: string; pincode?: string; gstin?: string };
+                        const addr = [c.addressLine1, c.addressLine2, c.city, c.state, c.pincode].filter(Boolean).join(", ");
+                        return {
+                          ...(addr ? { recipientAddress: addr } : {}),
+                          ...(c.gstin ? { gstin: c.gstin } : {}),
+                        };
+                      })()
+                    : {}),
+                  ...(compositionScheme && { compositionScheme: true }),
+                  items: validItems.map((it) => ({
+                    name: it.name.trim(),
+                    qty: Math.max(1, parseFloat(it.qty) || 1),
+                    unit: it.unit,
+                    rate: parseFloat(it.rate) || 0,
+                    discount: parseFloat(it.discount) || 0,
+                    amount: it.amount,
+                    hsnCode: it.hsnCode,
+                  })),
+                  subtotal,
+                  discountAmt,
+                  cgst,
+                  sgst,
+                  total: finalTotal,
+                  amountInWords: grandTotalWords,
+                  notes: notes.trim() || undefined,
+                } as PreviewData}
+              />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* ── Invoice Bar Edit Modal ────────────────────────────────────── */}
       <Modal visible={showInvoiceBarEdit} transparent animationType="slide">
