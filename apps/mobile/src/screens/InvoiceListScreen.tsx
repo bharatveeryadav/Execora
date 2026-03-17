@@ -16,7 +16,8 @@ import {
   InteractionManager,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { invoiceApi, purchaseApi } from "../lib/api";
@@ -143,9 +144,8 @@ function formatDate(d: string | Date | undefined): string {
   }
 }
 
-type Props = NativeStackScreenProps<InvoicesStackParams, "InvoiceList">;
-
-export function InvoiceListScreen({ navigation }: Props) {
+export function InvoiceListScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<InvoicesStackParams, "InvoiceList">>();
   const [docTypeTab, setDocTypeTab] = useState<DocTypeTab>("sales");
   const [statusTab, setStatusTab] = useState<StatusTab>("All");
   const [search, setSearch] = useState("");

@@ -155,6 +155,7 @@ export function BillingScreen() {
   const [activeRow, setActiveRow] = useState<number | null>(null);
   // New customer dialog
   const [showNewCust, setShowNewCust] = useState(false);
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
   const [newCustName, setNewCustName] = useState("");
   const [newCustPhone, setNewCustPhone] = useState("");
   // Success modal
@@ -410,6 +411,27 @@ export function BillingScreen() {
     hapticLight();
     setItems((prev) => [...prev, newItem()]);
   };
+  const addItemWithProduct = useCallback(
+    (p: Product & { wholesalePrice?: number | string | null; priceTier2?: number | string | null; priceTier3?: number | string | null; hsnCode?: string }) => {
+      hapticLight();
+      const rate = getEffectivePrice(p);
+      const qty = "1";
+      const discount = "";
+      setItems((prev) => [
+        ...prev,
+        {
+          ...newItem(),
+          name: p.name,
+          rate: String(rate),
+          unit: p.unit ?? "pcs",
+          productId: p.id,
+          hsnCode: p.hsnCode,
+          amount: computeAmount(rate, qty, discount),
+        },
+      ]);
+    },
+    [getEffectivePrice],
+  );
   const removeItem = (id: number) =>
     setItems((prev) =>
       prev.length > 1 ? prev.filter((it) => it.id !== id) : prev,
@@ -1098,15 +1120,27 @@ export function BillingScreen() {
                   onRemove={() => removeItem(item.id)}
                 />
               ))}
-              <TouchableOpacity
-                onPress={addItem}
-                className="flex-row items-center gap-2 px-4 py-3 border-t border-slate-100"
-              >
-                <Ionicons name="add-circle-outline" size={20} color="#e67e22" />
-                <Text className="text-primary text-base font-semibold">
-                  Add item
-                </Text>
-              </TouchableOpacity>
+              <View className="flex-row border-t border-slate-100">
+                <TouchableOpacity
+                  onPress={() => setProductPickerOpen(true)}
+                  className="flex-1 flex-row items-center justify-center gap-2 px-3 py-2.5"
+                >
+                  <Ionicons name="storefront-outline" size={18} color="#e67e22" />
+                  <Text className="text-primary text-sm font-semibold">
+                    Browse products
+                  </Text>
+                </TouchableOpacity>
+                <View className="w-px bg-slate-200" />
+                <TouchableOpacity
+                  onPress={addItem}
+                  className="flex-1 flex-row items-center justify-center gap-2 px-3 py-2.5"
+                >
+                  <Ionicons name="add-circle-outline" size={18} color="#e67e22" />
+                  <Text className="text-primary text-sm font-semibold">
+                    Type to add
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
 
@@ -1771,6 +1805,20 @@ export function BillingScreen() {
         </View>
       </Modal>
 
+      {/* ── Product Picker Modal (Browse from store) ───────────────────── */}
+      <Modal visible={productPickerOpen} transparent animationType="slide">
+        <ProductPickerModal
+          visible={productPickerOpen}
+          onClose={() => setProductPickerOpen(false)}
+          catalog={catalog}
+          getEffectivePrice={getEffectivePrice}
+          onSelect={(p) => {
+            addItemWithProduct(p);
+            setProductPickerOpen(false);
+          }}
+        />
+      </Modal>
+
       {/* ── New Customer Modal ───────────────────────────────────────── */}
       <Modal visible={showNewCust} transparent animationType="slide">
         <Pressable
@@ -1930,7 +1978,108 @@ export function BillingScreen() {
   );
 }
 
-// ── Mobile Item Row ───────────────────────────────────────────────────────────
+// ── Product Picker Modal (Browse products from store) ───────────────────────────
+
+function ProductPickerModal({
+  visible,
+  onClose,
+  catalog,
+  getEffectivePrice,
+  onSelect,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  catalog: Product[];
+  getEffectivePrice: (p: Product & { wholesalePrice?: number | string | null; priceTier2?: number | string | null; priceTier3?: number | string | null }) => number;
+  onSelect: (p: Product) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const filtered = useMemo(() => {
+    if (!search.trim()) return catalog;
+    const fuzzy = fuzzyFilter(catalog, search);
+    if (fuzzy.length > 0) return fuzzy;
+    const q = search.trim().toLowerCase();
+    return catalog.filter((p) => p.name.toLowerCase().includes(q));
+  }, [catalog, search]);
+  if (!visible) return null;
+  return (
+    <Pressable className="flex-1 bg-black/40" onPress={onClose}>
+      <Pressable
+        onPress={(e) => e.stopPropagation()}
+        className="absolute bottom-0 left-0 right-0 max-h-[85%] bg-white rounded-t-2xl"
+      >
+        <View className="flex-row items-center justify-between px-4 py-3 border-b border-slate-200">
+          <Text className="text-base font-bold text-slate-800">Browse / Add items</Text>
+          <TouchableOpacity onPress={onClose} className="p-2 -m-2">
+            <Ionicons name="close" size={24} color="#64748b" />
+          </TouchableOpacity>
+        </View>
+        <View className="px-4 py-2 border-b border-slate-100">
+          <View className="flex-row items-center bg-slate-100 rounded-lg px-3">
+            <Ionicons name="search" size={18} color="#94a3b8" />
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Type to search all items…"
+              placeholderTextColor="#94a3b8"
+              className="flex-1 py-2.5 px-2 text-sm text-slate-800"
+              autoFocus
+            />
+          </View>
+        </View>
+        <FlatList
+          data={filtered}
+          keyExtractor={(p) => p.id}
+          keyboardShouldPersistTaps="always"
+          className="max-h-80"
+          ListHeaderComponent={
+            search.trim() ? null : (
+              <Text className="px-4 py-2 text-[11px] text-slate-500">
+                {catalog.length} item{catalog.length !== 1 ? "s" : ""} — tap to add, or type above to search
+              </Text>
+            )
+          }
+          renderItem={({ item: p }) => {
+            const outOfStock = Number(p.stock) <= 0;
+            const lowStock = !outOfStock && Number(p.stock) < 5;
+            return (
+              <TouchableOpacity
+                onPress={() => onSelect(p)}
+                className="flex-row items-center justify-between px-4 py-3 border-b border-slate-50"
+              >
+                <View className="flex-1 min-w-0">
+                  <Text className="text-sm font-medium text-slate-800" numberOfLines={1}>
+                    {p.name}
+                  </Text>
+                  <Text
+                    className={`text-[11px] ${outOfStock ? "text-red-500" : lowStock ? "text-orange-500" : "text-slate-400"}`}
+                  >
+                    {p.unit} · {outOfStock ? "Out of stock" : `Stock: ${p.stock}`}
+                  </Text>
+                </View>
+                <View className="flex-row items-center gap-2">
+                  <Text className="text-sm font-bold text-primary">
+                    ₹{getEffectivePrice(p).toLocaleString("en-IN")}
+                  </Text>
+                  <Ionicons name="add-circle" size={22} color="#e67e22" />
+                </View>
+              </TouchableOpacity>
+            );
+          }}
+          ListEmptyComponent={
+            <View className="py-8 items-center">
+              <Text className="text-slate-400 text-sm">
+                {search ? "No products match" : "No products in catalog"}
+              </Text>
+            </View>
+          }
+        />
+      </Pressable>
+    </Pressable>
+  );
+}
+
+// ── Mobile Item Row (compact inbox-style) ──────────────────────────────────────
 
 function MobileItemRow({
   item,
@@ -1948,8 +2097,10 @@ function MobileItemRow({
   onRemove: () => void;
 }) {
   const [focused, setFocused] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [debouncedQ, setDebouncedQ] = useState("");
   const [scanOpen, setScanOpen] = useState(false);
+  const hasProduct = item.name.trim().length > 0;
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(item.name.trim()), 80);
@@ -1999,138 +2150,160 @@ function MobileItemRow({
 
   return (
     <View
-      className={`px-3 py-2.5 min-w-0 ${isFirst ? "" : "border-t border-slate-100"}`}
+      className={`px-3 py-1.5 min-w-0 ${isFirst ? "" : "border-t border-slate-100"}`}
     >
-      {/* Product name + scan + suggestions */}
-      <View className="relative mb-2 min-w-0">
-        <View className="flex-row items-center border border-slate-200 rounded-xl bg-white overflow-hidden min-w-0">
-          <TextInput
-            value={item.name}
-            onChangeText={(t) => onUpdate({ name: t })}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setTimeout(() => setFocused(false), 200)}
-            placeholder="Product name or scan barcode…"
-            placeholderTextColor="#94a3b8"
-            className="flex-1 min-w-0 px-3 h-11 text-sm text-slate-800"
-            autoFocus={isFirst && item.name === ""}
-          />
-          <TouchableOpacity
-            onPress={() => setScanOpen(true)}
-            className="w-11 h-11 items-center justify-center border-l border-slate-200"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="barcode-outline" size={22} color="#e67e22" />
-          </TouchableOpacity>
-        </View>
-        <BarcodeScanner
-          visible={scanOpen}
-          onClose={() => setScanOpen(false)}
-          onScan={handleBarcodeScan}
-          hint="Point at product barcode"
-        />
-        {focused && suggestions.length > 0 && (
-          <View className="absolute top-12 left-0 right-0 z-50 bg-white border border-slate-200 rounded-xl shadow-lg max-h-52 overflow-hidden min-w-0" style={{ elevation: 8 }}>
-            <FlatList
-              data={suggestions.slice(0, 6)}
-              keyExtractor={(p) => p.id}
-              keyboardShouldPersistTaps="always"
-              renderItem={({ item: p }) => {
-                const outOfStock = Number(p.stock) <= 0;
-                const lowStock = !outOfStock && Number(p.stock) < 5;
-                return (
-                  <TouchableOpacity
-                    onPress={() => handleSelect(p)}
-                    className="flex-row items-center justify-between px-3 py-2.5 border-b border-slate-100"
-                  >
-                    <View className="flex-1">
-                      <Text className="text-sm font-medium text-slate-800">
-                        {p.name}
-                      </Text>
-                      <Text
-                        className={`text-xs ${outOfStock ? "text-red-500" : lowStock ? "text-orange-500" : "text-slate-400"}`}
-                      >
-                        {p.unit} ·{" "}
-                        {outOfStock ? "Out of stock" : `Stock: ${p.stock}`}
-                      </Text>
-                    </View>
-                    <Text className="text-sm font-bold text-primary">
-                      ₹
-                      {getEffectivePrice(p).toLocaleString("en-IN")}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              }}
+      {!hasProduct ? (
+        /* New row: compact search bar */
+        <View className="relative min-w-0">
+          <View className="flex-row items-center border border-slate-200 rounded-lg bg-white overflow-hidden min-w-0">
+            <TextInput
+              value={item.name}
+              onChangeText={(t) => onUpdate({ name: t })}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setTimeout(() => setFocused(false), 200)}
+              placeholder="Type or scan product…"
+              placeholderTextColor="#94a3b8"
+              className="flex-1 min-w-0 px-3 h-9 text-sm text-slate-800"
+              autoFocus={isFirst && item.name === ""}
             />
+            <TouchableOpacity
+              onPress={() => setScanOpen(true)}
+              className="w-9 h-9 items-center justify-center border-l border-slate-200"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="barcode-outline" size={20} color="#e67e22" />
+            </TouchableOpacity>
           </View>
-        )}
-      </View>
-
-      {/* Qty / Unit / Rate / Disc in 2x2 grid */}
-      {item.name.trim().length > 0 && (
+          <BarcodeScanner
+            visible={scanOpen}
+            onClose={() => setScanOpen(false)}
+            onScan={handleBarcodeScan}
+            hint="Point at product barcode"
+          />
+          {focused && suggestions.length > 0 && (
+            <View className="absolute top-10 left-0 right-0 z-50 bg-white border border-slate-200 rounded-lg shadow-lg max-h-44 overflow-hidden min-w-0" style={{ elevation: 8 }}>
+              <FlatList
+                data={suggestions.slice(0, 6)}
+                keyExtractor={(p) => p.id}
+                keyboardShouldPersistTaps="always"
+                renderItem={({ item: p }) => {
+                  const outOfStock = Number(p.stock) <= 0;
+                  const lowStock = !outOfStock && Number(p.stock) < 5;
+                  return (
+                    <TouchableOpacity
+                      onPress={() => handleSelect(p)}
+                      className="flex-row items-center justify-between px-3 py-2 border-b border-slate-100"
+                    >
+                      <View className="flex-1 min-w-0">
+                        <Text className="text-sm font-medium text-slate-800" numberOfLines={1}>
+                          {p.name}
+                        </Text>
+                        <Text
+                          className={`text-[11px] ${outOfStock ? "text-red-500" : lowStock ? "text-orange-500" : "text-slate-400"}`}
+                        >
+                          {p.unit} · {outOfStock ? "Out" : `Stock: ${p.stock}`}
+                        </Text>
+                      </View>
+                      <Text className="text-sm font-bold text-primary shrink-0 ml-2">
+                        ₹{getEffectivePrice(p).toLocaleString("en-IN")}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            </View>
+          )}
+        </View>
+      ) : expanded ? (
+        /* Expanded: full edit */
         <>
-          <View className="flex-row gap-2 mb-2 min-w-0">
-            <View className="flex-1 min-w-0">
-              <Text className="text-xs text-slate-500 mb-1">Qty</Text>
+          <View className="flex-row items-center justify-between mb-2">
+            <Text className="text-sm font-semibold text-slate-800 flex-1" numberOfLines={1}>
+              {item.name}
+            </Text>
+            <TouchableOpacity onPress={() => setExpanded(false)} className="p-1">
+              <Ionicons name="chevron-up" size={18} color="#64748b" />
+            </TouchableOpacity>
+          </View>
+          <View className="flex-row gap-2 mb-2">
+            <View className="flex-1">
+              <Text className="text-[10px] text-slate-500 mb-0.5">Qty</Text>
               <TextInput
                 value={item.qty}
                 onChangeText={(v) => onUpdate({ qty: v })}
                 keyboardType="decimal-pad"
-                className="border border-slate-200 rounded-xl px-3 h-11 text-base text-center text-slate-800 bg-white min-w-0"
+                className="border border-slate-200 rounded-lg px-2 h-9 text-sm text-center"
               />
             </View>
-            <View className="flex-1 min-w-0">
-              <Text className="text-xs text-slate-500 mb-1">Unit</Text>
+            <View className="flex-1">
+              <Text className="text-[10px] text-slate-500 mb-0.5">Unit</Text>
               <TextInput
                 value={item.unit}
                 onChangeText={(v) => onUpdate({ unit: v })}
                 placeholder="pcs"
                 placeholderTextColor="#94a3b8"
-                className="border border-slate-200 rounded-xl px-3 h-11 text-base text-slate-800 bg-white min-w-0"
+                className="border border-slate-200 rounded-lg px-2 h-9 text-sm"
               />
             </View>
-          </View>
-          <View className="flex-row gap-2 min-w-0">
-            <View className="flex-1 min-w-0">
-              <Text className="text-xs text-slate-500 mb-1">Rate ₹</Text>
+            <View className="flex-1">
+              <Text className="text-[10px] text-slate-500 mb-0.5">Rate ₹</Text>
               <TextInput
                 value={item.rate}
                 onChangeText={(v) => onUpdate({ rate: v })}
                 keyboardType="decimal-pad"
-                placeholder="0.00"
+                placeholder="0"
                 placeholderTextColor="#94a3b8"
-                className="border border-slate-200 rounded-xl px-3 h-11 text-base text-slate-800 bg-white min-w-0"
+                className="border border-slate-200 rounded-lg px-2 h-9 text-sm"
               />
             </View>
-            <View className="flex-1 min-w-0">
-              <Text className="text-xs text-slate-500 mb-1">Disc %</Text>
+            <View className="flex-1">
+              <Text className="text-[10px] text-slate-500 mb-0.5">Disc %</Text>
               <TextInput
                 value={item.discount}
                 onChangeText={(v) => onUpdate({ discount: v })}
                 keyboardType="decimal-pad"
                 placeholder="0"
                 placeholderTextColor="#94a3b8"
-                className="border border-slate-200 rounded-xl px-3 h-11 text-base text-slate-800 bg-white"
+                className="border border-slate-200 rounded-lg px-2 h-9 text-sm"
               />
             </View>
           </View>
-          {/* Amount + remove */}
-          <View className="flex-row items-center justify-between mt-2 bg-slate-50 rounded-xl px-3 py-2">
-            <Text className="text-xs text-slate-500">Amount</Text>
-            <Text className="font-bold text-base text-primary">
-              ₹
-              {item.amount.toLocaleString("en-IN", {
-                minimumFractionDigits: 2,
-              })}
-            </Text>
-            <TouchableOpacity
-              onPress={onRemove}
-              className="w-10 h-10 items-center justify-center rounded-xl"
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Text className="text-red-400 text-xl">🗑</Text>
+          <View className="flex-row items-center justify-between">
+            <TouchableOpacity onPress={onRemove} className="py-1">
+              <Text className="text-red-500 text-xs font-medium">Remove</Text>
             </TouchableOpacity>
+            <Text className="font-bold text-primary">
+              ₹{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+            </Text>
           </View>
         </>
+      ) : (
+        /* Compact: single row — name | qty×rate | amount | actions */
+        <TouchableOpacity
+          onPress={() => setExpanded(true)}
+          activeOpacity={0.7}
+          className="flex-row items-center gap-2 py-1"
+        >
+          <View className="flex-1 min-w-0">
+            <Text className="text-sm font-medium text-slate-800" numberOfLines={1}>
+              {item.name}
+            </Text>
+            <Text className="text-[11px] text-slate-500">
+              {item.qty} {item.unit} × ₹{parseFloat(item.rate || "0").toLocaleString("en-IN")}
+              {item.discount ? ` (−${item.discount}%)` : ""}
+            </Text>
+          </View>
+          <Text className="text-sm font-bold text-primary shrink-0 w-16 text-right">
+            ₹{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+          </Text>
+          <TouchableOpacity
+            onPress={onRemove}
+            className="w-8 h-8 items-center justify-center rounded-lg bg-red-50"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="trash-outline" size={16} color="#dc2626" />
+          </TouchableOpacity>
+        </TouchableOpacity>
       )}
     </View>
   );

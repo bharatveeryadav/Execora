@@ -390,6 +390,7 @@ function MainTabs() {
   const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
+      lazy={false}
       tabBar={(props) => <ResponsiveTabBar {...props} />}
       screenOptions={({ route }) => ({
         headerShown: false,

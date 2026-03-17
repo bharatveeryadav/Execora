@@ -361,6 +361,29 @@ export default function ClassicBilling() {
     setItems((prev) => [...prev, newItem()]);
     setActiveSuggestRow(null);
   };
+  const addItemWithProduct = useCallback(
+    (product: Product) => {
+      const rate = String(getEffectivePrice(product));
+      const qty = "1";
+      const discount = "";
+      setItems((prev) => [
+        ...prev,
+        {
+          ...newItem(),
+          name: product.name,
+          rate,
+          unit: product.unit ?? "pcs",
+          productId: product.id,
+          hsnCode: (product as { hsnCode?: string }).hsnCode,
+          gstRate: parseFloat(String((product as { gstRate?: number }).gstRate ?? 0)) || 0,
+          amount: computeAmount(rate, qty, discount),
+        },
+      ]);
+      setActiveSuggestRow(null);
+      setProductPickerOpen(false);
+    },
+    [getEffectivePrice],
+  );
 
   // ── Billing setup (composition, round-off) — synced with localStorage ──
   const readBizProfile = useCallback(() => {
@@ -514,6 +537,7 @@ export default function ClassicBilling() {
     return (stored.invoiceTemplate as TemplateId) ?? (localStorage.getItem("inv_template") as TemplateId) ?? "classic";
   });
   const [showPreview, setShowPreview] = useState(false);
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
 
   const handleTemplateChange = (t: TemplateId) => {
     setInvoiceTemplate(t);
@@ -1397,13 +1421,22 @@ export default function ClassicBilling() {
               />
             ))}
 
-            <div className="border-t">
+            <div className="border-t flex">
               <button
+                type="button"
+                onClick={() => setProductPickerOpen(true)}
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium text-primary hover:bg-primary/5 active:bg-primary/10 transition-colors border-r border-border/50"
+              >
+                <Package2 className="h-4 w-4" />
+                Add from catalog
+              </button>
+              <button
+                type="button"
                 onClick={addItem}
-                className="w-full flex items-center gap-1.5 px-3 py-3 text-sm font-medium text-primary hover:bg-primary/5 active:bg-primary/10 transition-colors"
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium text-primary hover:bg-primary/5 active:bg-primary/10 transition-colors"
               >
                 <Plus className="h-4 w-4" />
-                Add item
+                Type to add
               </button>
             </div>
           </div>
@@ -2031,6 +2064,24 @@ export default function ClassicBilling() {
       )}
 
 
+      {/* ── Product Picker Dialog (Add from catalog) ───────────────────── */}
+      <Dialog open={productPickerOpen} onOpenChange={setProductPickerOpen}>
+        <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package2 className="h-5 w-5" />
+              Browse / Add items
+            </DialogTitle>
+          </DialogHeader>
+          <ProductPickerDialog
+            catalog={catalog}
+            getEffectivePrice={getEffectivePrice}
+            onSelect={addItemWithProduct}
+            fuzzyFilter={fuzzyFilter}
+          />
+        </DialogContent>
+      </Dialog>
+
       {/* ── Invoice Bar Edit Dialog ───────────────────────────────────── */}
       <Dialog open={showInvoiceBarEdit} onOpenChange={setShowInvoiceBarEdit}>
         <DialogContent className="max-w-md">
@@ -2243,6 +2294,86 @@ export default function ClassicBilling() {
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// ── Product Picker Dialog (Add from catalog) ───────────────────────────────────
+
+function ProductPickerDialog({
+  catalog,
+  getEffectivePrice,
+  onSelect,
+  fuzzyFilter,
+}: {
+  catalog: Product[];
+  getEffectivePrice: (p: Product) => number;
+  onSelect: (p: Product) => void;
+  fuzzyFilter: (products: Product[], query: string) => Product[];
+}) {
+  const [search, setSearch] = useState("");
+  const filtered = useMemo(() => {
+    if (!search.trim()) return catalog;
+    const fuzzy = fuzzyFilter(catalog, search);
+    if (fuzzy.length > 0) return fuzzy;
+    const q = search.trim().toLowerCase();
+    return catalog.filter((p) => p.name.toLowerCase().includes(q));
+  }, [catalog, search]);
+  return (
+    <div className="flex flex-col gap-2 min-h-0">
+      <Input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Type to search all items…"
+        className="h-10"
+      />
+      <div className="flex-1 min-h-0 overflow-y-auto border rounded-lg max-h-64">
+        {filtered.length === 0 ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            {search ? "No products match" : "No products in catalog"}
+          </div>
+        ) : (
+          <>
+            {!search.trim() && (
+              <p className="px-3 py-2 text-[11px] text-muted-foreground border-b">
+                {catalog.length} item{catalog.length !== 1 ? "s" : ""} — tap to add, or type above to search
+              </p>
+            )}
+          <div className="divide-y">
+            {filtered.map((p) => {
+              const outOfStock = Number(p.stock) <= 0;
+              const lowStock = !outOfStock && Number(p.stock) < 5;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    onSelect(p);
+                  }}
+                  className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-muted transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{p.name}</p>
+                    <p
+                      className={`text-[10px] ${
+                        outOfStock ? "text-destructive" : lowStock ? "text-warning" : "text-muted-foreground"
+                      }`}
+                    >
+                      {p.unit} · {outOfStock ? "Out of stock" : `Stock: ${p.stock}`}
+                    </p>
+                  </div>
+                  <span className="text-sm font-bold text-primary shrink-0">
+                    ₹{getEffectivePrice(p).toLocaleString("en-IN")}
+                  </span>
+                  <Plus className="h-4 w-4 text-primary shrink-0" />
+                </button>
+              );
+            })}
+          </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
