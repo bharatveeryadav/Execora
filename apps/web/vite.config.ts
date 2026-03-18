@@ -115,5 +115,6 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
       "@execora/shared": path.resolve(__dirname, "../../packages/shared/src/index.ts"),
     },
+    dedupe: ["react", "react-dom"],
   },
 }));

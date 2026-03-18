@@ -1,7 +1,5 @@
 /**
- * InvoiceListScreen — Bills page with full web parity.
- * Modern UI/UX: 44pt touch targets, Pressable feedback, TYPO scale,
- * grouped sections, refined status badges, Ionicons.
+ * InvoiceListScreen — Bills page, matches web app (Invoices.tsx) filter structure.
  */
 import React, { useState, useMemo, useCallback } from "react";
 import {
@@ -15,7 +13,10 @@ import {
   Pressable,
   InteractionManager,
   useWindowDimensions,
+  Modal,
+  Platform,
 } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
@@ -36,9 +37,13 @@ type DateFilter =
   | "this_week"
   | "this_month"
   | "last_month"
+  | "this_year"
+  | "last_year"
+  | "last_quarter"
   | "custom";
 type StatusTab = "All" | "Draft" | "Pending" | "Partial" | "Paid" | "Cancelled" | "Proforma";
 
+// Web: DATE_FILTERS, DATE_FILTER_LABELS
 const DATE_FILTERS: DateFilter[] = [
   "all",
   "today",
@@ -46,6 +51,9 @@ const DATE_FILTERS: DateFilter[] = [
   "this_week",
   "this_month",
   "last_month",
+  "this_year",
+  "last_year",
+  "last_quarter",
   "custom",
 ];
 
@@ -56,28 +64,36 @@ const DATE_LABELS: Record<DateFilter, string> = {
   this_week: "This week",
   this_month: "This month",
   last_month: "Last month",
+  this_year: "This year",
+  last_year: "Last year",
+  last_quarter: "Last quarter",
   custom: "Custom",
 };
 
+// Web: STATUS_TABS
 const STATUS_TABS: StatusTab[] = ["All", "Draft", "Pending", "Partial", "Paid", "Cancelled", "Proforma"];
 
 const MIN_TOUCH = 44;
 
-const STATUS_STYLES: Record<string, { bg: string; text: string; icon: string; iconColor: string; bgColor: string; textColor: string }> = {
-  paid: { bg: "bg-green-100", text: "text-green-700", icon: "checkmark-circle", iconColor: "#16a34a", bgColor: "#dcfce7", textColor: "#15803d" },
-  pending: { bg: "bg-amber-100", text: "text-amber-700", icon: "time", iconColor: "#d97706", bgColor: "#fef3c7", textColor: "#b45309" },
-  partial: { bg: "bg-amber-100", text: "text-amber-700", icon: "ellipse", iconColor: "#d97706", bgColor: "#fef3c7", textColor: "#b45309" },
-  draft: { bg: "bg-slate-100", text: "text-slate-500", icon: "document-outline", iconColor: "#64748b", bgColor: "#f1f5f9", textColor: "#64748b" },
-  proforma: { bg: "bg-blue-100", text: "text-blue-700", icon: "document-text", iconColor: "#2563eb", bgColor: "#dbeafe", textColor: "#1d4ed8" },
-  cancelled: { bg: "bg-red-100", text: "text-red-700", icon: "close-circle", iconColor: "#94a3b8", bgColor: "#fee2e2", textColor: "#94a3b8" },
+const STATUS_STYLES: Record<string, { bgColor: string; iconColor: string; textColor: string }> = {
+  paid: { bgColor: "#dcfce7", iconColor: "#16a34a", textColor: "#15803d" },
+  pending: { bgColor: "#fef3c7", iconColor: "#d97706", textColor: "#b45309" },
+  partial: { bgColor: "#fef3c7", iconColor: "#d97706", textColor: "#b45309" },
+  draft: { bgColor: "#f1f5f9", iconColor: "#64748b", textColor: "#64748b" },
+  proforma: { bgColor: "#dbeafe", iconColor: "#2563eb", textColor: "#1d4ed8" },
+  cancelled: { bgColor: "#fee2e2", iconColor: "#94a3b8", textColor: "#94a3b8" },
 };
 
-function getDateRange(filter: DateFilter): { from: Date; to: Date } | null {
+// Web: getDateRange
+function getDateRange(filter: DateFilter, customFrom?: Date, customTo?: Date): { from: Date; to: Date } | null {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const toEnd = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
 
   if (filter === "all") return null;
+  if (filter === "custom" && customFrom && customTo) {
+    return { from: customFrom, to: toEnd(customTo) };
+  }
 
   let from: Date;
   let to: Date = toEnd(now);
@@ -102,6 +118,21 @@ function getDateRange(filter: DateFilter): { from: Date; to: Date } | null {
       from = new Date(today.getFullYear(), today.getMonth() - 1, 1);
       to = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
       break;
+    case "this_year":
+      from = new Date(today.getFullYear(), 0, 1);
+      break;
+    case "last_year":
+      from = new Date(today.getFullYear() - 1, 0, 1);
+      to = new Date(today.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
+      break;
+    case "last_quarter": {
+      const q = Math.floor(now.getMonth() / 3) + 1;
+      const prevQ = q === 1 ? 4 : q - 1;
+      const prevYear = q === 1 ? now.getFullYear() - 1 : now.getFullYear();
+      from = new Date(prevYear, (prevQ - 1) * 3, 1);
+      to = new Date(prevYear, prevQ * 3, 0, 23, 59, 59, 999);
+      break;
+    }
     default:
       return null;
   }
@@ -152,6 +183,14 @@ export function InvoiceListScreen({ navigation }: Props) {
   const [statusTab, setStatusTab] = useState<StatusTab>("All");
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  const [customFrom, setCustomFrom] = useState<Date | undefined>();
+  const [customTo, setCustomTo] = useState<Date | undefined>();
+  const [dateFilterModalOpen, setDateFilterModalOpen] = useState(false);
+  const [customDateModalOpen, setCustomDateModalOpen] = useState(false);
+  const [customFromTemp, setCustomFromTemp] = useState<Date>(() => new Date());
+  const [customToTemp, setCustomToTemp] = useState<Date>(() => new Date());
+  const [customPickerMode, setCustomPickerMode] = useState<"from" | "to" | null>(null);
+
   useWsInvalidation(["invoices", "summary", "purchases"]);
 
   const isSmall = width < 360;
@@ -181,7 +220,10 @@ export function InvoiceListScreen({ navigation }: Props) {
     return [];
   }, [allInvoices, docTypeTab]);
 
-  const dateRange = useMemo(() => getDateRange(dateFilter), [dateFilter]);
+  const dateRange = useMemo(
+    () => getDateRange(dateFilter, customFrom, customTo),
+    [dateFilter, customFrom, customTo]
+  );
 
   const invoicesByDate = useMemo(
     () =>
@@ -227,20 +269,23 @@ export function InvoiceListScreen({ navigation }: Props) {
     [invoicesByDate]
   );
 
-  const totalValue = filteredInvoices.reduce(
-    (s, inv) => s + parseFloat(String(inv.total ?? 0)),
-    0
+  const totalValue = useMemo(
+    () => filteredInvoices.reduce((s, inv) => s + parseFloat(String(inv.total ?? 0)), 0),
+    [filteredInvoices]
   );
-  const pendingAmount = filteredInvoices.reduce((s, inv) => {
-    if ((inv as any).status === "paid" || (inv as any).status === "cancelled")
-      return s;
-    const total = parseFloat(String(inv.total ?? 0));
-    const paid = parseFloat(String((inv as any).paidAmount ?? 0));
-    return s + (total - paid);
-  }, 0);
-  const purchasesTotal = filteredPurchases.reduce(
-    (s, p) => s + (parseFloat(String(p.amount)) || 0),
-    0
+  const pendingAmount = useMemo(
+    () =>
+      filteredInvoices.reduce((s, inv) => {
+        if ((inv as any).status === "paid" || (inv as any).status === "cancelled") return s;
+        const total = parseFloat(String(inv.total ?? 0));
+        const paid = parseFloat(String((inv as any).paidAmount ?? 0));
+        return s + (total - paid);
+      }, 0),
+    [filteredInvoices]
+  );
+  const purchasesTotal = useMemo(
+    () => filteredPurchases.reduce((s, p) => s + (parseFloat(String(p.amount)) || 0), 0),
+    [filteredPurchases]
   );
 
   const docTypeCounts = {
@@ -270,6 +315,25 @@ export function InvoiceListScreen({ navigation }: Props) {
     });
   }, [navigation]);
 
+  const handleDateSelect = useCallback((f: DateFilter) => {
+    if (f === "custom") {
+      setCustomFromTemp(customFrom ?? new Date());
+      setCustomToTemp(customTo ?? new Date());
+      setDateFilterModalOpen(false);
+      setCustomDateModalOpen(true);
+    } else {
+      setDateFilter(f);
+      setDateFilterModalOpen(false);
+    }
+  }, [customFrom, customTo]);
+
+  const applyCustomDate = useCallback(() => {
+    setCustomFrom(customFromTemp);
+    setCustomTo(customToTemp);
+    setDateFilter("custom");
+    setCustomDateModalOpen(false);
+  }, [customFromTemp, customToTemp]);
+
   const placeholder =
     docTypeTab === "purchase"
       ? "Search by item, supplier, category…"
@@ -277,9 +341,12 @@ export function InvoiceListScreen({ navigation }: Props) {
         ? "Search by estimate # or customer…"
         : "Search by invoice # or customer…";
 
-  // ── Render invoice row ─────────────────────────────────────────────────────
+  const dateFilterLabel =
+    dateFilter === "custom" && customFrom && customTo
+      ? `${customFrom.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}–${customTo.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}`
+      : DATE_LABELS[dateFilter];
 
-  const renderInvoiceRow = ({ item: inv }: { item: Invoice }) => {
+  const renderInvoiceRow = useCallback(({ item: inv }: { item: Invoice }) => {
     const invAny = inv as any;
     const status = invAny.status ?? "draft";
     const s = STATUS_STYLES[status] ?? STATUS_STYLES.draft;
@@ -299,14 +366,14 @@ export function InvoiceListScreen({ navigation }: Props) {
         })}
       >
         <View style={{ width: 40, height: 40, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: s.bgColor }}>
-          <Ionicons name={s.icon as any} size={18} color={s.iconColor} />
+          <Ionicons name={status === "paid" ? "checkmark-circle" : status === "cancelled" ? "close-circle" : "document-outline"} size={18} color={s.iconColor} />
         </View>
         <View className="flex-1 min-w-0 shrink">
           <Text className={`${TYPO.labelBold} min-w-0`} numberOfLines={1} ellipsizeMode="tail">
             {invAny.invoiceNo ?? inv.id.slice(-8).toUpperCase()}
           </Text>
           <Text className={`${TYPO.caption} min-w-0`} numberOfLines={1} ellipsizeMode="tail">
-            {invAny.customer?.name ?? "Walk-in"} · {formatDate(inv.createdAt)}
+            {invAny.customer?.name ?? "Unknown"} · {formatDate(inv.createdAt)}
           </Text>
         </View>
         <View style={{ borderRadius: 9999, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: s.bgColor, flexShrink: 0 }}>
@@ -318,11 +385,9 @@ export function InvoiceListScreen({ navigation }: Props) {
         <Ionicons name="chevron-forward" size={16} color="#94a3b8" style={{ flexShrink: 0 }} />
       </Pressable>
     );
-  };
+  }, [navigation]);
 
-  // ── Render purchase row ────────────────────────────────────────────────────
-
-  const renderPurchaseRow = ({ item: p }: { item: any }) => (
+  const renderPurchaseRow = useCallback(({ item: p }: { item: any }) => (
     <Pressable
       onPress={() => {
         InteractionManager.runAfterInteractions(() => {
@@ -351,25 +416,19 @@ export function InvoiceListScreen({ navigation }: Props) {
       <Text className="text-sm font-bold text-red-600 shrink-0" numberOfLines={1}>₹{inr(parseFloat(String(p.amount)))}</Text>
       <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
     </Pressable>
-  );
+  ), [navigation]);
 
   const navToReports = useCallback(() => {
-    InteractionManager.runAfterInteractions(() => {
-      navigation?.navigate?.("Reports");
-    });
+    InteractionManager.runAfterInteractions(() => navigation?.navigate?.("Reports"));
   }, [navigation]);
   const navToComingSoon = useCallback(
     (title: string) => () => {
-      InteractionManager.runAfterInteractions(() => {
-        navigation?.navigate?.("ComingSoon", { title });
-      });
+      InteractionManager.runAfterInteractions(() => navigation?.navigate?.("ComingSoon", { title }));
     },
     [navigation]
   );
   const navToOverdue = useCallback(() => {
-    InteractionManager.runAfterInteractions(() => {
-      navigation?.navigate?.("Overdue");
-    });
+    InteractionManager.runAfterInteractions(() => navigation?.navigate?.("Overdue"));
   }, [navigation]);
 
   const QUICK_LINK_ITEMS = [
@@ -381,7 +440,7 @@ export function InvoiceListScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={["top", "bottom"]}>
-      {/* Header */}
+      {/* Header — matches web */}
       <View style={{ paddingHorizontal: contentPad, paddingTop: 16, paddingBottom: 16 }} className="border-b border-slate-200/80 bg-white">
         <View className="flex-row items-center justify-between mb-4 min-w-0">
           <View className="flex-1 min-w-0">
@@ -401,8 +460,8 @@ export function InvoiceListScreen({ navigation }: Props) {
           </Pressable>
         </View>
 
-        {/* Doc type tabs — avoid conditional className (NativeWind breaks nav context) */}
-        <View className="flex-row rounded-2xl bg-slate-100 p-1.5 min-w-0">
+        {/* Doc type tabs — web: Sales | Purchase | Quotation */}
+        <View className="flex-row rounded-lg bg-slate-100/80 p-1 min-w-0">
           {[
             { id: "sales" as DocTypeTab, label: "Sales", icon: "add" },
             { id: "purchase" as DocTypeTab, label: isSmall ? "Purchase" : "Purchase", icon: "cube" },
@@ -411,22 +470,16 @@ export function InvoiceListScreen({ navigation }: Props) {
             <Pressable
               key={id}
               onPress={() => setDocTypeTab(id)}
-              className="flex-1 min-w-0 flex-row items-center justify-center gap-1.5 py-3 rounded-xl"
+              className="flex-1 min-w-0 flex-row items-center justify-center gap-1.5 py-2 rounded-md"
               style={({ pressed }) => ({
                 opacity: pressed && docTypeTab !== id ? 0.7 : 1,
-                minHeight: MIN_TOUCH,
+                minHeight: MIN_TOUCH - 4,
                 backgroundColor: docTypeTab === id ? "#fff" : "transparent",
                 ...(docTypeTab === id && { shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 }),
               })}
             >
-              <Ionicons
-                name={icon as any}
-                size={18}
-                color={docTypeTab === id ? "#0f172a" : "#64748b"}
-              />
-              <Text style={{ fontSize: 12, fontWeight: "600", color: docTypeTab === id ? "#0f172a" : "#64748b" }} numberOfLines={1}>
-                {label}
-              </Text>
+              <Ionicons name={icon as any} size={16} color={docTypeTab === id ? "#0f172a" : "#64748b"} />
+              <Text style={{ fontSize: 12, fontWeight: "500", color: docTypeTab === id ? "#0f172a" : "#64748b" }} numberOfLines={1}>{label}</Text>
               {docTypeCounts[id] > 0 && (
                 <View className="rounded-full bg-slate-200 px-1.5 py-0.5">
                   <Text className="text-[10px] font-bold text-slate-600">{docTypeCounts[id]}</Text>
@@ -436,123 +489,97 @@ export function InvoiceListScreen({ navigation }: Props) {
           ))}
         </View>
 
-        {/* Status tabs — Sales / Quotation only */}
+        {/* Status tabs — web: underline style, only for Sales/Quotation */}
         {showInvoiceList && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            className="mt-3 -mx-1"
-            contentContainerStyle={{ paddingHorizontal: 4, flexGrow: 0 }}
-          >
-            <View className="flex-row gap-2" style={{ flexShrink: 0 }}>
-            {STATUS_TABS.map((tab) => {
-              const key = tab.toLowerCase();
-              const count = tab === "All" ? invoicesByDate.length : (counts[key] ?? 0);
-              const active = statusTab === tab;
-              return (
-                <Pressable
-                  key={tab}
-                  onPress={() => setStatusTab(tab)}
-                  className="flex-row items-center gap-1.5 px-3.5 py-2 rounded-full"
-                  style={({ pressed }) => ({
-                    opacity: pressed ? 0.8 : 1,
-                    minHeight: MIN_TOUCH - 4,
-                    backgroundColor: active ? "#e67e22" : "#f1f5f9",
-                  })}
-                >
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: active ? "#fff" : "#475569" }}>
-                    {tab}
-                  </Text>
-                  {count > 0 && (
-                    <View style={{ borderRadius: 9999, paddingHorizontal: 8, paddingVertical: 2, backgroundColor: active ? "rgba(255,255,255,0.25)" : "#e2e8f0" }}>
-                      <Text style={{ fontSize: 10, fontWeight: "700", color: active ? "#fff" : "#475569" }}>
-                        {count}
-                      </Text>
-                    </View>
-                  )}
-                </Pressable>
-              );
-            })}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-0 -mx-1" contentContainerStyle={{ paddingHorizontal: 4, flexGrow: 0 }}>
+            <View className="flex-row border-t border-slate-200" style={{ flexShrink: 0 }}>
+              {STATUS_TABS.map((tab) => {
+                const key = tab.toLowerCase();
+                const count = tab === "All" ? invoicesByDate.length : (counts[key] ?? 0);
+                const active = statusTab === tab;
+                return (
+                  <Pressable
+                    key={tab}
+                    onPress={() => setStatusTab(tab)}
+                    className="flex-row items-center gap-1.5 px-3 py-2 border-b-2"
+                    style={({
+                      pressed,
+                    }) => ({
+                      opacity: pressed ? 0.8 : 1,
+                      borderBottomColor: active ? "#e67e22" : "transparent",
+                    })}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: "500", color: active ? "#e67e22" : "#64748b" }}>{tab}</Text>
+                    {count > 0 && (
+                      <View style={{ borderRadius: 9999, paddingHorizontal: 5, paddingVertical: 1, backgroundColor: "#e2e8f0" }}>
+                        <Text style={{ fontSize: 10, fontWeight: "600", color: "#475569" }}>{count}</Text>
+                      </View>
+                    )}
+                  </Pressable>
+                );
+              })}
             </View>
           </ScrollView>
         )}
       </View>
 
-      {/* Search + Date filter */}
+      {/* Search bar — web: date filter on right, hidden when searching */}
       <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="bg-white border-b border-slate-100">
-        <View className="flex-row items-center rounded-2xl bg-slate-100 px-4 min-h-[48] min-w-0">
-          <Ionicons name="search" size={20} color="#94a3b8" style={{ marginRight: 12 }} />
-          <TextInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder={placeholder}
-            placeholderTextColor="#94a3b8"
-            className="flex-1 min-w-0 text-base text-slate-800 py-3"
-          />
+        <View className="flex-row items-center gap-2 rounded-lg border border-slate-200 bg-white min-w-0">
+          <View className="flex-1 flex-row items-center rounded-lg px-3 min-h-[40] min-w-0">
+            <Ionicons name="search" size={16} color="#64748b" style={{ marginRight: 8 }} />
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder={placeholder}
+              placeholderTextColor="#94a3b8"
+              className="flex-1 min-w-0 text-sm text-slate-800 py-2"
+            />
+          </View>
+          {showInvoiceList && !search.trim() && (
+            <Pressable
+              onPress={() => setDateFilterModalOpen(true)}
+              className="flex-row items-center gap-1 px-2 py-2 rounded-lg"
+              style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+            >
+              <Ionicons name="calendar-outline" size={14} color="#64748b" />
+              <Text className="text-xs text-slate-600" numberOfLines={1} style={{ maxWidth: 100 }}>
+                {dateFilterLabel}
+              </Text>
+            </Pressable>
+          )}
         </View>
-        {showInvoiceList && !search.trim() && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            className="mt-3"
-            contentContainerStyle={{ paddingRight: 16, flexGrow: 0 }}
-          >
-            <View className="flex-row gap-2" style={{ flexShrink: 0 }}>
-            {DATE_FILTERS.filter((f) => f !== "custom").map((f) => {
-              const active = dateFilter === f;
-              return (
-                <Pressable
-                  key={f}
-                  onPress={() => setDateFilter(f)}
-                  className="px-4 py-2 rounded-xl"
-                  style={({ pressed }) => ({
-                    opacity: pressed ? 0.8 : 1,
-                    minHeight: MIN_TOUCH - 4,
-                    backgroundColor: active ? "#e67e22" : "#f1f5f9",
-                  })}
-                >
-                  <Text style={{ fontSize: 12, fontWeight: "600", color: active ? "#fff" : "#475569" }}>
-                    {DATE_LABELS[f]}
-                  </Text>
-                </Pressable>
-              );
-            })}
-            </View>
-          </ScrollView>
-        )}
       </View>
 
-      {/* Total & Pending summary */}
+      {/* Total & Pending — web: only when filtered.length > 0 */}
       {showInvoiceList && filteredInvoices.length > 0 && (
-        <View style={{ marginHorizontal: contentPad, marginTop: 16 }} className="flex-row rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm overflow-hidden min-w-0">
+        <View style={{ marginHorizontal: contentPad, marginTop: 16 }} className="flex-row rounded-lg border border-slate-200 bg-slate-50/50 p-3 min-w-0">
           <View className="flex-1 min-w-0">
             <Text className={TYPO.sectionTitle}>Total</Text>
-            <Text className="text-lg font-bold text-slate-800 mt-1" numberOfLines={1}>₹{inr(totalValue)}</Text>
+            <Text className="text-sm font-bold text-slate-800 mt-0.5" numberOfLines={1}>₹{inr(totalValue)}</Text>
           </View>
-          <View className="flex-1 min-w-0 border-l border-slate-200 pl-5">
+          <View className="flex-1 min-w-0 border-l border-slate-200 pl-3">
             <Text className={TYPO.sectionTitle}>Pending</Text>
-            <Text className="text-lg font-bold text-amber-600 mt-1" numberOfLines={1}>₹{inr(pendingAmount)}</Text>
+            <Text className="text-sm font-bold text-amber-600 mt-0.5" numberOfLines={1}>₹{inr(pendingAmount)}</Text>
           </View>
         </View>
       )}
 
-      {/* Quick links — compact icon + text, single row */}
+      {/* Quick links — web: Reports, Analytics, Aging, Overdue */}
       {showInvoiceList && (
         <View style={{ marginHorizontal: contentPad, marginTop: 16 }} className="flex-row gap-1.5 min-w-0">
           {QUICK_LINK_ITEMS.map((item) => (
             <Pressable
               key={item.id}
               onPress={item.onPress}
-              className="flex-1 min-w-0 flex-row items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-2 px-1.5 bg-white min-h-[40]"
+              className="flex-1 min-w-0 flex-row items-center justify-center gap-1 rounded-md border border-slate-200 py-2 px-1.5 bg-white min-h-[40]"
               style={({ pressed }) => ({
                 opacity: pressed ? 0.7 : 1,
                 backgroundColor: pressed ? "#f8fafc" : "#fff",
               })}
             >
-              <Ionicons name={item.icon} size={14} color="#e67e22" />
-              <Text className="text-[10px] font-semibold text-slate-700" numberOfLines={1}>
-                {item.label}
-              </Text>
+              <Ionicons name={item.icon} size={12} color="#64748b" />
+              <Text className="text-[11px] font-medium text-slate-600" numberOfLines={1}>{item.label}</Text>
             </Pressable>
           ))}
         </View>
@@ -566,7 +593,7 @@ export function InvoiceListScreen({ navigation }: Props) {
               <ActivityIndicator size="large" color="#e67e22" />
             </View>
           ) : filteredPurchases.length === 0 ? (
-            <View className="rounded-2xl border border-slate-200/80 bg-white py-16">
+            <View className="rounded-xl border border-slate-200 bg-white py-16">
               <EmptyState
                 iconName="cube-outline"
                 title={search ? "No purchases match" : "No purchases yet"}
@@ -586,23 +613,27 @@ export function InvoiceListScreen({ navigation }: Props) {
               />
             </View>
           ) : (
-            <View className="flex-1 rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
+            <View className="flex-1 rounded-xl border border-slate-200 bg-white overflow-hidden">
               <FlatList
                 data={filteredPurchases}
                 keyExtractor={(p) => p.id}
                 renderItem={renderPurchaseRow}
                 ListFooterComponent={<View className="h-4" />}
                 style={{ flex: 1 }}
+                initialNumToRender={12}
+                maxToRenderPerBatch={8}
+                windowSize={6}
+                removeClippedSubviews={true}
               />
             </View>
           )
         ) : (
           isError ? (
-            <View className="rounded-2xl border border-slate-200/80 bg-white py-8 px-4">
+            <View className="rounded-xl border border-slate-200 bg-white py-8 px-4">
               <ErrorCard message="Failed to load invoices" onRetry={() => refetch()} />
             </View>
           ) : filteredInvoices.length === 0 ? (
-            <View className="rounded-2xl border border-slate-200/80 bg-white py-16">
+            <View className="rounded-xl border border-slate-200 bg-white py-16">
               <EmptyState
                 iconName="receipt-outline"
                 title={
@@ -618,7 +649,7 @@ export function InvoiceListScreen({ navigation }: Props) {
               />
             </View>
           ) : (
-            <View className="flex-1 rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
+            <View className="flex-1 rounded-xl border border-slate-200 bg-white overflow-hidden">
               <FlatList
                 data={filteredInvoices}
                 keyExtractor={(inv) => inv.id}
@@ -626,18 +657,24 @@ export function InvoiceListScreen({ navigation }: Props) {
                 refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor="#e67e22" />}
                 ListFooterComponent={<View className="h-24" />}
                 style={{ flex: 1 }}
+                initialNumToRender={12}
+                maxToRenderPerBatch={8}
+                windowSize={6}
+                removeClippedSubviews={true}
               />
             </View>
           )
         )}
       </View>
 
-      {/* FAB — 56pt for primary action per HIG */}
+      {/* FAB */}
       <Pressable
         onPress={handleNewInvoice}
-        style={{ position: "absolute", bottom: 24, right: contentPad }}
         className="w-14 h-14 rounded-full bg-primary items-center justify-center"
         style={({ pressed }) => ({
+          position: "absolute",
+          bottom: 24,
+          right: contentPad,
           opacity: pressed ? 0.9 : 1,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 4 },
@@ -648,6 +685,100 @@ export function InvoiceListScreen({ navigation }: Props) {
       >
         <Ionicons name="add" size={28} color="#fff" />
       </Pressable>
+
+      {/* Date filter modal — web: Select dropdown */}
+      <Modal visible={dateFilterModalOpen} transparent animationType="fade">
+        <Pressable className="flex-1 bg-black/50 justify-end" onPress={() => setDateFilterModalOpen(false)}>
+          <Pressable className="bg-white rounded-t-2xl p-4 pb-8" onPress={(e) => e.stopPropagation()}>
+            <Text className="text-base font-bold text-slate-800 mb-3">Date</Text>
+            <ScrollView style={{ maxHeight: 300 }}>
+              {DATE_FILTERS.map((f) => (
+                <Pressable
+                  key={f}
+                  onPress={() => handleDateSelect(f)}
+                  className="py-3 px-4 rounded-lg"
+                  style={({ pressed }) => ({
+                    opacity: pressed ? 0.8 : 1,
+                    backgroundColor: dateFilter === f ? "#f1f5f9" : "transparent",
+                  })}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: dateFilter === f ? "600" : "400", color: "#334155" }}>{DATE_LABELS[f]}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Custom date range modal — web: Popover with From/To calendar */}
+      <Modal visible={customDateModalOpen} transparent animationType="fade">
+        <Pressable className="flex-1 bg-black/50 justify-center items-center p-4" onPress={() => { setCustomDateModalOpen(false); setCustomPickerMode(null); }}>
+          <Pressable className="bg-white rounded-2xl p-5 w-full max-w-sm" onPress={(e) => e.stopPropagation()}>
+            <Text className="text-base font-bold text-slate-800 mb-4">Custom date range</Text>
+            <View style={{ gap: 16 }}>
+              <View>
+                <Text className="text-xs font-semibold text-slate-500 mb-1">From</Text>
+                <Pressable
+                  onPress={() => setCustomPickerMode("from")}
+                  className="py-3 px-4 rounded-xl border border-slate-200 bg-slate-50"
+                  style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+                >
+                  <Text className="text-sm text-slate-800">
+                    {customFromTemp.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                  </Text>
+                </Pressable>
+                {customPickerMode === "from" && (
+                  <DateTimePicker
+                    value={customFromTemp}
+                    mode="date"
+                    display={Platform.OS === "ios" ? "spinner" : "default"}
+                    onChange={(_, d) => { if (d) setCustomFromTemp(d); setCustomPickerMode(null); }}
+                    maximumDate={customToTemp}
+                  />
+                )}
+              </View>
+              <View>
+                <Text className="text-xs font-semibold text-slate-500 mb-1">To</Text>
+                <Pressable
+                  onPress={() => setCustomPickerMode("to")}
+                  className="py-3 px-4 rounded-xl border border-slate-200 bg-slate-50"
+                  style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+                >
+                  <Text className="text-sm text-slate-800">
+                    {customToTemp.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
+                  </Text>
+                </Pressable>
+                {customPickerMode === "to" && (
+                  <DateTimePicker
+                    value={customToTemp}
+                    mode="date"
+                    display={Platform.OS === "ios" ? "spinner" : "default"}
+                    onChange={(_, d) => { if (d) setCustomToTemp(d); setCustomPickerMode(null); }}
+                    minimumDate={customFromTemp}
+                    maximumDate={new Date()}
+                  />
+                )}
+              </View>
+            </View>
+            <View className="flex-row gap-2 mt-4">
+              <Pressable
+                onPress={() => { setCustomDateModalOpen(false); setCustomPickerMode(null); }}
+                className="flex-1 py-3 rounded-xl bg-slate-100 items-center"
+                style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+              >
+                <Text className="text-sm font-semibold text-slate-600">Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={applyCustomDate}
+                className="flex-1 py-3 rounded-xl bg-primary items-center"
+                style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
+              >
+                <Text className="text-sm font-semibold text-white">Apply</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
     </SafeAreaView>
   );
