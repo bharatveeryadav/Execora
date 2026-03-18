@@ -14,6 +14,7 @@ import {
   ScrollView,
   Pressable,
   InteractionManager,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -146,11 +147,15 @@ function formatDate(d: string | Date | undefined): string {
 type Props = NativeStackScreenProps<InvoicesStackParams, "InvoiceList">;
 
 export function InvoiceListScreen({ navigation }: Props) {
+  const { width } = useWindowDimensions();
   const [docTypeTab, setDocTypeTab] = useState<DocTypeTab>("sales");
   const [statusTab, setStatusTab] = useState<StatusTab>("All");
   const [search, setSearch] = useState("");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   useWsInvalidation(["invoices", "summary", "purchases"]);
+
+  const isSmall = width < 360;
+  const contentPad = Math.min(20, Math.max(12, width * 0.04));
 
   const { data: invData, isFetching, isError, refetch } = useQuery({
     queryKey: ["invoices"],
@@ -287,30 +292,30 @@ export function InvoiceListScreen({ navigation }: Props) {
             navigation?.navigate?.("InvoiceDetail", { id: inv.id });
           });
         }}
-        className="flex-row items-center gap-3 px-4 py-3.5 border-b border-slate-100 bg-white"
+        className="flex-row items-center gap-2 px-4 py-3.5 border-b border-slate-100 bg-white min-w-0"
         style={({ pressed }) => ({
           backgroundColor: pressed ? "#f8fafc" : "#fff",
           minHeight: MIN_TOUCH + 8,
         })}
       >
-        <View style={{ width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: s.bgColor }}>
-          <Ionicons name={s.icon as any} size={20} color={s.iconColor} />
+        <View style={{ width: 40, height: 40, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: s.bgColor }}>
+          <Ionicons name={s.icon as any} size={18} color={s.iconColor} />
         </View>
         <View className="flex-1 min-w-0 shrink">
-          <Text className={`${TYPO.labelBold} min-w-0`} numberOfLines={1}>
+          <Text className={`${TYPO.labelBold} min-w-0`} numberOfLines={1} ellipsizeMode="tail">
             {invAny.invoiceNo ?? inv.id.slice(-8).toUpperCase()}
           </Text>
-          <Text className={`${TYPO.caption} min-w-0`} numberOfLines={1}>
+          <Text className={`${TYPO.caption} min-w-0`} numberOfLines={1} ellipsizeMode="tail">
             {invAny.customer?.name ?? "Walk-in"} · {formatDate(inv.createdAt)}
           </Text>
         </View>
-        <View style={{ borderRadius: 9999, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: s.bgColor }}>
-          <Text style={{ fontSize: 10, fontWeight: "600", color: s.textColor, textTransform: "capitalize" }}>{status}</Text>
+        <View style={{ borderRadius: 9999, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: s.bgColor, flexShrink: 0 }}>
+          <Text style={{ fontSize: 10, fontWeight: "600", color: s.textColor, textTransform: "capitalize" }} numberOfLines={1}>{status}</Text>
         </View>
-        <Text style={{ fontSize: 14, fontWeight: "700", color: amtColor, textDecorationLine: status === "cancelled" ? "line-through" : undefined }}>
+        <Text style={{ fontSize: 13, fontWeight: "700", color: amtColor, textDecorationLine: status === "cancelled" ? "line-through" : undefined, flexShrink: 0 }} numberOfLines={1}>
           ₹{inr(inv.total)}
         </Text>
-        <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+        <Ionicons name="chevron-forward" size={16} color="#94a3b8" style={{ flexShrink: 0 }} />
       </Pressable>
     );
   };
@@ -326,25 +331,25 @@ export function InvoiceListScreen({ navigation }: Props) {
           } catch (_) {}
         });
       }}
-      className="flex-row items-center gap-3 px-4 py-3.5 border-b border-slate-100 bg-white"
+      className="flex-row items-center gap-2 px-4 py-3.5 border-b border-slate-100 bg-white min-w-0"
       style={({ pressed }) => ({
         backgroundColor: pressed ? "#f8fafc" : "#fff",
         minHeight: MIN_TOUCH + 8,
       })}
     >
-      <View className="w-11 h-11 rounded-xl bg-amber-100 items-center justify-center">
-        <Ionicons name="cube-outline" size={20} color="#d97706" />
+      <View className="w-10 h-10 rounded-xl bg-amber-100 items-center justify-center shrink-0">
+        <Ionicons name="cube-outline" size={18} color="#d97706" />
       </View>
-      <View className="flex-1 min-w-0">
-        <Text className={TYPO.labelBold} numberOfLines={1}>
+      <View className="flex-1 min-w-0 shrink">
+        <Text className={TYPO.labelBold} numberOfLines={1} ellipsizeMode="tail">
           {p.itemName ?? p.category}
         </Text>
-        <Text className={TYPO.caption} numberOfLines={1}>
+        <Text className={TYPO.caption} numberOfLines={1} ellipsizeMode="tail">
           {p.vendor ?? "—"} · {formatDate(p.date ?? p.createdAt ?? "")}
         </Text>
       </View>
-      <Text className="text-sm font-bold text-red-600">₹{inr(parseFloat(String(p.amount)))}</Text>
-      <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+      <Text className="text-sm font-bold text-red-600 shrink-0" numberOfLines={1}>₹{inr(parseFloat(String(p.amount)))}</Text>
+      <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
     </Pressable>
   );
 
@@ -377,11 +382,11 @@ export function InvoiceListScreen({ navigation }: Props) {
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={["top", "bottom"]}>
       {/* Header */}
-      <View className="px-4 pt-4 pb-4 border-b border-slate-200/80 bg-white">
-        <View className="flex-row items-center justify-between mb-4">
-          <View className="flex-1">
-            <Text className="text-xl font-bold text-slate-800">Bills</Text>
-            <Text className={TYPO.caption + " mt-0.5"}>
+      <View style={{ paddingHorizontal: contentPad, paddingTop: 16, paddingBottom: 16 }} className="border-b border-slate-200/80 bg-white">
+        <View className="flex-row items-center justify-between mb-4 min-w-0">
+          <View className="flex-1 min-w-0">
+            <Text className="text-xl font-bold text-slate-800" numberOfLines={1}>Bills</Text>
+            <Text className={TYPO.caption + " mt-0.5 min-w-0"} numberOfLines={1}>
               {docTypeTab === "purchase"
                 ? `${filteredPurchases.length} shown · ₹${inr(purchasesTotal)} total`
                 : `${filteredInvoices.length} shown · ₹${inr(totalValue)} total`}
@@ -397,16 +402,16 @@ export function InvoiceListScreen({ navigation }: Props) {
         </View>
 
         {/* Doc type tabs — avoid conditional className (NativeWind breaks nav context) */}
-        <View className="flex-row rounded-2xl bg-slate-100 p-1.5">
+        <View className="flex-row rounded-2xl bg-slate-100 p-1.5 min-w-0">
           {[
             { id: "sales" as DocTypeTab, label: "Sales", icon: "add" },
-            { id: "purchase" as DocTypeTab, label: "Purchase", icon: "cube" },
-            { id: "quotation" as DocTypeTab, label: "Quotation", icon: "document-text" },
+            { id: "purchase" as DocTypeTab, label: isSmall ? "Purchase" : "Purchase", icon: "cube" },
+            { id: "quotation" as DocTypeTab, label: isSmall ? "Quote" : "Quotation", icon: "document-text" },
           ].map(({ id, label, icon }) => (
             <Pressable
               key={id}
               onPress={() => setDocTypeTab(id)}
-              className="flex-1 flex-row items-center justify-center gap-2 py-3 rounded-xl"
+              className="flex-1 min-w-0 flex-row items-center justify-center gap-1.5 py-3 rounded-xl"
               style={({ pressed }) => ({
                 opacity: pressed && docTypeTab !== id ? 0.7 : 1,
                 minHeight: MIN_TOUCH,
@@ -419,7 +424,7 @@ export function InvoiceListScreen({ navigation }: Props) {
                 size={18}
                 color={docTypeTab === id ? "#0f172a" : "#64748b"}
               />
-              <Text style={{ fontSize: 12, fontWeight: "600", color: docTypeTab === id ? "#0f172a" : "#64748b" }}>
+              <Text style={{ fontSize: 12, fontWeight: "600", color: docTypeTab === id ? "#0f172a" : "#64748b" }} numberOfLines={1}>
                 {label}
               </Text>
               {docTypeCounts[id] > 0 && (
@@ -437,9 +442,9 @@ export function InvoiceListScreen({ navigation }: Props) {
             horizontal
             showsHorizontalScrollIndicator={false}
             className="mt-3 -mx-1"
-            contentContainerStyle={{ paddingHorizontal: 4 }}
+            contentContainerStyle={{ paddingHorizontal: 4, flexGrow: 0 }}
           >
-            <View className="flex-row gap-2">
+            <View className="flex-row gap-2" style={{ flexShrink: 0 }}>
             {STATUS_TABS.map((tab) => {
               const key = tab.toLowerCase();
               const count = tab === "All" ? invoicesByDate.length : (counts[key] ?? 0);
@@ -474,15 +479,15 @@ export function InvoiceListScreen({ navigation }: Props) {
       </View>
 
       {/* Search + Date filter */}
-      <View className="px-4 py-3 bg-white border-b border-slate-100">
-        <View className="flex-row items-center rounded-2xl bg-slate-100 px-4 min-h-[48]">
+      <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="bg-white border-b border-slate-100">
+        <View className="flex-row items-center rounded-2xl bg-slate-100 px-4 min-h-[48] min-w-0">
           <Ionicons name="search" size={20} color="#94a3b8" style={{ marginRight: 12 }} />
           <TextInput
             value={search}
             onChangeText={setSearch}
             placeholder={placeholder}
             placeholderTextColor="#94a3b8"
-            className="flex-1 text-base text-slate-800 py-3"
+            className="flex-1 min-w-0 text-base text-slate-800 py-3"
           />
         </View>
         {showInvoiceList && !search.trim() && (
@@ -490,9 +495,9 @@ export function InvoiceListScreen({ navigation }: Props) {
             horizontal
             showsHorizontalScrollIndicator={false}
             className="mt-3"
-            contentContainerStyle={{ paddingRight: 16 }}
+            contentContainerStyle={{ paddingRight: 16, flexGrow: 0 }}
           >
-            <View className="flex-row gap-2">
+            <View className="flex-row gap-2" style={{ flexShrink: 0 }}>
             {DATE_FILTERS.filter((f) => f !== "custom").map((f) => {
               const active = dateFilter === f;
               return (
@@ -519,26 +524,26 @@ export function InvoiceListScreen({ navigation }: Props) {
 
       {/* Total & Pending summary */}
       {showInvoiceList && filteredInvoices.length > 0 && (
-        <View className="mx-4 mt-4 flex-row rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm overflow-hidden">
-          <View className="flex-1">
+        <View style={{ marginHorizontal: contentPad, marginTop: 16 }} className="flex-row rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm overflow-hidden min-w-0">
+          <View className="flex-1 min-w-0">
             <Text className={TYPO.sectionTitle}>Total</Text>
-            <Text className="text-lg font-bold text-slate-800 mt-1">₹{inr(totalValue)}</Text>
+            <Text className="text-lg font-bold text-slate-800 mt-1" numberOfLines={1}>₹{inr(totalValue)}</Text>
           </View>
-          <View className="flex-1 border-l border-slate-200 pl-5">
+          <View className="flex-1 min-w-0 border-l border-slate-200 pl-5">
             <Text className={TYPO.sectionTitle}>Pending</Text>
-            <Text className="text-lg font-bold text-amber-600 mt-1">₹{inr(pendingAmount)}</Text>
+            <Text className="text-lg font-bold text-amber-600 mt-1" numberOfLines={1}>₹{inr(pendingAmount)}</Text>
           </View>
         </View>
       )}
 
       {/* Quick links — compact icon + text, single row */}
       {showInvoiceList && (
-        <View className="mx-4 mt-4 flex-row gap-1.5">
+        <View style={{ marginHorizontal: contentPad, marginTop: 16 }} className="flex-row gap-1.5 min-w-0">
           {QUICK_LINK_ITEMS.map((item) => (
             <Pressable
               key={item.id}
               onPress={item.onPress}
-              className="flex-1 flex-row items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-2 px-1.5 bg-white min-h-[40]"
+              className="flex-1 min-w-0 flex-row items-center justify-center gap-1.5 rounded-lg border border-slate-200 py-2 px-1.5 bg-white min-h-[40]"
               style={({ pressed }) => ({
                 opacity: pressed ? 0.7 : 1,
                 backgroundColor: pressed ? "#f8fafc" : "#fff",
@@ -554,7 +559,7 @@ export function InvoiceListScreen({ navigation }: Props) {
       )}
 
       {/* List */}
-      <View className="flex-1 mx-4 mt-4">
+      <View style={{ flex: 1, marginHorizontal: contentPad, marginTop: 16 }} className="min-w-0">
         {docTypeTab === "purchase" ? (
           purchasesLoading ? (
             <View className="py-16 items-center">
@@ -630,7 +635,8 @@ export function InvoiceListScreen({ navigation }: Props) {
       {/* FAB — 56pt for primary action per HIG */}
       <Pressable
         onPress={handleNewInvoice}
-        className="absolute bottom-6 right-4 w-14 h-14 rounded-full bg-primary items-center justify-center"
+        style={{ position: "absolute", bottom: 24, right: contentPad }}
+        className="w-14 h-14 rounded-full bg-primary items-center justify-center"
         style={({ pressed }) => ({
           opacity: pressed ? 0.9 : 1,
           shadowColor: "#000",

@@ -118,6 +118,7 @@ export interface CreateInvoicePayload {
     quantity: number;
     unitPrice?: number;
     lineDiscountPercent?: number;
+    hsnCode?: string;
   }[];
   notes?: string;
   withGst?: boolean;

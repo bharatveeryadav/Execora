@@ -26,10 +26,11 @@ async function generateInvoiceNo(tx: any): Promise<string> {
   const tenantId = tenantContext.get().tenantId;
 
   // Atomic increment: insert row for this tenant+FY on first invoice, else increment
+  // Column may be tenant_id (migration) or "tenantId" (Prisma default) — try tenant_id first
   const result = await tx.$queryRaw<Array<{ last_seq: number }>>`
-    INSERT INTO invoice_counters (fy, tenant_id, last_seq)
+    INSERT INTO invoice_counters (fy, "tenantId", last_seq)
     VALUES (${fy}, ${tenantId}, 1)
-    ON CONFLICT (fy, tenant_id) DO UPDATE
+    ON CONFLICT (fy, "tenantId") DO UPDATE
       SET last_seq = invoice_counters.last_seq + 1
     RETURNING last_seq
   `;

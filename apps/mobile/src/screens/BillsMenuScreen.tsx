@@ -3,7 +3,7 @@
  * Replaces the popup modal; user can navigate to features and easily go back to Bills.
  */
 import React from "react";
-import { View, Text, ScrollView, Pressable } from "react-native";
+import { View, Text, ScrollView, Pressable, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
@@ -44,6 +44,8 @@ const QUICK_LINKS: {
 
 export function BillsMenuScreen({ navigation }: Props) {
   const nav = navigation as any;
+  const { width } = useWindowDimensions();
+  const pad = Math.min(20, Math.max(12, width * 0.04));
 
   function handleMenuPress(item: (typeof MENU_ITEMS)[0]) {
     if (item.action === "billing") {
@@ -63,7 +65,7 @@ export function BillsMenuScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={["top", "bottom"]}>
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 16 }}>
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: pad }}>
         <Text className={TYPO.sectionTitle + " mb-3"}>Menu</Text>
         <View className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
           {MENU_ITEMS.map((item, idx) => (
@@ -80,7 +82,7 @@ export function BillsMenuScreen({ navigation }: Props) {
               <View className="w-10 h-10 rounded-lg bg-slate-100 items-center justify-center">
                 <Ionicons name={item.icon as any} size={20} color="#64748b" />
               </View>
-              <Text className={TYPO.body + " flex-1"}>{item.label}</Text>
+              <Text className={TYPO.body + " flex-1 min-w-0"} numberOfLines={1}>{item.label}</Text>
               <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
             </Pressable>
           ))}
@@ -92,11 +94,11 @@ export function BillsMenuScreen({ navigation }: Props) {
             <Pressable
               key={item.label}
               onPress={() => handleQuickLink(item)}
-              className="flex-row items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 min-h-[48] bg-white"
+              className="flex-row items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 min-h-[48] bg-white min-w-0"
               style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
             >
               <Ionicons name={item.icon as any} size={18} color="#64748b" />
-              <Text className="text-sm font-medium text-slate-700">{item.label}</Text>
+              <Text className="text-sm font-medium text-slate-700 min-w-0" numberOfLines={1}>{item.label}</Text>
             </Pressable>
           ))}
         </View>

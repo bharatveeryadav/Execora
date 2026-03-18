@@ -567,10 +567,11 @@ export function BillingScreen({ navigation, route }: BillingProps) {
       customerId: vars.customerId,
       items: validItems.map((it) => ({
         productName: it.name.trim(),
-        quantity: Math.max(1, parseFloat(it.qty) || 1),
+        quantity: Math.max(1, Math.round(parseFloat(it.qty) || 1)),
         unitPrice: parseFloat(it.rate) > 0 ? parseFloat(it.rate) : undefined,
         lineDiscountPercent:
           parseFloat(it.discount) > 0 ? parseFloat(it.discount) : undefined,
+        ...(it.hsnCode && { hsnCode: it.hsnCode }),
       })),
       notes: vars.notesWithDue || undefined,
       withGst: withGst || undefined,
