@@ -1,5 +1,6 @@
 import "./global.css";
 import React, { useCallback, useEffect, useRef } from "react";
+import { View, Text, StyleSheet } from "react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   NavigationContainer,
@@ -8,7 +9,21 @@ import {
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import * as SplashScreen from "expo-splash-screen";
+import {
+  useFonts,
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_700Bold,
+} from "@expo-google-fonts/inter";
 import { bootApi, setAuthExpiredHandler, authApi } from "./lib/api";
+
+// Keep splash visible until we hide it (prevents white flash)
+try {
+  SplashScreen.preventAutoHideAsync();
+} catch {
+  // Ignore if splash module unavailable (e.g. web)
+}
 import { RootNavigator } from "./navigation";
 import { WSProvider } from "./providers/WSProvider";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
@@ -32,9 +47,26 @@ const AUTO_PASSWORD = process.env.EXPO_PUBLIC_LOGIN_PASSWORD ?? "";
 
 function AppContent() {
   const { isLoggedIn } = useAuth();
+  const [fontsLoaded, fontError] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_700Bold,
+  });
+
+  // Hide splash once fonts are ready or failed (render with system font fallback)
+  const ready = fontsLoaded || !!fontError;
+  useEffect(() => {
+    if (!ready) return;
+    const id = requestAnimationFrame(() => {
+      SplashScreen.hideAsync().catch(() => {});
+    });
+    return () => cancelAnimationFrame(id);
+  }, [ready]);
+
+  if (!ready) return null;
 
   return (
-    <GestureHandlerRootView className="flex-1">
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#f1f3f6" }} className="flex-1">
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <OfflineProvider>
@@ -54,6 +86,12 @@ function AppContentInner() {
   const { isOffline, pendingCount, isSyncing } = useOffline();
 
   usePushAndDeepLinks(navRef, isLoggedIn);
+
+  // Fallback: hide splash after 1.5s if onReady never fires (e.g. boot error)
+  useEffect(() => {
+    const t = setTimeout(() => SplashScreen.hideAsync().catch(() => {}), 1500);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     if (isLoggedIn || !AUTO_EMAIL || !AUTO_PASSWORD) return;
@@ -84,6 +122,7 @@ function AppContentInner() {
           setAuthExpiredHandler(() =>
             navRef.current?.navigate("Login" as never),
           );
+          SplashScreen.hideAsync();
         }}
       >
         <StatusBar style="auto" />
@@ -93,10 +132,55 @@ function AppContentInner() {
   );
 }
 
+// Error boundary to catch crashes and show UI instead of blank screen
+class AppErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  state = { hasError: false, error: null as Error | null };
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error) {
+    SplashScreen.hideAsync().catch(() => {});
+    console.error("AppErrorBoundary:", error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTitle}>Something went wrong</Text>
+          <Text style={styles.errorText}>
+            {this.state.error?.message ?? "Unknown error"}
+          </Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const styles = StyleSheet.create({
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+    backgroundColor: "#fff",
+  },
+  errorTitle: { fontSize: 18, fontWeight: "600", marginBottom: 8 },
+  errorText: { fontSize: 14, color: "#666", textAlign: "center" },
+});
+
 export default function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <AppErrorBoundary>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </AppErrorBoundary>
   );
 }

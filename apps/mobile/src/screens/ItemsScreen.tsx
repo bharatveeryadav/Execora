@@ -703,9 +703,9 @@ function ProductCard({
         </View>
 
         {/* Name + meta */}
-        <View className="flex-1 mr-2">
-          <View className="flex-row items-center gap-1">
-            <Text className="text-sm font-bold text-slate-800 flex-1" numberOfLines={1}>
+        <View className="flex-1 min-w-0 mr-2">
+          <View className="flex-row items-center gap-1 min-w-0">
+            <Text className="text-sm font-bold text-slate-800 flex-1 min-w-0 shrink" numberOfLines={1}>
               {product.name}
             </Text>
             {onToggleFavorite && (

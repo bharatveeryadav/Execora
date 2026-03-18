@@ -30,7 +30,8 @@
     "seed": "tsx prisma/seed.ts",
     "mobile": "pnpm --filter @execora/mobile start",
     "mobile:android": "pnpm --filter @execora/mobile android",
-    "mobile:build:android": "pnpm --filter @execora/mobile build:android"
+    "mobile:build:android": "pnpm --filter @execora/mobile build:android",
+    "mobile:build:android:local": "pnpm --filter @execora/mobile build:android:local"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -44,5 +45,12 @@
     "turbo": "^2.3.3",
     "typescript": "^5.3.3"
   },
-  "packageManager": "pnpm@10.29.3"
+  "packageManager": "pnpm@10.29.3",
+  "pnpm": {
+    "overrides": {
+      "react": "18.3.1",
+      "react-dom": "18.3.1",
+      "react-native-safe-area-context": "4.12.0"
+    }
+  }
 }

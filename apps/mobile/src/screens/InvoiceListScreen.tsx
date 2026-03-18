@@ -296,11 +296,11 @@ export function InvoiceListScreen({ navigation }: Props) {
         <View style={{ width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: s.bgColor }}>
           <Ionicons name={s.icon as any} size={20} color={s.iconColor} />
         </View>
-        <View className="flex-1 min-w-0">
-          <Text className={TYPO.labelBold} numberOfLines={1}>
+        <View className="flex-1 min-w-0 shrink">
+          <Text className={`${TYPO.labelBold} min-w-0`} numberOfLines={1}>
             {invAny.invoiceNo ?? inv.id.slice(-8).toUpperCase()}
           </Text>
-          <Text className={TYPO.caption} numberOfLines={1}>
+          <Text className={`${TYPO.caption} min-w-0`} numberOfLines={1}>
             {invAny.customer?.name ?? "Walk-in"} · {formatDate(inv.createdAt)}
           </Text>
         </View>

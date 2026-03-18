@@ -21,7 +21,7 @@
       }
     },
     "production": {
-      "autoIncrement": "buildNumber",
+      "autoIncrement": true,
       "ios": { "credentialsSource": "remote" },
       "android": {
         "buildType": "app-bundle",
@@ -39,8 +39,7 @@
         "appleId": "dev@execora.app",
         "ascAppId": "YOUR_APP_STORE_CONNECT_APP_ID",
         "appleTeamId": "YOUR_APPLE_TEAM_ID",
-        "language": "en-US",
-        "releaseType": "AFTER_APPROVAL"
+        "language": "en-US"
       },
       "android": {
         "serviceAccountKeyPath": "./google-play-key.json",

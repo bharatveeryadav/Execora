@@ -79,12 +79,18 @@ export function OverdueScreen({ navigation }: Props) {
       activeOpacity={0.75}
     >
       <View style={styles.cardLeft}>
-        <Text style={styles.customerName}>{item.name}</Text>
+        <Text style={styles.customerName} numberOfLines={1} ellipsizeMode="tail">
+          {item.name}
+        </Text>
         {item.landmark ? (
-          <Text style={styles.landmark}>{item.landmark}</Text>
+          <Text style={styles.landmark} numberOfLines={1} ellipsizeMode="tail">
+            {item.landmark}
+          </Text>
         ) : null}
         {item.phone ? (
-          <Text style={styles.phone}>{item.phone}</Text>
+          <Text style={styles.phone} numberOfLines={1} ellipsizeMode="tail">
+            {item.phone}
+          </Text>
         ) : null}
       </View>
 
@@ -195,14 +201,15 @@ const styles = StyleSheet.create({
     borderColor: "#e2e8f0",
     minHeight: 72,
   },
-  cardLeft: { flex: 1, gap: 2 },
+  cardLeft: { flex: 1, minWidth: 0, gap: 2 },
   customerName: {
     fontSize: 15,
     fontWeight: "700",
     color: "#0f172a",
+    flexShrink: 1,
   },
-  landmark: { fontSize: 12, color: "#94a3b8" },
-  phone: { fontSize: 12, color: "#64748b" },
+  landmark: { fontSize: 12, color: "#94a3b8", flexShrink: 1 },
+  phone: { fontSize: 12, color: "#64748b", flexShrink: 1 },
 
   cardRight: { alignItems: "flex-end", gap: 6, minWidth: 90 },
   balance: {

@@ -303,8 +303,8 @@ export function PartiesScreen({ navigation }: Props) {
           </Text>
         </View>
         <View className="flex-1 min-w-0">
-          <View className="flex-row items-center gap-2">
-            <Text className={TYPO.labelBold} numberOfLines={1}>{c.name}</Text>
+          <View className="flex-row items-center gap-2 min-w-0">
+            <Text className={`${TYPO.labelBold} flex-1 min-w-0`} numberOfLines={1}>{c.name}</Text>
             {((c as any).tags ?? []).includes("VIP") && (
               <View className="bg-amber-100 px-2 py-0.5 rounded-full">
                 <Text className="text-[10px] font-semibold text-amber-700">VIP</Text>
@@ -314,7 +314,7 @@ export function PartiesScreen({ navigation }: Props) {
               <Text className="text-xs">⛔</Text>
             )}
           </View>
-          <Text className={TYPO.caption} numberOfLines={1}>
+          <Text className={`${TYPO.caption} min-w-0`} numberOfLines={1}>
             {filter === "aging"
               ? ageDays === 0 ? "Today" : `${ageDays}d overdue`
               : c.phone ?? "No phone"}
