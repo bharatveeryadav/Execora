@@ -237,9 +237,16 @@ export const summaryApi = {
       };
     }>(`/api/v1/summary/daily${date ? `?date=${date}` : ""}`),
   range: (from: string, to: string) =>
-    apiFetch<{ summary: { totalSales: number; totalPayments: number; invoiceCount: number } }>(
-      `/api/v1/summary/range?from=${from}&to=${to}`,
-    ),
+    apiFetch<{
+      summary: {
+        totalSales: number;
+        totalPayments: number;
+        invoiceCount: number;
+        pendingAmount?: number;
+        cashPayments?: number;
+        upiPayments?: number;
+      };
+    }>(`/api/v1/summary/range?from=${from}&to=${to}`),
 };
 
 // ── Global auth-expiry callback ───────────────────────────────────────────────

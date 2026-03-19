@@ -14,7 +14,9 @@ import {
   Alert,
   ActivityIndicator,
   Share,
+  Platform,
 } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
@@ -109,12 +111,121 @@ const SECTION_GAP = 16;
 const QUICK_ACTIONS_PER_ROW = 4;
 const QUICK_ACTIONS_SECTIONS_COLLAPSED = 2; // When collapsed, hide last 2 sections (show first 2)
 
+type PeriodKey =
+  | "today"
+  | "yesterday"
+  | "thisWeek"
+  | "lastWeek"
+  | "thisMonth"
+  | "lastMonth"
+  | "halfYearly"
+  | "thisYear"
+  | "lastYear"
+  | "year"
+  | "pastYears"
+  | "custom";
+
+const PERIOD_LABELS: Record<PeriodKey, string> = {
+  today: "Today",
+  yesterday: "Yesterday",
+  thisWeek: "This Week",
+  lastWeek: "Last Week",
+  thisMonth: "This Month",
+  lastMonth: "Last Month",
+  halfYearly: "Half Yearly",
+  thisYear: "This Year",
+  lastYear: "Last Year",
+  year: "Year",
+  pastYears: "Past Years",
+  custom: "Custom",
+};
+
+function getPeriodRange(
+  key: PeriodKey,
+  customFrom?: Date,
+  customTo?: Date,
+  year?: number
+): { from: string; to: string; useDaily: boolean; date?: string } {
+  const now = new Date();
+  const pad = (d: Date) => d.toISOString().slice(0, 10);
+
+  if (key === "today") {
+    return { from: pad(now), to: pad(now), useDaily: true };
+  }
+  if (key === "yesterday") {
+    const y = new Date(now);
+    y.setDate(y.getDate() - 1);
+    return { from: pad(y), to: pad(y), useDaily: true, date: pad(y) };
+  }
+  if (key === "custom" && customFrom && customTo) {
+    return { from: pad(customFrom), to: pad(customTo), useDaily: false };
+  }
+  if (key === "year" && year) {
+    const from = new Date(year, 0, 1);
+    const to = new Date(year, 11, 31);
+    return { from: pad(from), to: pad(to), useDaily: false };
+  }
+
+  let from: Date;
+  let to: Date;
+
+  if (key === "thisWeek") {
+    const day = now.getDay();
+    const mon = new Date(now);
+    mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+    from = new Date(mon);
+    from.setHours(0, 0, 0, 0);
+    to = new Date(now);
+  } else if (key === "lastWeek") {
+    const day = now.getDay();
+    const mon = new Date(now);
+    mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1) - 7);
+    from = new Date(mon);
+    from.setHours(0, 0, 0, 0);
+    to = new Date(mon);
+    to.setDate(to.getDate() + 6);
+  } else if (key === "thisMonth") {
+    from = new Date(now.getFullYear(), now.getMonth(), 1);
+    to = new Date(now);
+  } else if (key === "lastMonth") {
+    from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    to = new Date(now.getFullYear(), now.getMonth(), 0);
+  } else if (key === "halfYearly") {
+    to = new Date(now);
+    from = new Date(now);
+    from.setMonth(from.getMonth() - 6);
+  } else if (key === "thisYear") {
+    from = new Date(now.getFullYear(), 0, 1);
+    to = new Date(now);
+  } else if (key === "lastYear") {
+    from = new Date(now.getFullYear() - 1, 0, 1);
+    to = new Date(now.getFullYear() - 1, 11, 31);
+  } else if (key === "pastYears") {
+    from = new Date(now.getFullYear() - 3, 0, 1);
+    to = new Date(now.getFullYear() - 1, 11, 31);
+  } else {
+    from = to = new Date(now);
+  }
+
+  return { from: pad(from), to: pad(to), useDaily: false };
+}
+
 type Props = BottomTabScreenProps<import("../navigation").MainTabParams, "Dashboard">;
 
 export function DashboardScreen({ navigation }: Props) {
   const { contentWidth, contentPad: padding } = useResponsive();
   const [quickActionsExpanded, setQuickActionsExpanded] = useState(false);
   const [businessHealthExpanded, setBusinessHealthExpanded] = useState(true);
+  const [numbersPeriod, setNumbersPeriod] = useState<PeriodKey>("today");
+  const [customFrom, setCustomFrom] = useState<Date>(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    return d;
+  });
+  const [customTo, setCustomTo] = useState<Date>(new Date());
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [periodModalOpen, setPeriodModalOpen] = useState(false);
+  const [customDatePicker, setCustomDatePicker] = useState<"from" | "to" | null>(null);
   const qc = useQueryClient();
   const { user } = useAuth();
   const { isConnected } = useWS();
@@ -143,11 +254,42 @@ export function DashboardScreen({ navigation }: Props) {
   const bankIfsc = settings.bankIfsc ?? "";
   const bankAccountHolder = settings.bankAccountHolder ?? "";
 
-  const { data: summary, isLoading: isLoadingSummary, isFetching: sumFetching, dataUpdatedAt: sumAt } = useQuery({
+  const numbersRange = getPeriodRange(
+    numbersPeriod,
+    customFrom,
+    customTo,
+    selectedYear
+  );
+
+  const { data: summaryDaily, isLoading: isLoadingDaily, dataUpdatedAt: sumDailyAt } = useQuery({
     queryKey: ["summary", "daily"],
     queryFn: () => summaryApi.daily(),
     staleTime: 60_000,
+    enabled: numbersRange.useDaily && !numbersRange.date,
   });
+
+  const { data: summaryDailyDate, dataUpdatedAt: sumDailyDateAt } = useQuery({
+    queryKey: ["summary", "daily", numbersRange.date ?? ""],
+    queryFn: () => summaryApi.daily(numbersRange.date!),
+    staleTime: 60_000,
+    enabled: numbersRange.useDaily && !!numbersRange.date,
+  });
+
+  const { data: summaryRange, isLoading: isLoadingRange, dataUpdatedAt: sumRangeAt } = useQuery({
+    queryKey: ["summary", "range", numbersRange.from, numbersRange.to],
+    queryFn: () => summaryApi.range(numbersRange.from, numbersRange.to),
+    staleTime: 60_000,
+    enabled: !numbersRange.useDaily,
+  });
+
+  const summary = numbersRange.useDaily
+    ? (numbersRange.date ? summaryDailyDate : summaryDaily)
+    : summaryRange;
+  const isLoadingSummary = numbersRange.useDaily ? isLoadingDaily : isLoadingRange;
+  const sumFetching = isLoadingSummary;
+  const sumAt = numbersRange.useDaily
+    ? (numbersRange.date ? sumDailyDateAt : sumDailyAt)
+    : sumRangeAt;
 
   const {
     data: invoices,
@@ -210,7 +352,7 @@ export function DashboardScreen({ navigation }: Props) {
   const overdueScore = Math.max(0, 100 - overdueCount * 10);
   const overall = Math.round((collectionRate + stockScore + overdueScore) / 3);
   const overallColor = overall >= 70 ? "#1a9248" : overall >= 50 ? "#e6a319" : "#dc2626";
-  const overallLabel = overall >= 70 ? "Good" : overall >= 50 ? "Needs Work" : "Critical";
+  const overallLabel = overall >= 70 ? "Good" : overall >= 50 ? "Under Target" : "Critical";
 
   const upcomingReminders = reminders
     .filter((r) => r.status === "pending")
@@ -492,14 +634,7 @@ export function DashboardScreen({ navigation }: Props) {
 
           {businessHealthExpanded && (
             <>
-          <View className="h-1 w-full rounded-full bg-slate-200 mt-3 mb-3">
-            <View
-              className="h-full rounded-full"
-              style={{ width: `${overall}%`, backgroundColor: overallColor }}
-            />
-          </View>
-
-          {/* Unified Today snapshot — Bills | Sales | Collected | Pending */}
+          {/* Today snapshot first — Bills | Sales | Collected | Pending */}
           <View
             style={{
               flexDirection: "row",
@@ -508,6 +643,7 @@ export function DashboardScreen({ navigation }: Props) {
               borderWidth: 1,
               borderColor: "#e2e8f0",
               padding: 10,
+              marginTop: 10,
               marginBottom: 10,
             }}
           >
@@ -529,6 +665,14 @@ export function DashboardScreen({ navigation }: Props) {
                 {formatCurrency(dailySummary?.pendingAmount ?? 0)}
               </Text>
             </TouchableOpacity>
+          </View>
+
+          {/* Business Health score */}
+          <View className="h-1 w-full rounded-full bg-slate-200 mb-3">
+            <View
+              className="h-full rounded-full"
+              style={{ width: `${overall}%`, backgroundColor: overallColor }}
+            />
           </View>
 
           {/* Health pillars: Stock | Receivables */}
@@ -640,7 +784,171 @@ export function DashboardScreen({ navigation }: Props) {
           )}
         </TouchableOpacity>
 
-        {/* 3 — AI Agent Feed (command hints + live feed) */}
+        {/* Numbers — compact + period filter */}
+        <View className="flex-row items-center justify-between mb-1.5">
+          <Text className={TYPO.sectionTitle}>Numbers</Text>
+          <TouchableOpacity
+            onPress={() => setPeriodModalOpen(true)}
+            activeOpacity={0.7}
+            className="flex-row items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5"
+          >
+            <Text className="text-[11px] font-semibold text-slate-600">
+              {numbersPeriod === "custom"
+                ? `${numbersRange.from}–${numbersRange.to}`
+                : numbersPeriod === "year"
+                  ? String(selectedYear)
+                  : PERIOD_LABELS[numbersPeriod]}
+            </Text>
+            <Ionicons name="chevron-down" size={12} color="#64748b" />
+          </TouchableOpacity>
+        </View>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
+          <PressableCard onPress={() => navigation.navigate("InvoicesTab")} style={{ width: (contentWidth - 6) / 2 - 3, minWidth: 0 }} className="shadow-sm py-2 px-2">
+            <View className="items-center">
+              <Text className="text-[10px] font-medium text-slate-500" numberOfLines={1}>Sales</Text>
+              {isLoadingSummary ? <Skeleton className="mt-0.5 h-5 w-16 rounded" /> : (
+                <Text className="text-xs font-bold text-slate-800 mt-0.5" numberOfLines={1}>{formatCurrency(totalToday)}</Text>
+              )}
+              <Text className="text-[10px] text-slate-500 mt-0.5">{dailySummary?.invoiceCount ?? 0} bills</Text>
+            </View>
+          </PressableCard>
+          <PressableCard onPress={() => navigation.getParent()?.navigate("CustomersTab" as never, { screen: "Overdue" } as never)} style={{ width: (contentWidth - 6) / 2 - 3, minWidth: 0 }} className="shadow-sm py-2 px-2">
+            <View className="items-center">
+              <Text className="text-[10px] font-medium text-slate-500" numberOfLines={1}>Pending</Text>
+              {isLoadingSummary ? <Skeleton className="mt-0.5 h-5 w-16 rounded" /> : (
+                <Text className={`text-xs font-bold mt-0.5 ${(dailySummary?.pendingAmount ?? 0) > 0 ? "text-amber-600" : "text-green-600"}`} numberOfLines={1}>
+                  {formatCurrency(dailySummary?.pendingAmount ?? 0)}
+                </Text>
+              )}
+            </View>
+          </PressableCard>
+          <PressableCard onPress={() => navigation.getParent()?.navigate("CustomersTab" as never, { screen: "Payment" } as never)} style={{ width: (contentWidth - 6) / 2 - 3, minWidth: 0 }} className="shadow-sm py-2 px-2">
+            <View className="items-center">
+              <Text className="text-[10px] font-medium text-slate-500" numberOfLines={1}>Collected</Text>
+              {isLoadingSummary ? <Skeleton className="mt-0.5 h-5 w-16 rounded" /> : (
+                <Text className="text-xs font-bold text-green-600 mt-0.5" numberOfLines={1}>
+                  {formatCurrency(dailySummary?.totalPayments ?? 0)}
+                </Text>
+              )}
+            </View>
+          </PressableCard>
+          <PressableCard onPress={() => navigation.navigate("MoreTab", { screen: "Reports" })} style={{ width: (contentWidth - 6) / 2 - 3, minWidth: 0 }} className="shadow-sm py-2 px-2">
+            <View className="items-center">
+              <Text className="text-[10px] font-medium text-slate-500" numberOfLines={1}>Rate</Text>
+              {isLoadingSummary ? <Skeleton className="mt-0.5 h-5 w-16 rounded" /> : (
+                <Text className="text-xs font-bold mt-0.5" style={{ color: collectionRate >= 80 ? "#1a9248" : collectionRate >= 50 ? "#e6a319" : "#dc2626" }}>
+                  {collectionRate}%
+                </Text>
+              )}
+            </View>
+          </PressableCard>
+        </View>
+
+        {/* Period filter modal */}
+        <Modal visible={periodModalOpen} transparent animationType="fade">
+          <Pressable className="flex-1 bg-black/50 justify-end" onPress={() => setPeriodModalOpen(false)}>
+            <Pressable onPress={(e) => e.stopPropagation()} className="bg-white rounded-t-2xl p-4 pb-8 max-h-[90%]">
+              <View className="w-8 h-0.5 rounded-full bg-slate-200 self-center mb-4" />
+              <Text className={`${TYPO.sectionTitle} mb-3`}>Select Period</Text>
+              <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }}>
+                {(["today", "yesterday", "thisWeek", "lastWeek", "thisMonth", "lastMonth", "halfYearly", "thisYear", "lastYear"] as const).map((k) => (
+                  <TouchableOpacity
+                    key={k}
+                    onPress={() => {
+                      setNumbersPeriod(k);
+                      setPeriodModalOpen(false);
+                    }}
+                    className={`py-2.5 px-3 rounded-lg mb-1 ${numbersPeriod === k ? "bg-primary/10" : ""}`}
+                  >
+                    <Text className={`text-sm font-medium ${numbersPeriod === k ? "text-primary" : "text-slate-700"}`}>{PERIOD_LABELS[k]}</Text>
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity
+                  onPress={() => {
+                    setNumbersPeriod("year");
+                    setPeriodModalOpen(false);
+                  }}
+                  className={`py-2.5 px-3 rounded-lg mb-1 ${numbersPeriod === "year" ? "bg-primary/10" : ""}`}
+                >
+                  <Text className={`text-sm font-medium ${numbersPeriod === "year" ? "text-primary" : "text-slate-700"}`}>Year {selectedYear}</Text>
+                </TouchableOpacity>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: 8 }}>
+                  {[0, 1, 2, 3, 4].map((i) => {
+                    const y = new Date().getFullYear() - i;
+                    return (
+                      <TouchableOpacity
+                        key={y}
+                        onPress={() => {
+                          setSelectedYear(y);
+                          setNumbersPeriod("year");
+                          setPeriodModalOpen(false);
+                        }}
+                        className={`py-2 px-3 rounded-lg mr-2 ${selectedYear === y ? "bg-primary" : "bg-slate-100"}`}
+                      >
+                        <Text className={`text-xs font-semibold ${selectedYear === y ? "text-white" : "text-slate-600"}`}>{y}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+                <TouchableOpacity
+                  onPress={() => {
+                    setNumbersPeriod("pastYears");
+                    setPeriodModalOpen(false);
+                  }}
+                  className={`py-2.5 px-3 rounded-lg mb-1 ${numbersPeriod === "pastYears" ? "bg-primary/10" : ""}`}
+                >
+                  <Text className={`text-sm font-medium ${numbersPeriod === "pastYears" ? "text-primary" : "text-slate-700"}`}>{PERIOD_LABELS.pastYears}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setNumbersPeriod("custom")}
+                  className={`py-2.5 px-3 rounded-lg mb-1 ${numbersPeriod === "custom" ? "bg-primary/10" : ""}`}
+                >
+                  <Text className={`text-sm font-medium ${numbersPeriod === "custom" ? "text-primary" : "text-slate-700"}`}>{PERIOD_LABELS.custom}</Text>
+                </TouchableOpacity>
+                {numbersPeriod === "custom" && (
+                  <View className="mt-2 rounded-lg border border-slate-200 p-3">
+                    <Text className="text-xs font-semibold text-slate-600 mb-2">From</Text>
+                    <TouchableOpacity onPress={() => setCustomDatePicker("from")} className="py-2 border-b border-slate-100">
+                      <Text className="text-sm">{customFrom.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</Text>
+                    </TouchableOpacity>
+                    <Text className="text-xs font-semibold text-slate-600 mt-2 mb-2">To</Text>
+                    <TouchableOpacity onPress={() => setCustomDatePicker("to")} className="py-2">
+                      <Text className="text-sm">{customTo.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => setPeriodModalOpen(false)}
+                      className="mt-3 bg-primary rounded-lg py-2.5 items-center"
+                    >
+                      <Text className="text-sm font-semibold text-white">Apply</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </ScrollView>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {customDatePicker && (
+          <DateTimePicker
+            value={customDatePicker === "from" ? customFrom : customTo}
+            mode="date"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={(_, d) => {
+              if (d) {
+                if (customDatePicker === "from") {
+                  setCustomFrom(d);
+                  if (d > customTo) setCustomTo(d);
+                } else {
+                  setCustomTo(d);
+                  if (d < customFrom) setCustomFrom(d);
+                }
+              }
+              setCustomDatePicker(null);
+            }}
+          />
+        )}
+
+        {/* AI Agent Feed (command hints + live feed) */}
         <View className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 mb-4">
           <View className="flex-row items-center gap-3">
             <View className="rounded-full bg-primary/10 p-2">
@@ -757,81 +1065,7 @@ export function DashboardScreen({ navigation }: Props) {
           ))}
         </View>
 
-        {/* 5 — KPI Cards (2x2 grid) */}
-        <Text className={`${TYPO.sectionTitle} mb-2`}>Today&apos;s Numbers</Text>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
-          <PressableCard onPress={() => navigation.navigate("InvoicesTab")} style={{ width: (contentWidth - 8) / 2, flexGrow: 1, minWidth: 0 }} className="shadow-sm">
-            <View className="flex-row items-start justify-between">
-              <Text className={TYPO.label}>Today&apos;s Sales</Text>
-              <View className="rounded-lg bg-primary/10 p-1">
-                <Ionicons name="trending-up" size={14} color="#e67e22" />
-              </View>
-            </View>
-            {isLoadingSummary ? <Skeleton className="mt-1.5 h-6 w-20 rounded" /> : (
-              <Text className={`${TYPO.value} mt-1`}>{formatCurrency(totalToday)}</Text>
-            )}
-            <Text className={`${TYPO.caption} text-green-600 mt-0.5`}>{dailySummary?.invoiceCount ?? 0} bills today</Text>
-          </PressableCard>
-          <PressableCard onPress={() => navigation.navigate("InvoicesTab")} style={{ width: (contentWidth - 8) / 2, flexGrow: 1, minWidth: 0 }} className="shadow-sm">
-            <View className="flex-row items-start justify-between">
-              <Text className={TYPO.label}>Pending Dues</Text>
-              <View className="rounded-lg bg-amber-100 p-1">
-                <Ionicons name="calendar" size={14} color="#e6a319" />
-              </View>
-            </View>
-            {isLoadingSummary ? <Skeleton className="mt-1.5 h-6 w-20 rounded" /> : (
-              <Text className={`${TYPO.value} mt-1 text-right`}>{formatCurrency(dailySummary?.pendingAmount ?? 0)}</Text>
-            )}
-            <Text className={`${TYPO.caption} mt-0.5 text-right ${(dailySummary?.pendingAmount ?? 0) > 0 ? "text-red-600" : "text-green-600"}`}>
-              {(dailySummary?.pendingAmount ?? 0) > 0 ? "⚠️ Needs collection" : "✅ All clear"}
-            </Text>
-          </PressableCard>
-          <PressableCard onPress={() => navigation.navigate("MoreTab", { screen: "Reports" })} style={{ width: (contentWidth - 8) / 2, flexGrow: 1, minWidth: 0 }} className="shadow-sm">
-            <View className="flex-row items-start justify-between">
-              <Text className={TYPO.label}>Collected Today</Text>
-              <View className="rounded-lg bg-green-100 p-1">
-                <Ionicons name="wallet" size={14} color="#1a9248" />
-              </View>
-            </View>
-            {isLoadingSummary ? <Skeleton className="mt-1.5 h-6 w-20 rounded" /> : (
-              <Text className={`${TYPO.value} mt-1 text-right`}>{formatCurrency(dailySummary?.totalPayments ?? 0)}</Text>
-            )}
-            <Text className={`${TYPO.caption} text-green-600 mt-0.5 text-right`}>
-              Cash {formatCurrency(dailySummary?.cashPayments ?? 0)} · UPI {formatCurrency(dailySummary?.upiPayments ?? 0)}
-            </Text>
-          </PressableCard>
-          <PressableCard onPress={() => navigation.navigate("MoreTab", { screen: "Reports" })} style={{ width: (contentWidth - 8) / 2, flexGrow: 1, minWidth: 0 }} className="shadow-sm">
-            <View className="flex-row items-start justify-between">
-              <Text className={TYPO.label}>Collection Rate</Text>
-              <View className="rounded-lg bg-blue-100 p-1">
-                <Ionicons name="pulse" size={14} color="#3d7a9e" />
-              </View>
-            </View>
-            {isLoadingSummary ? <Skeleton className="mt-1.5 h-6 w-20 rounded" /> : (
-              <Text className={`${TYPO.value} mt-1 text-right`}>{collectionRate}%</Text>
-            )}
-            <View className={`flex-row items-center justify-end gap-1 mt-0.5`}>
-              {collectionRate >= 80 ? (
-                <>
-                  <Ionicons name="checkmark-circle" size={14} color="#16a34a" />
-                  <Text className={`${TYPO.caption} text-green-600`}>Excellent</Text>
-                </>
-              ) : collectionRate >= 50 ? (
-                <>
-                  <Ionicons name="warning" size={14} color="#d97706" />
-                  <Text className={`${TYPO.caption} text-amber-600`}>Below target</Text>
-                </>
-              ) : (
-                <>
-                  <Ionicons name="alert-circle" size={14} color="#dc2626" />
-                  <Text className={`${TYPO.caption} text-red-600`}>Low</Text>
-                </>
-              )}
-            </View>
-          </PressableCard>
-        </View>
-
-        {/* 6 — Recent Activity (with LIVE) */}
+        {/* Recent Activity (with LIVE) */}
         <View className="flex-row items-center justify-between mb-2">
           <View className="flex-row items-center gap-2">
             <View className="flex-row items-center gap-1.5">
