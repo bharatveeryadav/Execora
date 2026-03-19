@@ -124,7 +124,7 @@ type BillingProps = NativeStackScreenProps<BillingStackParams, "BillingForm">;
 export function BillingScreen({ navigation, route }: BillingProps) {
   const qc = useQueryClient();
   const { isOffline } = useOffline();
-  const { contentPad } = useResponsive();
+  const { contentPad, contentWidth } = useResponsive();
   const startAsWalkIn = route.params?.startAsWalkIn;
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -768,6 +768,8 @@ export function BillingScreen({ navigation, route }: BillingProps) {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={60}
       >
+        <View style={{ flex: 1, width: "100%", alignItems: "center" }}>
+          <View style={{ width: "100%", maxWidth: contentWidth, flex: 1 }}>
         <ScrollView
           style={{ flex: 1, paddingHorizontal: contentPad }}
           keyboardShouldPersistTaps="handled"
@@ -1539,6 +1541,8 @@ export function BillingScreen({ navigation, route }: BillingProps) {
               </Text>
             )}
           </TouchableOpacity>
+        </View>
+          </View>
         </View>
       </KeyboardAvoidingView>
 

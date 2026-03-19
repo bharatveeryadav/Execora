@@ -35,7 +35,7 @@ const PAYMENT_METHODS = [
 export function PaymentScreen({ navigation, route }: Props) {
   const { customerId } = route.params ?? {};
   const qc = useQueryClient();
-  const { contentPad } = useResponsive();
+  const { contentPad, contentWidth } = useResponsive();
 
   // Search state (if no customerId pre-filled)
   const [search, setSearch] = useState('');
@@ -99,6 +99,8 @@ export function PaymentScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={['top', 'bottom']}>
+      <View style={{ flex: 1, width: '100%', alignItems: 'center' }}>
+        <View style={{ width: '100%', maxWidth: contentWidth, flex: 1 }}>
       {/* Header */}
       <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="bg-white border-b border-slate-100 flex-row items-center">
         <TouchableOpacity onPress={() => navigation.goBack()} className="mr-3 p-1">
@@ -269,7 +271,7 @@ export function PaymentScreen({ navigation, route }: Props) {
       </ScrollView>
 
       {/* Submit button */}
-      <View className="bg-white border-t border-slate-100 px-4 py-4">
+      <View style={{ paddingHorizontal: contentPad }} className="bg-white border-t border-slate-100 py-4">
         <TouchableOpacity
           onPress={() => recordMutation.mutate()}
           disabled={!canSubmit}
@@ -283,6 +285,8 @@ export function PaymentScreen({ navigation, route }: Props) {
             </Text>
           )}
         </TouchableOpacity>
+      </View>
+        </View>
       </View>
     </SafeAreaView>
   );

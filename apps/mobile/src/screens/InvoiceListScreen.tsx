@@ -179,7 +179,7 @@ function formatDate(d: string | Date | undefined): string {
 type Props = NativeStackScreenProps<InvoicesStackParams, "InvoiceList">;
 
 export function InvoiceListScreen({ navigation }: Props) {
-  const { contentPad, isSmall } = useResponsive();
+  const { contentPad, contentWidth, isSmall } = useResponsive();
   const [docTypeTab, setDocTypeTab] = useState<DocTypeTab>("sales");
   const [statusTab, setStatusTab] = useState<StatusTab>("All");
   const [search, setSearch] = useState("");
@@ -438,6 +438,8 @@ export function InvoiceListScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={["top", "bottom"]}>
+      <View style={{ flex: 1, width: "100%", alignItems: "center" }}>
+        <View style={{ width: "100%", maxWidth: contentWidth, flex: 1 }}>
       {/* Header — matches web */}
       <View style={{ paddingHorizontal: contentPad, paddingTop: 16, paddingBottom: 16 }} className="border-b border-slate-200/80 bg-white">
         <View className="flex-row items-center justify-between mb-4 min-w-0">
@@ -685,6 +687,8 @@ export function InvoiceListScreen({ navigation }: Props) {
       >
         <Ionicons name="add" size={28} color="#fff" />
       </Pressable>
+        </View>
+      </View>
 
       {/* Date filter modal — web: Select dropdown */}
       <Modal visible={dateFilterModalOpen} transparent animationType="fade">

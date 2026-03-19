@@ -53,16 +53,21 @@ const QUICK_ACTIONS: Array<{
   color: string;
   params?: Record<string, unknown>;
 }> = [
-  { label: "Quick Sale", icon: "flash", primary: true, route: "BillingForm", color: "#ffffff", params: { startAsWalkIn: true } },
-  { label: "New Bill", icon: "receipt", primary: false, route: "BillingForm", color: ACTION_COLORS.primary, params: { startAsWalkIn: false } },
-  { label: "Classic Bill", icon: "clipboard", primary: false, route: "BillingForm", color: ACTION_COLORS.primary },
-  { label: "Payment", icon: "card", primary: false, route: "Payment", color: ACTION_COLORS.success },
-  { label: "Stock", icon: "cube", primary: false, route: "Items", color: ACTION_COLORS.secondary },
-  { label: "Invoices", icon: "document-text", primary: false, route: "InvoicesTab", color: ACTION_COLORS.primary },
-  { label: "Parties", icon: "people", primary: false, route: "CustomersTab", color: ACTION_COLORS.secondary },
-  { label: "Expenses", icon: "cart", primary: false, route: "Expenses", color: ACTION_COLORS.warning },
-  { label: "Purchases", icon: "basket", primary: false, route: "Purchases", color: ACTION_COLORS.secondary },
-  { label: "Reports", icon: "bar-chart", primary: false, route: "Reports", color: ACTION_COLORS.secondary },
+  { label: "Quick Sale", icon: "flash-outline", primary: true, route: "BillingForm", color: "#ffffff", params: { startAsWalkIn: true } },
+  { label: "Invoices", icon: "document-text-outline", primary: false, route: "InvoicesTab", color: ACTION_COLORS.primary },
+  { label: "New Invoice", icon: "add-circle-outline", primary: false, route: "BillingForm", color: ACTION_COLORS.primary, params: { startAsWalkIn: false } },
+  { label: "Insights", icon: "stats-chart-outline", primary: false, route: "Reports", color: ACTION_COLORS.secondary },
+  { label: "Invoice Templates", icon: "layers-outline", primary: false, route: "DocumentTemplates", color: ACTION_COLORS.secondary },
+  { label: "Pro forma", icon: "document-outline", primary: false, route: "InvoicesTab", color: ACTION_COLORS.primary },
+  { label: "Purchase Order", icon: "bag-handle-outline", primary: false, route: "PurchaseOrders", color: ACTION_COLORS.secondary },
+  { label: "Credit Note", icon: "receipt-outline", primary: false, route: "CreditNotes", color: ACTION_COLORS.primary },
+  { label: "Quotation", icon: "clipboard-outline", primary: false, route: "InvoicesTab", color: ACTION_COLORS.primary },
+  { label: "Delivery Challan", icon: "car-outline", primary: false, route: "DeliveryChallans", color: ACTION_COLORS.secondary },
+  { label: "Payment", icon: "card-outline", primary: false, route: "Payment", color: ACTION_COLORS.success },
+  { label: "Stock", icon: "cube-outline", primary: false, route: "Items", color: ACTION_COLORS.secondary },
+  { label: "Parties", icon: "people-outline", primary: false, route: "CustomersTab", color: ACTION_COLORS.secondary },
+  { label: "Expenses", icon: "cart-outline", primary: false, route: "Expenses", color: ACTION_COLORS.warning },
+  { label: "Reports", icon: "bar-chart-outline", primary: false, route: "Reports", color: ACTION_COLORS.secondary },
 ];
 
 // Command sets by category (matches web AiAgentFeed)
@@ -101,11 +106,14 @@ function reminderPillStyle(days: number) {
 }
 
 const SECTION_GAP = 16;
+const QUICK_ACTIONS_PER_ROW = 4;
+const QUICK_ACTIONS_SECTIONS_COLLAPSED = 2; // When collapsed, hide last 2 sections (show first 2)
 
 type Props = BottomTabScreenProps<import("../navigation").MainTabParams, "Dashboard">;
 
 export function DashboardScreen({ navigation }: Props) {
   const { contentWidth, contentPad: padding } = useResponsive();
+  const [quickActionsExpanded, setQuickActionsExpanded] = useState(false);
   const qc = useQueryClient();
   const { user } = useAuth();
   const { isConnected } = useWS();
@@ -325,7 +333,10 @@ export function DashboardScreen({ navigation }: Props) {
     if (route === "CustomersTab") return navigation.navigate("CustomersTab");
     if (route === "Expenses") return navigation.navigate("MoreTab", { screen: "Expenses" });
     if (route === "Reports") return navigation.navigate("MoreTab", { screen: "Reports" });
-    if (route === "Purchases") return navigation.navigate("MoreTab", { screen: "Purchases" });
+    if (route === "CreditNotes") return navigation.navigate("InvoicesTab", { screen: "CreditNotes" } as never);
+    if (route === "PurchaseOrders") return navigation.navigate("MoreTab", { screen: "PurchaseOrders" });
+    if (route === "DocumentTemplates") return navigation.navigate("MoreTab", { screen: "DocumentTemplates" });
+    if (route === "DeliveryChallans") return navigation.navigate("MoreTab", { screen: "DeliveryChallans" });
   };
 
   const currentSet = COMMAND_SETS[cmdSetIdx];
@@ -694,16 +705,35 @@ export function DashboardScreen({ navigation }: Props) {
           </View>
         )}
 
-        {/* 4 — Quick Actions (10 items, 5 per row) */}
-        <Text className={`${TYPO.sectionTitle} mb-2`}>Quick Actions</Text>
+        {/* 4 — Quick Actions (4 per row, collapsible) */}
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <Text className={TYPO.sectionTitle}>Quick Actions</Text>
+          <TouchableOpacity
+            onPress={() => setQuickActionsExpanded((e) => !e)}
+            activeOpacity={0.7}
+            className="flex-row items-center gap-1"
+          >
+            <Text className="text-xs font-semibold text-primary">
+              {quickActionsExpanded ? "Show less" : "Expand all"}
+            </Text>
+            <Ionicons
+              name={quickActionsExpanded ? "chevron-up" : "chevron-down"}
+              size={14}
+              color="#e67e22"
+            />
+          </TouchableOpacity>
+        </View>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
-          {QUICK_ACTIONS.map((a) => (
+          {(quickActionsExpanded
+            ? QUICK_ACTIONS
+            : QUICK_ACTIONS.slice(0, QUICK_ACTIONS_PER_ROW * QUICK_ACTIONS_SECTIONS_COLLAPSED)
+          ).map((a) => (
             <TouchableOpacity
               key={a.label}
               onPress={() => handleQuickAction(a.route, a.params)}
               activeOpacity={0.85}
               style={{
-                width: Math.floor((contentWidth - 32) / 5),
+                width: Math.floor((contentWidth - 24) / QUICK_ACTIONS_PER_ROW),
                 minHeight: 64,
                 alignItems: "center",
                 justifyContent: "center",

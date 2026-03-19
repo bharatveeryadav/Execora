@@ -26,7 +26,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function CreditNotesScreen() {
-  const { contentPad } = useResponsive();
+  const { contentPad, contentWidth } = useResponsive();
   const { data, isFetching, isError, refetch } = useQuery({
     queryKey: ["credit-notes"],
     queryFn: () => creditNoteApi.list({ limit: 50 }),
@@ -47,6 +47,8 @@ export function CreditNotesScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "bottom"]}>
+      <View style={{ flex: 1, width: "100%", alignItems: "center" }}>
+        <View style={{ width: "100%", maxWidth: contentWidth, flex: 1 }}>
       <View style={{ paddingHorizontal: contentPad, paddingTop: contentPad, paddingBottom: 12 }} className="border-b border-slate-200 bg-card">
         <Text className="text-xl font-bold tracking-tight text-slate-800">Credit Notes</Text>
       </View>
@@ -95,6 +97,8 @@ export function CreditNotesScreen() {
           );
         }}
       />
+        </View>
+      </View>
     </SafeAreaView>
   );
 }

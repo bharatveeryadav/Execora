@@ -51,7 +51,7 @@ const PAYMENT_METHODS = [
 export function InvoiceDetailScreen({ navigation, route }: Props) {
   const { id } = route.params;
   const qc = useQueryClient();
-  const { contentPad } = useResponsive();
+  const { contentPad, contentWidth } = useResponsive();
   useWsInvalidation(['invoices']);
 
   // Edit modal state
@@ -178,6 +178,8 @@ export function InvoiceDetailScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={['top', 'bottom']}>
+      <View style={{ flex: 1, width: '100%', alignItems: 'center' }}>
+        <View style={{ width: '100%', maxWidth: contentWidth, flex: 1 }}>
       {/* Header */}
       <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="bg-white border-b border-slate-100 flex-row items-center justify-between">
         <TouchableOpacity onPress={() => navigation.goBack()} className="mr-3 p-1">
@@ -409,6 +411,8 @@ export function InvoiceDetailScreen({ navigation, route }: Props) {
 
         <View className="h-6" />
       </ScrollView>
+        </View>
+      </View>
 
       {/* ── Cancel confirmation modal ── */}
       <Modal visible={confirmCancel} transparent animationType="fade">

@@ -22,7 +22,7 @@ function getMonthRange() {
 
 export function ReportsScreen() {
   const { from, to } = getMonthRange();
-  const { contentPad } = useResponsive();
+  const { contentPad, contentWidth } = useResponsive();
   useWsInvalidation(["summary", "expenses"]);
 
   const { data, refetch, isFetching } = useQuery({
@@ -50,8 +50,9 @@ export function ReportsScreen() {
 
       <ScrollView
         refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} />}
-        contentContainerStyle={{ padding: contentPad }}
+        contentContainerStyle={{ padding: contentPad, alignItems: "center", paddingBottom: 32 }}
       >
+        <View style={{ width: "100%", maxWidth: contentWidth }}>
         <View className="flex-row flex-wrap gap-3 mb-6">
           <View className="flex-1 min-w-[140px] bg-emerald-50 p-4 rounded-xl border border-emerald-100">
             <Text className="text-sm text-slate-600">Revenue</Text>
@@ -87,6 +88,7 @@ export function ReportsScreen() {
               <Text className="font-medium text-slate-800">{r.label}</Text>
             </TouchableOpacity>
           ))}
+        </View>
         </View>
       </ScrollView>
     </SafeAreaView>

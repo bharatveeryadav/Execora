@@ -22,6 +22,7 @@ import { BottomSheet } from "../components/ui/BottomSheet";
 import { Button } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { EmptyState } from "../components/ui/EmptyState";
+import { useResponsive } from "../hooks/useResponsive";
 
 const CATEGORIES = [
   "Stock Purchase",
@@ -48,6 +49,7 @@ function getMonthRange() {
 
 export function ExpensesScreen() {
   const qc = useQueryClient();
+  const { contentPad, contentWidth } = useResponsive();
   const [period, setPeriod] = useState<"week" | "month">("month");
   const [addOpen, setAddOpen] = useState(false);
   const [category, setCategory] = useState(CATEGORIES[0]);
@@ -134,7 +136,9 @@ export function ExpensesScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
-      <View className="px-4 py-3 border-b border-slate-100">
+      <View style={{ flex: 1, width: "100%", alignItems: "center" }}>
+        <View style={{ width: "100%", maxWidth: contentWidth, flex: 1 }}>
+      <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="border-b border-slate-100">
         <View className="flex-row items-center justify-between">
           <Text className="text-xl font-bold text-slate-800">Expenses</Text>
           <TouchableOpacity
@@ -164,7 +168,7 @@ export function ExpensesScreen() {
         </View>
       </View>
 
-      <View className="px-4 py-3 bg-primary/10">
+      <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="bg-primary/10">
         <Text className="text-sm text-slate-600">Total</Text>
         <Text className="text-2xl font-bold text-indigo-700">{formatCurrency(total)}</Text>
       </View>
@@ -178,7 +182,8 @@ export function ExpensesScreen() {
         renderItem={({ item }) => (
           <TouchableOpacity
             onLongPress={() => handleDelete(item.id, item.category, Number(item.amount))}
-            className="flex-row items-center justify-between px-4 py-3 border-b border-slate-100"
+            style={{ paddingHorizontal: contentPad, paddingVertical: 12 }}
+            className="flex-row items-center justify-between border-b border-slate-100"
           >
             <View>
               <Text className="font-semibold text-slate-800">{item.category}</Text>
@@ -205,6 +210,8 @@ export function ExpensesScreen() {
           )
         }
       />
+        </View>
+      </View>
 
       <BottomSheet visible={addOpen} onClose={() => setAddOpen(false)} title="Add Expense">
         <Text className="text-sm font-medium text-slate-600 mb-2">Category</Text>

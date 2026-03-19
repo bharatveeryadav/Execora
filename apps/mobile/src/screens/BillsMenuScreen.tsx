@@ -45,7 +45,7 @@ const QUICK_LINKS: {
 
 export function BillsMenuScreen({ navigation }: Props) {
   const nav = navigation as any;
-  const { contentPad: pad } = useResponsive();
+  const { contentPad: pad, contentWidth } = useResponsive();
 
   function handleMenuPress(item: (typeof MENU_ITEMS)[0]) {
     if (item.action === "billing") {
@@ -65,7 +65,11 @@ export function BillsMenuScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={["top", "bottom"]}>
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: pad }}>
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ padding: pad, alignItems: "center", paddingBottom: 32 }}
+      >
+        <View style={{ width: "100%", maxWidth: contentWidth }}>
         <Text className={TYPO.sectionTitle + " mb-3"}>Menu</Text>
         <View className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
           {MENU_ITEMS.map((item, idx) => (
@@ -101,6 +105,7 @@ export function BillsMenuScreen({ navigation }: Props) {
               <Text className="text-sm font-medium text-slate-700 min-w-0" numberOfLines={1}>{item.label}</Text>
             </Pressable>
           ))}
+        </View>
         </View>
       </ScrollView>
     </SafeAreaView>
