@@ -14,6 +14,7 @@
  */
 import { useMemo } from "react";
 import { useWindowDimensions } from "react-native";
+import { getScaledFont } from "../lib/typography";
 
 export const BREAKPOINTS = {
   small: 360,
@@ -30,6 +31,9 @@ export function useResponsive() {
       width,
       height,
       fontScale,
+
+      // Scaled font sizes (respects system font scale, clamped to 1.5x max)
+      scaledFont: getScaledFont(fontScale),
 
       // Breakpoint flags
       isSmall: width < BREAKPOINTS.small,

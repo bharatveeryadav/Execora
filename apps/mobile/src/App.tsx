@@ -1,6 +1,7 @@
 import "./global.css";
 import React, { useCallback, useEffect, useRef } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { ScaledText } from "./components/ui/ScaledText";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   NavigationContainer,
@@ -31,6 +32,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { OfflineProvider, useOffline } from "./contexts/OfflineContext";
 import { OfflineBanner } from "./components/common/OfflineBanner";
 import { usePushAndDeepLinks } from "./hooks/usePushAndDeepLinks";
+import { TypographyProvider } from "./contexts/TypographyContext";
 
 // Boot the API client once (token storage injected)
 bootApi();
@@ -160,10 +162,10 @@ class AppErrorBoundary extends React.Component<
         : (this.state.error?.message ?? "Unknown error");
       return (
         <View style={styles.errorContainer}>
-          <Text style={styles.errorTitle}>Something went wrong</Text>
-          <Text style={styles.errorText}>{userMessage}</Text>
+          <ScaledText style={styles.errorTitle}>Something went wrong</ScaledText>
+          <ScaledText style={styles.errorText}>{userMessage}</ScaledText>
           <TouchableOpacity onPress={this.handleRetry} style={styles.retryBtn}>
-            <Text style={styles.retryText}>Try again</Text>
+            <ScaledText style={styles.retryText}>Try again</ScaledText>
           </TouchableOpacity>
         </View>
       );
@@ -193,10 +195,12 @@ const styles = StyleSheet.create({
 
 export default function App() {
   return (
-    <AppErrorBoundary>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </AppErrorBoundary>
+    <TypographyProvider>
+      <AppErrorBoundary>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </AppErrorBoundary>
+    </TypographyProvider>
   );
 }
