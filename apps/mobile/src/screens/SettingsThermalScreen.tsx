@@ -19,11 +19,13 @@ import {
   type ThermalConfig,
 } from "../lib/thermalSettings";
 import { printReceipt } from "../lib/printReceipt";
+import { useResponsive } from "../hooks/useResponsive";
 import type { ReceiptData } from "../lib/thermalReceipt";
 
 type Props = NativeStackScreenProps<import("../navigation").MoreStackParams, "SettingsThermal">;
 
 export function SettingsThermalScreen({ navigation }: Props) {
+  const { contentPad } = useResponsive();
   const [width, setWidth] = useState<58 | 80>(80);
   const [header, setHeader] = useState("");
   const [footer, setFooter] = useState("Thank you! Visit again.");
@@ -74,7 +76,7 @@ export function SettingsThermalScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
-      <View className="flex-row items-center border-b border-slate-200 px-4 py-3">
+      <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="flex-row items-center border-b border-slate-200">
         <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 -ml-2">
           <Ionicons name="arrow-back" size={24} color="#0f172a" />
         </TouchableOpacity>
@@ -83,7 +85,7 @@ export function SettingsThermalScreen({ navigation }: Props) {
         </Text>
       </View>
 
-      <ScrollView className="flex-1 px-4 py-4">
+      <ScrollView style={{ flex: 1, paddingHorizontal: contentPad, paddingVertical: contentPad }}>
         <Text className="text-xs text-slate-500 uppercase font-semibold mb-2">
           Paper Width
         </Text>

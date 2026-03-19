@@ -19,6 +19,7 @@ import { Chip } from "../components/ui/Chip";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ErrorCard } from "../components/ui/ErrorCard";
 import { hapticSuccess, hapticError } from "../lib/haptics";
+import { useResponsive } from "../hooks/useResponsive";
 
 const FILTERS = ["expired", "7d", "30d", "90d", "all"] as const;
 const FILTER_LABELS: Record<(typeof FILTERS)[number], string> = {
@@ -31,6 +32,7 @@ const FILTER_LABELS: Record<(typeof FILTERS)[number], string> = {
 
 export function ExpiryScreen() {
   const qc = useQueryClient();
+  const { contentPad } = useResponsive();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("30d");
 
   const { data, isFetching, isError, refetch } = useQuery({
@@ -76,7 +78,7 @@ export function ExpiryScreen() {
               key={f}
               label={FILTER_LABELS[f]}
               selected={filter === f}
-              onPress={() => setFilter(f)}
+              onPress={() => requestAnimationFrame(() => setFilter(f))}
             />
           ))}
         </View>
@@ -89,7 +91,7 @@ export function ExpiryScreen() {
       </View>
 
       {isError ? (
-        <View className="flex-1 justify-center px-4">
+        <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: contentPad }}>
           <ErrorCard message="Failed to load expiry data" onRetry={() => refetch()} />
         </View>
       ) : (
@@ -99,7 +101,7 @@ export function ExpiryScreen() {
           refreshControl={
             <RefreshControl refreshing={isFetching} onRefresh={refetch} />
           }
-          contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+          contentContainerStyle={{ padding: contentPad, paddingBottom: 32 }}
           ItemSeparatorComponent={() => <View className="h-2" />}
           ListEmptyComponent={
             isFetching ? (

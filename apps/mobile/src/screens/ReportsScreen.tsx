@@ -7,6 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { summaryApi, expenseApi } from "../lib/api";
 import { useWsInvalidation } from "../hooks/useWsInvalidation";
+import { useResponsive } from "../hooks/useResponsive";
 import { formatCurrency } from "../lib/utils";
 
 function getMonthRange() {
@@ -21,6 +22,7 @@ function getMonthRange() {
 
 export function ReportsScreen() {
   const { from, to } = getMonthRange();
+  const { contentPad } = useResponsive();
   useWsInvalidation(["summary", "expenses"]);
 
   const { data, refetch, isFetching } = useQuery({
@@ -42,13 +44,13 @@ export function ReportsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
-      <View className="px-4 py-3 border-b border-slate-100">
+      <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="border-b border-slate-100">
         <Text className="text-xl font-bold text-slate-800">Reports</Text>
       </View>
 
       <ScrollView
         refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} />}
-        contentContainerStyle={{ padding: 16 }}
+        contentContainerStyle={{ padding: contentPad }}
       >
         <View className="flex-row flex-wrap gap-3 mb-6">
           <View className="flex-1 min-w-[140px] bg-emerald-50 p-4 rounded-xl border border-emerald-100">

@@ -15,6 +15,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { customerApi } from "../lib/api";
 import { useWsInvalidation } from "../hooks/useWsInvalidation";
+import { useResponsive } from "../hooks/useResponsive";
 import { inr, type Customer } from "@execora/shared";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ErrorCard } from "../components/ui/ErrorCard";
@@ -22,6 +23,7 @@ import { ErrorCard } from "../components/ui/ErrorCard";
 export function CustomersScreen() {
   const navigation = useNavigation<any>();
   const qc = useQueryClient();
+  const { contentPad } = useResponsive();
   useWsInvalidation(["customers", "summary"]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -40,7 +42,7 @@ export function CustomersScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background">
       {/* Header — matches web list headers */}
-      <View className="px-4 pt-4 pb-3 border-b border-slate-200 bg-card">
+      <View style={{ paddingHorizontal: contentPad, paddingTop: contentPad, paddingBottom: 12 }} className="border-b border-slate-200 bg-card">
         <View className="flex-row items-center justify-between mb-3">
           <Text className="text-xl font-bold tracking-tight text-slate-800">Parties</Text>
           <TouchableOpacity
@@ -73,11 +75,11 @@ export function CustomersScreen() {
         refreshControl={
           <RefreshControl refreshing={isFetching} onRefresh={refetch} />
         }
-        contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+        contentContainerStyle={{ padding: contentPad, paddingBottom: 32 }}
         ItemSeparatorComponent={() => <View className="h-2" />}
         ListEmptyComponent={
           isError ? (
-            <View className="py-16 px-4">
+            <View style={{ paddingVertical: 64, paddingHorizontal: contentPad }}>
               <ErrorCard
                 message="Failed to load customers"
                 onRetry={() => refetch()}

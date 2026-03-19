@@ -146,7 +146,7 @@ export function ExpensesScreen() {
         </View>
         <View className="flex-row gap-2 mt-2">
           <TouchableOpacity
-            onPress={() => setPeriod("week")}
+            onPress={() => requestAnimationFrame(() => setPeriod("week"))}
             className={`px-4 py-2 rounded-lg ${period === "week" ? "bg-primary" : "bg-slate-100"}`}
           >
             <Text className={period === "week" ? "text-white font-semibold" : "text-slate-600"}>
@@ -154,7 +154,7 @@ export function ExpensesScreen() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => setPeriod("month")}
+            onPress={() => requestAnimationFrame(() => setPeriod("month"))}
             className={`px-4 py-2 rounded-lg ${period === "month" ? "bg-primary" : "bg-slate-100"}`}
           >
             <Text className={period === "month" ? "text-white font-semibold" : "text-slate-600"}>

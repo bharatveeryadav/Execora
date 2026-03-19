@@ -27,6 +27,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { tokenStorage } from "../lib/storage";
 import { getApiBaseUrl } from "../lib/api";
+import { useResponsive } from "../hooks/useResponsive";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -49,6 +50,7 @@ let _msgId = 1;
 // ── VoiceScreen ───────────────────────────────────────────────────────────────
 
 export function VoiceScreen() {
+  const { contentPad } = useResponsive();
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: _msgId++,
@@ -186,7 +188,7 @@ export function VoiceScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingHorizontal: contentPad }]}>
         <Text style={styles.headerTitle}>Voice Billing</Text>
         <View style={[styles.dot, connected ? styles.dotGreen : styles.dotRed]} />
         <Text style={styles.statusLabel}>
@@ -264,7 +266,7 @@ export function VoiceScreen() {
             )}
           </TouchableOpacity>
         </View>
-        <Text style={styles.hint}>
+        <Text style={[styles.hint, { paddingHorizontal: contentPad }]}>
           Tip: "Mic support coming soon — type Hinglish commands above"
         </Text>
       </KeyboardAvoidingView>
@@ -280,7 +282,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: "#fff",
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -378,7 +379,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 11,
     color: "#94a3b8",
-    paddingHorizontal: 16,
     paddingBottom: 8,
     backgroundColor: "#fff",
   },

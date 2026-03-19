@@ -27,6 +27,7 @@ import * as Print from "expo-print";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { customerApi, customerExtApi, purchaseApi, invoiceApi, supplierApi } from "../lib/api";
 import { useWsInvalidation } from "../hooks/useWsInvalidation";
+import { useResponsive } from "../hooks/useResponsive";
 import { inr, type Customer } from "@execora/shared";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ErrorCard } from "../components/ui/ErrorCard";
@@ -34,7 +35,6 @@ import { TYPO } from "../lib/typography";
 import type { CustomersStackParams } from "../navigation";
 
 const MIN_TOUCH = 44;
-const SPACING = 16;
 
 type Tab = "customers" | "vendors";
 type FilterTab = "all" | "outstanding" | "clear" | "aging";
@@ -45,6 +45,7 @@ type Props = NativeStackScreenProps<CustomersStackParams, "CustomerList">;
 
 export function PartiesScreen({ navigation }: Props) {
   const qc = useQueryClient();
+  const { contentPad } = useResponsive();
   useWsInvalidation(["customers", "summary"]);
 
   const [tab, setTab] = useState<Tab>("customers");
@@ -433,7 +434,7 @@ export function PartiesScreen({ navigation }: Props) {
 
           <ScrollView
             className="flex-1"
-            contentContainerStyle={{ padding: SPACING, paddingBottom: 100 }}
+            contentContainerStyle={{ padding: contentPad, paddingBottom: 100 }}
             refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor="#e67e22" />}
           >
             {/* Summary cards — visual hierarchy */}
@@ -468,7 +469,7 @@ export function PartiesScreen({ navigation }: Props) {
               ].map(({ key, label, count }) => (
                 <Pressable
                   key={key}
-                  onPress={() => setFilter(key)}
+                  onPress={() => requestAnimationFrame(() => setFilter(key))}
                   className={`flex-1 items-center justify-center py-2.5 rounded-xl min-h-[44] ${filter === key ? "bg-white shadow-sm" : ""}`}
                   style={({ pressed }) => ({ opacity: pressed && filter !== key ? 0.7 : 1 })}
                 >
@@ -548,7 +549,7 @@ export function PartiesScreen({ navigation }: Props) {
 
       {tab === "vendors" && (
         <>
-        <ScrollView className="flex-1" contentContainerStyle={{ padding: SPACING, paddingBottom: 100 }}>
+        <ScrollView className="flex-1" contentContainerStyle={{ padding: contentPad, paddingBottom: 100 }}>
           {/* Collect & Pay */}
           <View className="rounded-2xl border border-slate-200/80 bg-white p-4 mb-4 shadow-sm">
             <Text className={TYPO.sectionTitle}>Collect & Pay</Text>

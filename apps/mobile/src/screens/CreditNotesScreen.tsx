@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { creditNoteApi } from "../lib/api";
+import { useResponsive } from "../hooks/useResponsive";
 import { formatCurrency } from "../lib/utils";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ErrorCard } from "../components/ui/ErrorCard";
@@ -25,6 +26,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function CreditNotesScreen() {
+  const { contentPad } = useResponsive();
   const { data, isFetching, isError, refetch } = useQuery({
     queryKey: ["credit-notes"],
     queryFn: () => creditNoteApi.list({ limit: 50 }),
@@ -36,7 +38,7 @@ export function CreditNotesScreen() {
   if (isError) {
     return (
       <SafeAreaView className="flex-1 bg-background">
-        <View className="flex-1 justify-center px-4">
+        <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: contentPad }}>
           <ErrorCard message="Failed to load credit notes" onRetry={() => refetch()} />
         </View>
       </SafeAreaView>
@@ -45,7 +47,7 @@ export function CreditNotesScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "bottom"]}>
-      <View className="px-4 pt-4 pb-3 border-b border-slate-200 bg-card">
+      <View style={{ paddingHorizontal: contentPad, paddingTop: contentPad, paddingBottom: 12 }} className="border-b border-slate-200 bg-card">
         <Text className="text-xl font-bold tracking-tight text-slate-800">Credit Notes</Text>
       </View>
 
@@ -55,7 +57,7 @@ export function CreditNotesScreen() {
         refreshControl={
           <RefreshControl refreshing={isFetching} onRefresh={refetch} />
         }
-        contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+        contentContainerStyle={{ padding: contentPad, paddingBottom: 32 }}
         ItemSeparatorComponent={() => <View className="h-2" />}
         ListEmptyComponent={
           isFetching ? (

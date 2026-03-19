@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { cashbookApi } from "../lib/api";
 import { useWsInvalidation } from "../hooks/useWsInvalidation";
+import { useResponsive } from "../hooks/useResponsive";
 import { formatCurrency } from "../lib/utils";
 
 function getMonthRange() {
@@ -27,6 +28,7 @@ function getMonthRange() {
 
 export function CashBookScreen() {
   const { from, to } = getMonthRange();
+  const { contentPad } = useResponsive();
   useWsInvalidation(["cashbook", "expenses"]);
 
   const { data, refetch, isFetching } = useQuery({
@@ -46,7 +48,7 @@ export function CashBookScreen() {
         <Text className="text-xl font-bold text-slate-800">Cash Book</Text>
       </View>
 
-      <View className="px-4 py-4 bg-slate-50">
+      <View style={{ paddingHorizontal: contentPad, paddingVertical: contentPad }} className="bg-slate-50">
         <Text className="text-sm text-slate-600">Net Cash</Text>
         <Text className={`text-2xl font-bold ${balance >= 0 ? "text-emerald-600" : "text-red-600"}`}>
           {formatCurrency(balance)}
@@ -67,7 +69,7 @@ export function CashBookScreen() {
           const amt = Number(item.amount);
           const isIn = item.type === "in" || amt > 0;
           return (
-            <View className="flex-row items-center justify-between px-4 py-3 border-b border-slate-100">
+            <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="flex-row items-center justify-between border-b border-slate-100">
               <View>
                 <Text className="font-medium text-slate-800">{item.category ?? item.type}</Text>
                 {item.note && <Text className="text-sm text-slate-500">{item.note}</Text>}

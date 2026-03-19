@@ -59,6 +59,7 @@ import { storage, tokenStorage, DRAFT_KEY, INVOICE_BAR_KEY, PRICE_TIER_KEY, INV_
 import { BarcodeScanner } from "../components/common/BarcodeScanner";
 import { printReceipt } from "../lib/printReceipt";
 import { useOffline } from "../contexts/OfflineContext";
+import { useResponsive } from "../hooks/useResponsive";
 import { enqueueInvoice } from "../lib/offlineQueue";
 import { hapticSuccess, hapticError, hapticLight } from "../lib/haptics";
 import { cacheProducts } from "../lib/offlineQueue";
@@ -123,6 +124,7 @@ type BillingProps = NativeStackScreenProps<BillingStackParams, "BillingForm">;
 export function BillingScreen({ navigation, route }: BillingProps) {
   const qc = useQueryClient();
   const { isOffline } = useOffline();
+  const { contentPad } = useResponsive();
   const startAsWalkIn = route.params?.startAsWalkIn;
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -767,7 +769,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
         keyboardVerticalOffset={60}
       >
         <ScrollView
-          className="flex-1 px-4"
+          style={{ flex: 1, paddingHorizontal: contentPad }}
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingBottom: 80, paddingTop: 4 }}
         >
@@ -1521,7 +1523,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
         </ScrollView>
 
         {/* ── Sticky CTA ───────────────────────────────────────────────── */}
-        <View className="border-t border-slate-200 bg-white px-4 py-3">
+        <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="border-t border-slate-200 bg-white">
           <TouchableOpacity
             onPress={() => void handleSubmit()}
             disabled={validItemCount === 0 || isSubmitting}

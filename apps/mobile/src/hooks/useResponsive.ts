@@ -1,37 +1,48 @@
 /**
- * Responsive layout utilities for React Native.
+ * useResponsive — production-ready responsive layout for React Native.
  *
- * Per reactnative.dev/docs/height-and-width:
- * - Use flex for dynamic sizing
- * - useWindowDimensions for screen-size-dependent layouts
- * - Percentage dimensions require parent with defined size
+ * Uses useWindowDimensions (official API) which auto-updates on rotation,
+ * foldables, and font scale changes.
+ *
+ * Breakpoints (logical px, iOS):
+ *   small:  < 360  (iPhone SE)
+ *   medium: 360–430 (iPhone 14/15/16)
+ *   large:  ≥ 430   (Plus, Pro Max)
+ *   tablet: ≥ 768  (iPad mini+)
+ *
+ * @see https://reactnative.dev/docs/usewindowdimensions
  */
-import { useWindowDimensions } from "react-native";
 import { useMemo } from "react";
+import { useWindowDimensions } from "react-native";
 
-/** Breakpoints (width) — approximate device categories */
-const BREAKPOINTS = {
-  sm: 360,
-  md: 400,
-  lg: 480,
-  xl: 600,
+export const BREAKPOINTS = {
+  small: 360,
+  large: 430,
+  tablet: 768,
+  maxContentWidth: 480,
 } as const;
 
 export function useResponsive() {
-  const { width, height } = useWindowDimensions();
+  const { width, height, fontScale } = useWindowDimensions();
 
   return useMemo(
     () => ({
       width,
       height,
-      isSmall: width < BREAKPOINTS.sm,
-      isMedium: width >= BREAKPOINTS.sm && width < BREAKPOINTS.md,
-      isLarge: width >= BREAKPOINTS.md,
-      /** Padding for content — scales with screen */
-      contentPadding: Math.min(24, Math.max(16, width * 0.04)),
-      /** Card/list padding */
-      cardPadding: Math.min(16, Math.max(12, width * 0.03)),
+      fontScale,
+
+      // Breakpoint flags
+      isSmall: width < BREAKPOINTS.small,
+      isLarge: width >= BREAKPOINTS.large,
+      isTablet: width >= BREAKPOINTS.tablet,
+
+      // Content padding: 12–24px, scales with width (4% of screen, clamped)
+      contentPad: Math.min(24, Math.max(12, Math.round(width * 0.04))),
+
+      // Max content width for centered layouts (tablets)
+      maxContentWidth: BREAKPOINTS.maxContentWidth,
+      contentWidth: Math.min(width - Math.min(24, Math.max(12, Math.round(width * 0.04))) * 2, BREAKPOINTS.maxContentWidth),
     }),
-    [width, height]
+    [width, height, fontScale]
   );
 }

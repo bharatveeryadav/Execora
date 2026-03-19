@@ -1,5 +1,5 @@
 import React from "react";
-import { View, useWindowDimensions } from "react-native";
+import { View } from "react-native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useAuth } from "../contexts/AuthContext";
 import { createBottomTabNavigator, BottomTabBar } from "@react-navigation/bottom-tabs";
@@ -359,7 +359,7 @@ const TAB_ICONS_OUTLINE: Record<string, keyof typeof Ionicons.glyphMap> = {
 
 const TAB_ACTIVE_COLOR = "#0f172a";
 const TAB_INACTIVE_COLOR = "#475569";
-const TAB_BAR_MAX_WIDTH = 480;
+import { useResponsive, BREAKPOINTS } from "../hooks/useResponsive";
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   const iconName = focused
@@ -370,13 +370,13 @@ function TabIcon({ name, focused }: { name: string; focused: boolean }) {
 }
 
 function ResponsiveTabBar(props: React.ComponentProps<typeof BottomTabBar>) {
-  const { width } = useWindowDimensions();
-  const constrainWidth = width > TAB_BAR_MAX_WIDTH;
+  const { width, isTablet } = useResponsive();
+  const constrainWidth = isTablet || width > BREAKPOINTS.maxContentWidth;
   return (
     <View style={{ alignItems: "center", width: "100%" }}>
       <View
         style={{
-          width: constrainWidth ? TAB_BAR_MAX_WIDTH : "100%",
+          width: constrainWidth ? BREAKPOINTS.maxContentWidth : "100%",
           maxWidth: "100%",
         }}
       >
@@ -390,7 +390,7 @@ function MainTabs() {
   const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
-      lazy={false}
+      lazy={true}
       tabBar={(props) => <ResponsiveTabBar {...props} />}
       screenOptions={({ route }) => ({
         headerShown: false,

@@ -12,7 +12,6 @@ import {
   ScrollView,
   Pressable,
   InteractionManager,
-  useWindowDimensions,
   Modal,
   Platform,
 } from "react-native";
@@ -24,6 +23,7 @@ import { useQuery } from "@tanstack/react-query";
 import { invoiceApi, purchaseApi } from "../lib/api";
 import { inr, type Invoice } from "@execora/shared";
 import { useWsInvalidation } from "../hooks/useWsInvalidation";
+import { useResponsive } from "../hooks/useResponsive";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ErrorCard } from "../components/ui/ErrorCard";
 import { TYPO } from "../lib/typography";
@@ -74,6 +74,7 @@ const DATE_LABELS: Record<DateFilter, string> = {
 const STATUS_TABS: StatusTab[] = ["All", "Draft", "Pending", "Partial", "Paid", "Cancelled", "Proforma"];
 
 const MIN_TOUCH = 44;
+const ROW_HEIGHT = MIN_TOUCH + 8; // 52 — matches renderInvoiceRow/renderPurchaseRow minHeight
 
 const STATUS_STYLES: Record<string, { bgColor: string; iconColor: string; textColor: string }> = {
   paid: { bgColor: "#dcfce7", iconColor: "#16a34a", textColor: "#15803d" },
@@ -178,7 +179,7 @@ function formatDate(d: string | Date | undefined): string {
 type Props = NativeStackScreenProps<InvoicesStackParams, "InvoiceList">;
 
 export function InvoiceListScreen({ navigation }: Props) {
-  const { width } = useWindowDimensions();
+  const { contentPad, isSmall } = useResponsive();
   const [docTypeTab, setDocTypeTab] = useState<DocTypeTab>("sales");
   const [statusTab, setStatusTab] = useState<StatusTab>("All");
   const [search, setSearch] = useState("");
@@ -192,9 +193,6 @@ export function InvoiceListScreen({ navigation }: Props) {
   const [customPickerMode, setCustomPickerMode] = useState<"from" | "to" | null>(null);
 
   useWsInvalidation(["invoices", "summary", "purchases"]);
-
-  const isSmall = width < 360;
-  const contentPad = Math.min(20, Math.max(12, width * 0.04));
 
   const { data: invData, isFetching, isError, refetch } = useQuery({
     queryKey: ["invoices"],
@@ -469,7 +467,7 @@ export function InvoiceListScreen({ navigation }: Props) {
           ].map(({ id, label, icon }) => (
             <Pressable
               key={id}
-              onPress={() => setDocTypeTab(id)}
+              onPress={() => requestAnimationFrame(() => setDocTypeTab(id))}
               className="flex-1 min-w-0 flex-row items-center justify-center gap-1.5 py-2 rounded-md"
               style={({ pressed }) => ({
                 opacity: pressed && docTypeTab !== id ? 0.7 : 1,
@@ -500,7 +498,7 @@ export function InvoiceListScreen({ navigation }: Props) {
                 return (
                   <Pressable
                     key={tab}
-                    onPress={() => setStatusTab(tab)}
+                    onPress={() => requestAnimationFrame(() => setStatusTab(tab))}
                     className="flex-row items-center gap-1.5 px-3 py-2 border-b-2"
                     style={({
                       pressed,
@@ -618,6 +616,7 @@ export function InvoiceListScreen({ navigation }: Props) {
                 data={filteredPurchases}
                 keyExtractor={(p) => p.id}
                 renderItem={renderPurchaseRow}
+                getItemLayout={(_, index) => ({ length: ROW_HEIGHT, offset: ROW_HEIGHT * index, index })}
                 ListFooterComponent={<View className="h-4" />}
                 style={{ flex: 1 }}
                 initialNumToRender={12}
@@ -654,6 +653,7 @@ export function InvoiceListScreen({ navigation }: Props) {
                 data={filteredInvoices}
                 keyExtractor={(inv) => inv.id}
                 renderItem={renderInvoiceRow}
+                getItemLayout={(_, index) => ({ length: ROW_HEIGHT, offset: ROW_HEIGHT * index, index })}
                 refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor="#e67e22" />}
                 ListFooterComponent={<View className="h-24" />}
                 style={{ flex: 1 }}

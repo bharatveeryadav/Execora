@@ -17,6 +17,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { productApi, apiFetch } from "@execora/shared";
 import { Ionicons } from "@expo/vector-icons";
 import { useWsInvalidation } from "../hooks/useWsInvalidation";
+import { useResponsive } from "../hooks/useResponsive";
 
 function num(v: string | number | undefined | null): number {
   if (v === undefined || v === null) return 0;
@@ -43,6 +44,7 @@ type Props = NativeStackScreenProps<import("../navigation").ItemsStackParams, "P
 
 export function ProductDetailScreen({ navigation, route }: Props) {
   const qc = useQueryClient();
+  const { contentPad } = useResponsive();
   useWsInvalidation(["products", "lowStock"]);
   const params = route.params;
   const id = params?.id ?? "";
@@ -161,7 +163,7 @@ export function ProductDetailScreen({ navigation, route }: Props) {
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
       {/* Header: back, product name, menu */}
-      <View className="flex-row items-center justify-between px-4 py-3 border-b border-slate-200 bg-white">
+      <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="flex-row items-center justify-between border-b border-slate-200 bg-white">
         <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 -ml-2">
           <Ionicons name="arrow-back" size={24} color="#0f172a" />
         </TouchableOpacity>
@@ -183,7 +185,8 @@ export function ProductDetailScreen({ navigation, route }: Props) {
         <TouchableOpacity
           onPress={goToUpdate}
           activeOpacity={0.8}
-          className="mx-4 mt-3 flex-row items-center justify-between rounded-xl bg-slate-200/80 px-4 py-3"
+          style={{ marginHorizontal: contentPad, marginTop: 12, paddingHorizontal: contentPad, paddingVertical: 12 }}
+          className="flex-row items-center justify-between rounded-xl bg-slate-200/80"
         >
           <Text className="text-sm font-medium text-slate-700">Add Missing Details — Tap to edit</Text>
           <TouchableOpacity onPress={() => setShowAddDetailsBanner(false)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
@@ -194,23 +197,23 @@ export function ProductDetailScreen({ navigation, route }: Props) {
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Product Details card — read-only, double-tap to edit */}
-        <View className="mx-4 mt-4 rounded-2xl bg-white border border-slate-200 overflow-hidden">
-          <Text className="text-base font-bold text-slate-800 px-4 pt-4 pb-2">Product Details</Text>
-          <Text className="text-xs text-slate-500 px-4 pb-3">Double-tap any field to edit</Text>
+        <View style={{ marginHorizontal: contentPad, marginTop: contentPad }} className="rounded-2xl bg-white border border-slate-200 overflow-hidden">
+          <Text style={{ paddingHorizontal: contentPad, paddingTop: contentPad, paddingBottom: 8 }} className="text-base font-bold text-slate-800">Product Details</Text>
+          <Text style={{ paddingHorizontal: contentPad, paddingBottom: 12 }} className="text-xs text-slate-500">Double-tap any field to edit</Text>
 
-          <DetailRow label="Product Name*" value={name} badge={num(stock) > 0 ? "Online" : undefined} onDoubleTap={goToUpdate} />
-          <DetailRow label="Selling Price" sublabel="With Tax" value={`₹${priceWithTax.toFixed(2)}`} onDoubleTap={goToUpdate} />
-          <DetailRow label="Tax Rate" value={`${gstRate}%`} onDoubleTap={goToUpdate} />
-          <DetailRow label="Purchase Price" sublabel="With Tax" value={`₹${costWithTax.toFixed(2)}`} onDoubleTap={goToUpdate} />
-          <DetailRow label="Quantity" value={stock} valueGreen onDoubleTap={goToUpdate} />
-          <DetailRow label="Unit" value={displayUnit} onDoubleTap={goToUpdate} />
-          <DetailRow label="Category" value={category || "—"} addButton={!category} onDoubleTap={goToUpdate} />
-          <DetailRow label="HSN/SAC Code" value={hsnCode || "—"} addButton={!hsnCode} onDoubleTap={goToUpdate} />
-          <DetailRow label="Type" value="Product" />
-          <DetailRow label="MRP (₹)" value={mrp ? `₹${parseFloat(mrp).toFixed(2)}` : "—"} onDoubleTap={goToUpdate} />
-          <DetailRow label="Barcode" value={barcode || "—"} addButton={!barcode} onDoubleTap={goToUpdate} />
+          <DetailRow label="Product Name*" value={name} badge={num(stock) > 0 ? "Online" : undefined} onDoubleTap={goToUpdate} contentPad={contentPad} />
+          <DetailRow label="Selling Price" sublabel="With Tax" value={`₹${priceWithTax.toFixed(2)}`} onDoubleTap={goToUpdate} contentPad={contentPad} />
+          <DetailRow label="Tax Rate" value={`${gstRate}%`} onDoubleTap={goToUpdate} contentPad={contentPad} />
+          <DetailRow label="Purchase Price" sublabel="With Tax" value={`₹${costWithTax.toFixed(2)}`} onDoubleTap={goToUpdate} contentPad={contentPad} />
+          <DetailRow label="Quantity" value={stock} valueGreen onDoubleTap={goToUpdate} contentPad={contentPad} />
+          <DetailRow label="Unit" value={displayUnit} onDoubleTap={goToUpdate} contentPad={contentPad} />
+          <DetailRow label="Category" value={category || "—"} addButton={!category} onDoubleTap={goToUpdate} contentPad={contentPad} />
+          <DetailRow label="HSN/SAC Code" value={hsnCode || "—"} addButton={!hsnCode} onDoubleTap={goToUpdate} contentPad={contentPad} />
+          <DetailRow label="Type" value="Product" contentPad={contentPad} />
+          <DetailRow label="MRP (₹)" value={mrp ? `₹${parseFloat(mrp).toFixed(2)}` : "—"} onDoubleTap={goToUpdate} contentPad={contentPad} />
+          <DetailRow label="Barcode" value={barcode || "—"} addButton={!barcode} onDoubleTap={goToUpdate} contentPad={contentPad} />
 
-          <View className="px-4 py-3 border-t border-slate-100">
+          <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="border-t border-slate-100">
             <Text className="text-xs text-slate-500 mb-1">Product Description</Text>
             <TouchableOpacity onPress={goToUpdate} className="py-2">
               <Text className="text-sm text-slate-800">{description || "—"}</Text>
@@ -220,7 +223,7 @@ export function ProductDetailScreen({ navigation, route }: Props) {
       </ScrollView>
 
       {/* Footer: STOCK OUT / STOCK IN */}
-      <View className="flex-row border-t border-slate-200 bg-white px-4 py-3 pb-6">
+      <View style={{ paddingHorizontal: contentPad, paddingTop: 12, paddingBottom: 24 }} className="flex-row border-t border-slate-200 bg-white">
         <TouchableOpacity
           onPress={() => adjustStockMutation.mutate({ op: "subtract" })}
           disabled={adjustStockMutation.isPending || num(stock) <= 0}
@@ -257,6 +260,7 @@ function DetailRow({
   addButton,
   badge,
   onDoubleTap,
+  contentPad = 16,
 }: {
   label: string;
   sublabel?: string;
@@ -265,12 +269,13 @@ function DetailRow({
   addButton?: boolean;
   badge?: string;
   onDoubleTap?: () => void;
+  contentPad?: number;
 }) {
   const handlePress = useDoubleTap(onDoubleTap ?? (() => {}));
 
   return (
     <TouchableOpacity onPress={handlePress} activeOpacity={onDoubleTap ? 0.7 : 1} disabled={!onDoubleTap}>
-      <View className="px-4 py-3 border-t border-slate-100">
+      <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="border-t border-slate-100">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-2">
             <View>

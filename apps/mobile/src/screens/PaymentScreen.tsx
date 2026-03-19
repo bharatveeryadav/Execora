@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { customerApi, paymentApi } from '../lib/api';
 import { formatCurrency, toFloat } from '../lib/utils';
 import { hapticSuccess, hapticError } from '../lib/haptics';
+import { useResponsive } from '../hooks/useResponsive';
 import type { CustomersStackParams } from '../navigation';
 
 type Props = NativeStackScreenProps<CustomersStackParams, 'Payment'>;
@@ -34,6 +35,7 @@ const PAYMENT_METHODS = [
 export function PaymentScreen({ navigation, route }: Props) {
   const { customerId } = route.params ?? {};
   const qc = useQueryClient();
+  const { contentPad } = useResponsive();
 
   // Search state (if no customerId pre-filled)
   const [search, setSearch] = useState('');
@@ -98,14 +100,14 @@ export function PaymentScreen({ navigation, route }: Props) {
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={['top', 'bottom']}>
       {/* Header */}
-      <View className="bg-white border-b border-slate-100 px-4 py-3 flex-row items-center">
+      <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="bg-white border-b border-slate-100 flex-row items-center">
         <TouchableOpacity onPress={() => navigation.goBack()} className="mr-3 p-1">
           <Text className="text-2xl text-slate-600">←</Text>
         </TouchableOpacity>
         <Text className="text-lg font-bold text-slate-800">Record Payment</Text>
       </View>
 
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, gap: 14 }} keyboardShouldPersistTaps="handled">
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: contentPad, gap: 14 }} keyboardShouldPersistTaps="handled">
 
         {/* Customer selector */}
         <View className="bg-white rounded-2xl p-4 shadow-sm">

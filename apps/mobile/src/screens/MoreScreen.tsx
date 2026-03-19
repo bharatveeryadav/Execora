@@ -8,6 +8,7 @@ import { View, Text, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
+import { useResponsive } from "../hooks/useResponsive";
 import { TYPO } from "../lib/typography";
 
 const MIN_TOUCH = 44;
@@ -89,6 +90,7 @@ const SECTIONS: Section[] = [
 type Props = NativeStackScreenProps<import("../navigation").MoreStackParams, "More">;
 
 export function MoreScreen({ navigation }: Props) {
+  const { contentPad } = useResponsive();
 
   const handlePress = (tile: Tile) => {
     const parent = navigation.getParent() as any;
@@ -111,7 +113,7 @@ export function MoreScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View className="px-4 pt-4 pb-6">
+        <View style={{ paddingHorizontal: contentPad, paddingTop: contentPad, paddingBottom: 24 }}>
           <Text className={TYPO.pageTitle}>More</Text>
           <Text className={TYPO.caption + " mt-1"}>
             Quick access to all features
@@ -119,7 +121,7 @@ export function MoreScreen({ navigation }: Props) {
         </View>
 
         {/* Grouped sections */}
-        <View className="px-4 gap-6">
+        <View style={{ paddingHorizontal: contentPad }} className="gap-6">
           {SECTIONS.map((section, sectionIdx) => (
             <View key={sectionIdx}>
               <Text className={TYPO.sectionTitle + " mb-2 px-1"}>

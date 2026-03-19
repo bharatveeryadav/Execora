@@ -3,11 +3,12 @@
  * Replaces the popup modal; user can navigate to features and easily go back to Bills.
  */
 import React from "react";
-import { View, Text, ScrollView, Pressable, useWindowDimensions } from "react-native";
+import { View, Text, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { TYPO } from "../lib/typography";
+import { useResponsive } from "../hooks/useResponsive";
 import type { InvoicesStackParams } from "../navigation";
 
 type Props = NativeStackScreenProps<InvoicesStackParams, "BillsMenu">;
@@ -44,8 +45,7 @@ const QUICK_LINKS: {
 
 export function BillsMenuScreen({ navigation }: Props) {
   const nav = navigation as any;
-  const { width } = useWindowDimensions();
-  const pad = Math.min(20, Math.max(12, width * 0.04));
+  const { contentPad: pad } = useResponsive();
 
   function handleMenuPress(item: (typeof MENU_ITEMS)[0]) {
     if (item.action === "billing") {

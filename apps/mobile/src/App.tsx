@@ -1,6 +1,6 @@
 import "./global.css";
 import React, { useCallback, useEffect, useRef } from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   NavigationContainer,
@@ -17,6 +17,7 @@ import {
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
 import { bootApi, setAuthExpiredHandler, authApi } from "./lib/api";
+import { ENV } from "./lib/env";
 
 // Keep splash visible until we hide it (prevents white flash)
 try {
@@ -41,9 +42,9 @@ const queryClient = new QueryClient({
   },
 });
 
-// Dev credentials from env — set EXPO_PUBLIC_LOGIN_EMAIL + EXPO_PUBLIC_LOGIN_PASSWORD
-const AUTO_EMAIL = process.env.EXPO_PUBLIC_LOGIN_EMAIL ?? "";
-const AUTO_PASSWORD = process.env.EXPO_PUBLIC_LOGIN_PASSWORD ?? "";
+// Auto-login credentials — only when ENV.allowAutoLogin (dev/staging, never production)
+const AUTO_EMAIL = ENV.allowAutoLogin ? (process.env.EXPO_PUBLIC_LOGIN_EMAIL ?? "") : "";
+const AUTO_PASSWORD = ENV.allowAutoLogin ? (process.env.EXPO_PUBLIC_LOGIN_PASSWORD ?? "") : "";
 
 function AppContent() {
   const { isLoggedIn } = useAuth();
@@ -132,7 +133,9 @@ function AppContentInner() {
   );
 }
 
-// Error boundary to catch crashes and show UI instead of blank screen
+// Error boundary — catches crashes, shows user-friendly UI, retry in dev
+const IS_PROD = process.env.EXPO_PUBLIC_ENV === "production";
+
 class AppErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { hasError: boolean; error: Error | null }
@@ -145,17 +148,23 @@ class AppErrorBoundary extends React.Component<
 
   componentDidCatch(error: Error) {
     SplashScreen.hideAsync().catch(() => {});
-    console.error("AppErrorBoundary:", error);
+    if (__DEV__ || !IS_PROD) console.error("AppErrorBoundary:", error);
   }
+
+  handleRetry = () => this.setState({ hasError: false, error: null });
 
   render() {
     if (this.state.hasError) {
+      const userMessage = IS_PROD
+        ? "Something went wrong. Please restart the app."
+        : (this.state.error?.message ?? "Unknown error");
       return (
         <View style={styles.errorContainer}>
           <Text style={styles.errorTitle}>Something went wrong</Text>
-          <Text style={styles.errorText}>
-            {this.state.error?.message ?? "Unknown error"}
-          </Text>
+          <Text style={styles.errorText}>{userMessage}</Text>
+          <TouchableOpacity onPress={this.handleRetry} style={styles.retryBtn}>
+            <Text style={styles.retryText}>Try again</Text>
+          </TouchableOpacity>
         </View>
       );
     }
@@ -172,7 +181,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   errorTitle: { fontSize: 18, fontWeight: "600", marginBottom: 8 },
-  errorText: { fontSize: 14, color: "#666", textAlign: "center" },
+  errorText: { fontSize: 14, color: "#666", textAlign: "center", marginBottom: 16 },
+  retryBtn: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: "#e67e22",
+    borderRadius: 8,
+  },
+  retryText: { color: "#fff", fontWeight: "600", fontSize: 16 },
 });
 
 export default function App() {

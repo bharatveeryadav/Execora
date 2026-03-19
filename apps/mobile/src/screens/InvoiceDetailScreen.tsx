@@ -23,6 +23,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invoiceApi, invoiceExtApi } from '../lib/api';
 import { formatCurrency, formatDate, toFloat } from '../lib/utils';
 import { useWsInvalidation } from '../hooks/useWsInvalidation';
+import { useResponsive } from '../hooks/useResponsive';
 import type { InvoicesStackParams } from '../navigation';
 
 type Props = NativeStackScreenProps<InvoicesStackParams, 'InvoiceDetail'>;
@@ -50,6 +51,7 @@ const PAYMENT_METHODS = [
 export function InvoiceDetailScreen({ navigation, route }: Props) {
   const { id } = route.params;
   const qc = useQueryClient();
+  const { contentPad } = useResponsive();
   useWsInvalidation(['invoices']);
 
   // Edit modal state
@@ -177,7 +179,7 @@ export function InvoiceDetailScreen({ navigation, route }: Props) {
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={['top', 'bottom']}>
       {/* Header */}
-      <View className="bg-white border-b border-slate-100 px-4 py-3 flex-row items-center justify-between">
+      <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="bg-white border-b border-slate-100 flex-row items-center justify-between">
         <TouchableOpacity onPress={() => navigation.goBack()} className="mr-3 p-1">
           <Text className="text-2xl text-slate-600">←</Text>
         </TouchableOpacity>
@@ -199,7 +201,7 @@ export function InvoiceDetailScreen({ navigation, route }: Props) {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: 16, gap: 12 }}
+        contentContainerStyle={{ padding: contentPad, gap: 12 }}
         refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} />}
       >
         {/* Amount hero */}

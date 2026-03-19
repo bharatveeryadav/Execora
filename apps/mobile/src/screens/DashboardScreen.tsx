@@ -11,7 +11,6 @@ import {
   RefreshControl,
   Modal,
   Pressable,
-  useWindowDimensions,
   Alert,
   ActivityIndicator,
   Share,
@@ -30,6 +29,7 @@ import {
 } from "../lib/api";
 import { inr } from "@execora/shared";
 import { useWsInvalidation } from "../hooks/useWsInvalidation";
+import { useResponsive } from "../hooks/useResponsive";
 import { useAuth } from "../contexts/AuthContext";
 import { useWS } from "../hooks/useWS";
 import { wsClient } from "../lib/ws";
@@ -101,20 +101,15 @@ function reminderPillStyle(days: number) {
 }
 
 const SECTION_GAP = 16;
-const HORIZONTAL_PADDING = 16;
-const MAX_CONTENT_WIDTH = 480;
 
 type Props = BottomTabScreenProps<import("../navigation").MainTabParams, "Dashboard">;
 
 export function DashboardScreen({ navigation }: Props) {
-  const { width: screenWidth } = useWindowDimensions();
+  const { contentWidth, contentPad: padding } = useResponsive();
   const qc = useQueryClient();
   const { user } = useAuth();
   const { isConnected } = useWS();
   useWsInvalidation(["invoices", "customers", "summary", "products", "lowStock", "reminders", "expiringBatches"]);
-
-  const padding = Math.max(HORIZONTAL_PADDING, Math.min(screenWidth * 0.04, 24));
-  const contentWidth = Math.min(screenWidth - padding * 2, MAX_CONTENT_WIDTH);
 
   const { data: meData } = useQuery({
     queryKey: ["auth", "me"],

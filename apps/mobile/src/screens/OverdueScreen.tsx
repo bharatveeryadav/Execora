@@ -24,6 +24,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@execora/shared";
 import { inr } from "@execora/shared";
+import { useResponsive } from "../hooks/useResponsive";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -41,6 +42,7 @@ type Props = NativeStackScreenProps<import("../navigation").InvoicesStackParams,
 
 export function OverdueScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
+  const { contentPad } = useResponsive();
 
   const { data, isFetching, refetch } = useQuery({
     queryKey: ["customers", "overdue"],
@@ -112,7 +114,7 @@ export function OverdueScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingHorizontal: contentPad }]}>
         <Text style={styles.headerTitle}>Overdue / Udhaar</Text>
         {isFetching && !refreshing ? (
           <ActivityIndicator size="small" color="#e67e22" />
@@ -121,7 +123,7 @@ export function OverdueScreen({ navigation }: Props) {
 
       {/* Summary banner */}
       {customers.length > 0 && (
-        <View style={styles.summaryBanner}>
+        <View style={[styles.summaryBanner, { paddingHorizontal: contentPad }]}>
           <Text style={styles.summaryText}>
             {customers.length} customers · Total pending:{" "}
             <Text style={styles.summaryAmount}>{inr(totalPending)}</Text>
@@ -134,8 +136,11 @@ export function OverdueScreen({ navigation }: Props) {
         data={customers}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
+        getItemLayout={(_, index) => ({ length: 80, offset: 80 * index, index })}
         contentContainerStyle={
-          customers.length === 0 ? styles.emptyContainer : styles.listContent
+          customers.length === 0
+            ? styles.emptyContainer
+            : { ...styles.listContent, padding: contentPad }
         }
         refreshControl={
           <RefreshControl
@@ -169,7 +174,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
     paddingVertical: 14,
     backgroundColor: "#fff",
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -187,7 +191,7 @@ const styles = StyleSheet.create({
   summaryText: { fontSize: 13, color: "#92400e" },
   summaryAmount: { fontWeight: "700", color: "#dc2626" },
 
-  listContent: { padding: 12, gap: 8 },
+  listContent: { gap: 8 },
   emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
 
   card: {

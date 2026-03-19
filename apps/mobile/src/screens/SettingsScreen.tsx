@@ -6,11 +6,13 @@ import { View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../contexts/AuthContext";
+import { useResponsive } from "../hooks/useResponsive";
 
 type Props = NativeStackScreenProps<import("../navigation").MoreStackParams, "Settings">;
 
 export function SettingsScreen({ navigation }: Props) {
   const { logout } = useAuth();
+  const { contentPad } = useResponsive();
 
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
@@ -29,7 +31,7 @@ export function SettingsScreen({ navigation }: Props) {
         <Text className="text-xl font-bold text-slate-800">Settings</Text>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16 }}>
+      <ScrollView contentContainerStyle={{ padding: contentPad }}>
         <Text className="text-sm font-semibold text-slate-500 uppercase mb-2">Profile</Text>
         <TouchableOpacity
           onPress={() => (navigation as any).navigate("CompanyProfile")}

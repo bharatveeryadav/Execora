@@ -1,6 +1,7 @@
 /** @type {import('@babel/core').TransformOptions} */
 module.exports = function (api) {
     api.cache(true);
+    const isProd = process.env.NODE_ENV === "production";
     return {
         presets: [
             ["babel-preset-expo", {
@@ -8,6 +9,9 @@ module.exports = function (api) {
             }],
             "nativewind/babel",
         ],
-        plugins: ["react-native-reanimated/plugin"],
+        plugins: [
+            ...(isProd ? [["transform-remove-console", { exclude: ["error", "warn"] }]] : []),
+            "react-native-reanimated/plugin",
+        ],
     };
 };

@@ -40,6 +40,7 @@ import { storage } from "../lib/storage";
 import type { Product } from "@execora/shared";
 import { Ionicons } from "@expo/vector-icons";
 import { useWsInvalidation } from "../hooks/useWsInvalidation";
+import { useResponsive } from "../hooks/useResponsive";
 
 // ── Helper: parse numeric fields returned as string | number from API ─────────
 
@@ -310,11 +311,12 @@ export function ItemsScreen({ navigation }: Props) {
   );
 
   const insets = useSafeAreaInsets();
+  const { contentPad } = useResponsive();
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
       {/* ── Header ─────────────────────────────────────────────────── */}
-      <View className="bg-card px-4 pt-2 pb-3 border-b border-slate-200">
+      <View style={{ paddingHorizontal: contentPad, paddingTop: 8, paddingBottom: 12 }} className="bg-card border-b border-slate-200">
         <View className="flex-row items-center justify-between mb-3">
           <View>
             <Text className="text-xl font-bold tracking-tight text-slate-800">Items</Text>
@@ -374,7 +376,7 @@ export function ItemsScreen({ navigation }: Props) {
             <TouchableOpacity
               key={key}
               disabled={disabled}
-              onPress={() => setFilter(key)}
+              onPress={() => requestAnimationFrame(() => setFilter(key))}
               activeOpacity={0.7}
               hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
               className={`px-4 py-2 rounded-full border items-center justify-center min-h-[40px] ${
@@ -463,7 +465,7 @@ export function ItemsScreen({ navigation }: Props) {
 
       {/* ── First-time hint (Sprint 29) ───────────────────────────── */}
       {showHint && (
-        <View className="mx-4 mt-3 flex-row items-center justify-between rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
+        <View style={{ marginHorizontal: contentPad, marginTop: 12, paddingHorizontal: contentPad, paddingVertical: 12 }} className="flex-row items-center justify-between rounded-xl border border-primary/30 bg-primary/5">
           <Text className="flex-1 text-sm text-slate-800">
             Tap <Text className="font-bold">+</Text> / <Text className="font-bold">−</Text> to adjust stock. Long-press for custom qty.
           </Text>
@@ -482,8 +484,9 @@ export function ItemsScreen({ navigation }: Props) {
       {/* ── Low-stock alert banner (PRD F-03.3) ───────────────────── */}
       {lowCount > 0 && filter === "all" && !search && (
         <TouchableOpacity
-          onPress={() => setFilter("low")}
-          className="mx-4 mt-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex-row items-center"
+          onPress={() => requestAnimationFrame(() => setFilter("low"))}
+          style={{ marginHorizontal: contentPad, marginTop: 12, paddingHorizontal: contentPad, paddingVertical: 12 }}
+            className="bg-amber-50 border border-amber-200 rounded-xl flex-row items-center"
         >
           <Text className="text-lg mr-2">⚠️</Text>
           <View className="flex-1">
@@ -500,7 +503,7 @@ export function ItemsScreen({ navigation }: Props) {
 
       {/* ── Product list ───────────────────────────────────────────── */}
       <ScrollView
-        className="flex-1 px-4 pt-3"
+        style={{ flex: 1, paddingHorizontal: contentPad, paddingTop: 12 }}
         refreshControl={
           <RefreshControl
             refreshing={isFetching && page === 1}

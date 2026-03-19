@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { invoiceApi, expenseApi, cashbookApi } from "../lib/api";
 import { useWsInvalidation } from "../hooks/useWsInvalidation";
+import { useResponsive } from "../hooks/useResponsive";
 import { formatCurrency } from "../lib/utils";
 
 type Period = "today" | "week" | "month";
@@ -33,6 +34,7 @@ function getRange(period: Period) {
 
 export function DayBookScreen() {
   const [period, setPeriod] = useState<Period>("today");
+  const { contentPad } = useResponsive();
   const { from, to } = getRange(period);
   useWsInvalidation(["invoices", "expenses", "cashbook"]);
 
@@ -114,7 +116,7 @@ export function DayBookScreen() {
           {(["today", "week", "month"] as const).map((p) => (
             <TouchableOpacity
               key={p}
-              onPress={() => setPeriod(p)}
+              onPress={() => requestAnimationFrame(() => setPeriod(p))}
               className={`px-3 py-2 rounded-lg ${period === p ? "bg-primary" : "bg-slate-100"}`}
             >
               <Text className={period === p ? "text-white font-semibold text-sm" : "text-slate-600 text-sm"}>
@@ -125,7 +127,7 @@ export function DayBookScreen() {
         </View>
       </View>
 
-      <View className="flex-row px-4 py-3 bg-slate-50">
+      <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="flex-row bg-slate-50">
         <View className="flex-1">
           <Text className="text-xs text-slate-500">Money In</Text>
           <Text className="text-lg font-bold text-emerald-600">{formatCurrency(moneyIn)}</Text>
@@ -141,7 +143,7 @@ export function DayBookScreen() {
         keyExtractor={(t) => t.id}
         refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} />}
         renderItem={({ item }) => (
-          <View className="flex-row items-center justify-between px-4 py-3 border-b border-slate-100">
+          <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="flex-row items-center justify-between border-b border-slate-100">
             <View>
               <Text className="font-medium text-slate-800">{item.label}</Text>
               <Text className="text-xs text-slate-500">{item.date}</Text>
