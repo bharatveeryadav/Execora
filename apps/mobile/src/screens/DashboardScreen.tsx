@@ -498,109 +498,91 @@ export function DashboardScreen({ navigation }: Props) {
               style={{ width: `${overall}%`, backgroundColor: overallColor }}
             />
           </View>
-          {/* Pillar cards with progress bars and hints */}
-          <View style={{ flexDirection: "row", gap: 6, marginBottom: overdueList.length > 0 || upcomingReminders.length > 0 ? 10 : 0 }}>
-            <TouchableOpacity
-              onPress={() => navigation.getParent()?.navigate("CustomersTab" as never, { screen: "Payment" } as never)}
-              activeOpacity={0.8}
-              style={{
-                flex: 1,
-                minWidth: 0,
-                borderRadius: 10,
-                borderWidth: flashCollection ? 2 : 1,
-                borderColor: flashCollection ? "#e67e22" : "#e2e8f0",
-                backgroundColor: "#f8fafc",
-                padding: 8,
-              }}
-            >
-              <View className="flex-row items-center justify-between mb-0.5">
-                <Text className={TYPO.micro}>💰 Collection</Text>
-                <Text className={`${TYPO.microBold} ${collectionRate >= 80 ? "text-green-600" : collectionRate >= 50 ? "text-amber-600" : "text-red-600"}`}>
-                  {collectionRate}%
-                </Text>
-              </View>
-              <View className="h-1 w-full rounded-full bg-slate-200 mb-1">
-                <View
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${collectionRate}%`,
-                    backgroundColor: collectionRate >= 80 ? "#1a9248" : collectionRate >= 50 ? "#e6a319" : "#dc2626",
-                  }}
-                />
-              </View>
-              <Text className={`${TYPO.micro} text-slate-500`}>{collectionRate}% today</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => navigation.navigate("MoreTab", { screen: "Items" })}
-              activeOpacity={0.8}
-              style={{
-                flex: 1,
-                minWidth: 0,
-                borderRadius: 10,
-                borderWidth: flashStock ? 2 : 1,
-                borderColor: flashStock ? "#e67e22" : "#e2e8f0",
-                backgroundColor: "#f8fafc",
-                padding: 8,
-              }}
-            >
-              <View className="flex-row items-center justify-between mb-0.5">
-                <View className="flex-row items-center gap-1">
-                  <Ionicons name="cube-outline" size={12} color="#64748b" />
-                  <Text className={TYPO.micro}>Stock</Text>
+          {/* Pillar cards: single row, 2 columns — Col1: Collection+Stock, Col2: Receivables+Pending */}
+          {(() => {
+            const gap = 8;
+            const colWidth = Math.floor((contentWidth - 24 - gap) / 2);
+            const cardStyle = (flash: boolean) => ({
+              borderRadius: 10,
+              borderWidth: flash ? 2 : 1,
+              borderColor: flash ? "#e67e22" : "#e2e8f0",
+              backgroundColor: "#f8fafc",
+              padding: 8,
+              minHeight: 52,
+            });
+            const scoreColor = (n: number) => (n >= 80 ? "#1a9248" : n >= 50 ? "#e6a319" : "#dc2626");
+            const pendingAmount = dailySummary?.pendingAmount ?? 0;
+            return (
+              <View style={{ flexDirection: "row", gap, marginBottom: overdueList.length > 0 || upcomingReminders.length > 0 ? 10 : 0 }}>
+                {/* Column 1: Collection, Stock */}
+                <View style={{ width: colWidth, gap: 6 }}>
+                  <TouchableOpacity
+                    onPress={() => navigation.getParent()?.navigate("CustomersTab" as never, { screen: "Payment" } as never)}
+                    activeOpacity={0.8}
+                    style={cardStyle(flashCollection)}
+                  >
+                    <View className="flex-row items-center justify-between mb-0.5">
+                      <Text className={TYPO.micro} numberOfLines={1}>Collection</Text>
+                      <Text className={TYPO.microBold} style={{ color: scoreColor(collectionRate) }}>{collectionRate}%</Text>
+                    </View>
+                    <View className="h-1 w-full rounded-full bg-slate-200">
+                      <View className="h-full rounded-full" style={{ width: `${collectionRate}%`, backgroundColor: scoreColor(collectionRate) }} />
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate("MoreTab", { screen: "Items" })}
+                    activeOpacity={0.8}
+                    style={cardStyle(flashStock)}
+                  >
+                    <View className="flex-row items-center justify-between mb-0.5">
+                      <Text className={TYPO.micro} numberOfLines={1}>Stock</Text>
+                      <Text className={TYPO.microBold} style={{ color: scoreColor(stockScore) }}>{stockScore}%</Text>
+                    </View>
+                    <View className="h-1 w-full rounded-full bg-slate-200">
+                      <View className="h-full rounded-full" style={{ width: `${stockScore}%`, backgroundColor: scoreColor(stockScore) }} />
+                    </View>
+                  </TouchableOpacity>
                 </View>
-                <Text className={`${TYPO.microBold} ${stockScore >= 80 ? "text-green-600" : stockScore >= 50 ? "text-amber-600" : "text-red-600"}`}>
-                  {stockScore}%
-                </Text>
-              </View>
-              <View className="h-1 w-full rounded-full bg-slate-200 mb-1">
-                <View
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${stockScore}%`,
-                    backgroundColor: stockScore >= 80 ? "#1a9248" : stockScore >= 50 ? "#e6a319" : "#dc2626",
-                  }}
-                />
-              </View>
-              <Text className={`${TYPO.micro} text-slate-500`}>
-                {lowStock.length === 0 ? "All stocked" : `${lowStock.length} low`}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => navigation.getParent()?.navigate("CustomersTab" as never, { screen: "Overdue" } as never)}
-              activeOpacity={0.8}
-              style={{
-                flex: 1,
-                minWidth: 0,
-                borderRadius: 10,
-                borderWidth: flashReceivables ? 2 : 1,
-                borderColor: flashReceivables ? "#e67e22" : "#e2e8f0",
-                backgroundColor: "#f8fafc",
-                padding: 8,
-              }}
-            >
-              <View className="flex-row items-center justify-between mb-0.5">
-                <View className="flex-row items-center gap-1">
-                  <Ionicons name="receipt-outline" size={12} color="#64748b" />
-                  <Text className={TYPO.micro}>Receivables</Text>
+                {/* Column 2: Receivables, Pending */}
+                <View style={{ width: colWidth, gap: 6 }}>
+                  <TouchableOpacity
+                    onPress={() => navigation.getParent()?.navigate("CustomersTab" as never, { screen: "Overdue" } as never)}
+                    activeOpacity={0.8}
+                    style={cardStyle(flashReceivables)}
+                  >
+                    <View className="flex-row items-center justify-between mb-0.5">
+                      <Text className={TYPO.micro} numberOfLines={1}>Receivables</Text>
+                      <Text className={TYPO.microBold} style={{ color: scoreColor(overdueScore) }}>{overdueScore}%</Text>
+                    </View>
+                    <View className="h-1 w-full rounded-full bg-slate-200">
+                      <View className="h-full rounded-full" style={{ width: `${overdueScore}%`, backgroundColor: scoreColor(overdueScore) }} />
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => navigation.getParent()?.navigate("CustomersTab" as never, { screen: "Overdue" } as never)}
+                    activeOpacity={0.8}
+                    style={cardStyle(false)}
+                  >
+                    <View className="flex-row items-center justify-between mb-0.5">
+                      <Text className={TYPO.micro} numberOfLines={1}>Pending</Text>
+                      <Text className={`${TYPO.microBold} ${pendingAmount > 0 ? "text-amber-600" : "text-green-600"}`} numberOfLines={1}>
+                        {formatCurrency(pendingAmount)}
+                      </Text>
+                    </View>
+                    <View className="h-1 w-full rounded-full bg-slate-200">
+                      <View
+                        className="h-full rounded-full"
+                        style={{
+                          width: "100%",
+                          backgroundColor: pendingAmount > 0 ? "#e6a319" : "#1a9248",
+                        }}
+                      />
+                    </View>
+                  </TouchableOpacity>
                 </View>
-                <Text className={`${TYPO.microBold} ${overdueScore >= 80 ? "text-green-600" : overdueScore >= 50 ? "text-amber-600" : "text-red-600"}`}>
-                  {overdueScore}%
-                </Text>
               </View>
-              <View className="h-1 w-full rounded-full bg-slate-200 mb-1">
-                <View
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${overdueScore}%`,
-                    backgroundColor: overdueScore >= 80 ? "#1a9248" : overdueScore >= 50 ? "#e6a319" : "#dc2626",
-                  }}
-                />
-              </View>
-              <Text className={`${TYPO.micro} text-slate-500`}>
-                {overdueCount === 0 ? "All clear" : `${overdueCount} overdue`}
-              </Text>
-            </TouchableOpacity>
-          </View>
+            );
+          })()}
           {overdueList.length > 0 && (
             <TouchableOpacity
               onPress={() => navigation.getParent()?.navigate("CustomersTab" as never, { screen: "Overdue" } as never)}
