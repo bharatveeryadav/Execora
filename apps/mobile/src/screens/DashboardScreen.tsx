@@ -114,6 +114,7 @@ type Props = BottomTabScreenProps<import("../navigation").MainTabParams, "Dashbo
 export function DashboardScreen({ navigation }: Props) {
   const { contentWidth, contentPad: padding } = useResponsive();
   const [quickActionsExpanded, setQuickActionsExpanded] = useState(false);
+  const [businessHealthExpanded, setBusinessHealthExpanded] = useState(true);
   const qc = useQueryClient();
   const { user } = useAuth();
   const { isConnected } = useWS();
@@ -439,61 +440,80 @@ export function DashboardScreen({ navigation }: Props) {
           </Pressable>
         </Modal>
 
-        {/* 2 — Business Health Score */}
-        <View
-          className="rounded-xl border bg-card p-3 mb-4"
+        {/* 2 — Business Health Score (collapsible) */}
+        <TouchableOpacity
+          activeOpacity={businessHealthExpanded ? 1 : 0.7}
+          onPress={() => !businessHealthExpanded && setBusinessHealthExpanded(true)}
           style={{
-            borderColor: "#e2e8f0",
-            ...(flashCollection || flashStock || flashReceivables ? { borderWidth: 2, borderColor: "#e67e22" } : {}),
+            borderRadius: 12,
+            borderWidth: flashCollection || flashStock || flashReceivables ? 2 : 1,
+            borderColor: flashCollection || flashStock || flashReceivables ? "#e67e22" : "#e2e8f0",
+            backgroundColor: "#fff",
+            padding: businessHealthExpanded ? 12 : 10,
+            marginBottom: 16,
           }}
         >
-          <View className="flex-row items-center justify-between mb-2" style={{ gap: 12 }}>
-            <View className="flex-1 min-w-0">
-              <View className="flex-row items-center gap-1.5">
-                <Text className={TYPO.sectionTitle}>Business Health</Text>
-                <View className={`h-1.5 w-1.5 rounded-full ${isConnected ? "bg-green-500" : "bg-slate-400"}`} />
-                {healthRefreshing && <ActivityIndicator size="small" color="#e67e22" style={{ marginLeft: 4 }} />}
-              </View>
-              <View className="flex-row items-baseline gap-1" style={{ marginTop: 2 }}>
-                <Text className="text-xl font-bold tabular-nums" style={{ color: overallColor }}>
+          <View className="flex-row items-center justify-between" style={{ gap: 12 }}>
+            <View className="flex-1 min-w-0 flex-row items-center gap-3">
+              <View
+                className="w-12 h-12 rounded-full items-center justify-center shrink-0"
+                style={{ borderWidth: 3, borderColor: overallColor, backgroundColor: "#f8fafc" }}
+              >
+                <Text className="text-xs font-bold tabular-nums" style={{ color: overallColor }}>
                   {overall}
                 </Text>
-                <Text className={TYPO.label}>/ 100</Text>
-                <Text className={`${TYPO.label} text-slate-500`}>· {overallLabel}</Text>
               </View>
-              <Text className={`${TYPO.micro} mt-0.5`}>Updated {secsAgo < 10 ? "just now" : `${secsAgo}s ago`}</Text>
+              <View className="flex-1 min-w-0">
+                <View className="flex-row items-center gap-1.5">
+                  <Text className={TYPO.sectionTitle}>Business Health</Text>
+                  <View className={`h-1.5 w-1.5 rounded-full ${isConnected ? "bg-green-500" : "bg-slate-400"}`} />
+                  {healthRefreshing && <ActivityIndicator size="small" color="#e67e22" style={{ marginLeft: 4 }} />}
+                </View>
+                <Text className={`${TYPO.label} mt-0.5`} style={{ color: overallColor }}>
+                  {overall}/100 · {overallLabel}
+                </Text>
+              </View>
             </View>
-            <View
-              className="w-14 h-14 rounded-full items-center justify-center bg-slate-100 shrink-0"
-              style={{ borderWidth: 4, borderColor: overallColor }}
+            <TouchableOpacity
+              onPress={() => setBusinessHealthExpanded((e) => !e)}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              className="flex-row items-center gap-1 shrink-0"
             >
-              <Text className={TYPO.labelBold} style={{ color: overallColor }}>
-                {overall}%
+              <Text className="text-xs font-semibold text-primary">
+                {businessHealthExpanded ? "Hide" : "Show"}{" "}
               </Text>
-            </View>
+              <Ionicons
+                name={businessHealthExpanded ? "chevron-up" : "chevron-down"}
+                size={16}
+                color="#e67e22"
+              />
+            </TouchableOpacity>
           </View>
-          <View className="h-1 w-full rounded-full bg-slate-200 mb-3">
+
+          {businessHealthExpanded && (
+            <>
+          <View className="h-1 w-full rounded-full bg-slate-200 mt-3 mb-3">
             <View
               className="h-full rounded-full"
               style={{ width: `${overall}%`, backgroundColor: overallColor }}
             />
           </View>
           {/* Pillar cards with progress bars and hints */}
-          <View style={{ flexDirection: "row", gap: 8, marginBottom: overdueList.length > 0 || upcomingReminders.length > 0 ? 12 : 0 }}>
+          <View style={{ flexDirection: "row", gap: 6, marginBottom: overdueList.length > 0 || upcomingReminders.length > 0 ? 10 : 0 }}>
             <TouchableOpacity
               onPress={() => navigation.getParent()?.navigate("CustomersTab" as never, { screen: "Payment" } as never)}
               activeOpacity={0.8}
               style={{
                 flex: 1,
                 minWidth: 0,
-                borderRadius: 12,
+                borderRadius: 10,
                 borderWidth: flashCollection ? 2 : 1,
                 borderColor: flashCollection ? "#e67e22" : "#e2e8f0",
                 backgroundColor: "#f8fafc",
-                padding: 10,
+                padding: 8,
               }}
             >
-              <View className="flex-row items-center justify-between mb-1">
+              <View className="flex-row items-center justify-between mb-0.5">
                 <Text className={TYPO.micro}>💰 Collection</Text>
                 <Text className={`${TYPO.microBold} ${collectionRate >= 80 ? "text-green-600" : collectionRate >= 50 ? "text-amber-600" : "text-red-600"}`}>
                   {collectionRate}%
@@ -516,14 +536,14 @@ export function DashboardScreen({ navigation }: Props) {
               style={{
                 flex: 1,
                 minWidth: 0,
-                borderRadius: 12,
+                borderRadius: 10,
                 borderWidth: flashStock ? 2 : 1,
                 borderColor: flashStock ? "#e67e22" : "#e2e8f0",
                 backgroundColor: "#f8fafc",
-                padding: 10,
+                padding: 8,
               }}
             >
-              <View className="flex-row items-center justify-between mb-1">
+              <View className="flex-row items-center justify-between mb-0.5">
                 <View className="flex-row items-center gap-1">
                   <Ionicons name="cube-outline" size={12} color="#64748b" />
                   <Text className={TYPO.micro}>Stock</Text>
@@ -551,14 +571,14 @@ export function DashboardScreen({ navigation }: Props) {
               style={{
                 flex: 1,
                 minWidth: 0,
-                borderRadius: 12,
+                borderRadius: 10,
                 borderWidth: flashReceivables ? 2 : 1,
                 borderColor: flashReceivables ? "#e67e22" : "#e2e8f0",
                 backgroundColor: "#f8fafc",
-                padding: 10,
+                padding: 8,
               }}
             >
-              <View className="flex-row items-center justify-between mb-1">
+              <View className="flex-row items-center justify-between mb-0.5">
                 <View className="flex-row items-center gap-1">
                   <Ionicons name="receipt-outline" size={12} color="#64748b" />
                   <Text className={TYPO.micro}>Receivables</Text>
@@ -634,7 +654,9 @@ export function DashboardScreen({ navigation }: Props) {
               <Text className={`${TYPO.caption} ml-auto`}>View All →</Text>
             </TouchableOpacity>
           )}
-        </View>
+            </>
+          )}
+        </TouchableOpacity>
 
         {/* 3 — AI Agent Feed (command hints + live feed) */}
         <View className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 mb-4">
