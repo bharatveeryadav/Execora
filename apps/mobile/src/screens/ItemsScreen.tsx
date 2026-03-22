@@ -1191,17 +1191,10 @@ function ProductCard({
 
         {/* Price */}
         {price > 0 && (
-          <Text className="text-sm font-bold text-slate-700 mr-3">
+          <Text className="text-sm font-bold text-slate-700">
             ₹{price % 1 === 0 ? price : price.toFixed(2)}
           </Text>
         )}
-
-        {/* Stock badge */}
-        <View className={`px-2 py-1 rounded-lg ${s.bg} mr-3`}>
-          <Text className={`text-xs font-bold ${s.text}`}>
-            {s.dot} {stockVal > 0 ? stockVal : s.label}
-          </Text>
-        </View>
       </View>
 
       {/* Quick stock actions (PRD F-03.2 — adjustment trigger) */}
