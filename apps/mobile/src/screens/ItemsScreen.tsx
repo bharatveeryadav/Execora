@@ -169,6 +169,27 @@ export function ItemsScreen({ navigation }: Props) {
     (Product & { minStock?: number }) | null
   >(null);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showControls, setShowControls] = useState(false);
+
+  const filtersActive = !!(
+    filter !== "all" ||
+    categoryFilter ||
+    sortBy !== "name"
+  );
+
+  const filterSummary = useMemo(() => {
+    const parts: string[] = [];
+    if (categoryFilter) parts.push(categoryFilter);
+    if (filter === "low") parts.push("Low stock");
+    else if (filter === "out") parts.push("Out of stock");
+    else if (filter === "favorites") parts.push("Favorites");
+    if (sortBy === "stockAsc") parts.push("Stock ↑");
+    else if (sortBy === "stockDesc") parts.push("Stock ↓");
+    else if (sortBy === "price") parts.push("Price ↑");
+    else if (sortBy === "priceDesc") parts.push("Price ↓");
+    else if (sortBy === "category") parts.push("A-Z Category");
+    return parts.length > 0 ? parts.join(" · ") : null;
+  }, [categoryFilter, filter, sortBy]);
 
   // ── Data fetching ─────────────────────────────────────────────────────────
 
@@ -374,7 +395,9 @@ export function ItemsScreen({ navigation }: Props) {
                 Items
               </Text>
               <Text className="text-xs text-slate-400">
-                {allProducts.length} products
+                {filtersActive
+                  ? `${filtered.length} of ${allProducts.length} shown`
+                  : `${allProducts.length} products`}
               </Text>
             </View>
             <Pressable
@@ -412,279 +435,226 @@ export function ItemsScreen({ navigation }: Props) {
             />
           </View>
 
-          {/* Controls */}
-          <View className="rounded-[28px] border border-slate-200 bg-white px-4 py-4 shadow-sm">
-            <View className="flex-row gap-2 mb-4">
-              <View className="flex-1 rounded-2xl bg-slate-50 px-3 py-3 border border-slate-200">
-                <Text className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                  Categories
-                </Text>
-                <Text className="text-lg font-bold text-slate-800 mt-1">
-                  {categories.length}
-                </Text>
-              </View>
-              <View className="flex-1 rounded-2xl bg-amber-50 px-3 py-3 border border-amber-100">
-                <Text className="text-[11px] font-semibold uppercase tracking-wider text-amber-500">
-                  Low Stock
-                </Text>
-                <Text className="text-lg font-bold text-amber-700 mt-1">
-                  {lowCount}
-                </Text>
-              </View>
-              <View className="flex-1 rounded-2xl bg-primary/5 px-3 py-3 border border-primary/10">
-                <Text className="text-[11px] font-semibold uppercase tracking-wider text-primary/70">
-                  Showing
-                </Text>
-                <Text className="text-lg font-bold text-primary mt-1">
-                  {filtered.length}
-                </Text>
-              </View>
-            </View>
-
-            <View className="rounded-2xl bg-slate-50 border border-slate-200 px-3 py-3 mb-3">
-              <View className="flex-row items-center justify-between mb-3">
-                <View>
-                  <Text className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                    Browse Categories
-                  </Text>
-                  <Text className="text-xs text-slate-400 mt-1">
-                    Quick switch between product groups
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => setShowCategoryModal(true)}
-                  activeOpacity={0.8}
-                  className="rounded-full bg-white border border-slate-200 px-3 py-2 flex-row items-center"
-                >
-                  <Ionicons name="grid-outline" size={14} color="#475569" />
-                  <Text className="text-xs font-semibold text-slate-700 ml-1.5">
-                    View all
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 8, paddingRight: 8 }}
+          {/* Controls — compact pill bar */}
+          <View>
+            <View className="flex-row items-center gap-2">
+              {/* Pill-bar toggle */}
+              <TouchableOpacity
+                onPress={() => setShowControls((v) => !v)}
+                activeOpacity={0.8}
+                className="flex-1 flex-row items-center bg-slate-100 rounded-xl px-3 py-2.5"
               >
-                <TouchableOpacity
-                  onPress={() => setCategoryFilter(null)}
-                  activeOpacity={0.8}
-                  style={{ minWidth: 88 }}
-                  className={
-                    !categoryFilter
-                      ? "rounded-2xl border border-primary bg-primary px-3 py-3"
-                      : "rounded-2xl border border-slate-200 bg-white px-3 py-3"
-                  }
-                >
+                <Ionicons
+                  name="options-outline"
+                  size={16}
+                  color={filtersActive ? "#e67e22" : "#94a3b8"}
+                />
+                {filtersActive ? (
                   <Text
-                    className={
-                      !categoryFilter
-                        ? "text-xs font-semibold uppercase tracking-wider text-white/80"
-                        : "text-xs font-semibold uppercase tracking-wider text-slate-400"
-                    }
-                  >
-                    All
-                  </Text>
-                  <Text
-                    className={
-                      !categoryFilter
-                        ? "text-sm font-bold text-white mt-1"
-                        : "text-sm font-bold text-slate-800 mt-1"
-                    }
+                    className="flex-1 text-xs font-semibold text-primary mx-2"
                     numberOfLines={1}
                   >
-                    Products
+                    {filterSummary}
                   </Text>
-                </TouchableOpacity>
-
-                {previewCategories.map((cat) => (
-                  <TouchableOpacity
-                    key={cat}
-                    onPress={() =>
-                      setCategoryFilter(categoryFilter === cat ? null : cat)
-                    }
-                    activeOpacity={0.8}
-                    style={{ minWidth: 110, maxWidth: 140 }}
-                    className={
-                      categoryFilter === cat
-                        ? "rounded-2xl border border-primary bg-primary/10 px-3 py-3"
-                        : "rounded-2xl border border-slate-200 bg-white px-3 py-3"
-                    }
-                  >
-                    <Text
-                      className={
-                        categoryFilter === cat
-                          ? "text-xs font-semibold uppercase tracking-wider text-primary/70"
-                          : "text-xs font-semibold uppercase tracking-wider text-slate-400"
-                      }
-                    >
-                      Category
-                    </Text>
-                    <Text
-                      className={
-                        categoryFilter === cat
-                          ? "text-sm font-bold text-primary mt-1"
-                          : "text-sm font-bold text-slate-800 mt-1"
-                      }
-                      numberOfLines={1}
-                    >
-                      {cat}
-                    </Text>
-                    <Text
-                      className={
-                        categoryFilter === cat
-                          ? "text-xs text-primary/80 mt-1"
-                          : "text-xs text-slate-400 mt-1"
-                      }
-                    >
-                      {categoryCounts[cat] ?? 0} items
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-
-                {categories.length > previewCategories.length && (
-                  <TouchableOpacity
-                    onPress={() => setShowCategoryModal(true)}
-                    activeOpacity={0.8}
-                    style={{ minWidth: 92 }}
-                    className="rounded-2xl border border-dashed border-slate-300 bg-white px-3 py-3 items-center justify-center"
-                  >
-                    <Text className="text-lg font-bold text-slate-700">
-                      +{categories.length - previewCategories.length}
-                    </Text>
-                    <Text className="text-xs font-semibold text-slate-400 mt-1">
-                      more
-                    </Text>
-                  </TouchableOpacity>
+                ) : (
+                  <Text className="flex-1 text-xs text-slate-400 mx-2">
+                    Filter &amp; sort
+                  </Text>
                 )}
-              </ScrollView>
+                {filtersActive && (
+                  <View className="w-2 h-2 rounded-full bg-primary mr-2" />
+                )}
+                <Ionicons
+                  name={showControls ? "chevron-up" : "chevron-down"}
+                  size={14}
+                  color="#94a3b8"
+                />
+              </TouchableOpacity>
+
+              {/* Quick: categories */}
+              <TouchableOpacity
+                onPress={() => setShowCategoryModal(true)}
+                activeOpacity={0.8}
+                className="h-10 w-10 rounded-xl bg-slate-100 items-center justify-center"
+              >
+                <Ionicons name="grid-outline" size={18} color="#475569" />
+              </TouchableOpacity>
+
+              {/* Quick: clear if active */}
+              {filtersActive && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setFilter("all");
+                    setCategoryFilter(null);
+                    setSortBy("name");
+                  }}
+                  activeOpacity={0.8}
+                  className="h-10 w-10 rounded-xl bg-red-50 items-center justify-center border border-red-100"
+                >
+                  <Ionicons name="close" size={16} color="#ef4444" />
+                </TouchableOpacity>
+              )}
             </View>
 
-            <View className="rounded-2xl bg-slate-50 border border-slate-200 px-3 py-3">
-              <View className="flex-row items-center justify-between mb-3">
-                <Text className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                  Filters & Sort
+            {/* Expandable controls panel */}
+            {showControls && (
+              <View className="mt-2 rounded-2xl border border-slate-200 bg-white px-3 py-3">
+                {/* Categories row */}
+                <Text className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                  Category
                 </Text>
-                {(filter !== "all" || categoryFilter || sortBy !== "name") && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: 6, paddingRight: 8 }}
+                  className="mb-3"
+                >
                   <TouchableOpacity
-                    onPress={() => {
-                      setFilter("all");
-                      setCategoryFilter(null);
-                      setSortBy("name");
-                    }}
-                    activeOpacity={0.8}
-                  >
-                    <Text className="text-xs font-semibold text-primary">
-                      Reset
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              <View className="flex-row flex-wrap gap-2 mb-3">
-                {(
-                  [
-                    { key: "all", label: "All", meta: allProducts.length },
-                    {
-                      key: "low",
-                      label: "Low stock",
-                      meta: lowCount,
-                      disabled: lowCount === 0,
-                    },
-                    {
-                      key: "out",
-                      label: "Out of stock",
-                      meta: outCount,
-                      disabled: outCount === 0,
-                    },
-                    {
-                      key: "favorites",
-                      label: "Favorites",
-                      meta: favoritesCount,
-                      disabled: favoritesCount === 0,
-                    },
-                  ] as Array<{
-                    key: FilterMode;
-                    label: string;
-                    meta: number;
-                    disabled?: boolean;
-                  }>
-                ).map(({ key, label, meta, disabled }) => (
-                  <TouchableOpacity
-                    key={key}
-                    disabled={disabled}
-                    onPress={() => requestAnimationFrame(() => setFilter(key))}
+                    onPress={() => setCategoryFilter(null)}
                     activeOpacity={0.8}
                     className={
-                      filter === key
-                        ? "min-w-[96px] rounded-2xl border border-primary bg-primary/10 px-3 py-2.5"
-                        : disabled
-                          ? "min-w-[96px] rounded-2xl border border-slate-200 bg-slate-100 px-3 py-2.5 opacity-40"
-                          : "min-w-[96px] rounded-2xl border border-slate-200 bg-white px-3 py-2.5"
+                      !categoryFilter
+                        ? "px-3 py-1.5 rounded-full border border-primary bg-primary"
+                        : "px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50"
                     }
                   >
                     <Text
                       className={
-                        filter === key
-                          ? "text-xs font-semibold text-primary"
-                          : "text-xs font-semibold text-slate-700"
-                      }
-                    >
-                      {label}
-                    </Text>
-                    <Text
-                      className={
-                        filter === key
-                          ? "text-[11px] text-primary/80 mt-1"
-                          : "text-[11px] text-slate-400 mt-1"
-                      }
-                    >
-                      {meta} items
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: 8, paddingRight: 8 }}
-              >
-                {(
-                  [
-                    { key: "name" as SortMode, label: "Name" },
-                    { key: "stockAsc" as SortMode, label: "Stock low" },
-                    { key: "stockDesc" as SortMode, label: "Stock high" },
-                    { key: "price" as SortMode, label: "Price low" },
-                    { key: "priceDesc" as SortMode, label: "Price high" },
-                    { key: "category" as SortMode, label: "Category" },
-                  ] as Array<{ key: SortMode; label: string }>
-                ).map(({ key, label }) => (
-                  <TouchableOpacity
-                    key={key}
-                    onPress={() => setSortBy(key)}
-                    activeOpacity={0.8}
-                    className={
-                      sortBy === key
-                        ? "rounded-full bg-slate-800 px-3.5 py-2 border border-slate-800"
-                        : "rounded-full bg-white px-3.5 py-2 border border-slate-200"
-                    }
-                  >
-                    <Text
-                      className={
-                        sortBy === key
+                        !categoryFilter
                           ? "text-xs font-semibold text-white"
                           : "text-xs font-semibold text-slate-600"
                       }
                     >
-                      {label}
+                      All
                     </Text>
                   </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
+                  {categories.map((cat) => (
+                    <TouchableOpacity
+                      key={cat}
+                      onPress={() =>
+                        setCategoryFilter(categoryFilter === cat ? null : cat)
+                      }
+                      activeOpacity={0.8}
+                      className={
+                        categoryFilter === cat
+                          ? "px-3 py-1.5 rounded-full border border-primary bg-primary/10"
+                          : "px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50"
+                      }
+                    >
+                      <Text
+                        className={
+                          categoryFilter === cat
+                            ? "text-xs font-semibold text-primary"
+                            : "text-xs font-semibold text-slate-600"
+                        }
+                        numberOfLines={1}
+                      >
+                        {cat}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+
+                {/* Filter row */}
+                <Text className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                  Filter
+                </Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: 6, paddingRight: 8 }}
+                  className="mb-3"
+                >
+                  {[
+                    {
+                      key: "all" as FilterMode,
+                      label: `All (${allProducts.length})`,
+                    },
+                    {
+                      key: "low" as FilterMode,
+                      label: `Low (${lowCount})`,
+                      disabled: lowCount === 0,
+                    },
+                    {
+                      key: "out" as FilterMode,
+                      label: `Out (${outCount})`,
+                      disabled: outCount === 0,
+                    },
+                    {
+                      key: "favorites" as FilterMode,
+                      label: `Fav (${favoritesCount})`,
+                      disabled: favoritesCount === 0,
+                    },
+                  ].map(({ key, label, disabled }) => (
+                    <TouchableOpacity
+                      key={key}
+                      disabled={disabled}
+                      onPress={() =>
+                        requestAnimationFrame(() => setFilter(key))
+                      }
+                      activeOpacity={0.8}
+                      className={
+                        filter === key
+                          ? "px-3 py-1.5 rounded-full border border-primary bg-primary/10"
+                          : disabled
+                            ? "px-3 py-1.5 rounded-full border border-slate-200 bg-slate-100 opacity-40"
+                            : "px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50"
+                      }
+                    >
+                      <Text
+                        className={
+                          filter === key
+                            ? "text-xs font-semibold text-primary"
+                            : "text-xs font-semibold text-slate-600"
+                        }
+                      >
+                        {label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+
+                {/* Sort row */}
+                <Text className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                  Sort
+                </Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: 6, paddingRight: 8 }}
+                >
+                  {[
+                    { key: "name" as SortMode, label: "Name" },
+                    { key: "stockAsc" as SortMode, label: "Stock ↑" },
+                    { key: "stockDesc" as SortMode, label: "Stock ↓" },
+                    { key: "price" as SortMode, label: "Price ↑" },
+                    { key: "priceDesc" as SortMode, label: "Price ↓" },
+                    { key: "category" as SortMode, label: "Category" },
+                  ].map(({ key, label }) => (
+                    <TouchableOpacity
+                      key={key}
+                      onPress={() => setSortBy(key)}
+                      activeOpacity={0.8}
+                      className={
+                        sortBy === key
+                          ? "px-3 py-1.5 rounded-full border border-slate-700 bg-slate-700"
+                          : "px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50"
+                      }
+                    >
+                      <Text
+                        className={
+                          sortBy === key
+                            ? "text-xs font-semibold text-white"
+                            : "text-xs font-semibold text-slate-600"
+                        }
+                      >
+                        {label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
           </View>
         </View>
       </View>
