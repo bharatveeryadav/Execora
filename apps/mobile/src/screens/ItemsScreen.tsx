@@ -1116,6 +1116,7 @@ function ProductCard({
   const s = STATUS_STYLES[status];
   const stockVal = num(product.stock);
   const price = num(product.price);
+  const quantityText = `QTY: ${stockVal}${product.unit ? ` ${product.unit}` : ""}`;
 
   const a11yLabel = `${product.name}, ${status === "out" ? "Out of stock" : status === "low" ? "Low stock" : "In stock"}, ${stockVal} ${product.unit ?? "units"}`;
 
@@ -1130,7 +1131,13 @@ function ProductCard({
       accessibilityHint="Tap to view details, long-press to adjust stock"
       className="bg-white rounded-2xl border border-slate-200 mb-3 overflow-hidden"
     >
-      <View className="flex-row items-center px-4 py-3">
+      <View className="absolute top-3 right-3 rounded-full bg-emerald-500 px-2.5 py-1 z-10">
+        <Text className="text-[10px] font-bold uppercase tracking-wide text-white">
+          {quantityText}
+        </Text>
+      </View>
+
+      <View className="flex-row items-center px-4 pt-10 pb-3">
         {/* Product image or category icon */}
         <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center mr-3 overflow-hidden">
           {imageUrl ? (
