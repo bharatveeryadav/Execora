@@ -13,7 +13,13 @@
  * All: manual refresh required         | React Query auto-refresh on focus
  */
 
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, {
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+  useRef,
+} from "react";
 import {
   View,
   Text,
@@ -170,6 +176,18 @@ export function ItemsScreen({ navigation }: Props) {
   >(null);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showControls, setShowControls] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const searchInputRef = useRef<TextInput>(null);
+
+  const openSearch = useCallback(() => {
+    setShowSearch(true);
+    setTimeout(() => searchInputRef.current?.focus(), 80);
+  }, []);
+
+  const closeSearch = useCallback(() => {
+    setShowSearch(false);
+    setSearch("");
+  }, []);
 
   const filtersActive = !!(
     filter !== "all" ||
@@ -389,51 +407,77 @@ export function ItemsScreen({ navigation }: Props) {
         <View
           style={{ width: "100%", maxWidth: contentWidth, alignSelf: "center" }}
         >
-          <View className="flex-row items-center justify-between mb-3">
-            <View>
-              <Text className="text-xl font-bold tracking-tight text-slate-800">
-                Items
-              </Text>
-              <Text className="text-xs text-slate-400">
-                {filtersActive
-                  ? `${filtered.length} of ${allProducts.length} shown`
-                  : `${allProducts.length} products`}
-              </Text>
+          {/* Title row — collapses into search bar when active */}
+          {showSearch ? (
+            <View className="flex-row items-center gap-2 mb-3">
+              <View className="flex-1 flex-row items-center bg-slate-100 rounded-xl px-3 py-2">
+                <Ionicons
+                  name="search"
+                  size={18}
+                  color="#e67e22"
+                  style={{ marginRight: 8 }}
+                />
+                <TextInput
+                  ref={searchInputRef}
+                  className="flex-1 text-sm text-slate-800"
+                  placeholder="Search products..."
+                  placeholderTextColor="#94a3b8"
+                  value={search}
+                  onChangeText={setSearch}
+                  autoCorrect={false}
+                  returnKeyType="search"
+                  clearButtonMode="while-editing"
+                />
+              </View>
+              <TouchableOpacity
+                onPress={closeSearch}
+                activeOpacity={0.8}
+                className="w-10 h-10 rounded-xl bg-slate-100 items-center justify-center"
+              >
+                <Ionicons name="close" size={20} color="#475569" />
+              </TouchableOpacity>
             </View>
-            <Pressable
-              onPress={() => {
-                InteractionManager.runAfterInteractions(() => {
-                  navigation?.navigate?.("ItemsMenu");
-                });
-              }}
-              className="w-12 h-12 rounded-full bg-slate-100 items-center justify-center"
-              style={({ pressed }) => ({
-                opacity: pressed ? 0.7 : 1,
-                backgroundColor: pressed ? "#e2e8f0" : "#f1f5f9",
-              })}
-            >
-              <Ionicons name="ellipsis-horizontal" size={22} color="#475569" />
-            </Pressable>
-          </View>
-
-          {/* Search */}
-          <View className="bg-slate-100 rounded-xl flex-row items-center px-3 py-2 mb-3">
-            <Ionicons
-              name="search"
-              size={18}
-              color="#94a3b8"
-              style={{ marginRight: 8 }}
-            />
-            <TextInput
-              className="flex-1 text-sm text-slate-800"
-              placeholder="Search products..."
-              placeholderTextColor="#94a3b8"
-              value={search}
-              onChangeText={setSearch}
-              autoCorrect={false}
-              clearButtonMode="while-editing"
-            />
-          </View>
+          ) : (
+            <View className="flex-row items-center justify-between mb-3">
+              <View>
+                <Text className="text-xl font-bold tracking-tight text-slate-800">
+                  Items
+                </Text>
+                <Text className="text-xs text-slate-400">
+                  {filtersActive
+                    ? `${filtered.length} of ${allProducts.length} shown`
+                    : `${allProducts.length} products`}
+                </Text>
+              </View>
+              <View className="flex-row items-center gap-2">
+                <TouchableOpacity
+                  onPress={openSearch}
+                  activeOpacity={0.8}
+                  className="w-10 h-10 rounded-full bg-slate-100 items-center justify-center"
+                >
+                  <Ionicons name="search" size={20} color="#475569" />
+                </TouchableOpacity>
+                <Pressable
+                  onPress={() => {
+                    InteractionManager.runAfterInteractions(() => {
+                      navigation?.navigate?.("ItemsMenu");
+                    });
+                  }}
+                  className="w-10 h-10 rounded-full bg-slate-100 items-center justify-center"
+                  style={({ pressed }) => ({
+                    opacity: pressed ? 0.7 : 1,
+                    backgroundColor: pressed ? "#e2e8f0" : "#f1f5f9",
+                  })}
+                >
+                  <Ionicons
+                    name="ellipsis-horizontal"
+                    size={20}
+                    color="#475569"
+                  />
+                </Pressable>
+              </View>
+            </View>
+          )}
 
           {/* Controls — compact pill bar */}
           <View>
