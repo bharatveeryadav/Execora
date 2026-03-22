@@ -425,8 +425,14 @@ export function ItemsScreen({ navigation }: Props) {
                   value={search}
                   onChangeText={setSearch}
                   autoCorrect={false}
+                  autoCapitalize="none"
+                  spellCheck={false}
                   returnKeyType="search"
                   clearButtonMode="while-editing"
+                  keyboardAppearance="light"
+                  selectionColor="#e67e2299"
+                  cursorColor="#e67e22"
+                  disableFullscreenUI={true}
                 />
               </View>
               <TouchableOpacity
