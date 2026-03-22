@@ -2,7 +2,15 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { useEffect } from "react";
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { SettingsLayout } from "@/components/SettingsLayout";
 import Index from "./pages/Index";
@@ -63,9 +71,53 @@ import { OnboardingWizard } from "@/components/OnboardingWizard";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const queryClient = new QueryClient();
+const LAST_WEB_PATH_KEY = "execora_last_web_path";
+const RELOAD_PATH_KEY = "execora_reload_path";
+
+function RoutePersistence() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  useEffect(() => {
+    if (location.pathname === "/login") return;
+    const fullPath = `${location.pathname}${location.search}${location.hash}`;
+    localStorage.setItem(LAST_WEB_PATH_KEY, fullPath);
+  }, [location.pathname, location.search, location.hash]);
+
+  useEffect(() => {
+    const fullPath = `${location.pathname}${location.search}${location.hash}`;
+
+    const markReloadPath = () => {
+      if (location.pathname === "/login") return;
+      sessionStorage.setItem(RELOAD_PATH_KEY, fullPath);
+    };
+
+    window.addEventListener("beforeunload", markReloadPath);
+    return () => window.removeEventListener("beforeunload", markReloadPath);
+  }, [location.pathname, location.search, location.hash]);
+
+  useEffect(() => {
+    if (isLoading || !isAuthenticated) return;
+    if (location.pathname !== "/") return;
+
+    const reloadPath = sessionStorage.getItem(RELOAD_PATH_KEY);
+    sessionStorage.removeItem(RELOAD_PATH_KEY);
+
+    const fallbackPath = localStorage.getItem(LAST_WEB_PATH_KEY);
+    const restorePath = reloadPath || fallbackPath;
+
+    if (!restorePath || restorePath === "/" || restorePath === "/login") return;
+
+    navigate(restorePath, { replace: true });
+  }, [isAuthenticated, isLoading, location.pathname, navigate]);
+
+  return null;
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -76,7 +128,15 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{
+          from: `${location.pathname}${location.search}${location.hash}`,
+        }}
+      />
+    );
   }
 
   return (
@@ -113,22 +173,40 @@ function AppRoutes() {
       >
         <Route index element={<Index />} />
         <Route path="settings" element={<SettingsLayout />}>
-          <Route index element={<Navigate to="/settings/profile/company" replace />} />
+          <Route
+            index
+            element={<Navigate to="/settings/profile/company" replace />}
+          />
           <Route path="profile/company" element={<Settings />} />
           <Route path="profile/user" element={<SettingsProfileUser />} />
           <Route path="profile/users" element={<SettingsProfileUsers />} />
-          <Route path="general/preferences" element={<SettingsGeneralPreferences />} />
-          <Route path="general/thermal-print" element={<SettingsGeneralThermalPrint />} />
+          <Route
+            path="general/preferences"
+            element={<SettingsGeneralPreferences />}
+          />
+          <Route
+            path="general/thermal-print"
+            element={<SettingsGeneralThermalPrint />}
+          />
           <Route path="general/barcode" element={<SettingsGeneralBarcode />} />
-          <Route path="general/signatures" element={<SettingsGeneralSignatures />} />
+          <Route
+            path="general/signatures"
+            element={<SettingsGeneralSignatures />}
+          />
           <Route path="general/notes" element={<SettingsGeneralNotes />} />
           <Route path="general/terms" element={<SettingsGeneralTerms />} />
-          <Route path="general/auto-reminders" element={<SettingsGeneralAutoReminders />} />
+          <Route
+            path="general/auto-reminders"
+            element={<SettingsGeneralAutoReminders />}
+          />
           <Route path="general/other" element={<SettingsGeneralOther />} />
           <Route path="banks/banks" element={<SettingsBanksBanks />} />
           <Route path="banks/wallet" element={<SettingsBanksWallet />} />
           <Route path="banks/other" element={<SettingsBanksOther />} />
-          <Route path="payment-gateway/api" element={<SettingsPaymentGateway />} />
+          <Route
+            path="payment-gateway/api"
+            element={<SettingsPaymentGateway />}
+          />
           <Route path="more" element={<SettingsMore />} />
           <Route path="billing" element={<BillingSettings />} />
         </Route>
@@ -186,6 +264,7 @@ const App = () => (
                 v7_relativeSplatPath: true,
               }}
             >
+              <RoutePersistence />
               <ErrorBoundary>
                 <AppRoutes />
                 <ConfettiOverlay />

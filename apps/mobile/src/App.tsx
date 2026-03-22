@@ -1,9 +1,10 @@
 import "./global.css";
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { ScaledText } from "./components/ui/ScaledText";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  InitialState,
   NavigationContainer,
   NavigationContainerRef,
 } from "@react-navigation/native";
@@ -33,6 +34,7 @@ import { OfflineProvider, useOffline } from "./contexts/OfflineContext";
 import { OfflineBanner } from "./components/common/OfflineBanner";
 import { usePushAndDeepLinks } from "./hooks/usePushAndDeepLinks";
 import { TypographyProvider } from "./contexts/TypographyContext";
+import { storage } from "./lib/storage";
 
 // Boot the API client once (token storage injected)
 bootApi();
@@ -44,9 +46,26 @@ const queryClient = new QueryClient({
   },
 });
 
+const NAV_STATE_KEY = "execora_nav_state";
+
+function hasRoute(state: unknown, target: string): boolean {
+  if (!state || typeof state !== "object") return false;
+  const navState = state as {
+    routes?: Array<{ name?: string; state?: unknown }>;
+  };
+  if (!Array.isArray(navState.routes)) return false;
+  return navState.routes.some(
+    (route) => route?.name === target || hasRoute(route?.state, target),
+  );
+}
+
 // Auto-login credentials — only when ENV.allowAutoLogin (dev/staging, never production)
-const AUTO_EMAIL = ENV.allowAutoLogin ? (process.env.EXPO_PUBLIC_LOGIN_EMAIL ?? "") : "";
-const AUTO_PASSWORD = ENV.allowAutoLogin ? (process.env.EXPO_PUBLIC_LOGIN_PASSWORD ?? "") : "";
+const AUTO_EMAIL = ENV.allowAutoLogin
+  ? (process.env.EXPO_PUBLIC_LOGIN_EMAIL ?? "")
+  : "";
+const AUTO_PASSWORD = ENV.allowAutoLogin
+  ? (process.env.EXPO_PUBLIC_LOGIN_PASSWORD ?? "")
+  : "";
 
 function AppContent() {
   const { isLoggedIn } = useAuth();
@@ -69,7 +88,10 @@ function AppContent() {
   if (!ready) return null;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#f1f3f6" }} className="flex-1">
+    <GestureHandlerRootView
+      style={{ flex: 1, backgroundColor: "#f1f3f6" }}
+      className="flex-1"
+    >
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <OfflineProvider>
@@ -88,6 +110,22 @@ function AppContentInner() {
   const { isLoggedIn, login, loginWithUser, logout } = useAuth();
   const { isOffline, pendingCount, isSyncing } = useOffline();
 
+  const initialNavState = useMemo<InitialState | undefined>(() => {
+    if (!isLoggedIn) return undefined;
+    try {
+      const raw = storage.getString(NAV_STATE_KEY);
+      if (!raw) return undefined;
+      const parsed = JSON.parse(raw) as InitialState;
+      // Don't restore into auth flow; let RootNavigator decide auth branch.
+      if (hasRoute(parsed, "Auth") || hasRoute(parsed, "Login")) {
+        return undefined;
+      }
+      return parsed;
+    } catch {
+      return undefined;
+    }
+  }, [isLoggedIn]);
+
   usePushAndDeepLinks(navRef, isLoggedIn);
 
   // Fallback: hide splash after 1.5s if onReady never fires (e.g. boot error)
@@ -98,13 +136,32 @@ function AppContentInner() {
 
   useEffect(() => {
     if (isLoggedIn || !AUTO_EMAIL || !AUTO_PASSWORD) return;
-    authApi.login(AUTO_EMAIL, AUTO_PASSWORD).then((data: { accessToken: string; refreshToken: string; user: unknown }) => {
-      const { tokenStorage } = require("./lib/storage");
-      tokenStorage.setTokens(data.accessToken, data.refreshToken);
-      const u = data.user as { id?: string; name?: string; email?: string; role?: string } | undefined;
-      if (u?.id) loginWithUser({ id: u.id, name: u.name, email: u.email, role: u.role });
-      else login();
-    }).catch(() => { /* show login screen on failure */ });
+    authApi
+      .login(AUTO_EMAIL, AUTO_PASSWORD)
+      .then(
+        (data: {
+          accessToken: string;
+          refreshToken: string;
+          user: unknown;
+        }) => {
+          const { tokenStorage } = require("./lib/storage");
+          tokenStorage.setTokens(data.accessToken, data.refreshToken);
+          const u = data.user as
+            | { id?: string; name?: string; email?: string; role?: string }
+            | undefined;
+          if (u?.id)
+            loginWithUser({
+              id: u.id,
+              name: u.name,
+              email: u.email,
+              role: u.role,
+            });
+          else login();
+        },
+      )
+      .catch(() => {
+        /* show login screen on failure */
+      });
   }, [login, loginWithUser]);
 
   const handleAuthExpired = useCallback(() => {
@@ -116,11 +173,28 @@ function AppContentInner() {
     setAuthExpiredHandler(handleAuthExpired);
   }, [handleAuthExpired]);
 
+  useEffect(() => {
+    if (!isLoggedIn) {
+      storage.delete(NAV_STATE_KEY);
+    }
+  }, [isLoggedIn]);
+
   return (
     <>
-      {isOffline && <OfflineBanner pendingCount={pendingCount} isSyncing={isSyncing} />}
+      {isOffline && (
+        <OfflineBanner pendingCount={pendingCount} isSyncing={isSyncing} />
+      )}
       <NavigationContainer
         ref={navRef}
+        initialState={initialNavState}
+        onStateChange={(state) => {
+          if (!state || !isLoggedIn) return;
+          try {
+            storage.set(NAV_STATE_KEY, JSON.stringify(state));
+          } catch {
+            // Ignore persistence failures to avoid affecting navigation.
+          }
+        }}
         onReady={() => {
           setAuthExpiredHandler(() =>
             navRef.current?.navigate("Login" as never),
@@ -162,7 +236,9 @@ class AppErrorBoundary extends React.Component<
         : (this.state.error?.message ?? "Unknown error");
       return (
         <View style={styles.errorContainer}>
-          <ScaledText style={styles.errorTitle}>Something went wrong</ScaledText>
+          <ScaledText style={styles.errorTitle}>
+            Something went wrong
+          </ScaledText>
           <ScaledText style={styles.errorText}>{userMessage}</ScaledText>
           <TouchableOpacity onPress={this.handleRetry} style={styles.retryBtn}>
             <ScaledText style={styles.retryText}>Try again</ScaledText>
@@ -183,7 +259,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   errorTitle: { fontSize: 18, fontWeight: "600", marginBottom: 8 },
-  errorText: { fontSize: 14, color: "#666", textAlign: "center", marginBottom: 16 },
+  errorText: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    marginBottom: 16,
+  },
   retryBtn: {
     paddingHorizontal: 24,
     paddingVertical: 12,

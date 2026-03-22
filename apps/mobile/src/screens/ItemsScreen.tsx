@@ -548,161 +548,169 @@ export function ItemsScreen({ navigation }: Props) {
 
             {/* Expandable controls panel */}
             {showControls && (
-              <View className="mt-2 rounded-2xl border border-slate-200 bg-white px-3 py-3">
-                {/* Categories row */}
-                <Text className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-                  Category
-                </Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ gap: 6, paddingRight: 8 }}
-                  className="mb-3"
-                >
-                  <TouchableOpacity
-                    onPress={() => setCategoryFilter(null)}
-                    activeOpacity={0.8}
-                    className={
-                      !categoryFilter
-                        ? "px-3 py-1.5 rounded-full border border-primary bg-primary"
-                        : "px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50"
-                    }
+              <View className="mt-2 rounded-2xl border border-slate-200 bg-white px-2.5 py-2">
+                {/* Categories */}
+                <View className="mb-2 flex-row items-center">
+                  <View className="mr-2 h-6 w-6 items-center justify-center rounded-lg bg-slate-100">
+                    <Ionicons name="grid-outline" size={13} color="#64748b" />
+                  </View>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 6, paddingRight: 8 }}
                   >
-                    <Text
+                    <TouchableOpacity
+                      onPress={() => setCategoryFilter(null)}
+                      activeOpacity={0.8}
                       className={
                         !categoryFilter
-                          ? "text-xs font-semibold text-white"
-                          : "text-xs font-semibold text-slate-600"
-                      }
-                    >
-                      All
-                    </Text>
-                  </TouchableOpacity>
-                  {categories.map((cat) => (
-                    <TouchableOpacity
-                      key={cat}
-                      onPress={() =>
-                        setCategoryFilter(categoryFilter === cat ? null : cat)
-                      }
-                      activeOpacity={0.8}
-                      className={
-                        categoryFilter === cat
-                          ? "px-3 py-1.5 rounded-full border border-primary bg-primary/10"
-                          : "px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50"
+                          ? "px-2.5 py-1 rounded-full border border-primary bg-primary"
+                          : "px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50"
                       }
                     >
                       <Text
+                        className={
+                          !categoryFilter
+                            ? "text-[11px] font-semibold text-white"
+                            : "text-[11px] font-semibold text-slate-600"
+                        }
+                      >
+                        All
+                      </Text>
+                    </TouchableOpacity>
+                    {categories.map((cat) => (
+                      <TouchableOpacity
+                        key={cat}
+                        onPress={() =>
+                          setCategoryFilter(categoryFilter === cat ? null : cat)
+                        }
+                        activeOpacity={0.8}
                         className={
                           categoryFilter === cat
-                            ? "text-xs font-semibold text-primary"
-                            : "text-xs font-semibold text-slate-600"
+                            ? "px-2.5 py-1 rounded-full border border-primary bg-primary/10"
+                            : "px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50"
                         }
-                        numberOfLines={1}
                       >
-                        {cat}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+                        <Text
+                          className={
+                            categoryFilter === cat
+                              ? "text-[11px] font-semibold text-primary"
+                              : "text-[11px] font-semibold text-slate-600"
+                          }
+                          numberOfLines={1}
+                        >
+                          {cat}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
 
-                {/* Filter row */}
-                <Text className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-                  Filter
-                </Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ gap: 6, paddingRight: 8 }}
-                  className="mb-3"
-                >
-                  {[
-                    {
-                      key: "all" as FilterMode,
-                      label: `All (${allProducts.length})`,
-                    },
-                    {
-                      key: "low" as FilterMode,
-                      label: `Low (${lowCount})`,
-                      disabled: lowCount === 0,
-                    },
-                    {
-                      key: "out" as FilterMode,
-                      label: `Out (${outCount})`,
-                      disabled: outCount === 0,
-                    },
-                    {
-                      key: "favorites" as FilterMode,
-                      label: `Fav (${favoritesCount})`,
-                      disabled: favoritesCount === 0,
-                    },
-                  ].map(({ key, label, disabled }) => (
-                    <TouchableOpacity
-                      key={key}
-                      disabled={disabled}
-                      onPress={() =>
-                        requestAnimationFrame(() => setFilter(key))
-                      }
-                      activeOpacity={0.8}
-                      className={
-                        filter === key
-                          ? "px-3 py-1.5 rounded-full border border-primary bg-primary/10"
-                          : disabled
-                            ? "px-3 py-1.5 rounded-full border border-slate-200 bg-slate-100 opacity-40"
-                            : "px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50"
-                      }
-                    >
-                      <Text
+                {/* Filters */}
+                <View className="mb-2 flex-row items-center">
+                  <View className="mr-2 h-6 w-6 items-center justify-center rounded-lg bg-slate-100">
+                    <Ionicons name="funnel-outline" size={13} color="#64748b" />
+                  </View>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 6, paddingRight: 8 }}
+                  >
+                    {[
+                      {
+                        key: "all" as FilterMode,
+                        label: `All (${allProducts.length})`,
+                      },
+                      {
+                        key: "low" as FilterMode,
+                        label: `Low (${lowCount})`,
+                        disabled: lowCount === 0,
+                      },
+                      {
+                        key: "out" as FilterMode,
+                        label: `Out (${outCount})`,
+                        disabled: outCount === 0,
+                      },
+                      {
+                        key: "favorites" as FilterMode,
+                        label: `Fav (${favoritesCount})`,
+                        disabled: favoritesCount === 0,
+                      },
+                    ].map(({ key, label, disabled }) => (
+                      <TouchableOpacity
+                        key={key}
+                        disabled={disabled}
+                        onPress={() =>
+                          requestAnimationFrame(() => setFilter(key))
+                        }
+                        activeOpacity={0.8}
                         className={
                           filter === key
-                            ? "text-xs font-semibold text-primary"
-                            : "text-xs font-semibold text-slate-600"
+                            ? "px-2.5 py-1 rounded-full border border-primary bg-primary/10"
+                            : disabled
+                              ? "px-2.5 py-1 rounded-full border border-slate-200 bg-slate-100 opacity-40"
+                              : "px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50"
                         }
                       >
-                        {label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+                        <Text
+                          className={
+                            filter === key
+                              ? "text-[11px] font-semibold text-primary"
+                              : "text-[11px] font-semibold text-slate-600"
+                          }
+                        >
+                          {label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
 
-                {/* Sort row */}
-                <Text className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-                  Sort
-                </Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ gap: 6, paddingRight: 8 }}
-                >
-                  {[
-                    { key: "name" as SortMode, label: "Name" },
-                    { key: "stockAsc" as SortMode, label: "Stock ↑" },
-                    { key: "stockDesc" as SortMode, label: "Stock ↓" },
-                    { key: "price" as SortMode, label: "Price ↑" },
-                    { key: "priceDesc" as SortMode, label: "Price ↓" },
-                    { key: "category" as SortMode, label: "Category" },
-                  ].map(({ key, label }) => (
-                    <TouchableOpacity
-                      key={key}
-                      onPress={() => setSortBy(key)}
-                      activeOpacity={0.8}
-                      className={
-                        sortBy === key
-                          ? "px-3 py-1.5 rounded-full border border-slate-700 bg-slate-700"
-                          : "px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50"
-                      }
-                    >
-                      <Text
+                {/* Sorting */}
+                <View className="flex-row items-center">
+                  <View className="mr-2 h-6 w-6 items-center justify-center rounded-lg bg-slate-100">
+                    <Ionicons
+                      name="swap-vertical-outline"
+                      size={13}
+                      color="#64748b"
+                    />
+                  </View>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 6, paddingRight: 8 }}
+                  >
+                    {[
+                      { key: "name" as SortMode, label: "Name" },
+                      { key: "stockAsc" as SortMode, label: "Stock ↑" },
+                      { key: "stockDesc" as SortMode, label: "Stock ↓" },
+                      { key: "price" as SortMode, label: "Price ↑" },
+                      { key: "priceDesc" as SortMode, label: "Price ↓" },
+                      { key: "category" as SortMode, label: "Category" },
+                    ].map(({ key, label }) => (
+                      <TouchableOpacity
+                        key={key}
+                        onPress={() => setSortBy(key)}
+                        activeOpacity={0.8}
                         className={
                           sortBy === key
-                            ? "text-xs font-semibold text-white"
-                            : "text-xs font-semibold text-slate-600"
+                            ? "px-2.5 py-1 rounded-full border border-slate-700 bg-slate-700"
+                            : "px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50"
                         }
                       >
-                        {label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+                        <Text
+                          className={
+                            sortBy === key
+                              ? "text-[11px] font-semibold text-white"
+                              : "text-[11px] font-semibold text-slate-600"
+                          }
+                        >
+                          {label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
               </View>
             )}
           </View>
@@ -1103,7 +1111,11 @@ function ProductCard({
   onLongPress,
   onToggleFavorite,
 }: {
-  product: Product & { minStock?: number; isFeatured?: boolean };
+  product: Product & {
+    minStock?: number;
+    isFeatured?: boolean;
+    cost?: number | string | null;
+  };
   imageUrl?: string | null;
   onPress?: () => void;
   onAdd: () => void;
@@ -1116,6 +1128,7 @@ function ProductCard({
   const s = STATUS_STYLES[status];
   const stockVal = num(product.stock);
   const price = num(product.price);
+  const cost = num(product.cost);
   const quantityText = `QTY: ${stockVal}${product.unit ? ` ${product.unit}` : ""}`;
 
   const a11yLabel = `${product.name}, ${status === "out" ? "Out of stock" : status === "low" ? "Low stock" : "In stock"}, ${stockVal} ${product.unit ?? "units"}`;
@@ -1131,6 +1144,23 @@ function ProductCard({
       accessibilityHint="Tap to view details, long-press to adjust stock"
       className="bg-white rounded-2xl border border-slate-200 mb-3 overflow-hidden"
     >
+      {onToggleFavorite && (
+        <TouchableOpacity
+          onPress={onToggleFavorite}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          className="absolute top-3 left-3 z-10 h-8 w-8 items-center justify-center rounded-full bg-amber-50 border border-amber-100"
+          accessibilityLabel={
+            product.isFeatured ? "Remove from favorites" : "Add to favorites"
+          }
+        >
+          <Ionicons
+            name={product.isFeatured ? "star" : "star-outline"}
+            size={18}
+            color={product.isFeatured ? "#f59e0b" : "#94a3b8"}
+          />
+        </TouchableOpacity>
+      )}
+
       <View className="absolute top-3 right-3 rounded-full bg-emerald-500 px-2.5 py-1 z-10">
         <Text className="text-[10px] font-bold uppercase tracking-wide text-white">
           {quantityText}
@@ -1151,50 +1181,33 @@ function ProductCard({
           )}
         </View>
 
-        {/* Name + meta */}
+        {/* Name + prices */}
         <View className="flex-1 min-w-0 mr-2">
-          <View className="flex-row items-center gap-1 min-w-0">
-            <Text
-              className="text-sm font-bold text-slate-800 flex-1 min-w-0 shrink"
-              numberOfLines={1}
-            >
-              {product.name}
-            </Text>
-            {onToggleFavorite && (
-              <TouchableOpacity
-                onPress={onToggleFavorite}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                className="p-1"
-                accessibilityLabel={
-                  product.isFeatured
-                    ? "Remove from favorites"
-                    : "Add to favorites"
-                }
-              >
-                <Ionicons
-                  name={product.isFeatured ? "star" : "star-outline"}
-                  size={18}
-                  color={product.isFeatured ? "#f59e0b" : "#94a3b8"}
-                />
-              </TouchableOpacity>
-            )}
-          </View>
-          <View className="flex-row items-center gap-2 mt-0.5">
-            {product.category ? (
-              <Text className="text-xs text-slate-400">{product.category}</Text>
-            ) : null}
-            {product.unit ? (
-              <Text className="text-xs text-slate-400">· {product.unit}</Text>
-            ) : null}
+          <Text className="text-sm font-bold text-slate-800" numberOfLines={1}>
+            {product.name}
+          </Text>
+          <View className="flex-row items-center gap-3 mt-1">
+            <View className="flex-row items-center gap-1">
+              <Text className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                Sales Price
+              </Text>
+              <Text className="text-xs font-bold text-slate-700">
+                ₹{price % 1 === 0 ? price : price.toFixed(2)}
+              </Text>
+            </View>
+
+            <View className="h-3.5 w-px bg-slate-200" />
+
+            <View className="flex-row items-center gap-1">
+              <Text className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                Purchase Price
+              </Text>
+              <Text className="text-xs font-semibold text-slate-500">
+                ₹{cost % 1 === 0 ? cost : cost.toFixed(2)}
+              </Text>
+            </View>
           </View>
         </View>
-
-        {/* Price */}
-        {price > 0 && (
-          <Text className="text-sm font-bold text-slate-700">
-            ₹{price % 1 === 0 ? price : price.toFixed(2)}
-          </Text>
-        )}
       </View>
 
       {/* Quick stock actions (PRD F-03.2 — adjustment trigger) */}
