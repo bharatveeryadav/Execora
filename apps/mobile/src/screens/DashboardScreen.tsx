@@ -1456,13 +1456,12 @@ export function DashboardScreen({ navigation }: Props) {
             )}
           </TouchableOpacity>
 
-          {/* Numbers — compact + period filter */}
-          <View className="flex-row items-center justify-between mb-1.5">
-            <Text className={TYPO.sectionTitle}>Numbers</Text>
+          {/* Numbers filter — left aligned */}
+          <View className="mb-1.5">
             <TouchableOpacity
               onPress={() => setPeriodModalOpen(true)}
               activeOpacity={0.7}
-              className="flex-row items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5"
+              className="self-start flex-row items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5"
             >
               <Text className="text-[11px] font-semibold text-slate-600">
                 {numbersPeriod === "custom"
@@ -1890,14 +1889,19 @@ export function DashboardScreen({ navigation }: Props) {
             <Text className={TYPO.sectionTitle} style={{ flexShrink: 1 }}>
               Quick Actions
             </Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+            >
               {canToggleQuickActions && (
                 <TouchableOpacity
                   onPress={() => setQuickActionsExpanded((v) => !v)}
                   activeOpacity={0.8}
                   className="flex-row items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1"
                 >
-                  <Text className="text-xs font-semibold text-slate-600" numberOfLines={1}>
+                  <Text
+                    className="text-xs font-semibold text-slate-600"
+                    numberOfLines={1}
+                  >
                     {quickActionsExpanded
                       ? compactQuickActionsHeader
                         ? "Less"
@@ -1943,8 +1947,10 @@ export function DashboardScreen({ navigation }: Props) {
                     gap: 4,
                     borderRadius: 12,
                     borderWidth: 1,
-                    borderColor: qa.primary ? qa.color : "#e2e8f0",
-                    backgroundColor: qa.primary ? qa.color : "#fafbfc",
+                    borderColor: qa.primary ? ACTION_COLORS.primary : "#e2e8f0",
+                    backgroundColor: qa.primary
+                      ? ACTION_COLORS.primary
+                      : "#fafbfc",
                     paddingVertical: 10,
                     paddingHorizontal: contentWidth < 360 ? 2 : 4,
                   }}
@@ -1952,7 +1958,7 @@ export function DashboardScreen({ navigation }: Props) {
                   <Ionicons
                     name={qa.icon}
                     size={20}
-                    color={qa.primary ? qa.color : qa.color}
+                    color={qa.primary ? "#ffffff" : qa.color}
                   />
                   <Text
                     className={`${TYPO.micro} font-semibold text-center ${qa.primary ? "text-white" : "text-slate-600"}`}
@@ -1983,7 +1989,9 @@ export function DashboardScreen({ navigation }: Props) {
                 </Text>
               </View>
             </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+            >
               <TouchableOpacity
                 onPress={() => setRecentActivityHidden((v) => !v)}
                 activeOpacity={0.8}
@@ -2027,11 +2035,14 @@ export function DashboardScreen({ navigation }: Props) {
               {todayInvoices.slice(0, 5).map((inv, idx) => {
                 const invWithDate = inv as { createdAt?: string };
                 const timeStr = invWithDate.createdAt
-                  ? new Date(invWithDate.createdAt).toLocaleTimeString("en-IN", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      hour12: true,
-                    })
+                  ? new Date(invWithDate.createdAt).toLocaleTimeString(
+                      "en-IN",
+                      {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true,
+                      },
+                    )
                   : "";
                 return (
                   <TouchableOpacity
@@ -2076,7 +2087,8 @@ export function DashboardScreen({ navigation }: Props) {
                         >
                           {inv.status === "paid"
                             ? "✅ Paid"
-                            : (inv as { status?: string }).status === "cancelled"
+                            : (inv as { status?: string }).status ===
+                                "cancelled"
                               ? "❌ Void"
                               : "⏳ Due"}
                         </Text>
@@ -2256,48 +2268,50 @@ export function DashboardScreen({ navigation }: Props) {
                   </View>
 
                   <View style={{ gap: popupGridGap }}>
-                    {chunkItems(group.actions, popupColumns).map((row, rowIdx) => (
-                      <View
-                        key={`${group.label}-row-${rowIdx}`}
-                        style={{ flexDirection: "row", gap: popupGridGap }}
-                      >
-                        {row.map((item) => (
-                          <TouchableOpacity
-                            key={`popup-${group.label}-${item.label}`}
-                            onPress={() => {
-                              setQuickActionPopupOpen(false);
-                              handleQuickAction(item.route, item.params);
-                            }}
-                            activeOpacity={0.85}
-                            style={{
-                              width: popupTileWidth,
-                              minHeight: compactAddPopup ? 58 : 62,
-                              alignItems: "center",
-                              justifyContent: "center",
-                              gap: 4,
-                              borderRadius: 12,
-                              borderWidth: 1,
-                              borderColor: "#dbe2ea",
-                              backgroundColor: "#ffffff",
-                              paddingVertical: compactAddPopup ? 6 : 8,
-                              paddingHorizontal: contentWidth < 360 ? 2 : 4,
-                            }}
-                          >
-                            <Ionicons
-                              name={item.icon}
-                              size={compactAddPopup ? 16 : 18}
-                              color={group.color}
-                            />
-                            <Text
-                              className={`${TYPO.micro} font-semibold text-center text-slate-600`}
-                              numberOfLines={2}
+                    {chunkItems(group.actions, popupColumns).map(
+                      (row, rowIdx) => (
+                        <View
+                          key={`${group.label}-row-${rowIdx}`}
+                          style={{ flexDirection: "row", gap: popupGridGap }}
+                        >
+                          {row.map((item) => (
+                            <TouchableOpacity
+                              key={`popup-${group.label}-${item.label}`}
+                              onPress={() => {
+                                setQuickActionPopupOpen(false);
+                                handleQuickAction(item.route, item.params);
+                              }}
+                              activeOpacity={0.85}
+                              style={{
+                                width: popupTileWidth,
+                                minHeight: compactAddPopup ? 58 : 62,
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: 4,
+                                borderRadius: 12,
+                                borderWidth: 1,
+                                borderColor: "#dbe2ea",
+                                backgroundColor: "#ffffff",
+                                paddingVertical: compactAddPopup ? 6 : 8,
+                                paddingHorizontal: contentWidth < 360 ? 2 : 4,
+                              }}
                             >
-                              {item.label}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    ))}
+                              <Ionicons
+                                name={item.icon}
+                                size={compactAddPopup ? 16 : 18}
+                                color={group.color}
+                              />
+                              <Text
+                                className={`${TYPO.micro} font-semibold text-center text-slate-600`}
+                                numberOfLines={2}
+                              >
+                                {item.label}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      ),
+                    )}
                   </View>
                 </View>
               ))}
