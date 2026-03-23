@@ -11,13 +11,12 @@ import {
   ActivityIndicator,
   ScrollView,
   Pressable,
-  TouchableOpacity,
   InteractionManager,
   Modal,
   Platform,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
@@ -206,15 +205,9 @@ function formatDate(d: string | Date | undefined): string {
 type Props = NativeStackScreenProps<InvoicesStackParams, "InvoiceList">;
 
 export function InvoiceListScreen({ navigation }: Props) {
-  const insets = useSafeAreaInsets();
   const { contentPad, contentWidth, isSmall } = useResponsive();
   const compactHeader = contentWidth < 380;
-  const stackTotals = contentWidth < 360;
   const stackSearchControls = contentWidth < 380;
-  const quickLinkColumns = contentWidth < 360 ? 2 : 4;
-  const quickLinkTileWidth = Math.floor(
-    (contentWidth - (quickLinkColumns - 1) * 6) / quickLinkColumns,
-  );
   const [docTypeTab, setDocTypeTab] = useState<DocTypeTab>("sales");
   const [statusTab, setStatusTab] = useState<StatusTab>("All");
   const [search, setSearch] = useState("");
@@ -752,7 +745,7 @@ export function InvoiceListScreen({ navigation }: Props) {
             )}
 
             {/* Compact controls container: search/date + totals */}
-            <View className="mt-3 rounded-lg border border-slate-200 bg-slate-50/50 p-2 min-w-0">
+            <View className="mt-2 rounded-lg border border-slate-200 bg-slate-50/50 p-1.5 min-w-0">
               <View
                 className="rounded-lg border border-slate-200 bg-white min-w-0"
                 style={{
@@ -760,7 +753,7 @@ export function InvoiceListScreen({ navigation }: Props) {
                   alignItems: stackSearchControls ? undefined : "center",
                 }}
               >
-                <View className="flex-1 flex-row items-center rounded-lg px-3 min-h-[38] min-w-0">
+                <View className="flex-1 flex-row items-center rounded-lg px-2.5 min-h-[34] min-w-0">
                   <Ionicons
                     name="search"
                     size={16}
@@ -772,13 +765,13 @@ export function InvoiceListScreen({ navigation }: Props) {
                     onChangeText={setSearch}
                     placeholder={placeholder}
                     placeholderTextColor="#94a3b8"
-                    className="flex-1 min-w-0 text-sm text-slate-800 py-2"
+                    className="flex-1 min-w-0 text-sm text-slate-800 py-1.5"
                   />
                 </View>
                 {showInvoiceList && !search.trim() && !stackSearchControls && (
                   <Pressable
                     onPress={() => setDateFilterModalOpen(true)}
-                    className="flex-row items-center gap-1 px-2 py-2 rounded-lg"
+                    className="flex-row items-center gap-1 px-2 py-1.5 rounded-lg"
                     style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
                   >
                     <Ionicons
@@ -800,7 +793,7 @@ export function InvoiceListScreen({ navigation }: Props) {
               {showInvoiceList && !search.trim() && stackSearchControls && (
                 <Pressable
                   onPress={() => setDateFilterModalOpen(true)}
-                  className="mt-2 flex-row items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-2"
+                  className="mt-1.5 flex-row items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5"
                   style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
                 >
                   <Ionicons name="calendar-outline" size={14} color="#64748b" />
@@ -811,13 +804,7 @@ export function InvoiceListScreen({ navigation }: Props) {
               )}
 
               {showInvoiceList && filteredInvoices.length > 0 && (
-                <View
-                  className="mt-2 rounded-lg border border-slate-200 bg-white p-2.5 min-w-0"
-                  style={{
-                    flexDirection: stackTotals ? "column" : "row",
-                    gap: stackTotals ? 8 : 0,
-                  }}
-                >
+                <View className="mt-1.5 rounded-lg border border-slate-200 bg-white p-2 min-w-0 flex-row">
                   <View className="flex-1 min-w-0">
                     <Text className={TYPO.sectionTitle}>Total</Text>
                     <Text
@@ -830,11 +817,9 @@ export function InvoiceListScreen({ navigation }: Props) {
                   <View
                     className="flex-1 min-w-0"
                     style={{
-                      borderLeftWidth: stackTotals ? 0 : 1,
-                      borderTopWidth: stackTotals ? 1 : 0,
+                      borderLeftWidth: 1,
                       borderColor: "#e2e8f0",
-                      paddingLeft: stackTotals ? 0 : 12,
-                      paddingTop: stackTotals ? 8 : 0,
+                      paddingLeft: 10,
                     }}
                   >
                     <Text className={TYPO.sectionTitle}>Pending</Text>
@@ -847,37 +832,33 @@ export function InvoiceListScreen({ navigation }: Props) {
                   </View>
                 </View>
               )}
+
+              {showInvoiceList && (
+                <View className="mt-1.5 flex-row min-w-0" style={{ gap: 4 }}>
+                  {QUICK_LINK_ITEMS.map((item) => (
+                    <Pressable
+                      key={item.id}
+                      onPress={item.onPress}
+                      className="flex-1 flex-row items-center justify-center rounded-md border border-slate-200 py-2 bg-white min-h-[38]"
+                      style={({ pressed }) => ({
+                        opacity: pressed ? 0.7 : 1,
+                        backgroundColor: pressed ? "#f8fafc" : "#fff",
+                        gap: 3,
+                      })}
+                    >
+                      <Ionicons name={item.icon} size={12} color="#64748b" />
+                      <Text
+                        className="text-[11px] font-medium text-slate-600"
+                        numberOfLines={1}
+                      >
+                        {item.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
             </View>
           </View>
-
-          {/* Quick links — web: Reports, Analytics, Aging, Overdue */}
-          {showInvoiceList && (
-            <View
-              style={{ marginHorizontal: contentPad, marginTop: 16 }}
-              className="flex-row flex-wrap gap-1.5 min-w-0"
-            >
-              {QUICK_LINK_ITEMS.map((item) => (
-                <Pressable
-                  key={item.id}
-                  onPress={item.onPress}
-                  className="min-w-0 flex-row items-center justify-center gap-1 rounded-md border border-slate-200 py-2 px-1.5 bg-white min-h-[40]"
-                  style={({ pressed }) => ({
-                    width: quickLinkTileWidth,
-                    opacity: pressed ? 0.7 : 1,
-                    backgroundColor: pressed ? "#f8fafc" : "#fff",
-                  })}
-                >
-                  <Ionicons name={item.icon} size={12} color="#64748b" />
-                  <Text
-                    className="text-[11px] font-medium text-slate-600"
-                    numberOfLines={1}
-                  >
-                    {item.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          )}
 
           {/* List */}
           <View
@@ -999,31 +980,23 @@ export function InvoiceListScreen({ navigation }: Props) {
           </View>
 
           {/* FAB */}
-          <TouchableOpacity
+          <Pressable
             onPress={handleNewInvoice}
-            activeOpacity={0.85}
-            style={{
+            className="w-14 h-14 rounded-full bg-primary items-center justify-center"
+            style={({ pressed }) => ({
               position: "absolute",
-              bottom: Math.max(insets.bottom, 12),
-              right: 16,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 6,
-              paddingHorizontal: 14,
-              paddingVertical: 12,
-              borderRadius: 24,
-              backgroundColor: "#e67e22",
+              bottom: 24,
+              right: contentPad,
+              opacity: pressed ? 0.9 : 1,
               shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.25,
-              shadowRadius: 4,
-              elevation: 5,
-              zIndex: 20,
-            }}
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.2,
+              shadowRadius: 8,
+              elevation: 8,
+            })}
           >
-            <Ionicons name="add" size={22} color="#fff" />
-            <Text className="text-white font-bold text-sm">Add Invoice</Text>
-          </TouchableOpacity>
+            <Ionicons name="add" size={28} color="#fff" />
+          </Pressable>
         </View>
       </View>
 
