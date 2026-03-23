@@ -605,347 +605,295 @@ export function InvoiceListScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={["top", "bottom"]}>
-      <View style={{ flex: 1, width: "100%", alignItems: "center" }}>
-        <View style={{ width: "100%", maxWidth: contentWidth, flex: 1 }}>
-          {/* Header — matches web */}
-          <View
-            style={{
-              paddingHorizontal: contentPad,
-              paddingTop: 12,
-              paddingBottom: 16,
-            }}
-            className="border-b border-slate-200/80 bg-white"
-          >
-            {/* Doc type tabs — web: Sales | Purchase | Quotation */}
-            <View className="flex-row items-center min-w-0">
-              {[
-                { id: "sales" as DocTypeTab, label: "Sales" },
-                { id: "purchase" as DocTypeTab, label: "Purchase" },
-                { id: "quotation" as DocTypeTab, label: "Quote" },
-              ].map(({ id, label }) => (
-                <Pressable
-                  key={id}
-                  onPress={() => requestAnimationFrame(() => setDocTypeTab(id))}
-                  style={({ pressed }) => ({
-                    opacity: pressed && docTypeTab !== id ? 0.7 : 1,
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    marginRight: 4,
-                    borderRadius: 8,
-                    backgroundColor: docTypeTab === id ? "#fff" : "transparent",
-                    borderWidth: docTypeTab === id ? 1 : 0,
-                    borderColor: "#e2e8f0",
-                    ...(docTypeTab === id && {
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 1 },
-                      shadowOpacity: 0.06,
-                      shadowRadius: 2,
-                      elevation: 1,
-                    }),
-                  })}
-                >
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: docTypeTab === id ? "600" : "500",
-                      color: docTypeTab === id ? "#0f172a" : "#94a3b8",
-                    }}
-                    numberOfLines={1}
-                  >
-                    {label}
-                  </Text>
-                </Pressable>
-              ))}
-              <View style={{ flex: 1 }} />
+      {/* Header — matches web */}
+      <View
+        style={{
+          paddingHorizontal: contentPad,
+          paddingTop: 12,
+          paddingBottom: 12,
+        }}
+        className=""
+      >
+        <View
+          style={{ width: "100%", maxWidth: contentWidth, alignSelf: "center" }}
+          className="rounded-xl border border-slate-200/80 bg-white px-3 pt-3 pb-2"
+        >
+          {/* Doc type tabs — web: Sales | Purchase | Quotation */}
+          <View className="flex-row items-center min-w-0">
+            {[
+              { id: "sales" as DocTypeTab, label: "Sales" },
+              { id: "purchase" as DocTypeTab, label: "Purchase" },
+              { id: "quotation" as DocTypeTab, label: "Quote" },
+            ].map(({ id, label }) => (
               <Pressable
-                onPress={handleBillsMenu}
+                key={id}
+                onPress={() => requestAnimationFrame(() => setDocTypeTab(id))}
                 style={({ pressed }) => ({
-                  width: 34,
-                  height: 34,
-                  borderRadius: 999,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  opacity: pressed ? 0.7 : 1,
-                  backgroundColor: pressed ? "#e2e8f0" : "#f1f5f9",
+                  opacity: pressed && docTypeTab !== id ? 0.7 : 1,
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  marginRight: 4,
+                  borderRadius: 8,
+                  backgroundColor: docTypeTab === id ? "#fff" : "transparent",
+                  borderWidth: docTypeTab === id ? 1 : 0,
+                  borderColor: "#e2e8f0",
+                  ...(docTypeTab === id && {
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.06,
+                    shadowRadius: 2,
+                    elevation: 1,
+                  }),
                 })}
               >
-                <Ionicons
-                  name="ellipsis-horizontal"
-                  size={18}
-                  color="#475569"
-                />
-              </Pressable>
-            </View>
-
-            {/* Status tabs — web: underline style, only for Sales/Quotation */}
-            {showInvoiceList && (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                className="mt-0 -mx-1"
-                contentContainerStyle={{ paddingHorizontal: 4, flexGrow: 0 }}
-              >
-                <View
-                  className="flex-row border-t border-slate-200"
-                  style={{ flexShrink: 0 }}
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: docTypeTab === id ? "600" : "500",
+                    color: docTypeTab === id ? "#0f172a" : "#94a3b8",
+                  }}
+                  numberOfLines={1}
                 >
-                  {STATUS_TABS.map((tab) => {
-                    const key = tab.toLowerCase();
-                    const count =
-                      tab === "All"
-                        ? invoicesByDate.length
-                        : (counts[key] ?? 0);
-                    const active = statusTab === tab;
-                    return (
-                      <Pressable
-                        key={tab}
-                        onPress={() =>
-                          requestAnimationFrame(() => setStatusTab(tab))
-                        }
-                        className="flex-row items-center gap-1.5 px-3 py-2 border-b-2"
-                        style={({ pressed }) => ({
-                          opacity: pressed ? 0.8 : 1,
-                          borderBottomColor: active ? "#e67e22" : "transparent",
-                        })}
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
+            <View style={{ flex: 1 }} />
+            <Pressable
+              onPress={handleBillsMenu}
+              style={({ pressed }) => ({
+                width: 34,
+                height: 34,
+                borderRadius: 999,
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: pressed ? 0.7 : 1,
+                backgroundColor: pressed ? "#e2e8f0" : "#f1f5f9",
+              })}
+            >
+              <Ionicons name="ellipsis-horizontal" size={18} color="#475569" />
+            </Pressable>
+          </View>
+
+          {/* Status tabs — web: underline style, only for Sales/Quotation */}
+          {showInvoiceList && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              className="mt-0 -mx-1"
+              contentContainerStyle={{ paddingHorizontal: 4, flexGrow: 0 }}
+            >
+              <View
+                className="flex-row border-t border-slate-200"
+                style={{ flexShrink: 0 }}
+              >
+                {STATUS_TABS.map((tab) => {
+                  const key = tab.toLowerCase();
+                  const count =
+                    tab === "All" ? invoicesByDate.length : (counts[key] ?? 0);
+                  const active = statusTab === tab;
+                  return (
+                    <Pressable
+                      key={tab}
+                      onPress={() =>
+                        requestAnimationFrame(() => setStatusTab(tab))
+                      }
+                      className="flex-row items-center gap-1.5 px-3 py-2 border-b-2"
+                      style={({ pressed }) => ({
+                        opacity: pressed ? 0.8 : 1,
+                        borderBottomColor: active ? "#e67e22" : "transparent",
+                      })}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          fontWeight: "500",
+                          color: active ? "#e67e22" : "#64748b",
+                        }}
                       >
-                        <Text
+                        {tab}
+                      </Text>
+                      {count > 0 && (
+                        <View
                           style={{
-                            fontSize: 12,
-                            fontWeight: "500",
-                            color: active ? "#e67e22" : "#64748b",
+                            borderRadius: 9999,
+                            paddingHorizontal: 5,
+                            paddingVertical: 1,
+                            backgroundColor: "#e2e8f0",
                           }}
                         >
-                          {tab}
-                        </Text>
-                        {count > 0 && (
-                          <View
+                          <Text
                             style={{
-                              borderRadius: 9999,
-                              paddingHorizontal: 5,
-                              paddingVertical: 1,
-                              backgroundColor: "#e2e8f0",
+                              fontSize: 10,
+                              fontWeight: "600",
+                              color: "#475569",
                             }}
                           >
-                            <Text
-                              style={{
-                                fontSize: 10,
-                                fontWeight: "600",
-                                color: "#475569",
-                              }}
-                            >
-                              {count}
-                            </Text>
-                          </View>
-                        )}
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </ScrollView>
-            )}
-
-            {/* Compact controls container: search/date + totals */}
-            <View className="mt-2 rounded-lg border border-slate-200 bg-slate-50/50 p-1.5 min-w-0">
-              <View
-                className="rounded-lg border border-slate-200 bg-white min-w-0"
-                style={{
-                  flexDirection: stackSearchControls ? "column" : "row",
-                  alignItems: stackSearchControls ? undefined : "center",
-                }}
-              >
-                <View className="flex-1 flex-row items-center rounded-lg px-2.5 min-h-[34] min-w-0">
-                  <Ionicons
-                    name="search"
-                    size={16}
-                    color="#64748b"
-                    style={{ marginRight: 8 }}
-                  />
-                  <TextInput
-                    value={search}
-                    onChangeText={setSearch}
-                    placeholder={placeholder}
-                    placeholderTextColor="#94a3b8"
-                    className="flex-1 min-w-0 text-sm text-slate-800 py-1.5"
-                  />
-                </View>
-                {showInvoiceList && !search.trim() && !stackSearchControls && (
-                  <Pressable
-                    onPress={() => setDateFilterModalOpen(true)}
-                    className="flex-row items-center gap-1 px-2 py-1.5 rounded-lg"
-                    style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
-                  >
-                    <Ionicons
-                      name="calendar-outline"
-                      size={14}
-                      color="#64748b"
-                    />
-                    <Text
-                      className="text-xs text-slate-600"
-                      numberOfLines={1}
-                      style={{ maxWidth: 100 }}
-                    >
-                      {dateFilterLabel}
-                    </Text>
-                  </Pressable>
-                )}
+                            {count}
+                          </Text>
+                        </View>
+                      )}
+                    </Pressable>
+                  );
+                })}
               </View>
+            </ScrollView>
+          )}
 
-              {showInvoiceList && !search.trim() && stackSearchControls && (
+          {/* Compact controls container: search/date + totals */}
+          <View className="mt-2 rounded-lg border border-slate-200 bg-slate-50/50 p-1.5 min-w-0">
+            <View
+              className="rounded-lg border border-slate-200 bg-white min-w-0"
+              style={{
+                flexDirection: stackSearchControls ? "column" : "row",
+                alignItems: stackSearchControls ? undefined : "center",
+              }}
+            >
+              <View className="flex-1 flex-row items-center rounded-lg px-2.5 min-h-[34] min-w-0">
+                <Ionicons
+                  name="search"
+                  size={16}
+                  color="#64748b"
+                  style={{ marginRight: 8 }}
+                />
+                <TextInput
+                  value={search}
+                  onChangeText={setSearch}
+                  placeholder={placeholder}
+                  placeholderTextColor="#94a3b8"
+                  className="flex-1 min-w-0 text-sm text-slate-800 py-1.5"
+                />
+              </View>
+              {showInvoiceList && !search.trim() && !stackSearchControls && (
                 <Pressable
                   onPress={() => setDateFilterModalOpen(true)}
-                  className="mt-1.5 flex-row items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5"
+                  className="flex-row items-center gap-1 px-2 py-1.5 rounded-lg"
                   style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
                 >
                   <Ionicons name="calendar-outline" size={14} color="#64748b" />
-                  <Text className="text-xs text-slate-600" numberOfLines={1}>
+                  <Text
+                    className="text-xs text-slate-600"
+                    numberOfLines={1}
+                    style={{ maxWidth: 100 }}
+                  >
                     {dateFilterLabel}
                   </Text>
                 </Pressable>
               )}
-
-              {showInvoiceList && filteredInvoices.length > 0 && (
-                <View className="mt-1.5 rounded-lg border border-slate-200 bg-white p-2 min-w-0 flex-row">
-                  <View className="flex-1 min-w-0">
-                    <Text className={TYPO.sectionTitle}>Total</Text>
-                    <Text
-                      className="text-sm font-bold text-slate-800 mt-0.5"
-                      numberOfLines={1}
-                    >
-                      ₹{inr(totalValue)}
-                    </Text>
-                  </View>
-                  <View
-                    className="flex-1 min-w-0"
-                    style={{
-                      borderLeftWidth: 1,
-                      borderColor: "#e2e8f0",
-                      paddingLeft: 10,
-                    }}
-                  >
-                    <Text className={TYPO.sectionTitle}>Pending</Text>
-                    <Text
-                      className="text-sm font-bold text-amber-600 mt-0.5"
-                      numberOfLines={1}
-                    >
-                      ₹{inr(pendingAmount)}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {showInvoiceList && (
-                <View className="mt-1.5 flex-row min-w-0" style={{ gap: 4 }}>
-                  {QUICK_LINK_ITEMS.map((item) => (
-                    <Pressable
-                      key={item.id}
-                      onPress={item.onPress}
-                      className="flex-1 flex-row items-center justify-center rounded-md border border-slate-200 py-2 bg-white min-h-[38]"
-                      style={({ pressed }) => ({
-                        opacity: pressed ? 0.7 : 1,
-                        backgroundColor: pressed ? "#f8fafc" : "#fff",
-                        gap: 3,
-                      })}
-                    >
-                      <Ionicons name={item.icon} size={12} color="#64748b" />
-                      <Text
-                        className="text-[11px] font-medium text-slate-600"
-                        numberOfLines={1}
-                      >
-                        {item.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              )}
             </View>
-          </View>
 
-          {/* List */}
-          <View
-            style={{ flex: 1, marginHorizontal: contentPad, marginTop: 12 }}
-            className="min-w-0"
-          >
-            {docTypeTab === "purchase" ? (
-              purchasesLoading ? (
-                <View className="py-16 items-center">
-                  <ActivityIndicator size="large" color="#e67e22" />
+            {showInvoiceList && !search.trim() && stackSearchControls && (
+              <Pressable
+                onPress={() => setDateFilterModalOpen(true)}
+                className="mt-1.5 flex-row items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5"
+                style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+              >
+                <Ionicons name="calendar-outline" size={14} color="#64748b" />
+                <Text className="text-xs text-slate-600" numberOfLines={1}>
+                  {dateFilterLabel}
+                </Text>
+              </Pressable>
+            )}
+
+            {showInvoiceList && filteredInvoices.length > 0 && (
+              <View className="mt-1.5 rounded-lg border border-slate-200 bg-white p-2 min-w-0 flex-row">
+                <View className="flex-1 min-w-0">
+                  <Text className={TYPO.sectionTitle}>Total</Text>
+                  <Text
+                    className="text-sm font-bold text-slate-800 mt-0.5"
+                    numberOfLines={1}
+                  >
+                    ₹{inr(totalValue)}
+                  </Text>
                 </View>
-              ) : filteredPurchases.length === 0 ? (
-                <View className="rounded-xl border border-slate-200 bg-white py-16">
-                  <EmptyState
-                    iconName="cube-outline"
-                    title={search ? "No purchases match" : "No purchases yet"}
-                    description={
-                      search
-                        ? "Try a different search"
-                        : "Add your first purchase"
-                    }
-                    actionLabel={!search ? "Add Purchase" : undefined}
-                    onAction={
-                      !search
-                        ? () => {
-                            InteractionManager.runAfterInteractions(() => {
-                              try {
-                                (navigation.getParent as any)?.()?.navigate(
-                                  "MoreTab",
-                                  { screen: "Purchases" },
-                                );
-                              } catch (_) {}
-                            });
-                          }
-                        : undefined
-                    }
-                  />
+                <View
+                  className="flex-1 min-w-0"
+                  style={{
+                    borderLeftWidth: 1,
+                    borderColor: "#e2e8f0",
+                    paddingLeft: 10,
+                  }}
+                >
+                  <Text className={TYPO.sectionTitle}>Pending</Text>
+                  <Text
+                    className="text-sm font-bold text-amber-600 mt-0.5"
+                    numberOfLines={1}
+                  >
+                    ₹{inr(pendingAmount)}
+                  </Text>
                 </View>
-              ) : (
-                <View className="flex-1 rounded-xl border border-slate-200 bg-white overflow-hidden">
-                  <FlatList
-                    data={filteredPurchases}
-                    keyExtractor={(p) => p.id}
-                    renderItem={renderPurchaseRow}
-                    getItemLayout={(_, index) => ({
-                      length: ROW_HEIGHT,
-                      offset: ROW_HEIGHT * index,
-                      index,
-                    })}
-                    ListFooterComponent={<View className="h-4" />}
-                    style={{ flex: 1 }}
-                    initialNumToRender={12}
-                    maxToRenderPerBatch={8}
-                    windowSize={6}
-                    removeClippedSubviews={true}
-                  />
-                </View>
-              )
-            ) : isError ? (
-              <View className="rounded-xl border border-slate-200 bg-white py-8 px-4">
-                <ErrorCard
-                  message="Failed to load invoices"
-                  onRetry={() => refetch()}
-                />
               </View>
-            ) : filteredInvoices.length === 0 ? (
+            )}
+
+            {showInvoiceList && (
+              <View className="mt-1.5 flex-row min-w-0" style={{ gap: 4 }}>
+                {QUICK_LINK_ITEMS.map((item) => (
+                  <Pressable
+                    key={item.id}
+                    onPress={item.onPress}
+                    className="flex-1 flex-row items-center justify-center rounded-md border border-slate-200 py-2 bg-white min-h-[38]"
+                    style={({ pressed }) => ({
+                      opacity: pressed ? 0.7 : 1,
+                      backgroundColor: pressed ? "#f8fafc" : "#fff",
+                      gap: 3,
+                    })}
+                  >
+                    <Ionicons name={item.icon} size={12} color="#64748b" />
+                    <Text
+                      className="text-[11px] font-medium text-slate-600"
+                      numberOfLines={1}
+                    >
+                      {item.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </View>
+        </View>
+      </View>
+
+      {/* List */}
+      <View
+        style={{
+          flex: 1,
+          paddingHorizontal: contentPad,
+          paddingTop: 12,
+          alignItems: "center",
+        }}
+      >
+        <View
+          style={{ width: "100%", maxWidth: contentWidth, flex: 1 }}
+          className="min-w-0"
+        >
+          {docTypeTab === "purchase" ? (
+            purchasesLoading ? (
+              <View className="py-16 items-center">
+                <ActivityIndicator size="large" color="#e67e22" />
+              </View>
+            ) : filteredPurchases.length === 0 ? (
               <View className="rounded-xl border border-slate-200 bg-white py-16">
                 <EmptyState
-                  iconName="receipt-outline"
-                  title={
-                    search || statusTab !== "All"
-                      ? `No ${docTypeTab === "quotation" ? "quotations" : "invoices"} match`
-                      : docTypeTab === "quotation"
-                        ? "No quotations yet"
-                        : "No invoices yet"
+                  iconName="cube-outline"
+                  title={search ? "No purchases match" : "No purchases yet"}
+                  description={
+                    search
+                      ? "Try a different search"
+                      : "Add your first purchase"
                   }
-                  description="Create your first invoice to get started"
-                  actionLabel={
-                    statusTab === "All" && !search
-                      ? docTypeTab === "quotation"
-                        ? "Create Quotation"
-                        : "Create Invoice"
-                      : undefined
-                  }
+                  actionLabel={!search ? "Add Purchase" : undefined}
                   onAction={
-                    statusTab === "All" && !search
-                      ? handleNewInvoice
+                    !search
+                      ? () => {
+                          InteractionManager.runAfterInteractions(() => {
+                            try {
+                              (navigation.getParent as any)?.()?.navigate(
+                                "MoreTab",
+                                { screen: "Purchases" },
+                              );
+                            } catch (_) {}
+                          });
+                        }
                       : undefined
                   }
                 />
@@ -953,22 +901,15 @@ export function InvoiceListScreen({ navigation }: Props) {
             ) : (
               <View className="flex-1 rounded-xl border border-slate-200 bg-white overflow-hidden">
                 <FlatList
-                  data={filteredInvoices}
-                  keyExtractor={(inv) => inv.id}
-                  renderItem={renderInvoiceRow}
+                  data={filteredPurchases}
+                  keyExtractor={(p) => p.id}
+                  renderItem={renderPurchaseRow}
                   getItemLayout={(_, index) => ({
                     length: ROW_HEIGHT,
                     offset: ROW_HEIGHT * index,
                     index,
                   })}
-                  refreshControl={
-                    <RefreshControl
-                      refreshing={isFetching}
-                      onRefresh={refetch}
-                      tintColor="#e67e22"
-                    />
-                  }
-                  ListFooterComponent={<View className="h-24" />}
+                  ListFooterComponent={<View className="h-4" />}
                   style={{ flex: 1 }}
                   initialNumToRender={12}
                   maxToRenderPerBatch={8}
@@ -976,29 +917,86 @@ export function InvoiceListScreen({ navigation }: Props) {
                   removeClippedSubviews={true}
                 />
               </View>
-            )}
-          </View>
-
-          {/* FAB */}
-          <Pressable
-            onPress={handleNewInvoice}
-            className="w-14 h-14 rounded-full bg-primary items-center justify-center"
-            style={({ pressed }) => ({
-              position: "absolute",
-              bottom: 24,
-              right: contentPad,
-              opacity: pressed ? 0.9 : 1,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.2,
-              shadowRadius: 8,
-              elevation: 8,
-            })}
-          >
-            <Ionicons name="add" size={28} color="#fff" />
-          </Pressable>
+            )
+          ) : isError ? (
+            <View className="rounded-xl border border-slate-200 bg-white py-8 px-4">
+              <ErrorCard
+                message="Failed to load invoices"
+                onRetry={() => refetch()}
+              />
+            </View>
+          ) : filteredInvoices.length === 0 ? (
+            <View className="rounded-xl border border-slate-200 bg-white py-16">
+              <EmptyState
+                iconName="receipt-outline"
+                title={
+                  search || statusTab !== "All"
+                    ? `No ${docTypeTab === "quotation" ? "quotations" : "invoices"} match`
+                    : docTypeTab === "quotation"
+                      ? "No quotations yet"
+                      : "No invoices yet"
+                }
+                description="Create your first invoice to get started"
+                actionLabel={
+                  statusTab === "All" && !search
+                    ? docTypeTab === "quotation"
+                      ? "Create Quotation"
+                      : "Create Invoice"
+                    : undefined
+                }
+                onAction={
+                  statusTab === "All" && !search ? handleNewInvoice : undefined
+                }
+              />
+            </View>
+          ) : (
+            <View className="flex-1 rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <FlatList
+                data={filteredInvoices}
+                keyExtractor={(inv) => inv.id}
+                renderItem={renderInvoiceRow}
+                getItemLayout={(_, index) => ({
+                  length: ROW_HEIGHT,
+                  offset: ROW_HEIGHT * index,
+                  index,
+                })}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={isFetching}
+                    onRefresh={refetch}
+                    tintColor="#e67e22"
+                  />
+                }
+                ListFooterComponent={<View className="h-24" />}
+                style={{ flex: 1 }}
+                initialNumToRender={12}
+                maxToRenderPerBatch={8}
+                windowSize={6}
+                removeClippedSubviews={true}
+              />
+            </View>
+          )}
         </View>
       </View>
+
+      {/* FAB */}
+      <Pressable
+        onPress={handleNewInvoice}
+        className="w-14 h-14 rounded-full bg-primary items-center justify-center"
+        style={({ pressed }) => ({
+          position: "absolute",
+          bottom: 24,
+          right: contentPad,
+          opacity: pressed ? 0.9 : 1,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.2,
+          shadowRadius: 8,
+          elevation: 8,
+        })}
+      >
+        <Ionicons name="add" size={28} color="#fff" />
+      </Pressable>
 
       {/* Date filter modal — web: Select dropdown */}
       <Modal visible={dateFilterModalOpen} transparent animationType="fade">
