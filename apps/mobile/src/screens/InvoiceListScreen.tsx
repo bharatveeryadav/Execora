@@ -616,102 +616,70 @@ export function InvoiceListScreen({ navigation }: Props) {
           <View
             style={{
               paddingHorizontal: contentPad,
-              paddingTop: 16,
+              paddingTop: 12,
               paddingBottom: 16,
             }}
             className="border-b border-slate-200/80 bg-white"
           >
-            <View className="flex-row items-center justify-between mb-4 min-w-0">
-              <View className="flex-1 min-w-0">
-                <Text
-                  className="text-xl font-bold text-slate-800"
-                  numberOfLines={1}
+            {/* Doc type tabs — web: Sales | Purchase | Quotation */}
+            <View className="flex-row items-center min-w-0">
+              {[
+                { id: "sales" as DocTypeTab, label: "Sales" },
+                { id: "purchase" as DocTypeTab, label: "Purchase" },
+                { id: "quotation" as DocTypeTab, label: "Quote" },
+              ].map(({ id, label }) => (
+                <Pressable
+                  key={id}
+                  onPress={() => requestAnimationFrame(() => setDocTypeTab(id))}
+                  style={({ pressed }) => ({
+                    opacity: pressed && docTypeTab !== id ? 0.7 : 1,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    marginRight: 4,
+                    borderRadius: 8,
+                    backgroundColor: docTypeTab === id ? "#fff" : "transparent",
+                    borderWidth: docTypeTab === id ? 1 : 0,
+                    borderColor: "#e2e8f0",
+                    ...(docTypeTab === id && {
+                      shadowColor: "#000",
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.06,
+                      shadowRadius: 2,
+                      elevation: 1,
+                    }),
+                  })}
                 >
-                  Bills
-                </Text>
-                <Text
-                  className={TYPO.caption + " mt-0.5 min-w-0"}
-                  numberOfLines={1}
-                >
-                  {docTypeTab === "purchase"
-                    ? `${filteredPurchases.length} shown · ₹${inr(purchasesTotal)} total`
-                    : `${filteredInvoices.length} shown · ₹${inr(totalValue)} total`}
-                </Text>
-              </View>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: docTypeTab === id ? "600" : "500",
+                      color: docTypeTab === id ? "#0f172a" : "#94a3b8",
+                    }}
+                    numberOfLines={1}
+                  >
+                    {label}
+                  </Text>
+                </Pressable>
+              ))}
+              <View style={{ flex: 1 }} />
               <Pressable
                 onPress={handleBillsMenu}
-                className="rounded-full bg-slate-100 items-center justify-center"
                 style={({ pressed }) => ({
-                  width: compactHeader ? 42 : 48,
-                  height: compactHeader ? 42 : 48,
+                  width: 34,
+                  height: 34,
+                  borderRadius: 999,
+                  alignItems: "center",
+                  justifyContent: "center",
                   opacity: pressed ? 0.7 : 1,
                   backgroundColor: pressed ? "#e2e8f0" : "#f1f5f9",
                 })}
               >
                 <Ionicons
                   name="ellipsis-horizontal"
-                  size={22}
+                  size={18}
                   color="#475569"
                 />
               </Pressable>
-            </View>
-
-            {/* Doc type tabs — web: Sales | Purchase | Quotation */}
-            <View className="flex-row rounded-lg bg-slate-100/80 p-1 min-w-0">
-              {[
-                { id: "sales" as DocTypeTab, label: "Sales", icon: "add" },
-                {
-                  id: "purchase" as DocTypeTab,
-                  label: isSmall ? "Purchase" : "Purchase",
-                  icon: "cube",
-                },
-                {
-                  id: "quotation" as DocTypeTab,
-                  label: isSmall ? "Quote" : "Quotation",
-                  icon: "document-text",
-                },
-              ].map(({ id, label, icon }) => (
-                <Pressable
-                  key={id}
-                  onPress={() => requestAnimationFrame(() => setDocTypeTab(id))}
-                  className="flex-1 min-w-0 flex-row items-center justify-center gap-1.5 py-2 rounded-md"
-                  style={({ pressed }) => ({
-                    opacity: pressed && docTypeTab !== id ? 0.7 : 1,
-                    minHeight: MIN_TOUCH - 4,
-                    backgroundColor: docTypeTab === id ? "#fff" : "transparent",
-                    ...(docTypeTab === id && {
-                      shadowColor: "#000",
-                      shadowOffset: { width: 0, height: 1 },
-                      shadowOpacity: 0.05,
-                      shadowRadius: 2,
-                      elevation: 1,
-                    }),
-                  })}
-                >
-                  <Ionicons
-                    name={icon as any}
-                    size={16}
-                    color={docTypeTab === id ? "#0f172a" : "#64748b"}
-                  />
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: "500",
-                      color: docTypeTab === id ? "#0f172a" : "#64748b",
-                    }}
-                    numberOfLines={1}
-                  >
-                    {label}
-                  </Text>
-                  {docTypeCounts[id] > 0 && (
-                    <View className="rounded-full bg-slate-200 px-1.5 py-0.5">
-                      <Text className="text-[10px] font-bold text-slate-600">
-                        {docTypeCounts[id]}
-                      </Text>
-                    </View>
-                  )}
-                </Pressable>
-              ))}
             </View>
 
             {/* Status tabs — web: underline style, only for Sales/Quotation */}
