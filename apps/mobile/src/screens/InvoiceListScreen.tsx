@@ -11,12 +11,13 @@ import {
   ActivityIndicator,
   ScrollView,
   Pressable,
+  TouchableOpacity,
   InteractionManager,
   Modal,
   Platform,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
@@ -205,6 +206,7 @@ function formatDate(d: string | Date | undefined): string {
 type Props = NativeStackScreenProps<InvoicesStackParams, "InvoiceList">;
 
 export function InvoiceListScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const { contentPad, contentWidth, isSmall } = useResponsive();
   const compactHeader = contentWidth < 380;
   const stackTotals = contentWidth < 360;
@@ -997,23 +999,31 @@ export function InvoiceListScreen({ navigation }: Props) {
           </View>
 
           {/* FAB */}
-          <Pressable
+          <TouchableOpacity
             onPress={handleNewInvoice}
-            className="w-14 h-14 rounded-full bg-primary items-center justify-center"
-            style={({ pressed }) => ({
+            activeOpacity={0.85}
+            style={{
               position: "absolute",
-              bottom: 24,
-              right: contentPad,
-              opacity: pressed ? 0.9 : 1,
+              bottom: Math.max(insets.bottom, 12),
+              right: 16,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+              borderRadius: 24,
+              backgroundColor: "#e67e22",
               shadowColor: "#000",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.2,
-              shadowRadius: 8,
-              elevation: 8,
-            })}
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 4,
+              elevation: 5,
+              zIndex: 20,
+            }}
           >
-            <Ionicons name="add" size={28} color="#fff" />
-          </Pressable>
+            <Ionicons name="add" size={22} color="#fff" />
+            <Text className="text-white font-bold text-sm">Add Invoice</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
