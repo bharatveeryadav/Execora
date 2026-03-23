@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   Share,
   Platform,
+  Animated,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -734,12 +735,42 @@ export function DashboardScreen({ navigation }: Props) {
     }>
   >([]);
   const feedId = useRef(1);
+  const addCtaPulse = useRef(new Animated.Value(0)).current;
   const collapsedQuickActionCount = quickActionColumns * 2;
   const canToggleQuickActions =
     QUICK_ACTIONS_FOR_GRID.length > collapsedQuickActionCount;
   const visibleQuickActions = quickActionsExpanded
     ? QUICK_ACTIONS_FOR_GRID
     : QUICK_ACTIONS_FOR_GRID.slice(0, collapsedQuickActionCount);
+
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(addCtaPulse, {
+          toValue: 1,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        Animated.timing(addCtaPulse, {
+          toValue: 0,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [addCtaPulse]);
+
+  const addCtaScale = addCtaPulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.06],
+  });
+
+  const addCtaGlow = addCtaPulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.18, 0.35],
+  });
 
   useEffect(() => {
     const tick = () => {
@@ -1917,19 +1948,44 @@ export function DashboardScreen({ navigation }: Props) {
                   />
                 </TouchableOpacity>
               )}
-              <TouchableOpacity
-                onPress={() => setQuickActionPopupOpen(true)}
-                activeOpacity={0.8}
-                className="flex-row items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1"
+              <Animated.View
+                style={{
+                  transform: [{ scale: addCtaScale }],
+                }}
               >
-                <Ionicons name="add-circle-outline" size={14} color="#e67e22" />
-                <Text
-                  className="text-xs font-semibold text-primary"
-                  numberOfLines={1}
+                <TouchableOpacity
+                  onPress={() => setQuickActionPopupOpen(true)}
+                  activeOpacity={0.85}
+                  className="flex-row items-center gap-1 rounded-full border border-primary/35 bg-primary/15 px-2.5 py-1"
+                  style={{
+                    shadowColor: ACTION_COLORS.primary,
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 6,
+                    elevation: 2,
+                  }}
                 >
-                  {compactQuickActionsHeader ? "Add" : "Add Transaction"}
-                </Text>
-              </TouchableOpacity>
+                  <Animated.View
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: 999,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: ACTION_COLORS.primary,
+                      opacity: addCtaGlow,
+                    }}
+                  >
+                    <Ionicons name="add" size={12} color="#fff" />
+                  </Animated.View>
+                  <Text
+                    className="text-xs font-semibold text-primary"
+                    numberOfLines={1}
+                  >
+                    {compactQuickActionsHeader ? "Add" : "Add Transaction"}
+                  </Text>
+                </TouchableOpacity>
+              </Animated.View>
             </View>
           </View>
           <View style={{ marginBottom: 20 }}>
