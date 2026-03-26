@@ -24,6 +24,7 @@
 ## File Organization
 
 ### Directory Structure
+
 ```
 src/
 ├── screens/              # Full-screen components (Feature)
@@ -40,6 +41,7 @@ src/
 ```
 
 ### File Naming
+
 ```typescript
 // ✅ Correct patterns
 - ScreenName.tsx          (screens always suffix with "Screen")
@@ -56,6 +58,7 @@ src/
 ```
 
 ### File Size Guidelines
+
 ```
 ✅ Ideal sizes:
 - UI components: 50-150 lines
@@ -74,42 +77,53 @@ src/
 ## Naming Conventions
 
 ### Variables & Functions
+
 ```typescript
 // ✅ Best practices
-const userName = "John";              // camelCase for variables
-const getUserName = () => {};         // camelCase for functions
-const isLoading = false;              // boolean with is/has/should prefix
-const onPress = () => {};             // event handlers with onX prefix
-const handleSubmit = async () => {};  // handler functions with handle prefix
+const userName = "John"; // camelCase for variables
+const getUserName = () => {}; // camelCase for functions
+const isLoading = false; // boolean with is/has/should prefix
+const onPress = () => {}; // event handlers with onX prefix
+const handleSubmit = async () => {}; // handler functions with handle prefix
 
 // Constants
-const MAX_RETRY_COUNT = 3;            // UPPER_SNAKE_CASE
-const STATUS_COLORS = {};             // UPPER_SNAKE_CASE
-const defaultValue = 42;              // const with meaningful name
+const MAX_RETRY_COUNT = 3; // UPPER_SNAKE_CASE
+const STATUS_COLORS = {}; // UPPER_SNAKE_CASE
+const defaultValue = 42; // const with meaningful name
 
 // ❌ Avoid
-const load_data = () => {};           // snake_case in JS
-const x = 0;                          // single letter (except i, j in loops)
-const userNameString = "John";        // redundant type in name
-const onUserNameChanged = () => {};   // past tense (use onChange not onChanged)
+const load_data = () => {}; // snake_case in JS
+const x = 0; // single letter (except i, j in loops)
+const userNameString = "John"; // redundant type in name
+const onUserNameChanged = () => {}; // past tense (use onChange not onChanged)
 ```
 
 ### TypeScript Types
+
 ```typescript
 // ✅ Correct
-type UserProfile = { name: string; email: string };          // Type
-interface UserRepository { getUser(): Promise<User> }       // Interface
-enum InvoiceStatus { DRAFT, PENDING, PAID }                 // Enum
-type Maybe<T> = T | null;                                    // Generic alias
+type UserProfile = { name: string; email: string }; // Type
+interface UserRepository {
+  getUser(): Promise<User>;
+} // Interface
+enum InvoiceStatus {
+  DRAFT,
+  PENDING,
+  PAID,
+} // Enum
+type Maybe<T> = T | null; // Generic alias
 
 // ❌ Avoid
-type user = {};                       // lowercase
-interface IUser {}                    // I prefix (outdated)
-enum Colors { red = "red" }          // PascalCase values (usually)
-type user_data = {};                  // snake_case
+type user = {}; // lowercase
+interface IUser {} // I prefix (outdated)
+enum Colors {
+  red = "red",
+} // PascalCase values (usually)
+type user_data = {}; // snake_case
 ```
 
 ### Prop Interface Naming
+
 ```typescript
 // ✅ Correct
 interface ButtonProps {
@@ -124,9 +138,9 @@ interface ButtonProps extends Omit<TouchableOpacityProps, "onPress"> {
 }
 
 // ❌ Avoid
-interface Button {}                   // Use ButtonProps suffix
-interface ButtonComponentProps {}     // Redundant "Component"
-type IButtonProps = {}                // Don't use I prefix with Props
+interface Button {} // Use ButtonProps suffix
+interface ButtonComponentProps {} // Redundant "Component"
+type IButtonProps = {}; // Don't use I prefix with Props
 ```
 
 ---
@@ -134,6 +148,7 @@ type IButtonProps = {}                // Don't use I prefix with Props
 ## TypeScript Best Practices
 
 ### Use Strict Mode (✅ Already enabled)
+
 ```typescript
 // tsconfig.json
 {
@@ -149,6 +164,7 @@ type IButtonProps = {}                // Don't use I prefix with Props
 ```
 
 ### Typing Patterns
+
 ```typescript
 // ✅ Explicit return types
 const getUserName = (user: User): string => user.name;
@@ -176,12 +192,13 @@ type FormState =
 
 // ❌ Avoid
 const getName: any = (user: any) => user.name;
-function fetchData(id): Promise<any> {}          // no param type
-const handler = (e) => {};                        // No event type
-let data: Record<string, any> = {};              // Too loose
+function fetchData(id): Promise<any> {} // no param type
+const handler = (e) => {}; // No event type
+let data: Record<string, any> = {}; // Too loose
 ```
 
 ### Using `satisfies` for Type Safety
+
 ```typescript
 // ✅ Modern TypeScript pattern (5.4+)
 const STATUS_COLORS = {
@@ -208,11 +225,12 @@ const STATUS_COLORS: Record<InvoiceStatus, { bg: string; text: string }> = {
 ## Component Patterns
 
 ### Functional Components (✅ Always use)
+
 ```typescript
 // ✅ Correct pattern
-export const MyComponent = React.memo(function MyComponent({ 
-  title, 
-  onPress 
+export const MyComponent = React.memo(function MyComponent({
+  title,
+  onPress
 }: MyComponentProps) {
   return (
     <TouchableOpacity onPress={onPress}>
@@ -230,11 +248,11 @@ interface MyComponentProps {
 }
 
 export const MyComponent = React.memo(
-  function MyComponent({ 
-    title, 
-    subtitle, 
-    onPress, 
-    disabled = false 
+  function MyComponent({
+    title,
+    subtitle,
+    onPress,
+    disabled = false
   }: MyComponentProps) {
     return (/*...*/);
   }
@@ -246,6 +264,7 @@ export const MyComponent = React.memo(
 ```
 
 ### Component Composition
+
 ```typescript
 // ✅ Compose smaller, focused components
 const InvoiceList = ({ invoices }: InvoiceListProps) => (
@@ -277,6 +296,7 @@ const InvoiceList = ({ invoices }: InvoiceListProps) => (
 ```
 
 ### Using React.memo Correctly
+
 ```typescript
 // ✅ Memoize when props are stable
 export const MemoizedComponent = React.memo(
@@ -315,6 +335,7 @@ const Parent = () => {
 ## State Management
 
 ### useState with Objects (Avoid Sprawl)
+
 ```typescript
 // ❌ Bad: 80+ useState calls (BillingScreen problem)
 const [itemName, setItemName] = useState("");
@@ -342,6 +363,7 @@ dispatch({ type: "SET_PAYMENT_MODE", mode: "upi" });
 ```
 
 ### Context for Global State
+
 ```typescript
 // ✅ Correct pattern
 type AuthContextType = {
@@ -401,6 +423,7 @@ const { user, login, logout } = useAuth();
 ## Performance
 
 ### Preventing Unnecessary Re-renders
+
 ```typescript
 // ✅ Use useCallback for stable callback references
 const handlePress = useCallback(() => {
@@ -446,11 +469,12 @@ const handleCardPress = useCallback((itemId: string) => {
 ```
 
 ### FlatList Best Practices
+
 ```typescript
 // ✅ Complete pattern for performant lists
 const MyList = ({ items }: Props) => {
   const keyExtractor = useCallback((item: Item) => item.id.toString(), []);
-  
+
   const renderItem = useCallback(
     ({ item }: { item: Item }) => (
       <ListItem item={item} onPress={handlePress} />
@@ -482,6 +506,7 @@ const MyList = ({ items }: Props) => {
 ```
 
 ### Lazy Loading & Code Splitting
+
 ```typescript
 // ✅ Use React.lazy for screen splitting (if needed)
 const SettingsScreen = React.lazy(() => import("./screens/SettingsScreen"));
@@ -500,8 +525,8 @@ useFocusEffect(handleScreenFocus);
 useQuery({
   queryKey: ["invoices", filters],
   queryFn: () => api.getInvoices(filters),
-  staleTime: 10 * 60 * 1000,  // Fresh for 10 minutes
-  gcTime: 30 * 60 * 1000,     // Keep in memory for 30 minutes
+  staleTime: 10 * 60 * 1000, // Fresh for 10 minutes
+  gcTime: 30 * 60 * 1000, // Keep in memory for 30 minutes
 });
 ```
 
@@ -510,6 +535,7 @@ useQuery({
 ## Error Handling
 
 ### API Error Handling
+
 ```typescript
 // ✅ Comprehensive error handler
 type ApiError = {
@@ -550,6 +576,7 @@ useMutation({
 ```
 
 ### Try-Catch Best Practices
+
 ```typescript
 // ✅ Type your errors
 async function fetchData() {
@@ -589,6 +616,7 @@ class ErrorBoundary extends React.Component {
 ## Testing
 
 ### Unit Test Examples
+
 ```typescript
 // ✅ Test utility functions
 describe("computeTotals", () => {
@@ -619,7 +647,7 @@ describe("computeTotals", () => {
 describe("useOffline", () => {
   it("detects network status changes", async () => {
     const { result } = renderHook(() => useOffline());
-    
+
     expect(result.current.isOffline).toBe(false);
 
     // Simulate network change
@@ -632,7 +660,7 @@ describe("useOffline", () => {
 
   it("auto-syncs when coming online", async () => {
     const { result } = renderHook(() => useOffline());
-    
+
     // Go offline, queue something
     // Come back online
     // Expect sync to be called
@@ -644,7 +672,7 @@ describe("InvoiceCard", () => {
   it("renders invoice details", () => {
     const invoice = { id: "1", number: "INV-001", total: 1000 };
     const { getByText } = render(<InvoiceCard invoice={invoice} />);
-    
+
     expect(getByText("INV-001")).toBeTruthy();
     expect(getByText("₹1,000")).toBeTruthy();
   });
@@ -662,6 +690,7 @@ describe("InvoiceCard", () => {
 ```
 
 ### Testing Checklist
+
 - [ ] Unit tests for all utility functions
 - [ ] Hook tests for custom hooks (useOffline, useResponsive, etc)
 - [ ] Component tests for UI components
@@ -675,6 +704,7 @@ describe("InvoiceCard", () => {
 ## Accessibility
 
 ### Basic Requirements (WCAG 2.1 AA)
+
 ```typescript
 // ✅ Use accessibilityLabel for semantic meaning
 <TouchableOpacity accessibilityLabel="Create new invoice">
@@ -716,6 +746,7 @@ const isScreenReaderEnabled = useAccessibilityInfo().screenReaderEnabled;
 ## Common Pitfalls
 
 ### 1. **Infinite Loops in useEffect**
+
 ```typescript
 // ❌ Bad: infinite loop
 useEffect(() => {
@@ -738,6 +769,7 @@ useEffect(() => {
 ```
 
 ### 2. **Memory Leaks in Subscriptions**
+
 ```typescript
 // ❌ Bad: Memory leak
 useEffect(() => {
@@ -753,6 +785,7 @@ useEffect(() => {
 ```
 
 ### 3. **Mutable State Updates**
+
 ```typescript
 // ❌ Bad: Mutating state directly
 const [items, setItems] = useState([]);
@@ -777,6 +810,7 @@ setForm({
 ```
 
 ### 4. **Closure Issues in Callbacks**
+
 ```typescript
 // ❌ Bad: Stale closure
 function handleSearch(query: string) {
@@ -787,17 +821,15 @@ function handleSearch(query: string) {
 }
 
 // ✅ Good: useCallback with dependencies
-const handleSearch = useCallback(
-  (query: string) => {
-    setTimeout(() => {
-      filterItems(query); // Correct reference
-    }, 500);
-  },
-  [],
-);
+const handleSearch = useCallback((query: string) => {
+  setTimeout(() => {
+    filterItems(query); // Correct reference
+  }, 500);
+}, []);
 ```
 
 ### 5. **Passing Inline Objects as Props**
+
 ```typescript
 // ❌ Bad: New object every render
 <Card
@@ -814,6 +846,7 @@ const cardStyle = { padding: 16, borderRadius: 8 };
 ```
 
 ### 6. **Not Handling Loading States**
+
 ```typescript
 // ❌ Bad: Doesn't show loading
 const MyScreen = () => {
