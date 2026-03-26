@@ -13,6 +13,7 @@ import {
   TextInput,
   ScrollView,
 } from "react-native";
+import { showAlert } from "../lib/alerts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { expenseApi } from "../lib/api";
@@ -103,7 +104,7 @@ export function ExpensesScreen() {
   const handleAdd = () => {
     const amt = parseFloat(amount);
     if (!amount || amt <= 0) {
-      Alert.alert("Invalid amount", "Please enter a valid amount.");
+      showAlert("Invalid amount", "Please enter a valid amount.");
       return;
     }
     createMutation.mutate(
@@ -115,13 +116,13 @@ export function ExpensesScreen() {
         date,
       },
       {
-        onError: (err: Error) => Alert.alert("Error", err?.message ?? "Failed to add expense"),
+        onError: (err: Error) => showAlert("Error", err?.message ?? "Failed to add expense"),
       }
     );
   };
 
   const handleDelete = (id: string, categoryName: string, amountVal: number) => {
-    Alert.alert("Delete expense", `Delete ${categoryName} for ${formatCurrency(amountVal)}?`, [
+    showAlert("Delete expense", `Delete ${categoryName} for ${formatCurrency(amountVal)}?`, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",

@@ -13,6 +13,7 @@ import {
   Modal,
   Pressable,
 } from "react-native";
+import { showAlert } from "../lib/alerts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -204,7 +205,7 @@ export function DocumentSettingsScreen({ navigation }: Props) {
 
   const handleUpdate = () => {
     setHasChanges(false);
-    Alert.alert("Saved", "Document settings updated.");
+    showAlert("Saved", "Document settings updated.");
   };
 
   return (

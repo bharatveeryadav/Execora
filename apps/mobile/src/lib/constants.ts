@@ -132,6 +132,40 @@ export const STATUS_COLORS = {
   },
 } as const;
 
+// ── Invoice Status Styles (with Tailwind classes) ────────────────────────
+export const STATUS_STYLES = {
+  draft: {
+    label: "Draft",
+    bg: "bg-slate-100",
+    text: "text-slate-500",
+  },
+  proforma: {
+    label: "Proforma",
+    bg: "bg-blue-100",
+    text: "text-blue-700",
+  },
+  pending: {
+    label: "Pending",
+    bg: "bg-yellow-100",
+    text: "text-yellow-700",
+  },
+  partial: {
+    label: "Partial",
+    bg: "bg-orange-100",
+    text: "text-orange-700",
+  },
+  paid: {
+    label: "Paid ✅",
+    bg: "bg-green-100",
+    text: "text-green-700",
+  },
+  cancelled: {
+    label: "Cancelled",
+    bg: "bg-red-100",
+    text: "text-red-600",
+  },
+} as const;
+
 // ── Invoice Document Types ─────────────────────────────────────────────────
 export const DOCUMENT_TYPES = {
   invoice: "Invoice",
@@ -147,6 +181,32 @@ export const PAYMENT_METHOD_ICONS = {
   check: "checkmark-done-outline",
   transfer: "swap-horizontal-outline",
   other: "ellipsis-horizontal",
+} as const;
+
+// ── Payment Methods (for selection UI) ────────────────────────────────────
+export const PAYMENT_METHODS = [
+  { value: "cash", label: "Cash" },
+  { value: "upi", label: "UPI" },
+  { value: "card", label: "Card" },
+  { value: "bank_transfer", label: "Bank Transfer" },
+] as const;
+
+// ── Customer Tags ──────────────────────────────────────────────────────────
+export const CUSTOMER_TAGS = [
+  "VIP",
+  "Wholesale",
+  "Blacklist",
+  "Regular",
+] as const;
+
+// ── Languages ──────────────────────────────────────────────────────────────
+export const LANGUAGES = ["hi", "en", "mr", "gu"] as const;
+export type Language = (typeof LANGUAGES)[number];
+export const LANGUAGE_LABELS: Record<Language, string> = {
+  hi: "Hindi",
+  en: "English",
+  mr: "Marathi",
+  gu: "Gujarati",
 } as const;
 
 // ── Animation Timings ──────────────────────────────────────────────────────

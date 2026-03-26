@@ -18,6 +18,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import { showAlert } from "../lib/alerts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -112,12 +113,12 @@ export function UpdateProductScreen({ navigation, route }: Props) {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["products"] });
       void qc.invalidateQueries({ queryKey: ["product", id] });
-      Alert.alert("", "Product updated", [
+      showAlert("", "Product updated", [
         { text: "OK", onPress: () => navigation.goBack() },
       ]);
     },
     onError: (e: Error) => {
-      Alert.alert("Error", e.message ?? "Update failed");
+      showAlert("Error", e.message ?? "Update failed");
     },
   });
 
@@ -137,9 +138,9 @@ export function UpdateProductScreen({ navigation, route }: Props) {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["product", id] });
       void qc.invalidateQueries({ queryKey: ["products"] });
-      Alert.alert("", "Image uploaded");
+      showAlert("", "Image uploaded");
     },
-    onError: () => Alert.alert("Error", "Image upload failed"),
+    onError: () => showAlert("Error", "Image upload failed"),
   });
 
   const handleUpdate = () => {
@@ -167,7 +168,7 @@ export function UpdateProductScreen({ navigation, route }: Props) {
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission needed", "Allow access to photos to add product image.");
+      showAlert("Permission needed", "Allow access to photos to add product image.");
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -229,7 +230,7 @@ export function UpdateProductScreen({ navigation, route }: Props) {
         </TouchableOpacity>
         <Text className="text-lg font-bold text-slate-800">Update Product</Text>
         <TouchableOpacity
-          onPress={() => Alert.alert("Product Settings", "Coming soon")}
+          onPress={() => showAlert("Product Settings", "Coming soon")}
           className="p-2"
         >
           <Ionicons name="cube-outline" size={22} color="#64748b" />
@@ -243,7 +244,7 @@ export function UpdateProductScreen({ navigation, route }: Props) {
         <ScrollView className="flex-1" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           {/* Add Custom Fields banner */}
           <TouchableOpacity
-            onPress={() => Alert.alert("Custom Fields", "Coming soon")}
+            onPress={() => showAlert("Custom Fields", "Coming soon")}
             className="mx-4 mt-3 flex-row items-center justify-between rounded-xl bg-sky-100 px-4 py-3"
           >
             <View className="flex-row items-center gap-2">
@@ -335,7 +336,7 @@ export function UpdateProductScreen({ navigation, route }: Props) {
           <View className="mx-4 mt-4 rounded-2xl bg-white border border-slate-200 overflow-hidden">
             <View className="px-4 pt-4 pb-2 flex-row items-center justify-between">
               <Text className="text-base font-bold text-slate-800">Units</Text>
-              <TouchableOpacity onPress={() => Alert.alert("Add Alternative Unit", "Coming soon")}>
+              <TouchableOpacity onPress={() => showAlert("Add Alternative Unit", "Coming soon")}>
                 <Text className="text-sm font-semibold text-blue-600">Add Alternative Unit</Text>
               </TouchableOpacity>
             </View>

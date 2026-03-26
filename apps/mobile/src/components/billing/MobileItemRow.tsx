@@ -10,13 +10,13 @@ import {
   TextInput,
   TouchableOpacity,
   FlatList,
-  Alert,
 } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 import { fuzzyFilter, type BillingItem, type Product } from "@execora/shared";
 import { productApi } from "../../lib/api";
 import { BarcodeScanner } from "../common/BarcodeScanner";
+import { showError } from "../../lib/alerts";
 
 export interface MobileItemRowProps {
   item: BillingItem;
@@ -94,10 +94,7 @@ export function MobileItemRow({
         const { product } = await productApi.byBarcode(barcode);
         handleSelect(product);
       } catch {
-        Alert.alert(
-          "Not found",
-          "No product with this barcode in your catalog.",
-        );
+        showError("No product with this barcode in your catalog.", "Not found");
       }
     },
     [handleSelect],

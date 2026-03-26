@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { showAlert } from "../lib/alerts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
@@ -117,7 +118,7 @@ export function ImportScreen({ navigation, route }: Props) {
         dialogTitle: `Save ${config.label} template`,
       });
     } else {
-      Alert.alert("Template ready", `Template saved to cache. Use a file manager to access ${filename}`);
+      showAlert("Template ready", `Template saved to cache. Use a file manager to access ${filename}`);
     }
   }
 
@@ -136,7 +137,7 @@ export function ImportScreen({ navigation, route }: Props) {
       setPreviewRows(parseCsv(content, config));
       setStep(3);
     } catch (err: any) {
-      Alert.alert("Error", err?.message ?? "Could not read file");
+      showAlert("Error", err?.message ?? "Could not read file");
     }
   }
 
@@ -176,12 +177,12 @@ export function ImportScreen({ navigation, route }: Props) {
       let msg = `✅ ${succeeded} ${config.label} imported successfully!`;
       if (failed > 0) msg += `\n${failed} rows failed.`;
       if (invalidCount > 0) msg += `\n${invalidCount} rows skipped (invalid).`;
-      Alert.alert("Import complete", msg, [
+      showAlert("Import complete", msg, [
         { text: "OK", onPress: () => navigation.goBack() },
       ]);
     } catch (err: any) {
       setLoading(false);
-      Alert.alert("Import failed", err?.message ?? "Unknown error");
+      showAlert("Import failed", err?.message ?? "Unknown error");
     }
   }
 

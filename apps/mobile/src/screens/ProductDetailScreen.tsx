@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { showAlert } from "../lib/alerts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -114,7 +115,7 @@ export function ProductDetailScreen({ navigation, route }: Props) {
       void qc.invalidateQueries({ queryKey: ["product", id] });
       if (data?.product?.stock !== undefined) setStock(String(data.product.stock));
     },
-    onError: (e: Error) => Alert.alert("Error", e.message ?? "Stock update failed"),
+    onError: (e: Error) => showAlert("Error", e.message ?? "Stock update failed"),
   });
 
   const priceWithTax = num(price) * (1 + num(gstRate) / 100);
@@ -174,7 +175,7 @@ export function ProductDetailScreen({ navigation, route }: Props) {
           <TouchableOpacity onPress={goToUpdate} className="p-2">
             <Ionicons name="create-outline" size={22} color="#64748b" />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => Alert.alert("More", "Options coming soon")} className="p-2">
+          <TouchableOpacity onPress={() => showAlert("More", "Options coming soon")} className="p-2">
             <Ionicons name="ellipsis-horizontal" size={22} color="#64748b" />
           </TouchableOpacity>
         </View>

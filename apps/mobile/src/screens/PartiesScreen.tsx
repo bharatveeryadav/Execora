@@ -18,6 +18,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import { showAlert } from "../lib/alerts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
@@ -236,9 +237,9 @@ export function PartiesScreen({ navigation }: Props) {
       const customer = res?.customer;
       if (customer?.id)
         navigation.navigate("CustomerDetail", { id: customer.id });
-      Alert.alert("", `${newName} added`);
+      showAlert("", `${newName} added`);
     },
-    onError: () => Alert.alert("Error", "Failed to add customer"),
+    onError: () => showAlert("Error", "Failed to add customer"),
   });
 
   function openAdd() {
@@ -362,9 +363,9 @@ export function PartiesScreen({ navigation }: Props) {
       setVendorPhone("");
       setVendorEmail("");
       setVendorAddress("");
-      Alert.alert("", "Vendor added");
+      showAlert("", "Vendor added");
     },
-    onError: () => Alert.alert("Error", "Failed to add vendor"),
+    onError: () => showAlert("Error", "Failed to add vendor"),
   });
 
   function handleAddVendor() {
@@ -981,7 +982,7 @@ export function PartiesScreen({ navigation }: Props) {
                 <Pressable
                   onPress={() => {
                     setMenuOpen(false);
-                    Alert.alert(
+                    showAlert(
                       "Coming soon",
                       "Merge customers feature is coming soon.",
                     );

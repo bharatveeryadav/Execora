@@ -3,6 +3,7 @@
  */
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, TextInput, Alert } from "react-native";
+import { showAlert } from "../lib/alerts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -32,13 +33,13 @@ export function FeedbackScreen({ navigation }: Props) {
       setSubmitted(true);
     },
     onError: (err: Error) => {
-      Alert.alert("Error", err?.message ?? "Failed to submit feedback");
+      showAlert("Error", err?.message ?? "Failed to submit feedback");
     },
   });
 
   const handleSubmit = () => {
     if (npsScore === null) {
-      Alert.alert("Select a score", "Please select how likely you are to recommend Execora (0–10).");
+      showAlert("Select a score", "Please select how likely you are to recommend Execora (0–10).");
       return;
     }
     submitMutation.mutate();

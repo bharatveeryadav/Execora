@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { showAlert } from "../lib/alerts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useMutation } from "@tanstack/react-query";
 import { authApi, getApiBaseUrl } from "../lib/api";
@@ -71,7 +72,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
       const body = isNetworkError
         ? "Check:\n\n1) API is running (pnpm dev)\n2) EXPO_PUBLIC_API_URL in .env points to your machine\n3) On physical phone: use your PC's LAN IP (e.g. http://192.168.1.x:3006)\n4) On emulator: use http://10.0.2.2:3006"
         : msg;
-      Alert.alert(title, body);
+      showAlert(title, body);
     },
   });
 

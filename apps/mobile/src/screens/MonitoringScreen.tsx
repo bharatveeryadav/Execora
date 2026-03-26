@@ -14,6 +14,7 @@ import {
   TextInput,
   Modal,
 } from "react-native";
+import { showAlert } from "../lib/alerts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
@@ -118,7 +119,7 @@ export function MonitoringScreen() {
       setCashNote("");
       void qc.invalidateQueries({ queryKey: ["monitoring-stats", "monitoring-events"] });
     },
-    onError: (err: Error) => Alert.alert("Error", err.message),
+    onError: (err: Error) => showAlert("Error", err.message),
   });
 
   const refetch = () => {

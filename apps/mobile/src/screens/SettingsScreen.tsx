@@ -3,6 +3,7 @@
  */
 import React from "react";
 import { View, Text, ScrollView, TouchableOpacity, Alert } from "react-native";
+import { showAlert } from "../lib/alerts";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../contexts/AuthContext";
@@ -15,7 +16,7 @@ export function SettingsScreen({ navigation }: Props) {
   const { contentPad } = useResponsive();
 
   const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
+    showAlert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Logout",

@@ -10,7 +10,6 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -18,6 +17,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { customerApi, paymentApi } from '../lib/api';
 import { formatCurrency, toFloat } from '../lib/utils';
+import { showAlert, showError } from '../lib/alerts';
 import { hapticSuccess, hapticError } from '../lib/haptics';
 import { useResponsive } from '../hooks/useResponsive';
 import type { CustomersStackParams } from '../navigation';
@@ -80,11 +80,11 @@ export function PaymentScreen({ navigation, route }: Props) {
       qc.invalidateQueries({ queryKey: ['customer-invoices', selectedCustomerId] });
       qc.invalidateQueries({ queryKey: ['customer-ledger', selectedCustomerId] });
       qc.invalidateQueries({ queryKey: ['invoices'] });
-      Alert.alert('', '💰 Payment recorded!', [{ text: 'OK', onPress: () => navigation.goBack() }]);
+      showAlert('', '💰 Payment recorded!', [{ text: 'OK', onPress: () => navigation.goBack() }]);
     },
     onError: (err: any) => {
       hapticError();
-      Alert.alert('Error', err?.message ?? 'Failed to record payment');
+      showError(err?.message ?? 'Failed to record payment');
     },
   });
 

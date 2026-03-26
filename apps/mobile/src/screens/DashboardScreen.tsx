@@ -45,6 +45,12 @@ import { wsClient } from "../lib/ws";
 import { PressableCard } from "../components/ui/Card";
 import { Skeleton } from "../components/ui/Skeleton";
 import { TabBar, type TabItem } from "../components/composites/TabBar";
+import {
+  QuickActionsSection,
+  type QuickActionItem,
+} from "../components/dashboard/QuickActionsSection";
+import { RecentActivitySection } from "../components/dashboard/RecentActivitySection";
+import { showInfo } from "../lib/alerts";
 import { formatCurrency } from "../lib/utils";
 import { TYPO } from "../lib/typography";
 
@@ -55,14 +61,7 @@ const ACTION_COLORS: Record<string, string> = {
   warning: "#e6a319",
 };
 
-const QUICK_ACTIONS: Array<{
-  label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  primary: boolean;
-  route: string;
-  color: string;
-  params?: Record<string, unknown>;
-}> = [
+const QUICK_ACTIONS: QuickActionItem[] = [
   {
     label: "Quick Sale",
     icon: "flash-outline",
@@ -878,7 +877,7 @@ export function DashboardScreen({ navigation }: Props) {
         const msg = d.total
           ? `Invoice confirmed — ₹${parseFloat(String(d.total)).toLocaleString("en-IN")}`
           : "Invoice confirmed";
-        Alert.alert("", msg);
+        showInfo(msg);
       }),
       wsClient.on("payment:recorded", (p: unknown) => {
         const d = p as { customerName?: string; amount?: number };
@@ -890,7 +889,7 @@ export function DashboardScreen({ navigation }: Props) {
         const msg = d.amount
           ? `Payment recorded — ₹${parseFloat(String(d.amount)).toLocaleString("en-IN")}`
           : "Payment recorded";
-        Alert.alert("", msg);
+        showInfo(msg);
       }),
       wsClient.on("customer:updated", (p: unknown) => {
         const d = p as { name?: string };
@@ -1873,247 +1872,34 @@ export function DashboardScreen({ navigation }: Props) {
           )}
 
           {/* 4 — Quick Actions */}
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 8,
-              marginBottom: 12,
-            }}
-          >
-            <Text className={TYPO.sectionTitle} style={{ flexShrink: 1 }}>
-              Quick Actions
-            </Text>
-            <View
-              style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
-            >
-              {canToggleQuickActions && (
-                <TouchableOpacity
-                  onPress={() => setQuickActionsExpanded((v) => !v)}
-                  activeOpacity={0.8}
-                  className="flex-row items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1"
-                >
-                  <Text
-                    className="text-xs font-semibold text-slate-600"
-                    numberOfLines={1}
-                  >
-                    {quickActionsExpanded
-                      ? compactQuickActionsHeader
-                        ? "Less"
-                        : "Hide"
-                      : compactQuickActionsHeader
-                        ? "More"
-                        : "Show all"}
-                  </Text>
-                  <Ionicons
-                    name={quickActionsExpanded ? "chevron-up" : "chevron-down"}
-                    size={14}
-                    color="#64748b"
-                  />
-                </TouchableOpacity>
-              )}
-              <Animated.View
-                style={{
-                  transform: [{ scale: addCtaScale }],
-                }}
-              >
-                <TouchableOpacity
-                  onPress={() => setQuickActionPopupOpen(true)}
-                  activeOpacity={0.85}
-                  className="flex-row items-center gap-1 rounded-full border border-primary/35 bg-primary/15 px-2.5 py-1"
-                  style={{
-                    shadowColor: ACTION_COLORS.primary,
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.2,
-                    shadowRadius: 6,
-                    elevation: 2,
-                  }}
-                >
-                  <Animated.View
-                    style={{
-                      width: 18,
-                      height: 18,
-                      borderRadius: 999,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: ACTION_COLORS.primary,
-                      opacity: addCtaGlow,
-                    }}
-                  >
-                    <Ionicons name="add" size={12} color="#fff" />
-                  </Animated.View>
-                  <Text
-                    className="text-xs font-semibold text-primary"
-                    numberOfLines={1}
-                  >
-                    {compactQuickActionsHeader ? "Add" : "Add Transaction"}
-                  </Text>
-                </TouchableOpacity>
-              </Animated.View>
-            </View>
-          </View>
-          <View style={{ marginBottom: 20 }}>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              {visibleQuickActions.map((qa) => (
-                <TouchableOpacity
-                  key={qa.label}
-                  onPress={() => handleQuickAction(qa.route, qa.params)}
-                  activeOpacity={0.85}
-                  style={{
-                    width: quickActionTileWidth,
-                    minHeight: 64,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 4,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: qa.primary ? ACTION_COLORS.primary : "#e2e8f0",
-                    backgroundColor: qa.primary
-                      ? ACTION_COLORS.primary
-                      : "#fafbfc",
-                    paddingVertical: 10,
-                    paddingHorizontal: contentWidth < 360 ? 2 : 4,
-                  }}
-                >
-                  <Ionicons
-                    name={qa.icon}
-                    size={20}
-                    color={qa.primary ? "#ffffff" : qa.color}
-                  />
-                  <Text
-                    className={`${TYPO.micro} font-semibold text-center ${qa.primary ? "text-white" : "text-slate-600"}`}
-                    numberOfLines={2}
-                  >
-                    {qa.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+          <QuickActionsSection
+            canToggleQuickActions={canToggleQuickActions}
+            quickActionsExpanded={quickActionsExpanded}
+            compactQuickActionsHeader={compactQuickActionsHeader}
+            addCtaScale={addCtaScale}
+            addCtaGlow={addCtaGlow}
+            quickActionTileWidth={quickActionTileWidth}
+            contentWidth={contentWidth}
+            visibleQuickActions={visibleQuickActions}
+            actionPrimaryColor={ACTION_COLORS.primary}
+            onToggleExpand={() => setQuickActionsExpanded((v) => !v)}
+            onOpenAddTransaction={() => setQuickActionPopupOpen(true)}
+            onQuickAction={handleQuickAction}
+          />
 
-          {/* Recent Activity (with LIVE) */}
-          <View className="flex-row items-center justify-between mb-2">
-            <View className="flex-row items-center gap-2">
-              <View className="flex-row items-center gap-1.5">
-                <Ionicons
-                  name="document-text-outline"
-                  size={18}
-                  color="#0f172a"
-                />
-                <Text className={TYPO.sectionTitle}>Recent Activity</Text>
-              </View>
-              <View className="flex-row items-center gap-1 rounded-full bg-green-100 px-2 py-0.5">
-                <View className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                <Text className={`${TYPO.micro} font-semibold text-green-700`}>
-                  LIVE
-                </Text>
-              </View>
-            </View>
-            <View
-              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
-            >
-              <TouchableOpacity
-                onPress={() => setRecentActivityHidden((v) => !v)}
-                activeOpacity={0.8}
-                className="flex-row items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1"
-              >
-                <Text className="text-xs font-semibold text-slate-600">
-                  {recentActivityHidden
-                    ? compactQuickActionsHeader
-                      ? "Show"
-                      : "Show"
-                    : compactQuickActionsHeader
-                      ? "Hide"
-                      : "Hide"}
-                </Text>
-                <Ionicons
-                  name={recentActivityHidden ? "chevron-down" : "chevron-up"}
-                  size={14}
-                  color="#64748b"
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => void refetchInvoices()}
-                className="flex-row items-center gap-1"
-              >
-                <View className="flex-row items-center gap-1">
-                  <Ionicons name="refresh-outline" size={14} color="#64748b" />
-                  <Text className={TYPO.caption}>
-                    {secsAgo < 5 ? "just now" : `${secsAgo}s ago`}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-          </View>
-          {!recentActivityHidden && (
-            <View className="rounded-xl border border-slate-200 bg-card overflow-hidden shadow-sm mb-5">
-              {todayInvoices.length === 0 && (
-                <View className="py-8 items-center">
-                  <Text className={TYPO.bodyMuted}>No invoices yet today</Text>
-                </View>
-              )}
-              {todayInvoices.slice(0, 5).map((inv, idx) => {
-                const invWithDate = inv as { createdAt?: string };
-                const timeStr = invWithDate.createdAt
-                  ? new Date(invWithDate.createdAt).toLocaleTimeString(
-                      "en-IN",
-                      {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: true,
-                      },
-                    )
-                  : "";
-                return (
-                  <TouchableOpacity
-                    key={inv.id}
-                    onPress={() =>
-                      navigateInvoiceStack("InvoiceDetail", { id: inv.id })
-                    }
-                    className={`flex-row items-center px-4 py-3 ${idx > 0 ? "border-t border-slate-100" : ""}`}
-                  >
-                    <View className="flex-1 min-w-0">
-                      <Text className={TYPO.labelBold}>
-                        {(inv as { invoiceNo?: string }).invoiceNo ??
-                          inv.id.slice(-6)}
-                      </Text>
-                      <Text className={`${TYPO.caption} mt-0.5`}>
-                        {inv.customer?.name ?? "Walk-in"}
-                      </Text>
-                    </View>
-                    <View
-                      className="items-end shrink-0"
-                      style={{ marginLeft: 8 }}
-                    >
-                      <Text className={`${TYPO.value} text-primary`}>
-                        ₹{inr(inv.total)}
-                      </Text>
-                      {timeStr ? (
-                        <Text className={`${TYPO.micro} text-slate-500 mt-0.5`}>
-                          {timeStr}
-                        </Text>
-                      ) : null}
-                      <View
-                        className={`mt-1 px-2 py-0.5 rounded-full ${inv.status === "paid" ? "bg-green-100" : "bg-amber-100"}`}
-                      >
-                        <Text
-                          className={`${TYPO.micro} font-semibold text-center ${inv.status === "paid" ? "text-green-700" : "text-amber-700"}`}
-                        >
-                          {inv.status === "paid"
-                            ? "✅ Paid"
-                            : (inv as { status?: string }).status ===
-                                "cancelled"
-                              ? "❌ Void"
-                              : "⏳ Due"}
-                        </Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
+          <RecentActivitySection
+            recentActivityHidden={recentActivityHidden}
+            compactQuickActionsHeader={compactQuickActionsHeader}
+            secsAgo={secsAgo}
+            todayInvoices={todayInvoices}
+            onToggleHidden={() => setRecentActivityHidden((v) => !v)}
+            onRefresh={() => {
+              void refetchInvoices();
+            }}
+            onInvoicePress={(invoiceId) =>
+              navigateInvoiceStack("InvoiceDetail", { id: invoiceId })
+            }
+          />
 
           {/* 7 — Low Stock */}
           {!loadingLowStock && lowStock.length > 0 && (

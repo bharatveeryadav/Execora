@@ -36,6 +36,7 @@ import {
   Image,
   InteractionManager,
 } from "react-native";
+import { showAlert } from "../lib/alerts";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import {
   SafeAreaView,
@@ -312,7 +313,7 @@ export function ItemsScreen({ navigation }: Props) {
       void qc.invalidateQueries({ queryKey: QUERY_KEYS.products.all() });
     },
     onError: (e: Error) => {
-      Alert.alert("Error", e.message ?? "Stock adjustment failed");
+      showAlert("Error", e.message ?? "Stock adjustment failed");
     },
   });
 
@@ -328,7 +329,7 @@ export function ItemsScreen({ navigation }: Props) {
     (product: Product & { minStock?: number }, op: "add" | "subtract") => {
       const current = num(product.stock);
       if (op === "subtract" && current <= 0) {
-        Alert.alert("Cannot subtract", "Stock is already at 0");
+        showAlert("Cannot subtract", "Stock is already at 0");
         return;
       }
       adjustMutation.mutate({ id: product.id, qty: 1, op });
@@ -1253,7 +1254,7 @@ function AddProductModal({
 
   const handleCreate = async () => {
     if (!name.trim()) {
-      Alert.alert("Required", "Product name is required");
+      showAlert("Required", "Product name is required");
       return;
     }
     setLoading(true);
@@ -1270,7 +1271,7 @@ function AddProductModal({
       reset();
       onCreated();
     } catch (e: any) {
-      Alert.alert("Error", e.message ?? "Failed to add product");
+      showAlert("Error", e.message ?? "Failed to add product");
     } finally {
       setLoading(false);
     }
@@ -1500,12 +1501,12 @@ function AdjustStockModal({
   const handleApply = async () => {
     const quantity = parseInt(qty);
     if (!quantity || quantity <= 0) {
-      Alert.alert("Invalid", "Enter a valid quantity");
+      showAlert("Invalid", "Enter a valid quantity");
       return;
     }
     const currentStock = num(product.stock);
     if (op === "subtract" && quantity > currentStock) {
-      Alert.alert(
+      showAlert(
         "Not enough stock",
         `Only ${currentStock} units available to subtract`,
       );
@@ -1516,7 +1517,7 @@ function AdjustStockModal({
       await productExtApi.adjustStock(product.id, quantity, op, reason);
       onAdjusted();
     } catch (e: any) {
-      Alert.alert("Error", e.message ?? "Adjustment failed");
+      showAlert("Error", e.message ?? "Adjustment failed");
     } finally {
       setLoading(false);
     }

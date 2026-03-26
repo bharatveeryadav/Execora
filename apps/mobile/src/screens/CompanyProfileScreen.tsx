@@ -19,6 +19,7 @@ import {
   Pressable,
   Image,
 } from "react-native";
+import { showAlert } from "../lib/alerts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -150,7 +151,7 @@ export function CompanyProfileScreen({ navigation }: Props) {
   const pickLogo = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission needed", "Allow access to photos to upload your logo.");
+      showAlert("Permission needed", "Allow access to photos to upload your logo.");
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -166,9 +167,9 @@ export function CompanyProfileScreen({ navigation }: Props) {
       const { logoObjectKey: key } = await authExtApi.uploadLogo(uri, mimeType ?? "image/jpeg");
       setLogoObjectKey(key);
       void qc.invalidateQueries({ queryKey: ["auth", "me"] });
-      Alert.alert("", "Logo uploaded successfully");
+      showAlert("", "Logo uploaded successfully");
     } catch (e) {
-      Alert.alert("Upload failed", (e as Error).message ?? "Please try again.");
+      showAlert("Upload failed", (e as Error).message ?? "Please try again.");
     } finally {
       setLogoUploading(false);
     }
@@ -179,9 +180,9 @@ export function CompanyProfileScreen({ navigation }: Props) {
       authExtApi.updateProfile(data),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["auth", "me"] });
-      Alert.alert("", "Company details saved ✅");
+      showAlert("", "Company details saved ✅");
     },
-    onError: (e: Error) => Alert.alert("Error", e.message ?? "Failed to save"),
+    onError: (e: Error) => showAlert("Error", e.message ?? "Failed to save"),
   });
 
   const handleSave = () => {

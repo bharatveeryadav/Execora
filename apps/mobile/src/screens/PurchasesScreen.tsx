@@ -11,6 +11,7 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+import { showAlert } from "../lib/alerts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { purchaseApi } from "../lib/api";
@@ -103,11 +104,11 @@ export function PurchasesScreen() {
   const handleAdd = () => {
     const amt = parseFloat(amount);
     if (!itemName.trim()) {
-      Alert.alert("Required", "Please enter item name.");
+      showAlert("Required", "Please enter item name.");
       return;
     }
     if (!amount || amt <= 0) {
-      Alert.alert("Invalid amount", "Please enter a valid amount.");
+      showAlert("Invalid amount", "Please enter a valid amount.");
       return;
     }
     createMutation.mutate(
@@ -121,13 +122,13 @@ export function PurchasesScreen() {
         date,
       },
       {
-        onError: (err: Error) => Alert.alert("Error", err?.message ?? "Failed to add purchase"),
+        onError: (err: Error) => showAlert("Error", err?.message ?? "Failed to add purchase"),
       }
     );
   };
 
   const handleDelete = (id: string, item: string, amountVal: number) => {
-    Alert.alert("Delete purchase", `Delete ${item} for ${formatCurrency(amountVal)}?`, [
+    showAlert("Delete purchase", `Delete ${item} for ${formatCurrency(amountVal)}?`, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",

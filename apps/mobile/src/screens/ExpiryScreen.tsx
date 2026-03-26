@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { showAlert } from "../lib/alerts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { productExtApi } from "../lib/api";
@@ -50,7 +51,7 @@ export function ExpiryScreen() {
     },
     onError: (err: Error) => {
       hapticError();
-      Alert.alert("Error", err.message ?? "Write-off failed");
+      showAlert("Error", err.message ?? "Write-off failed");
     },
   });
 
@@ -58,7 +59,7 @@ export function ExpiryScreen() {
   const summary = data?.summary ?? { expiredCount: 0, critical7: 0, warning30: 0, valueAtRisk: 0 };
 
   const handleWriteOff = (batchId: string, productName: string) => {
-    Alert.alert(
+    showAlert(
       "Write off batch?",
       `This will reduce stock to 0 for "${productName}". This action cannot be undone.`,
       [

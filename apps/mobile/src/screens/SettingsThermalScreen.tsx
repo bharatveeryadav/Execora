@@ -10,6 +10,7 @@ import {
   TextInput,
   Alert,
 } from "react-native";
+import { showAlert } from "../lib/alerts";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
@@ -39,7 +40,7 @@ export function SettingsThermalScreen({ navigation }: Props) {
 
   const handleSave = () => {
     setThermalConfig({ width, header, footer });
-    Alert.alert("Saved", "Thermal print settings saved.");
+    showAlert("Saved", "Thermal print settings saved.");
   };
 
   const handleTestPrint = async () => {
@@ -70,7 +71,7 @@ export function SettingsThermalScreen({ navigation }: Props) {
     try {
       await printReceipt(sampleData);
     } catch (e) {
-      Alert.alert("Print", (e as Error).message ?? "Could not print");
+      showAlert("Print", (e as Error).message ?? "Could not print");
     }
   };
 

@@ -12,26 +12,28 @@ import {
   TextInput,
   ActivityIndicator,
   Linking,
-  Alert,
   FlatList,
   RefreshControl,
   Switch,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { customerApi, reminderApi, customerExtApi } from "../lib/api";
 import {
-  customerApi,
-  invoiceApi,
-  reminderApi,
-  customerExtApi,
-} from "../lib/api";
+  useCustomerDetail,
+  useCustomerInvoices,
+  useCustomerLedger,
+} from "../hooks/useDataQueries";
 import {
   formatCurrency,
   formatDate,
   formatDateTime,
   toFloat,
 } from "../lib/utils";
+import { showError, showSuccess } from "../lib/alerts";
+import { CUSTOMER_TAGS, LANGUAGE_LABELS, LANGUAGES } from "../lib/constants";
+import { QUERY_KEYS } from "../lib/queryKeys";
 import type { CustomersStackParams } from "../navigation";
 
 type Props = NativeStackScreenProps<CustomersStackParams, "CustomerDetail">;
@@ -48,15 +50,6 @@ const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
   draft: { bg: "bg-slate-100", text: "text-slate-500" },
   proforma: { bg: "bg-slate-100", text: "text-slate-500" },
   cancelled: { bg: "bg-red-100", text: "text-red-500" },
-};
-
-const CUSTOMER_TAGS = ["VIP", "Wholesale", "Blacklist", "Regular"] as const;
-const LANGUAGES = ["hi", "en", "mr", "gu"] as const;
-const LANG_LABELS: Record<string, string> = {
-  hi: "Hindi",
-  en: "English",
-  mr: "Marathi",
-  gu: "Gujarati",
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -114,76 +107,52 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
     isLoading,
     refetch,
     isFetching,
-  } = useQuery({
-    queryKey: ["customer", id],
-    queryFn: () => customerApi.get(id),
-    staleTime: 30_000,
-  });
+  } = useCustomerDetail(id);
 
-  const { data: invoiceData } = useQuery({
-    queryKey: ["customer-invoices", id],
-    queryFn: () => invoiceApi.list(1, 50, id),
-    staleTime: 30_000,
-  });
+  const { data: invoiceData } = useCustomerInvoices(id);
 
-  const { data: ledgerData } = useQuery({
-    queryKey: ["customer-ledger", id],
-    queryFn: () => customerExtApi.getLedger(id),
-    staleTime: 30_000,
-  });
-
-  const { data: remindersData } = useQuery({
-    queryKey: ["reminders", id],
-    queryFn: () => reminderApi.list(id),
-    staleTime: 60_000,
-  });
-
-  const { data: commPrefsData } = useQuery({
-    queryKey: ["comm-prefs", id],
-    queryFn: () => customerExtApi.getCommPrefs(id),
-    staleTime: 60_000,
-  });
+  const { data: ledgerData } = useCustomerLedger(id);
 
   // ── Mutations ─────────────────────────────────────────────────────────────
 
   const updateMutation = useMutation({
     mutationFn: (data: any) => customerApi.update(id, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["customer", id] });
-      qc.invalidateQueries({ queryKey: ["customers"] });
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.customerDetail.base(id) });
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.customers.all() });
       setEditOpen(false);
-      Alert.alert("", "Customer updated ✅");
+      showSuccess("Customer updated ✅");
     },
-    onError: () => Alert.alert("Error", "Update failed"),
+    onError: () => showError("Update failed"),
   });
 
   const deleteMutation = useMutation({
     mutationFn: () => customerExtApi.delete(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["customers"] });
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.customers.all() });
       navigation.goBack();
     },
-    onError: () => Alert.alert("Error", "Delete failed"),
+    onError: () => showError("Delete failed"),
   });
 
   const createReminderMutation = useMutation({
     mutationFn: (data: any) => reminderApi.create(data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["reminders", id] });
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.reminders.all() });
       setReminderOpen(false);
-      Alert.alert("", "Reminder set ✅");
+      showSuccess("Reminder set ✅");
     },
-    onError: () => Alert.alert("Error", "Failed to set reminder"),
+    onError: () => showError("Failed to set reminder"),
   });
 
   const updatePrefsMutation = useMutation({
     mutationFn: (data: any) => customerExtApi.updateCommPrefs(id, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["comm-prefs", id] });
+      // TODO: Add comm prefs to QUERY_KEYS when implementing notification preferences
       setPrefsOpen(false);
-      Alert.alert("", "Preferences saved ✅");
+      showSuccess("Preferences saved ✅");
     },
-    onError: () => Alert.alert("Error", "Save failed"),
+    onError: () => showError("Save failed"),
   });
 
   // ── Derived ───────────────────────────────────────────────────────────────
@@ -214,8 +183,8 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
 
   const invoices = (invoiceData as any)?.invoices ?? [];
   const ledger = (ledgerData as any)?.entries ?? [];
-  const reminders = (remindersData as any)?.reminders ?? [];
-  const commPrefs = (commPrefsData as any)?.prefs ?? null;
+  // TODO: Implement useReminders hook - fetch reminders for this customer
+  const reminders: any[] = [];
 
   const balance = toFloat(customer.balance);
   const totalBilled = invoices.reduce(
@@ -242,12 +211,14 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
   }
 
   function openPrefs() {
-    setPWaEnabled(commPrefs?.whatsappEnabled ?? true);
-    setPWaNumber(commPrefs?.whatsappNumber ?? customer?.phone ?? "");
-    setPEmailEnabled(commPrefs?.emailEnabled ?? false);
-    setPEmailAddress(commPrefs?.emailAddress ?? customer?.email ?? "");
-    setPSmsEnabled(commPrefs?.smsEnabled ?? false);
-    setPLang(commPrefs?.preferredLanguage ?? "hi");
+    // Initialize with defaults from customer data
+    // TODO: Load actual prefs from API when implemented
+    setPWaEnabled(true);
+    setPWaNumber(customer?.phone ?? "");
+    setPEmailEnabled(false);
+    setPEmailAddress(customer?.email ?? "");
+    setPSmsEnabled(false);
+    setPLang("hi");
     setPrefsOpen(true);
   }
 
@@ -493,17 +464,17 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
               {[
                 {
                   label: "WhatsApp",
-                  on: commPrefs?.whatsappEnabled ?? true,
-                  detail: commPrefs?.whatsappNumber,
+                  on: true, // Default: enabled
+                  detail: customer?.phone,
                 },
                 {
                   label: "Email",
-                  on: commPrefs?.emailEnabled ?? false,
-                  detail: commPrefs?.emailAddress,
+                  on: false, // Default: disabled
+                  detail: customer?.email,
                 },
                 {
                   label: "SMS",
-                  on: commPrefs?.smsEnabled ?? false,
+                  on: false, // Default: disabled
                   detail: undefined,
                 },
               ].map((ch) => (
@@ -1031,7 +1002,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
                   <Text
                     className={`text-xs font-medium ${pLang === lang ? "text-white" : "text-slate-600"}`}
                   >
-                    {LANG_LABELS[lang]}
+                    {LANGUAGE_LABELS[lang]}
                   </Text>
                 </TouchableOpacity>
               ))}

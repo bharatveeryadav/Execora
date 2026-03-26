@@ -35,6 +35,7 @@ import {
   Alert,
   Image,
 } from "react-native";
+import { showAlert } from "../lib/alerts";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -646,7 +647,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
       setNewCustPhone("");
       void qc.invalidateQueries({ queryKey: ["customers"] });
     },
-    onError: (err: Error) => Alert.alert("Error", err.message),
+    onError: (err: Error) => showAlert("Error", err.message),
   });
 
   const buildPayload = useCallback(
@@ -748,7 +749,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
     },
     onError: (err: Error) => {
       hapticError();
-      Alert.alert("Error creating invoice", err.message);
+      showAlert("Error creating invoice", err.message);
     },
   });
 
@@ -851,7 +852,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
     try {
       await printReceipt(receiptData);
     } catch (e) {
-      Alert.alert("Print", (e as Error).message ?? "Could not print receipt");
+      showAlert("Print", (e as Error).message ?? "Could not print receipt");
     }
   }, [
     savedInvoice,
@@ -2452,7 +2453,7 @@ function MobileItemRow({
         const { product } = await productApi.byBarcode(barcode);
         handleSelect(product);
       } catch {
-        Alert.alert(
+        showAlert(
           "Not found",
           "No product with this barcode in your catalog.",
         );
