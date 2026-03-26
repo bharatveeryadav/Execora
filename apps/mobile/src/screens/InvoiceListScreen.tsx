@@ -11,13 +11,12 @@ import {
   ActivityIndicator,
   ScrollView,
   Pressable,
-  TouchableOpacity,
   InteractionManager,
   Modal,
   Platform,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
@@ -207,7 +206,6 @@ type Props = NativeStackScreenProps<InvoicesStackParams, "InvoiceList">;
 
 export function InvoiceListScreen({ navigation }: Props) {
   const { contentPad, contentWidth, isSmall } = useResponsive();
-  const insets = useSafeAreaInsets();
   const compactHeader = contentWidth < 380;
   const stackSearchControls = contentWidth < 380;
   const [docTypeTab, setDocTypeTab] = useState<DocTypeTab>("sales");
@@ -979,33 +977,26 @@ export function InvoiceListScreen({ navigation }: Props) {
             </View>
           )}
         </View>
-
-        {/* FAB */}
-        <TouchableOpacity
-          onPress={handleNewInvoice}
-          activeOpacity={0.85}
-          style={{
-            position: "absolute",
-            bottom: Math.max(insets.bottom, 12),
-            right: 0,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 6,
-            paddingHorizontal: 14,
-            paddingVertical: 12,
-            borderRadius: 24,
-            backgroundColor: "#e67e22",
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.25,
-            shadowRadius: 4,
-            elevation: 5,
-          }}
-        >
-          <Ionicons name="add" size={22} color="#fff" />
-          <Text className="text-white font-bold text-sm">Create Invoice</Text>
-        </TouchableOpacity>
       </View>
+
+      {/* FAB */}
+      <Pressable
+        onPress={handleNewInvoice}
+        className="w-14 h-14 rounded-full bg-primary items-center justify-center"
+        style={({ pressed }) => ({
+          position: "absolute",
+          bottom: 24,
+          right: contentPad,
+          opacity: pressed ? 0.9 : 1,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.2,
+          shadowRadius: 8,
+          elevation: 8,
+        })}
+      >
+        <Ionicons name="add" size={28} color="#fff" />
+      </Pressable>
 
       {/* Date filter modal — web: Select dropdown */}
       <Modal visible={dateFilterModalOpen} transparent animationType="fade">
