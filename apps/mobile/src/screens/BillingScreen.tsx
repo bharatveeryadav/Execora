@@ -510,7 +510,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
           unit: p.unit ?? "pcs",
           productId: p.id,
           hsnCode: p.hsnCode,
-          amount: computeAmount(rate, qty, discount),
+          amount: computeAmount(String(rate), qty, discount),
         },
       ]);
     },
