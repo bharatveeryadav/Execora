@@ -5,7 +5,14 @@
  */
 
 import React, { useCallback, useMemo } from "react";
-import { View, TouchableOpacity, Text, Modal, Pressable, ScrollView } from "react-native";
+import {
+  View,
+  TouchableOpacity,
+  Text,
+  Modal,
+  Pressable,
+  ScrollView,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 export interface FilterOption {
@@ -268,7 +275,11 @@ export const FilterBar = React.memo(function FilterBar({
                     {option.label}
                   </Text>
                   {isActive && (
-                    <Ionicons name="checkmark-circle" size={20} color="#e67e22" />
+                    <Ionicons
+                      name="checkmark-circle"
+                      size={20}
+                      color="#e67e22"
+                    />
                   )}
                 </TouchableOpacity>
               );
@@ -280,7 +291,9 @@ export const FilterBar = React.memo(function FilterBar({
               onPress={onClearAll}
               className="flex-1 py-3 border border-slate-200 rounded-lg items-center"
             >
-              <Text className="text-sm font-semibold text-slate-600">Clear</Text>
+              <Text className="text-sm font-semibold text-slate-600">
+                Clear
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => onOpenChange?.(false)}

@@ -53,7 +53,7 @@ export const TabBar = React.memo(function TabBar({
         const baseStyle =
           variant === "pills"
             ? "rounded-full px-4 py-2 border border-slate-200"
-            : "flex-1 px-3 py-3 border-b-2";
+            : `${scrollable ? "" : "flex-1 "}px-3 py-3 border-b-2`;
 
         return (
           <TouchableOpacity
@@ -73,7 +73,13 @@ export const TabBar = React.memo(function TabBar({
               <Ionicons
                 name={tab.icon}
                 size={18}
-                color={isActive ? (variant === "pills" ? "#fff" : "#e67e22") : "#64748b"}
+                color={
+                  isActive
+                    ? variant === "pills"
+                      ? "#fff"
+                      : "#e67e22"
+                    : "#64748b"
+                }
               />
             )}
             <Text
