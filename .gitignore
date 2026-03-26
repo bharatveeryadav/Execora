@@ -18,6 +18,8 @@ yarn-error.log*
 dist/
 build/
 *.tsbuildinfo
+apps/mobile/.expo/
+apps/mobile/android/
 
 # Logs
 logs/
