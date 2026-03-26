@@ -35,7 +35,10 @@ import {
   Alert,
   Image,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -54,8 +57,23 @@ import {
   type CreateInvoicePayload,
 } from "@execora/shared";
 import { Ionicons } from "@expo/vector-icons";
-import { customerApi, productApi, invoiceApi, authApi, getApiBaseUrl } from "../lib/api";
-import { storage, tokenStorage, DRAFT_KEY, INVOICE_BAR_KEY, PRICE_TIER_KEY, INV_TEMPLATE_KEY, BIZ_STORAGE_KEY, DOC_SETTINGS_KEY } from "../lib/storage";
+import {
+  customerApi,
+  productApi,
+  invoiceApi,
+  authApi,
+  getApiBaseUrl,
+} from "../lib/api";
+import {
+  storage,
+  tokenStorage,
+  DRAFT_KEY,
+  INVOICE_BAR_KEY,
+  PRICE_TIER_KEY,
+  INV_TEMPLATE_KEY,
+  BIZ_STORAGE_KEY,
+  DOC_SETTINGS_KEY,
+} from "../lib/storage";
 import { BarcodeScanner } from "../components/common/BarcodeScanner";
 import { printReceipt } from "../lib/printReceipt";
 import { useOffline } from "../contexts/OfflineContext";
@@ -102,7 +120,11 @@ const PAY_MODE_ICONS: Record<PaymentMode, keyof typeof Ionicons.glyphMap> = {
   card: "card-outline",
   credit: "wallet-outline",
 };
-type DiscountOnType = "unit_price" | "price_with_tax" | "net_amount" | "total_amount";
+type DiscountOnType =
+  | "unit_price"
+  | "price_with_tax"
+  | "net_amount"
+  | "total_amount";
 
 function readInvoiceBar(): Record<string, unknown> {
   try {
@@ -125,6 +147,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
   const qc = useQueryClient();
   const { isOffline } = useOffline();
   const { contentPad, contentWidth } = useResponsive();
+  const insets = useSafeAreaInsets();
   const startAsWalkIn = route.params?.startAsWalkIn;
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -206,23 +229,39 @@ export function BillingScreen({ navigation, route }: BillingProps) {
     queryFn: () => authApi.me(),
     staleTime: 5 * 60_000,
   });
-  const meUser = meData?.user as { tenant?: { legalName?: string; name?: string; gstin?: string; settings?: Record<string, unknown> } } | undefined;
+  const meUser = meData?.user as
+    | {
+        tenant?: {
+          legalName?: string;
+          name?: string;
+          gstin?: string;
+          settings?: Record<string, unknown>;
+        };
+      }
+    | undefined;
   const tenant = meUser?.tenant;
   const bizProfile = readBizProfile();
-  const shopName = ((bizProfile.legalName ?? tenant?.legalName ?? tenant?.name) as string) || "My Shop";
-  const supplierGstin = (bizProfile.gstin ?? tenant?.gstin) as string | undefined;
+  const shopName =
+    ((bizProfile.legalName ?? tenant?.legalName ?? tenant?.name) as string) ||
+    "My Shop";
+  const supplierGstin = (bizProfile.gstin ?? tenant?.gstin) as
+    | string
+    | undefined;
   const supplierAddressParts = [
     bizProfile.address,
     bizProfile.city,
     bizProfile.state,
     bizProfile.pincode,
   ].filter(Boolean) as string[];
-  const supplierAddress = supplierAddressParts.length > 0 ? supplierAddressParts.join(", ") : undefined;
+  const supplierAddress =
+    supplierAddressParts.length > 0
+      ? supplierAddressParts.join(", ")
+      : undefined;
 
   // ── Invoice bar (Indian standard) ───────────────────────────────────────
   const [showInvoiceBarEdit, setShowInvoiceBarEdit] = useState(false);
-  const [invoicePrefix, setInvoicePrefix] = useState(() =>
-    (readInvoiceBar().invoicePrefix as string) ?? "INV-",
+  const [invoicePrefix, setInvoicePrefix] = useState(
+    () => (readInvoiceBar().invoicePrefix as string) ?? "INV-",
   );
   const [documentDate, setDocumentDate] = useState(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -243,7 +282,12 @@ export function BillingScreen({ navigation, route }: BillingProps) {
   });
   const [discountOnType, setDiscountOnType] = useState<DiscountOnType>(() => {
     const v = readInvoiceBar().discountOnType as string;
-    return ["unit_price", "price_with_tax", "net_amount", "total_amount"].includes(v)
+    return [
+      "unit_price",
+      "price_with_tax",
+      "net_amount",
+      "total_amount",
+    ].includes(v)
       ? (v as DiscountOnType)
       : "net_amount";
   });
@@ -259,7 +303,13 @@ export function BillingScreen({ navigation, route }: BillingProps) {
     { name: "Dealer", key: 2 },
   ];
   const getEffectivePrice = useCallback(
-    (p: Product & { wholesalePrice?: number | string | null; priceTier2?: number | string | null; priceTier3?: number | string | null }): number => {
+    (
+      p: Product & {
+        wholesalePrice?: number | string | null;
+        priceTier2?: number | string | null;
+        priceTier3?: number | string | null;
+      },
+    ): number => {
       const base = parseFloat(String(p.price ?? 0));
       if (priceTierIdx === 1 && p.wholesalePrice != null)
         return parseFloat(String(p.wholesalePrice));
@@ -274,7 +324,8 @@ export function BillingScreen({ navigation, route }: BillingProps) {
 
   const computedDueDate = useMemo(() => {
     const base = new Date(documentDate);
-    const days = dueDateDays === "custom" ? (parseInt(customDueDays, 10) || 0) : dueDateDays;
+    const days =
+      dueDateDays === "custom" ? parseInt(customDueDays, 10) || 0 : dueDateDays;
     if (days <= 0) return "";
     base.setDate(base.getDate() + days);
     return base.toISOString().slice(0, 10);
@@ -289,7 +340,14 @@ export function BillingScreen({ navigation, route }: BillingProps) {
       documentTitle,
       discountOnType,
     });
-  }, [invoicePrefix, documentDate, dueDateDays, customDueDays, documentTitle, discountOnType]);
+  }, [
+    invoicePrefix,
+    documentDate,
+    dueDateDays,
+    customDueDays,
+    documentTitle,
+    discountOnType,
+  ]);
 
   // ── Preloaded product catalog (for instant fuzzy search) ──────────────────
   const { data: catalogData } = useQuery({
@@ -303,18 +361,22 @@ export function BillingScreen({ navigation, route }: BillingProps) {
     if (catalogData?.products?.length) cacheProducts(catalogData.products);
   }, [catalogData?.products]);
 
-  // ── Customer search ───────────────────────────────────────────────────────
+  // ── Customer search with debounce ────────────────────────────────────────
+  const debouncedCustomerQuery = useMemo(() => customerQuery, [customerQuery]);
   const { data: custData, isFetching: searchingCustomers } = useQuery({
-    queryKey: ["customers-search", customerQuery],
-    queryFn: () => customerApi.search(customerQuery),
-    enabled: customerQuery.length >= 1 && !selectedCustomer,
-    staleTime: 2000,
+    queryKey: ["customers-search", debouncedCustomerQuery],
+    queryFn: () => customerApi.search(debouncedCustomerQuery),
+    enabled: debouncedCustomerQuery.length >= 1 && !selectedCustomer,
+    staleTime: 5000,
   });
   const customerSuggestions: Customer[] = custData?.customers ?? [];
 
   // ── Totals ────────────────────────────────────────────────────────────────
-  const validItems = items.filter((it) => it.name.trim());
-  const validItemCount = validItems.length;
+  const validItems = useMemo(
+    () => items.filter((it) => it.name.trim()),
+    [items],
+  );
+  const validItemCount = useMemo(() => validItems.length, [validItems]);
   const totals = useMemo(
     () =>
       computeTotals(items, discountPct, discountFlat, withGst, roundOffEnabled),
@@ -330,17 +392,25 @@ export function BillingScreen({ navigation, route }: BillingProps) {
     roundOff,
     finalTotal,
   } = totals;
-  const grandTotalWords = amountInWords(finalTotal);
+  const grandTotalWords = useMemo(
+    () => amountInWords(finalTotal),
+    [finalTotal],
+  );
   const splitTotal = useMemo(
     () => splits.reduce((s, sp) => s + (parseFloat(sp.amount) || 0), 0),
     [splits],
   );
-  const outstandingBalance =
-    parseFloat(String(selectedCustomer?.balance ?? 0)) || 0;
+  const outstandingBalance = useMemo(
+    () => parseFloat(String(selectedCustomer?.balance ?? 0)) || 0,
+    [selectedCustomer?.balance],
+  );
 
   // ── Logo for header (document icon) ───────────────────────────────────────
   const settings = (tenant?.settings as Record<string, unknown>) ?? {};
-  const logoObjectKey = (settings.logoObjectKey ?? (bizProfile as Record<string, unknown>).logoObjectKey) as string | undefined;
+  const logoObjectKey = (settings.logoObjectKey ??
+    (bizProfile as Record<string, unknown>).logoObjectKey) as
+    | string
+    | undefined;
   const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
   useEffect(() => {
     if (!logoObjectKey) {
@@ -359,7 +429,8 @@ export function BillingScreen({ navigation, route }: BillingProps) {
         try {
           const bytes = new Uint8Array(arrayBuffer);
           let binary = "";
-          for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+          for (let i = 0; i < bytes.length; i++)
+            binary += String.fromCharCode(bytes[i]);
           const base64 = btoa(binary);
           if (!cancelled) setLogoDataUrl(`data:image/jpeg;base64,${base64}`);
         } catch {
@@ -367,7 +438,9 @@ export function BillingScreen({ navigation, route }: BillingProps) {
         }
       })
       .catch(() => {});
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [logoObjectKey]);
 
   // ── Header: Logo (document icon) or ellipsis → Document Settings ───────────
@@ -375,7 +448,9 @@ export function BillingScreen({ navigation, route }: BillingProps) {
     (navigation as any).setOptions({
       headerRight: () => (
         <TouchableOpacity
-          onPress={() => (navigation as any).getParent()?.navigate("DocumentSettings")}
+          onPress={() =>
+            (navigation as any).getParent()?.navigate("DocumentSettings")
+          }
           className="p-2 -m-2"
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           accessibilityLabel="Document Settings"
@@ -409,12 +484,19 @@ export function BillingScreen({ navigation, route }: BillingProps) {
       }),
     );
   }, []);
-  const addItem = () => {
+  const addItem = useCallback(() => {
     hapticLight();
     setItems((prev) => [...prev, newItem()]);
-  };
+  }, []);
   const addItemWithProduct = useCallback(
-    (p: Product & { wholesalePrice?: number | string | null; priceTier2?: number | string | null; priceTier3?: number | string | null; hsnCode?: string }) => {
+    (
+      p: Product & {
+        wholesalePrice?: number | string | null;
+        priceTier2?: number | string | null;
+        priceTier3?: number | string | null;
+        hsnCode?: string;
+      },
+    ) => {
       hapticLight();
       const rate = getEffectivePrice(p);
       const qty = "1";
@@ -434,10 +516,13 @@ export function BillingScreen({ navigation, route }: BillingProps) {
     },
     [getEffectivePrice],
   );
-  const removeItem = (id: number) =>
-    setItems((prev) =>
-      prev.length > 1 ? prev.filter((it) => it.id !== id) : prev,
-    );
+  const removeItem = useCallback(
+    (id: number) =>
+      setItems((prev) =>
+        prev.length > 1 ? prev.filter((it) => it.id !== id) : prev,
+      ),
+    [],
+  );
 
   // ── Draft auto-save (2 s debounce) ───────────────────────────────────────
   useEffect(() => {
@@ -565,7 +650,10 @@ export function BillingScreen({ navigation, route }: BillingProps) {
   });
 
   const buildPayload = useCallback(
-    (vars: { customerId: string; notesWithDue: string }): CreateInvoicePayload => ({
+    (vars: {
+      customerId: string;
+      notesWithDue: string;
+    }): CreateInvoicePayload => ({
       customerId: vars.customerId,
       items: validItems.map((it) => ({
         productName: it.name.trim(),
@@ -589,13 +677,21 @@ export function BillingScreen({ navigation, route }: BillingProps) {
           const primary = splits[0]?.mode ?? "cash";
           return {
             amount: splitTotal,
-            method: (primary === "credit" ? "other" : primary) as "cash" | "upi" | "card" | "other",
+            method: (primary === "credit" ? "other" : primary) as
+              | "cash"
+              | "upi"
+              | "card"
+              | "other",
           };
         }
         return parseFloat(paymentAmount) > 0
           ? {
               amount: parseFloat(paymentAmount),
-              method: (paymentMode === "credit" ? "other" : paymentMode) as "cash" | "upi" | "card" | "other",
+              method: (paymentMode === "credit" ? "other" : paymentMode) as
+                | "cash"
+                | "upi"
+                | "card"
+                | "other",
             }
           : undefined;
       })(),
@@ -609,7 +705,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
       splits,
       paymentMode,
       paymentAmount,
-    ]
+    ],
   );
 
   const createInvoice = useMutation({
@@ -621,7 +717,11 @@ export function BillingScreen({ navigation, route }: BillingProps) {
       if (!validItems.length) throw new Error("No items added");
       if (isOffline) {
         const payload = buildPayload(vars);
-        const id = enqueueInvoice(payload, vars.displayTotal, vars.notesWithDue);
+        const id = enqueueInvoice(
+          payload,
+          vars.displayTotal,
+          vars.notesWithDue,
+        );
         return {
           invoice: {
             id,
@@ -666,7 +766,9 @@ export function BillingScreen({ navigation, route }: BillingProps) {
     const effectiveDueDate = computedDueDate || dueDate;
     const notesWithDue = [
       notes.trim(),
-      effectiveDueDate ? `Due: ${new Date(effectiveDueDate).toLocaleDateString("en-IN")}` : "",
+      effectiveDueDate
+        ? `Due: ${new Date(effectiveDueDate).toLocaleDateString("en-IN")}`
+        : "",
     ]
       .filter(Boolean)
       .join("\n");
@@ -679,7 +781,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
 
   const isSubmitting = createWalkIn.isPending || createInvoice.isPending;
 
-  const discardDraft = () => {
+  const discardDraft = useCallback(() => {
     setDraftBanner(false);
     setItems([newItem()]);
     setSelectedCustomer(null);
@@ -695,19 +797,23 @@ export function BillingScreen({ navigation, route }: BillingProps) {
     setDueDate("");
     setRoundOffEnabled(false);
     storage.delete(DRAFT_KEY);
-  };
+  }, []);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setSavedInvoice(null);
     discardDraft();
-  };
+  }, [discardDraft]);
 
   const handlePrintReceipt = useCallback(async () => {
     if (!savedInvoice) return;
     const receiptData: ReceiptData = {
       shopName: "My Shop",
       invoiceNo: savedInvoice.no,
-      date: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
+      date: new Date().toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      }),
       customerName: selectedCustomer?.name ?? "Walk-in",
       items: validItems.map((it) => ({
         name: it.name.trim(),
@@ -726,11 +832,21 @@ export function BillingScreen({ navigation, route }: BillingProps) {
       finalTotal,
       amountInWords: grandTotalWords,
       payments: splitEnabled
-        ? splits.filter((s) => parseFloat(s.amount) > 0).map((s) => ({ mode: s.mode, amount: parseFloat(s.amount) }))
+        ? splits
+            .filter((s) => parseFloat(s.amount) > 0)
+            .map((s) => ({ mode: s.mode, amount: parseFloat(s.amount) }))
         : parseFloat(paymentAmount) > 0
           ? [{ mode: paymentMode, amount: parseFloat(paymentAmount) }]
           : [{ mode: "cash", amount: finalTotal }],
-      notes: [notes.trim(), (computedDueDate || dueDate) ? `Due: ${new Date(computedDueDate || dueDate).toLocaleDateString("en-IN")}` : ""].filter(Boolean).join(" ") || undefined,
+      notes:
+        [
+          notes.trim(),
+          computedDueDate || dueDate
+            ? `Due: ${new Date(computedDueDate || dueDate).toLocaleDateString("en-IN")}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" ") || undefined,
     };
     try {
       await printReceipt(receiptData);
@@ -760,6 +876,46 @@ export function BillingScreen({ navigation, route }: BillingProps) {
     computedDueDate,
   ]);
 
+  const handleCompositionSchemeChange = useCallback((v: boolean) => {
+    setCompositionScheme(v);
+    const stored = readBizProfile();
+    stored.compositionScheme = v;
+    storage.set(BIZ_STORAGE_KEY, JSON.stringify(stored));
+  }, []);
+
+  const handleRoundOffChange = useCallback((v: boolean) => {
+    setRoundOffEnabled(v);
+    const stored = readBizProfile();
+    stored.roundOff = v;
+    storage.set(BIZ_STORAGE_KEY, JSON.stringify(stored));
+  }, []);
+
+  const handleNavigateSettings = useCallback(() => {
+    setBillingSetupExpanded(false);
+    (navigation as any).getParent()?.navigate("Settings");
+  }, [navigation]);
+
+  const handlePriceTierChange = useCallback(
+    (idx: number) => {
+      const next = priceTierIdx === idx ? null : idx;
+      setPriceTierIdx(next);
+      storage.set(PRICE_TIER_KEY, String(next ?? -1));
+    },
+    [priceTierIdx],
+  );
+
+  const handleInvoiceBarEdit = useCallback(() => {
+    setShowInvoiceBarEdit(true);
+  }, []);
+
+  const handleInvoiceBarSave = useCallback(() => {
+    saveInvoiceBar();
+    setShowInvoiceBarEdit(false);
+    if (documentTitle === "billOfSupply") {
+      setWithGst(false);
+    }
+  }, [documentTitle]);
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["bottom"]}>
@@ -770,781 +926,859 @@ export function BillingScreen({ navigation, route }: BillingProps) {
       >
         <View style={{ flex: 1, width: "100%", alignItems: "center" }}>
           <View style={{ width: "100%", maxWidth: contentWidth, flex: 1 }}>
-        <ScrollView
-          style={{ flex: 1, paddingHorizontal: contentPad }}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingBottom: 80, paddingTop: 4 }}
-        >
-          {/* ── Draft Banner ─────────────────────────────────────────── */}
-          {draftBanner && (
-            <View className="flex-row items-center justify-between rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5 mt-3 mb-1">
-              <Text className="text-amber-700 text-xs font-semibold flex-1">
-                ↺ Draft restored from last session
-              </Text>
-              <TouchableOpacity onPress={discardDraft} className="ml-3">
-                <Text className="text-amber-600 text-xs font-bold underline">
-                  Discard
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* ── Billing setup (collapsible) ───────────────────────────── */}
-          <TouchableOpacity
-            onPress={() => setBillingSetupExpanded((e) => !e)}
-            activeOpacity={0.7}
-            className="rounded-xl border border-slate-200 bg-white overflow-hidden mb-2"
-          >
-            <View className="flex-row items-center justify-between px-3 py-2.5">
-              <View className="flex-row items-center gap-1.5">
-                <Ionicons name="settings-outline" size={14} color="#64748b" />
-                <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Billing setup
-                </Text>
-              </View>
-              <Text className="text-[11px] text-slate-500 truncate max-w-[45%]" numberOfLines={1}>
-                {shopName || supplierGstin ? `${shopName}${supplierGstin ? ` · ${supplierGstin}` : ""}` : "Configure in Settings"}
-              </Text>
-              <Ionicons
-                name={billingSetupExpanded ? "chevron-up" : "chevron-down"}
-                size={16}
-                color="#94a3b8"
-              />
-            </View>
-            {billingSetupExpanded && (
-              <View className="border-t border-slate-100 px-3 py-3 gap-3">
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-sm text-slate-800">Composition scheme</Text>
-                  <Switch
-                    value={compositionScheme}
-                    onValueChange={(v) => {
-                      setCompositionScheme(v);
-                      const stored = readBizProfile();
-                      stored.compositionScheme = v;
-                      storage.set(BIZ_STORAGE_KEY, JSON.stringify(stored));
-                    }}
-                    trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
-                    thumbColor={compositionScheme ? "#e67e22" : "#f4f4f5"}
-                  />
+            <ScrollView
+              style={{ flex: 1, paddingHorizontal: contentPad }}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ paddingBottom: 120, paddingTop: 4 }}
+            >
+              {/* ── Draft Banner ─────────────────────────────────────────── */}
+              {draftBanner && (
+                <View className="flex-row items-center justify-between rounded-xl bg-amber-50 border border-amber-200 px-3 py-2.5 mt-3 mb-1">
+                  <Text className="text-amber-700 text-xs font-semibold flex-1">
+                    ↺ Draft restored from last session
+                  </Text>
+                  <TouchableOpacity onPress={discardDraft} className="ml-3">
+                    <Text className="text-amber-600 text-xs font-bold underline">
+                      Discard
+                    </Text>
+                  </TouchableOpacity>
                 </View>
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-sm text-slate-800">Round off total</Text>
-                  <Switch
-                    value={roundOffEnabled}
-                    onValueChange={(v) => {
-                      setRoundOffEnabled(v);
-                      const stored = readBizProfile();
-                      stored.roundOff = v;
-                      storage.set(BIZ_STORAGE_KEY, JSON.stringify(stored));
-                    }}
-                    trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
-                    thumbColor={roundOffEnabled ? "#e67e22" : "#f4f4f5"}
-                  />
-                </View>
-                <TouchableOpacity
-                  onPress={() => {
-                    setBillingSetupExpanded(false);
-                    (navigation as any).getParent()?.navigate("Settings");
-                  }}
-                  className="flex-row items-center gap-2 py-2"
-                >
-                  <Ionicons name="settings-outline" size={16} color="#e67e22" />
-                  <Text className="text-sm font-medium text-primary">Billing settings (GSTIN, address, bank…)</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </TouchableOpacity>
+              )}
 
-          {/* ── Invoice Style (collapsible) ───────────────────────────── */}
-          <TouchableOpacity
-            onPress={() => setInvoiceStyleExpanded((e) => !e)}
-            activeOpacity={0.7}
-            className="rounded-xl border border-slate-200 bg-white overflow-hidden mb-2"
-          >
-            <View className="flex-row items-center justify-between px-3 py-2.5">
-              <View className="flex-row items-center gap-1.5">
-                <Ionicons name="document-text-outline" size={14} color="#64748b" />
-                <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  My Store Invoice Style
-                </Text>
-              </View>
-              <Text className="text-[11px] text-slate-500 truncate max-w-[45%]">
-                {TEMPLATES.find((t) => t.id === invoiceTemplate)?.label ?? "Classic"}
-              </Text>
-              <Ionicons
-                name={invoiceStyleExpanded ? "chevron-up" : "chevron-down"}
-                size={16}
-                color="#94a3b8"
-              />
-            </View>
-            {invoiceStyleExpanded && (
-              <View className="border-t border-slate-100 px-3 py-3">
-                <Text className="text-[11px] text-slate-500 mb-2">Tap to change — applies to all bills</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-1">
-                  <View className="flex-row gap-2 pb-1">
-                    {TEMPLATES.map((t) => (
-                      <TemplateThumbnail
-                        key={t.id}
-                        template={t}
-                        selected={invoiceTemplate === t.id}
-                        onPress={() => handleTemplateChange(t.id)}
-                      />
-                    ))}
+              {/* ── Billing setup (collapsible) ───────────────────────────── */}
+              <TouchableOpacity
+                onPress={() => setBillingSetupExpanded((e) => !e)}
+                activeOpacity={0.7}
+                className="rounded-xl border border-slate-200 bg-white overflow-hidden mb-2"
+              >
+                <View className="flex-row items-center justify-between px-3 py-2.5">
+                  <View className="flex-row items-center gap-1.5">
+                    <Ionicons
+                      name="settings-outline"
+                      size={14}
+                      color="#64748b"
+                    />
+                    <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Billing setup
+                    </Text>
                   </View>
-                </ScrollView>
-              </View>
-            )}
-          </TouchableOpacity>
+                  <Text
+                    className="text-[11px] text-slate-500 truncate max-w-[45%]"
+                    numberOfLines={1}
+                  >
+                    {shopName || supplierGstin
+                      ? `${shopName}${supplierGstin ? ` · ${supplierGstin}` : ""}`
+                      : "Configure in Settings"}
+                  </Text>
+                  <Ionicons
+                    name={billingSetupExpanded ? "chevron-up" : "chevron-down"}
+                    size={16}
+                    color="#94a3b8"
+                  />
+                </View>
+                {billingSetupExpanded && (
+                  <View className="border-t border-slate-100 px-3 py-3 gap-3">
+                    <View className="flex-row items-center justify-between">
+                      <Text className="text-sm text-slate-800">
+                        Composition scheme
+                      </Text>
+                      <Switch
+                        value={compositionScheme}
+                        onValueChange={handleCompositionSchemeChange}
+                        trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
+                        thumbColor={compositionScheme ? "#e67e22" : "#f4f4f5"}
+                      />
+                    </View>
+                    <View className="flex-row items-center justify-between">
+                      <Text className="text-sm text-slate-800">
+                        Round off total
+                      </Text>
+                      <Switch
+                        value={roundOffEnabled}
+                        onValueChange={handleRoundOffChange}
+                        trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
+                        thumbColor={roundOffEnabled ? "#e67e22" : "#f4f4f5"}
+                      />
+                    </View>
+                    <TouchableOpacity
+                      onPress={handleNavigateSettings}
+                      className="flex-row items-center gap-2 py-2"
+                    >
+                      <Ionicons
+                        name="settings-outline"
+                        size={16}
+                        color="#e67e22"
+                      />
+                      <Text className="text-sm font-medium text-primary">
+                        Billing settings (GSTIN, address, bank…)
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </TouchableOpacity>
 
-          {/* ── Invoice Bar (Indian standard — tap to edit) ───────────── */}
-          <TouchableOpacity
-            onPress={() => setShowInvoiceBarEdit(true)}
-            activeOpacity={0.7}
-            className="flex-row items-center rounded-xl border-2 border-slate-200 bg-white px-4 py-3 mb-3"
-          >
-            <View className="flex-1">
-              <View className="flex-row flex-wrap gap-x-4 gap-y-1">
-                <View>
-                  <Text className="text-[10px] font-semibold text-slate-500 uppercase">
-                    {documentTitle === "billOfSupply" ? "Bill of Supply" : "Invoice"} #
+              {/* ── Invoice Style (collapsible) ───────────────────────────── */}
+              <TouchableOpacity
+                onPress={() => setInvoiceStyleExpanded((e) => !e)}
+                activeOpacity={0.7}
+                className="rounded-xl border border-slate-200 bg-white overflow-hidden mb-2"
+              >
+                <View className="flex-row items-center justify-between px-3 py-2.5">
+                  <View className="flex-row items-center gap-1.5">
+                    <Ionicons
+                      name="document-text-outline"
+                      size={14}
+                      color="#64748b"
+                    />
+                    <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      My Store Invoice Style
+                    </Text>
+                  </View>
+                  <Text className="text-[11px] text-slate-500 truncate max-w-[45%]">
+                    {TEMPLATES.find((t) => t.id === invoiceTemplate)?.label ??
+                      "Classic"}
                   </Text>
-                  <Text className="text-sm font-bold text-slate-800">
-                    {invoicePrefix}DRAFT
-                  </Text>
+                  <Ionicons
+                    name={invoiceStyleExpanded ? "chevron-up" : "chevron-down"}
+                    size={16}
+                    color="#94a3b8"
+                  />
                 </View>
-                <View>
-                  <Text className="text-[10px] font-semibold text-slate-500 uppercase">
-                    Doc Date
-                  </Text>
-                  <Text className="text-sm font-medium text-slate-800">
-                    {new Date(documentDate).toLocaleDateString("en-IN", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </Text>
-                </View>
-                <View>
-                  <Text className="text-[10px] font-semibold text-slate-500 uppercase">
-                    Due
-                  </Text>
-                  <Text className="text-sm font-medium text-slate-800">
-                    {computedDueDate
-                      ? new Date(computedDueDate).toLocaleDateString("en-IN", {
+                {invoiceStyleExpanded && (
+                  <View className="border-t border-slate-100 px-3 py-3">
+                    <Text className="text-[11px] text-slate-500 mb-2">
+                      Tap to change — applies to all bills
+                    </Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      className="-mx-1"
+                    >
+                      <View className="flex-row gap-2 pb-1">
+                        {TEMPLATES.map((t) => (
+                          <TemplateThumbnail
+                            key={t.id}
+                            template={t}
+                            selected={invoiceTemplate === t.id}
+                            onPress={() => handleTemplateChange(t.id)}
+                          />
+                        ))}
+                      </View>
+                    </ScrollView>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              {/* ── Invoice Bar (Indian standard — tap to edit) ───────────── */}
+              <TouchableOpacity
+                onPress={handleInvoiceBarEdit}
+                activeOpacity={0.7}
+                className="flex-row items-center rounded-xl border-2 border-slate-200 bg-white px-4 py-3 mb-3"
+              >
+                <View className="flex-1">
+                  <View className="flex-row flex-wrap gap-x-4 gap-y-1">
+                    <View>
+                      <Text className="text-[10px] font-semibold text-slate-500 uppercase">
+                        {documentTitle === "billOfSupply"
+                          ? "Bill of Supply"
+                          : "Invoice"}{" "}
+                        #
+                      </Text>
+                      <Text className="text-sm font-bold text-slate-800">
+                        {invoicePrefix}DRAFT
+                      </Text>
+                    </View>
+                    <View>
+                      <Text className="text-[10px] font-semibold text-slate-500 uppercase">
+                        Doc Date
+                      </Text>
+                      <Text className="text-sm font-medium text-slate-800">
+                        {new Date(documentDate).toLocaleDateString("en-IN", {
                           day: "2-digit",
                           month: "short",
                           year: "numeric",
-                        })
-                      : "—"}
-                  </Text>
+                        })}
+                      </Text>
+                    </View>
+                    <View>
+                      <Text className="text-[10px] font-semibold text-slate-500 uppercase">
+                        Due
+                      </Text>
+                      <Text className="text-sm font-medium text-slate-800">
+                        {computedDueDate
+                          ? new Date(computedDueDate).toLocaleDateString(
+                              "en-IN",
+                              {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              },
+                            )
+                          : "—"}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-              </View>
-            </View>
-            <Ionicons name="pencil" size={18} color="#94a3b8" />
-          </TouchableOpacity>
+                <Ionicons name="pencil" size={18} color="#94a3b8" />
+              </TouchableOpacity>
 
-          {/* ── Customer ─────────────────────────────────────────────── */}
-          <View className="mt-2 mb-2">
-            <View className="flex-row items-center justify-between mb-1.5">
-              <View className="flex-row items-center gap-1.5">
-                <Ionicons name="person-outline" size={14} color="#64748b" />
-                <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Customer
-                </Text>
-              </View>
-              {!selectedCustomer && (
-                <TouchableOpacity
-                  onPress={() =>
-                    createWalkIn.mutate(undefined, {
-                      onSuccess: (c) => setSelectedCustomer(c),
-                    })
-                  }
-                  disabled={createWalkIn.isPending}
-                  className="flex-row items-center gap-1 px-2 py-1 rounded-lg border border-primary/40 bg-primary/10"
-                >
-                  {createWalkIn.isPending ? (
-                    <ActivityIndicator size="small" color="#e67e22" />
-                  ) : (
-                    <Ionicons name="cart-outline" size={14} color="#e67e22" />
-                  )}
-                  <Text className="text-xs font-semibold text-primary">Walk-in</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            {selectedCustomer ? (
-              <View className="flex-row items-center rounded-xl border border-primary/30 bg-primary/10 px-3 py-3">
-                <View className="flex-1">
-                  <Text className="text-sm font-bold text-slate-800">
-                    {selectedCustomer.name}
-                  </Text>
-                  {selectedCustomer.phone && (
-                    <Text className="text-xs text-slate-500 mt-0.5">
-                      {selectedCustomer.phone}
+              {/* ── Customer ─────────────────────────────────────────────── */}
+              <View className="mt-2 mb-2">
+                <View className="flex-row items-center justify-between mb-1.5">
+                  <View className="flex-row items-center gap-1.5">
+                    <Ionicons name="person-outline" size={14} color="#64748b" />
+                    <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Customer
                     </Text>
-                  )}
-                  {outstandingBalance > 0 && (
-                    <View className="flex-row items-center gap-1 mt-0.5">
-                      <Ionicons name="warning-outline" size={12} color="#d97706" />
-                      <Text className="text-xs font-semibold text-amber-600">
-                        ₹{inr(outstandingBalance)} outstanding
+                  </View>
+                  {!selectedCustomer && (
+                    <TouchableOpacity
+                      onPress={() =>
+                        createWalkIn.mutate(undefined, {
+                          onSuccess: (c) => setSelectedCustomer(c),
+                        })
+                      }
+                      disabled={createWalkIn.isPending}
+                      className="flex-row items-center gap-1 px-2 py-1 rounded-lg border border-primary/40 bg-primary/10"
+                    >
+                      {createWalkIn.isPending ? (
+                        <ActivityIndicator size="small" color="#e67e22" />
+                      ) : (
+                        <Ionicons
+                          name="cart-outline"
+                          size={14}
+                          color="#e67e22"
+                        />
+                      )}
+                      <Text className="text-xs font-semibold text-primary">
+                        Walk-in
                       </Text>
-                    </View>
-                  )}
-                  {outstandingBalance < 0 && (
-                    <View className="flex-row items-center gap-1 mt-0.5">
-                      <Ionicons name="checkmark-circle-outline" size={12} color="#16a34a" />
-                      <Text className="text-xs font-semibold text-green-600">
-                        ₹{inr(Math.abs(outstandingBalance))} advance credit
-                      </Text>
-                    </View>
+                    </TouchableOpacity>
                   )}
                 </View>
-                <TouchableOpacity
-                  onPress={() => {
-                    setSelectedCustomer(null);
-                    setCustomerQuery("");
-                  }}
-                  className="border border-slate-300 rounded-lg px-3 py-2 ml-2"
-                >
-                  <Text className="text-xs text-slate-500 font-medium">
-                    Change
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View>
-                <View className="flex-row items-center border border-slate-200 rounded-xl bg-white px-3">
-                  <Ionicons name="search" size={18} color="#94a3b8" style={{ marginRight: 8 }} />
-                  <TextInput
-                    value={customerQuery}
-                    onChangeText={(t) => {
-                      setCustomerQuery(t);
-                      setShowCustSuggest(true);
-                    }}
-                    onFocus={() => setShowCustSuggest(true)}
-                    onBlur={() =>
-                      setTimeout(() => setShowCustSuggest(false), 150)
-                    }
-                    placeholder="Search customer… (blank = Walk-in)"
-                    placeholderTextColor="#94a3b8"
-                    className="flex-1 h-12 text-sm text-slate-800"
-                  />
-                  {searchingCustomers && (
-                    <ActivityIndicator size="small" color="#e67e22" />
-                  )}
-                </View>
-                {showCustSuggest && customerQuery.length >= 1 && (
-                  <View className="border border-slate-200 rounded-xl mt-1 bg-white shadow-sm overflow-hidden">
-                    {customerSuggestions.map((c) => (
-                      <TouchableOpacity
-                        key={c.id}
-                        onPress={() => {
-                          setSelectedCustomer(c);
-                          setCustomerQuery("");
-                          setShowCustSuggest(false);
-                        }}
-                        className="flex-row items-center px-3 py-3 border-b border-slate-100 last:border-0"
-                      >
-                        <Text className="text-sm font-medium text-slate-800 flex-1">
-                          {c.name}
+                {selectedCustomer ? (
+                  <View className="flex-row items-center rounded-xl border border-primary/30 bg-primary/10 px-3 py-3">
+                    <View className="flex-1">
+                      <Text className="text-sm font-bold text-slate-800">
+                        {selectedCustomer.name}
+                      </Text>
+                      {selectedCustomer.phone && (
+                        <Text className="text-xs text-slate-500 mt-0.5">
+                          {selectedCustomer.phone}
                         </Text>
-                        {c.phone && (
-                          <Text className="text-xs text-slate-500">
-                            {c.phone}
+                      )}
+                      {outstandingBalance > 0 && (
+                        <View className="flex-row items-center gap-1 mt-0.5">
+                          <Ionicons
+                            name="warning-outline"
+                            size={12}
+                            color="#d97706"
+                          />
+                          <Text className="text-xs font-semibold text-amber-600">
+                            ₹{inr(outstandingBalance)} outstanding
                           </Text>
-                        )}
-                      </TouchableOpacity>
-                    ))}
+                        </View>
+                      )}
+                      {outstandingBalance < 0 && (
+                        <View className="flex-row items-center gap-1 mt-0.5">
+                          <Ionicons
+                            name="checkmark-circle-outline"
+                            size={12}
+                            color="#16a34a"
+                          />
+                          <Text className="text-xs font-semibold text-green-600">
+                            ₹{inr(Math.abs(outstandingBalance))} advance credit
+                          </Text>
+                        </View>
+                      )}
+                    </View>
                     <TouchableOpacity
                       onPress={() => {
-                        setNewCustName(customerQuery.trim());
-                        setShowNewCust(true);
-                        setShowCustSuggest(false);
+                        setSelectedCustomer(null);
+                        setCustomerQuery("");
                       }}
-                      className="flex-row items-center px-3 py-3 border-t border-slate-100 bg-primary/10"
+                      className="border border-slate-300 rounded-lg px-3 py-2 ml-2"
                     >
-                      <Text className="text-sm text-primary font-semibold">
-                        ➕ Add "{customerQuery}" as new customer
+                      <Text className="text-xs text-slate-500 font-medium">
+                        Change
                       </Text>
                     </TouchableOpacity>
                   </View>
-                )}
-                {customerQuery.length === 0 && (
-                  <Text className="text-xs text-slate-400 mt-1 pl-1">
-                    Leave blank → Walk-in customer
-                  </Text>
+                ) : (
+                  <View>
+                    <View className="flex-row items-center border border-slate-200 rounded-xl bg-white px-3">
+                      <Ionicons
+                        name="search"
+                        size={18}
+                        color="#94a3b8"
+                        style={{ marginRight: 8 }}
+                      />
+                      <TextInput
+                        value={customerQuery}
+                        onChangeText={(t) => {
+                          setCustomerQuery(t);
+                          setShowCustSuggest(true);
+                        }}
+                        onFocus={() => setShowCustSuggest(true)}
+                        onBlur={() =>
+                          setTimeout(() => setShowCustSuggest(false), 150)
+                        }
+                        placeholder="Search customer… (blank = Walk-in)"
+                        placeholderTextColor="#94a3b8"
+                        className="flex-1 h-12 text-sm text-slate-800"
+                      />
+                      {searchingCustomers && (
+                        <ActivityIndicator size="small" color="#e67e22" />
+                      )}
+                    </View>
+                    {showCustSuggest && customerQuery.length >= 1 && (
+                      <View className="border border-slate-200 rounded-xl mt-1 bg-white shadow-sm overflow-hidden">
+                        {customerSuggestions.map((c) => (
+                          <TouchableOpacity
+                            key={c.id}
+                            onPress={() => {
+                              setSelectedCustomer(c);
+                              setCustomerQuery("");
+                              setShowCustSuggest(false);
+                            }}
+                            className="flex-row items-center px-3 py-3 border-b border-slate-100 last:border-0"
+                          >
+                            <Text className="text-sm font-medium text-slate-800 flex-1">
+                              {c.name}
+                            </Text>
+                            {c.phone && (
+                              <Text className="text-xs text-slate-500">
+                                {c.phone}
+                              </Text>
+                            )}
+                          </TouchableOpacity>
+                        ))}
+                        <TouchableOpacity
+                          onPress={() => {
+                            setNewCustName(customerQuery.trim());
+                            setShowNewCust(true);
+                            setShowCustSuggest(false);
+                          }}
+                          className="flex-row items-center px-3 py-3 border-t border-slate-100 bg-primary/10"
+                        >
+                          <Text className="text-sm text-primary font-semibold">
+                            ➕ Add "{customerQuery}" as new customer
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                    {customerQuery.length === 0 && (
+                      <Text className="text-xs text-slate-400 mt-1 pl-1">
+                        Leave blank → Walk-in customer
+                      </Text>
+                    )}
+                  </View>
                 )}
               </View>
-            )}
-          </View>
 
-          {/* ── Items ────────────────────────────────────────────────── */}
-          <View className="mt-2 mb-2">
-            <View className="flex-row items-center justify-between mb-1.5">
-              <View className="flex-row items-center gap-1.5">
-                <Ionicons name="cube-outline" size={14} color="#64748b" />
-                <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Items
-                </Text>
-              </View>
-              <View className="flex-row gap-1">
-                {PRICE_TIERS.map((tier, idx) => (
-                  <TouchableOpacity
-                    key={tier.key}
-                    onPress={() => {
-                      const next = priceTierIdx === idx ? null : idx;
-                      setPriceTierIdx(next);
-                      storage.set(PRICE_TIER_KEY, String(next ?? -1));
-                    }}
-                    className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
-                      priceTierIdx === idx
-                        ? "border-primary bg-primary"
-                        : "border-slate-300 bg-white"
-                    }`}
-                  >
-                    <Text
-                      className={
-                        priceTierIdx === idx ? "text-white" : "text-slate-600"
-                      }
-                    >
-                      {tier.name}
+              {/* ── Items ────────────────────────────────────────────────── */}
+              <View className="mt-2 mb-2">
+                <View className="flex-row items-center justify-between mb-1.5">
+                  <View className="flex-row items-center gap-1.5">
+                    <Ionicons name="cube-outline" size={14} color="#64748b" />
+                    <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Items
                     </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-            <View className="border border-slate-200 rounded-xl overflow-hidden">
-              {items.map((item, idx) => (
-                <MobileItemRow
-                  key={item.id}
-                  item={item}
-                  catalog={catalog}
-                  isFirst={idx === 0}
-                  getEffectivePrice={getEffectivePrice}
-                  onUpdate={(patch) => updateItem(item.id, patch)}
-                  onRemove={() => removeItem(item.id)}
-                />
-              ))}
-              <View className="flex-row border-t border-slate-100">
-                <TouchableOpacity
-                  onPress={() => setProductPickerOpen(true)}
-                  className="flex-1 flex-row items-center justify-center gap-2 px-3 py-2.5"
-                >
-                  <Ionicons name="storefront-outline" size={18} color="#e67e22" />
-                  <Text className="text-primary text-sm font-semibold">
-                    Browse products
-                  </Text>
-                </TouchableOpacity>
-                <View className="w-px bg-slate-200" />
-                <TouchableOpacity
-                  onPress={addItem}
-                  className="flex-1 flex-row items-center justify-center gap-2 px-3 py-2.5"
-                >
-                  <Ionicons name="add-circle-outline" size={18} color="#e67e22" />
-                  <Text className="text-primary text-sm font-semibold">
-                    Type to add
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-
-          {/* ── GST ──────────────────────────────────────────────────── */}
-          <View className="flex-row items-center justify-between rounded-xl border border-slate-200 px-4 py-3 mb-2">
-            <View>
-              <Text className="text-sm font-semibold text-slate-800">
-                Include GST
-              </Text>
-              <Text className="text-xs text-slate-500 mt-0.5">
-                Adds 18% GST (CGST+SGST)
-              </Text>
-            </View>
-            <Switch
-              value={withGst}
-              onValueChange={setWithGst}
-              trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
-              thumbColor={withGst ? "#e67e22" : "#f4f4f5"}
-            />
-          </View>
-
-          {/* ── Discount ─────────────────────────────────────────────── */}
-          <View className="flex-row gap-3 mb-2">
-            <View className="flex-1">
-              <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                Bill Disc %
-              </Text>
-              <View className="flex-row items-center border border-slate-200 rounded-xl px-3 bg-white">
-                <TextInput
-                  value={discountPct}
-                  onChangeText={(v) => {
-                    setDiscountPct(v);
-                    if (v) setDiscountFlat("");
-                  }}
-                  keyboardType="decimal-pad"
-                  placeholder="0"
-                  placeholderTextColor="#94a3b8"
-                  className="flex-1 h-12 text-base text-slate-800"
-                />
-                <Text className="text-slate-400 text-sm">%</Text>
-              </View>
-            </View>
-            <View className="flex-1">
-              <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                Flat Disc ₹
-              </Text>
-              <View className="flex-row items-center border border-slate-200 rounded-xl px-3 bg-white">
-                <Text className="text-slate-400 text-sm mr-1">₹</Text>
-                <TextInput
-                  value={discountFlat}
-                  onChangeText={(v) => {
-                    setDiscountFlat(v);
-                    if (v) setDiscountPct("");
-                  }}
-                  keyboardType="decimal-pad"
-                  placeholder="0.00"
-                  placeholderTextColor="#94a3b8"
-                  className="flex-1 h-12 text-base text-slate-800"
-                />
-              </View>
-            </View>
-          </View>
-
-          {/* ── Totals Card ───────────────────────────────────────────── */}
-          {validItemCount > 0 && (
-            <View className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 mb-2">
-              <TotalRow label="Subtotal" value={`₹${inr(subtotal)}`} />
-              {discountAmt > 0 && (
-                <TotalRow
-                  label="Discount"
-                  value={`−₹${inr(discountAmt)}`}
-                  valueClass="text-green-600 font-semibold"
-                />
-              )}
-              {withGst && (
-                <>
-                  <TotalRow label="Taxable" value={`₹${inr(taxableAmt)}`} />
-                  <TotalRow label="CGST (9%)" value={`₹${inr(cgst)}`} />
-                  <TotalRow label="SGST (9%)" value={`₹${inr(sgst)}`} />
-                </>
-              )}
-              {/* Grand total + round off */}
-              <View className="border-t border-slate-200 mt-2 pt-2">
-                <View className="flex-row justify-between items-center">
-                  <Text className="font-bold text-slate-800">Grand Total</Text>
-                  <Text className="font-black text-xl text-primary">
-                    ₹{inr(finalTotal)}
-                  </Text>
-                </View>
-                <View className="flex-row items-center justify-between mt-2">
-                  <Text
-                    className="text-xs text-slate-400 italic flex-1 pr-2"
-                    numberOfLines={2}
-                  >
-                    {grandTotalWords}
-                  </Text>
-                  <View className="flex-row items-center gap-2">
-                    <Text className="text-xs text-slate-500">Round off</Text>
-                    <Switch
-                      value={roundOffEnabled}
-                      onValueChange={setRoundOffEnabled}
-                      trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
-                      thumbColor={roundOffEnabled ? "#e67e22" : "#f4f4f5"}
-                    />
+                  </View>
+                  <View className="flex-row gap-1">
+                    {PRICE_TIERS.map((tier, idx) => (
+                      <TouchableOpacity
+                        key={tier.key}
+                        onPress={() => handlePriceTierChange(idx)}
+                        className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
+                          priceTierIdx === idx
+                            ? "border-primary bg-primary"
+                            : "border-slate-300 bg-white"
+                        }`}
+                      >
+                        <Text
+                          className={
+                            priceTierIdx === idx
+                              ? "text-white"
+                              : "text-slate-600"
+                          }
+                        >
+                          {tier.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
                   </View>
                 </View>
-                {roundOffEnabled && roundOff !== 0 && (
-                  <Text className="text-xs text-blue-600 mt-1">
-                    {roundOff > 0 ? "+" : ""}
-                    {inr(roundOff)} rounded
-                  </Text>
-                )}
-              </View>
-            </View>
-          )}
-
-          {/* ── Payment ───────────────────────────────────────────────── */}
-          <View className="mb-2">
-            <View className="flex-row items-center justify-between mb-2">
-              <View className="flex-row items-center gap-1.5">
-                <Ionicons name="card-outline" size={14} color="#64748b" />
-                <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Payment
-                </Text>
-              </View>
-              <View className="flex-row items-center gap-2">
-                <Text className="text-xs text-slate-500">Split</Text>
-                <Switch
-                  value={splitEnabled}
-                  onValueChange={(v) => {
-                    setSplitEnabled(v);
-                    if (v) setSplits([newSplit("cash")]);
-                  }}
-                  trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
-                  thumbColor={splitEnabled ? "#e67e22" : "#f4f4f5"}
-                />
-              </View>
-            </View>
-
-            {!splitEnabled ? (
-              <>
-                <View className="flex-row gap-2 mb-2">
-                  {PAY_MODES.map(({ id, label }) => (
+                <View className="border border-slate-200 rounded-xl overflow-hidden">
+                  {items.map((item, idx) => (
+                    <MobileItemRow
+                      key={item.id}
+                      item={item}
+                      catalog={catalog}
+                      isFirst={idx === 0}
+                      getEffectivePrice={getEffectivePrice}
+                      onUpdate={(patch) => updateItem(item.id, patch)}
+                      onRemove={() => removeItem(item.id)}
+                    />
+                  ))}
+                  <View className="flex-row border-t border-slate-100">
                     <TouchableOpacity
-                      key={id}
-                      onPress={() => setPaymentMode(id)}
-                      className={`flex-1 items-center justify-center rounded-xl border-2 py-3 ${paymentMode === id ? "border-primary bg-primary/10" : "border-slate-200"}`}
+                      onPress={() => setProductPickerOpen(true)}
+                      className="flex-1 flex-row items-center justify-center gap-2 px-3 py-2.5"
                     >
                       <Ionicons
-                        name={PAY_MODE_ICONS[id]}
-                        size={28}
-                        color={paymentMode === id ? "#e67e22" : "#64748b"}
+                        name="storefront-outline"
+                        size={18}
+                        color="#e67e22"
                       />
-                      <Text
-                        className={`text-xs font-semibold mt-0.5 ${paymentMode === id ? "text-primary" : "text-slate-500"}`}
-                      >
-                        {label}
+                      <Text className="text-primary text-sm font-semibold">
+                        Browse products
                       </Text>
                     </TouchableOpacity>
-                  ))}
-                </View>
-                {paymentMode !== "credit" && (
-                  <View className="flex-row items-center gap-2">
-                    <View className="flex-row flex-1 items-center border border-slate-200 rounded-xl px-3 bg-white">
-                      <Text className="text-slate-400 mr-1">₹</Text>
-                      <TextInput
-                        value={paymentAmount}
-                        onChangeText={setPaymentAmount}
-                        keyboardType="decimal-pad"
-                        placeholder={`Amount paid (₹${inr(finalTotal)})`}
-                        placeholderTextColor="#94a3b8"
-                        className="flex-1 h-12 text-base text-slate-800"
-                      />
-                    </View>
+                    <View className="w-px bg-slate-200" />
                     <TouchableOpacity
-                      onPress={() => setPaymentAmount(String(finalTotal))}
-                      className="border border-slate-200 rounded-xl px-4 h-12 items-center justify-center"
+                      onPress={addItem}
+                      className="flex-1 flex-row items-center justify-center gap-2 px-3 py-2.5"
                     >
-                      <Text className="text-sm font-semibold text-slate-700">
-                        Full
+                      <Ionicons
+                        name="add-circle-outline"
+                        size={18}
+                        color="#e67e22"
+                      />
+                      <Text className="text-primary text-sm font-semibold">
+                        Type to add
                       </Text>
                     </TouchableOpacity>
                   </View>
-                )}
-                {paymentMode === "credit" && (
-                  <View className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
-                    <Text className="text-xs text-amber-700">
-                      Full amount added to customer credit account
-                    </Text>
-                  </View>
-                )}
-              </>
-            ) : (
-              <View className="border-2 border-slate-200 rounded-xl overflow-hidden bg-white">
-                <View className="px-4 py-3 bg-slate-50">
-                  <View className="flex-row justify-between text-xs mb-2">
-                    <Text className="text-slate-500">Total</Text>
-                    <Text className="font-bold text-slate-800">
-                      ₹{inr(finalTotal)}
-                    </Text>
-                  </View>
-                  <View className="h-1.5 rounded-full bg-slate-200 overflow-hidden">
-                    <View
-                      className="h-full rounded-full bg-primary"
-                      style={{
-                        width: `${Math.min(100, finalTotal > 0 ? (splitTotal / finalTotal) * 100 : 0)}%`,
+                </View>
+              </View>
+
+              {/* ── GST ──────────────────────────────────────────────────── */}
+              <View className="flex-row items-center justify-between rounded-xl border border-slate-200 px-4 py-3 mb-2">
+                <View>
+                  <Text className="text-sm font-semibold text-slate-800">
+                    Include GST
+                  </Text>
+                  <Text className="text-xs text-slate-500 mt-0.5">
+                    Adds 18% GST (CGST+SGST)
+                  </Text>
+                </View>
+                <Switch
+                  value={withGst}
+                  onValueChange={setWithGst}
+                  trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
+                  thumbColor={withGst ? "#e67e22" : "#f4f4f5"}
+                />
+              </View>
+
+              {/* ── Discount ─────────────────────────────────────────────── */}
+              <View className="flex-row gap-3 mb-2">
+                <View className="flex-1">
+                  <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                    Bill Disc %
+                  </Text>
+                  <View className="flex-row items-center border border-slate-200 rounded-xl px-3 bg-white">
+                    <TextInput
+                      value={discountPct}
+                      onChangeText={(v) => {
+                        setDiscountPct(v);
+                        if (v) setDiscountFlat("");
                       }}
+                      keyboardType="decimal-pad"
+                      placeholder="0"
+                      placeholderTextColor="#94a3b8"
+                      className="flex-1 h-12 text-base text-slate-800"
+                    />
+                    <Text className="text-slate-400 text-sm">%</Text>
+                  </View>
+                </View>
+                <View className="flex-1">
+                  <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                    Flat Disc ₹
+                  </Text>
+                  <View className="flex-row items-center border border-slate-200 rounded-xl px-3 bg-white">
+                    <Text className="text-slate-400 text-sm mr-1">₹</Text>
+                    <TextInput
+                      value={discountFlat}
+                      onChangeText={(v) => {
+                        setDiscountFlat(v);
+                        if (v) setDiscountPct("");
+                      }}
+                      keyboardType="decimal-pad"
+                      placeholder="0.00"
+                      placeholderTextColor="#94a3b8"
+                      className="flex-1 h-12 text-base text-slate-800"
                     />
                   </View>
-                  <View className="flex-row justify-between text-xs mt-1">
-                    <Text
-                      className={
-                        splitTotal >= finalTotal - 0.01
-                          ? "text-green-600 font-semibold"
-                          : "text-slate-500"
-                      }
-                    >
-                      {Math.abs(finalTotal - splitTotal) < 0.01
-                        ? "✓ Settled"
-                        : `Paid ₹${inr(splitTotal)}`}
-                    </Text>
-                    {finalTotal - splitTotal > 0.001 && (
-                      <Text className="text-amber-600 font-semibold">
-                        ₹{inr(finalTotal - splitTotal)} left
+                </View>
+              </View>
+
+              {/* ── Totals Card ───────────────────────────────────────────── */}
+              {validItemCount > 0 && (
+                <View className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 mb-2">
+                  <TotalRow label="Subtotal" value={`₹${inr(subtotal)}`} />
+                  {discountAmt > 0 && (
+                    <TotalRow
+                      label="Discount"
+                      value={`−₹${inr(discountAmt)}`}
+                      valueClass="text-green-600 font-semibold"
+                    />
+                  )}
+                  {withGst && (
+                    <>
+                      <TotalRow label="Taxable" value={`₹${inr(taxableAmt)}`} />
+                      <TotalRow label="CGST (9%)" value={`₹${inr(cgst)}`} />
+                      <TotalRow label="SGST (9%)" value={`₹${inr(sgst)}`} />
+                    </>
+                  )}
+                  {/* Grand total + round off */}
+                  <View className="border-t border-slate-200 mt-2 pt-2">
+                    <View className="flex-row justify-between items-center">
+                      <Text className="font-bold text-slate-800">
+                        Grand Total
+                      </Text>
+                      <Text className="font-black text-xl text-primary">
+                        ₹{inr(finalTotal)}
+                      </Text>
+                    </View>
+                    <View className="flex-row items-center justify-between mt-2">
+                      <Text
+                        className="text-xs text-slate-400 italic flex-1 pr-2"
+                        numberOfLines={2}
+                      >
+                        {grandTotalWords}
+                      </Text>
+                      <View className="flex-row items-center gap-2">
+                        <Text className="text-xs text-slate-500">
+                          Round off
+                        </Text>
+                        <Switch
+                          value={roundOffEnabled}
+                          onValueChange={setRoundOffEnabled}
+                          trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
+                          thumbColor={roundOffEnabled ? "#e67e22" : "#f4f4f5"}
+                        />
+                      </View>
+                    </View>
+                    {roundOffEnabled && roundOff !== 0 && (
+                      <Text className="text-xs text-blue-600 mt-1">
+                        {roundOff > 0 ? "+" : ""}
+                        {inr(roundOff)} rounded
                       </Text>
                     )}
                   </View>
                 </View>
-                {splits.map((sp, idx) => (
-                  <View
-                    key={sp.id}
-                    className="flex-row items-center px-3 py-2 border-b border-slate-100"
-                  >
-                    <View className="flex-row gap-1 mr-2">
-                      {PAY_MODES.map(({ id }) => (
+              )}
+
+              {/* ── Payment ───────────────────────────────────────────────── */}
+              <View className="mb-2">
+                <View className="flex-row items-center justify-between mb-2">
+                  <View className="flex-row items-center gap-1.5">
+                    <Ionicons name="card-outline" size={14} color="#64748b" />
+                    <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Payment
+                    </Text>
+                  </View>
+                  <View className="flex-row items-center gap-2">
+                    <Text className="text-xs text-slate-500">Split</Text>
+                    <Switch
+                      value={splitEnabled}
+                      onValueChange={(v) => {
+                        setSplitEnabled(v);
+                        if (v) setSplits([newSplit("cash")]);
+                      }}
+                      trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
+                      thumbColor={splitEnabled ? "#e67e22" : "#f4f4f5"}
+                    />
+                  </View>
+                </View>
+
+                {!splitEnabled ? (
+                  <>
+                    <View className="flex-row gap-2 mb-2">
+                      {PAY_MODES.map(({ id, label }) => (
                         <TouchableOpacity
                           key={id}
-                          onPress={() =>
-                            setSplits((prev) =>
-                              prev.map((s) =>
-                                s.id === sp.id ? { ...s, mode: id } : s,
-                              ),
-                            )
-                          }
-                          className={`w-9 h-9 items-center justify-center rounded-lg border ${sp.mode === id ? "border-primary bg-primary/10" : "border-transparent"}`}
+                          onPress={() => setPaymentMode(id)}
+                          className={`flex-1 items-center justify-center rounded-xl border-2 py-3 ${paymentMode === id ? "border-primary bg-primary/10" : "border-slate-200"}`}
                         >
                           <Ionicons
                             name={PAY_MODE_ICONS[id]}
-                            size={22}
-                            color={sp.mode === id ? "#e67e22" : "#64748b"}
+                            size={28}
+                            color={paymentMode === id ? "#e67e22" : "#64748b"}
                           />
+                          <Text
+                            className={`text-xs font-semibold mt-0.5 ${paymentMode === id ? "text-primary" : "text-slate-500"}`}
+                          >
+                            {label}
+                          </Text>
                         </TouchableOpacity>
                       ))}
                     </View>
-                    <View className="flex-row flex-1 items-center border border-slate-200 rounded-xl px-2 bg-white">
-                      <Text className="text-slate-400 text-xs mr-1">₹</Text>
-                      <TextInput
-                        value={sp.amount}
-                        onChangeText={(v) =>
-                          setSplits((prev) =>
-                            prev.map((s) =>
-                              s.id === sp.id ? { ...s, amount: v } : s,
-                            ),
-                          )
-                        }
-                        keyboardType="decimal-pad"
-                        placeholder="Amount"
-                        placeholderTextColor="#94a3b8"
-                        className="flex-1 h-10 text-sm text-slate-800"
-                      />
-                    </View>
-                    {idx === splits.length - 1 &&
-                      finalTotal - splitTotal + (parseFloat(sp.amount) || 0) >
-                        0.001 && (
+                    {paymentMode !== "credit" && (
+                      <View className="flex-row items-center gap-2">
+                        <View className="flex-row flex-1 items-center border border-slate-200 rounded-xl px-3 bg-white">
+                          <Text className="text-slate-400 mr-1">₹</Text>
+                          <TextInput
+                            value={paymentAmount}
+                            onChangeText={setPaymentAmount}
+                            keyboardType="decimal-pad"
+                            placeholder={`Amount paid (₹${inr(finalTotal)})`}
+                            placeholderTextColor="#94a3b8"
+                            className="flex-1 h-12 text-base text-slate-800"
+                          />
+                        </View>
                         <TouchableOpacity
-                          onPress={() => {
-                            const rest =
-                              finalTotal -
-                              splits
-                                .filter((s) => s.id !== sp.id)
-                                .reduce(
-                                  (a, s) => a + (parseFloat(s.amount) || 0),
-                                  0,
-                                );
-                            setSplits((prev) =>
-                              prev.map((s) =>
-                                s.id === sp.id
-                                  ? {
-                                      ...s,
-                                      amount: String(
-                                        Math.max(
-                                          0,
-                                          Math.round(rest * 100) / 100,
-                                        ),
-                                      ),
-                                    }
-                                  : s,
-                              ),
-                            );
-                          }}
-                          className="rounded-lg ml-2 px-2 py-1.5 bg-primary/10"
+                          onPress={() => setPaymentAmount(String(finalTotal))}
+                          className="border border-slate-200 rounded-xl px-4 h-12 items-center justify-center"
                         >
-                          <Text className="text-xs font-semibold text-primary">
-                            Fill ₹{inr(finalTotal - splits.filter((x) => x.id !== sp.id).reduce((a, s) => a + (parseFloat(s.amount) || 0), 0))}
+                          <Text className="text-sm font-semibold text-slate-700">
+                            Full
                           </Text>
                         </TouchableOpacity>
-                      )}
-                    <TouchableOpacity
-                      onPress={() =>
-                        setSplits((prev) =>
-                          prev.length > 1
-                            ? prev.filter((s) => s.id !== sp.id)
-                            : prev,
-                        )
-                      }
-                      className="ml-2 w-9 h-9 items-center justify-center"
-                    >
-                      <Text className="text-red-400 text-lg">×</Text>
-                    </TouchableOpacity>
+                      </View>
+                    )}
+                    {paymentMode === "credit" && (
+                      <View className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+                        <Text className="text-xs text-amber-700">
+                          Full amount added to customer credit account
+                        </Text>
+                      </View>
+                    )}
+                  </>
+                ) : (
+                  <View className="border-2 border-slate-200 rounded-xl overflow-hidden bg-white">
+                    <View className="px-4 py-3 bg-slate-50">
+                      <View className="flex-row justify-between text-xs mb-2">
+                        <Text className="text-slate-500">Total</Text>
+                        <Text className="font-bold text-slate-800">
+                          ₹{inr(finalTotal)}
+                        </Text>
+                      </View>
+                      <View className="h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                        <View
+                          className="h-full rounded-full bg-primary"
+                          style={{
+                            width: `${Math.min(100, finalTotal > 0 ? (splitTotal / finalTotal) * 100 : 0)}%`,
+                          }}
+                        />
+                      </View>
+                      <View className="flex-row justify-between text-xs mt-1">
+                        <Text
+                          className={
+                            splitTotal >= finalTotal - 0.01
+                              ? "text-green-600 font-semibold"
+                              : "text-slate-500"
+                          }
+                        >
+                          {Math.abs(finalTotal - splitTotal) < 0.01
+                            ? "✓ Settled"
+                            : `Paid ₹${inr(splitTotal)}`}
+                        </Text>
+                        {finalTotal - splitTotal > 0.001 && (
+                          <Text className="text-amber-600 font-semibold">
+                            ₹{inr(finalTotal - splitTotal)} left
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                    {splits.map((sp, idx) => (
+                      <View
+                        key={sp.id}
+                        className="flex-row items-center px-3 py-2 border-b border-slate-100"
+                      >
+                        <View className="flex-row gap-1 mr-2">
+                          {PAY_MODES.map(({ id }) => (
+                            <TouchableOpacity
+                              key={id}
+                              onPress={() =>
+                                setSplits((prev) =>
+                                  prev.map((s) =>
+                                    s.id === sp.id ? { ...s, mode: id } : s,
+                                  ),
+                                )
+                              }
+                              className={`w-9 h-9 items-center justify-center rounded-lg border ${sp.mode === id ? "border-primary bg-primary/10" : "border-transparent"}`}
+                            >
+                              <Ionicons
+                                name={PAY_MODE_ICONS[id]}
+                                size={22}
+                                color={sp.mode === id ? "#e67e22" : "#64748b"}
+                              />
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        <View className="flex-row flex-1 items-center border border-slate-200 rounded-xl px-2 bg-white">
+                          <Text className="text-slate-400 text-xs mr-1">₹</Text>
+                          <TextInput
+                            value={sp.amount}
+                            onChangeText={(v) =>
+                              setSplits((prev) =>
+                                prev.map((s) =>
+                                  s.id === sp.id ? { ...s, amount: v } : s,
+                                ),
+                              )
+                            }
+                            keyboardType="decimal-pad"
+                            placeholder="Amount"
+                            placeholderTextColor="#94a3b8"
+                            className="flex-1 h-10 text-sm text-slate-800"
+                          />
+                        </View>
+                        {idx === splits.length - 1 &&
+                          finalTotal -
+                            splitTotal +
+                            (parseFloat(sp.amount) || 0) >
+                            0.001 && (
+                            <TouchableOpacity
+                              onPress={() => {
+                                const rest =
+                                  finalTotal -
+                                  splits
+                                    .filter((s) => s.id !== sp.id)
+                                    .reduce(
+                                      (a, s) => a + (parseFloat(s.amount) || 0),
+                                      0,
+                                    );
+                                setSplits((prev) =>
+                                  prev.map((s) =>
+                                    s.id === sp.id
+                                      ? {
+                                          ...s,
+                                          amount: String(
+                                            Math.max(
+                                              0,
+                                              Math.round(rest * 100) / 100,
+                                            ),
+                                          ),
+                                        }
+                                      : s,
+                                  ),
+                                );
+                              }}
+                              className="rounded-lg ml-2 px-2 py-1.5 bg-primary/10"
+                            >
+                              <Text className="text-xs font-semibold text-primary">
+                                Fill ₹
+                                {inr(
+                                  finalTotal -
+                                    splits
+                                      .filter((x) => x.id !== sp.id)
+                                      .reduce(
+                                        (a, s) =>
+                                          a + (parseFloat(s.amount) || 0),
+                                        0,
+                                      ),
+                                )}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                        <TouchableOpacity
+                          onPress={() =>
+                            setSplits((prev) =>
+                              prev.length > 1
+                                ? prev.filter((s) => s.id !== sp.id)
+                                : prev,
+                            )
+                          }
+                          className="ml-2 w-9 h-9 items-center justify-center"
+                        >
+                          <Text className="text-red-400 text-lg">×</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                    {splits.length < 4 && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          const usedModes = splits.map((s) => s.mode);
+                          const next =
+                            PAY_MODES.find((m) => !usedModes.includes(m.id))
+                              ?.id ?? "cash";
+                          setSplits((prev) => [...prev, newSplit(next)]);
+                        }}
+                        className="flex-row items-center px-3 py-3"
+                      >
+                        <Text className="text-primary text-sm font-semibold">
+                          ＋ Add payment method
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
-                ))}
-                {splits.length < 4 && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      const usedModes = splits.map((s) => s.mode);
-                      const next =
-                        PAY_MODES.find((m) => !usedModes.includes(m.id))?.id ??
-                        "cash";
-                      setSplits((prev) => [...prev, newSplit(next)]);
-                    }}
-                    className="flex-row items-center px-3 py-3"
-                  >
-                    <Text className="text-primary text-sm font-semibold">
-                      ＋ Add payment method
-                    </Text>
-                  </TouchableOpacity>
                 )}
               </View>
-            )}
-          </View>
 
-          {/* ── Notes + Due Date ──────────────────────────────────────── */}
-          <View className="mb-4">
-            <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-              📝 Notes / Due Date
-            </Text>
-            <TextInput
-              value={notes}
-              onChangeText={setNotes}
-              placeholder="Special instructions, delivery address…"
-              placeholderTextColor="#94a3b8"
-              multiline
-              numberOfLines={3}
-              className="border border-slate-200 rounded-xl px-3 py-3 text-sm text-slate-800 bg-white min-h-[72px]"
-              style={{ textAlignVertical: "top" }}
-            />
-            <View className="flex-row items-center border border-slate-200 rounded-xl px-3 py-2.5 mt-2 bg-white">
-              <Text className="text-slate-500 mr-2 text-sm">📅 Due Date</Text>
-              <TextInput
-                value={dueDate}
-                onChangeText={setDueDate}
-                placeholder="DD/MM/YYYY or leave blank"
-                placeholderTextColor="#94a3b8"
-                keyboardType="numbers-and-punctuation"
-                className="flex-1 text-sm text-slate-800 h-9"
-              />
-              {dueDate ? (
-                <TouchableOpacity
-                  onPress={() => setDueDate("")}
-                  className="w-8 h-8 items-center justify-center"
-                >
-                  <Text className="text-slate-400 text-lg">×</Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
-          </View>
-        </ScrollView>
-
-        {/* ── Sticky CTA ───────────────────────────────────────────────── */}
-        <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="border-t border-slate-200 bg-white">
-          <TouchableOpacity
-            onPress={() => void handleSubmit()}
-            disabled={validItemCount === 0 || isSubmitting}
-            className={`rounded-2xl h-14 items-center justify-center ${validItemCount > 0 && !isSubmitting ? "bg-primary active:opacity-90" : "bg-slate-300"}`}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text className="text-white font-bold text-base">
-                {validItemCount > 0
-                  ? `✓ Create Invoice — ₹${inr(finalTotal)}${selectedCustomer ? ` · ${selectedCustomer.name}` : " (Walk-in)"}`
-                  : "Create Invoice"}
-              </Text>
-            )}
-          </TouchableOpacity>
-        </View>
+              {/* ── Notes + Due Date ──────────────────────────────────────── */}
+              <View className="mb-4">
+                <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                  📝 Notes / Due Date
+                </Text>
+                <TextInput
+                  value={notes}
+                  onChangeText={setNotes}
+                  placeholder="Special instructions, delivery address…"
+                  placeholderTextColor="#94a3b8"
+                  multiline
+                  numberOfLines={3}
+                  className="border border-slate-200 rounded-xl px-3 py-3 text-sm text-slate-800 bg-white min-h-[72px]"
+                  style={{ textAlignVertical: "top" }}
+                />
+                <View className="flex-row items-center border border-slate-200 rounded-xl px-3 py-2.5 mt-2 bg-white">
+                  <Text className="text-slate-500 mr-2 text-sm">
+                    📅 Due Date
+                  </Text>
+                  <TextInput
+                    value={dueDate}
+                    onChangeText={setDueDate}
+                    placeholder="DD/MM/YYYY or leave blank"
+                    placeholderTextColor="#94a3b8"
+                    keyboardType="numbers-and-punctuation"
+                    className="flex-1 text-sm text-slate-800 h-9"
+                  />
+                  {dueDate ? (
+                    <TouchableOpacity
+                      onPress={() => setDueDate("")}
+                      className="w-8 h-8 items-center justify-center"
+                    >
+                      <Text className="text-slate-400 text-lg">×</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      <View
+        pointerEvents="box-none"
+        style={{
+          position: "absolute",
+          right: 10,
+          bottom: Math.max(12, insets.bottom + 10),
+          zIndex: 50,
+        }}
+      >
+        <TouchableOpacity
+          testID="create-invoice-fab"
+          accessibilityLabel="Create Invoice"
+          onPress={() => void handleSubmit()}
+          disabled={validItemCount === 0 || isSubmitting}
+          className={`w-14 h-14 rounded-full items-center justify-center ${validItemCount > 0 && !isSubmitting ? "bg-primary" : "bg-slate-300"}`}
+          style={{
+            shadowColor: "#000",
+            shadowOpacity: 0.2,
+            shadowRadius: 6,
+            shadowOffset: { width: 0, height: 3 },
+            elevation: 6,
+          }}
+        >
+          {isSubmitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Ionicons name="add" size={26} color="#fff" />
+          )}
+        </TouchableOpacity>
+      </View>
 
       {/* ── Preview Modal (with template switching) ────────────────────── */}
       <Modal visible={showPreview} transparent animationType="slide">
@@ -1553,13 +1787,22 @@ export function BillingScreen({ navigation, route }: BillingProps) {
           <View className="bg-white rounded-t-3xl max-h-[90%]">
             <View className="flex-row items-center justify-between px-5 py-4 border-b border-slate-200">
               <Text className="text-lg font-bold text-slate-800">
-                Invoice Preview — {TEMPLATES.find((t) => t.id === invoiceTemplate)?.label ?? "Classic"}
+                Invoice Preview —{" "}
+                {TEMPLATES.find((t) => t.id === invoiceTemplate)?.label ??
+                  "Classic"}
               </Text>
-              <TouchableOpacity onPress={() => setShowPreview(false)} className="p-2 -m-2">
+              <TouchableOpacity
+                onPress={() => setShowPreview(false)}
+                className="p-2 -m-2"
+              >
                 <Ionicons name="close" size={24} color="#64748b" />
               </TouchableOpacity>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={true} className="py-2">
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={true}
+              className="py-2"
+            >
               <View className="flex-row gap-2 px-4">
                 {TEMPLATES.map((t) => (
                   <TouchableOpacity
@@ -1567,7 +1810,9 @@ export function BillingScreen({ navigation, route }: BillingProps) {
                     onPress={() => handleTemplateChange(t.id)}
                     className={`rounded-full border px-3 py-1.5 ${invoiceTemplate === t.id ? "border-primary bg-primary" : "border-slate-300"}`}
                   >
-                    <Text className={`text-xs font-medium ${invoiceTemplate === t.id ? "text-white" : "text-slate-600"}`}>
+                    <Text
+                      className={`text-xs font-medium ${invoiceTemplate === t.id ? "text-white" : "text-slate-600"}`}
+                    >
                       {t.label}
                     </Text>
                   </TouchableOpacity>
@@ -1583,51 +1828,83 @@ export function BillingScreen({ navigation, route }: BillingProps) {
                     if (!raw) return undefined;
                     const p = JSON.parse(raw) as Record<string, unknown>;
                     return {
-                      themeColor: typeof p.themeColor === "string" ? p.themeColor : undefined,
-                      priceDecimals: typeof p.priceDecimals === "number" ? p.priceDecimals : undefined,
-                      showItemHsn: typeof p.showItemHsn === "boolean" ? p.showItemHsn : undefined,
-                      showCustomerAddress: typeof p.showCustomerAddress === "boolean" ? p.showCustomerAddress : undefined,
-                      showPaymentMode: typeof p.showPaymentMode === "boolean" ? p.showPaymentMode : undefined,
+                      themeColor:
+                        typeof p.themeColor === "string"
+                          ? p.themeColor
+                          : undefined,
+                      priceDecimals:
+                        typeof p.priceDecimals === "number"
+                          ? p.priceDecimals
+                          : undefined,
+                      showItemHsn:
+                        typeof p.showItemHsn === "boolean"
+                          ? p.showItemHsn
+                          : undefined,
+                      showCustomerAddress:
+                        typeof p.showCustomerAddress === "boolean"
+                          ? p.showCustomerAddress
+                          : undefined,
+                      showPaymentMode:
+                        typeof p.showPaymentMode === "boolean"
+                          ? p.showPaymentMode
+                          : undefined,
                     };
                   } catch {
                     return undefined;
                   }
                 })()}
-                data={{
-                  invoiceNo: `${invoicePrefix}DRAFT`,
-                  date: new Date(documentDate).toLocaleDateString("en-IN"),
-                  shopName,
-                  customerName: selectedCustomer?.name ?? "Walk-in Customer",
-                  ...(supplierGstin && { supplierGstin }),
-                  ...(supplierAddress && { supplierAddress }),
-                  ...(selectedCustomer
-                    ? (() => {
-                        const c = selectedCustomer as Customer & { addressLine1?: string; addressLine2?: string; city?: string; state?: string; pincode?: string; gstin?: string };
-                        const addr = [c.addressLine1, c.addressLine2, c.city, c.state, c.pincode].filter(Boolean).join(", ");
-                        return {
-                          ...(addr ? { recipientAddress: addr } : {}),
-                          ...(c.gstin ? { gstin: c.gstin } : {}),
-                        };
-                      })()
-                    : {}),
-                  ...(compositionScheme && { compositionScheme: true }),
-                  items: validItems.map((it) => ({
-                    name: it.name.trim(),
-                    qty: Math.max(1, parseFloat(it.qty) || 1),
-                    unit: it.unit,
-                    rate: parseFloat(it.rate) || 0,
-                    discount: parseFloat(it.discount) || 0,
-                    amount: it.amount,
-                    hsnCode: it.hsnCode,
-                  })),
-                  subtotal,
-                  discountAmt,
-                  cgst,
-                  sgst,
-                  total: finalTotal,
-                  amountInWords: grandTotalWords,
-                  notes: notes.trim() || undefined,
-                } as PreviewData}
+                data={
+                  {
+                    invoiceNo: `${invoicePrefix}DRAFT`,
+                    date: new Date(documentDate).toLocaleDateString("en-IN"),
+                    shopName,
+                    customerName: selectedCustomer?.name ?? "Walk-in Customer",
+                    ...(supplierGstin && { supplierGstin }),
+                    ...(supplierAddress && { supplierAddress }),
+                    ...(selectedCustomer
+                      ? (() => {
+                          const c = selectedCustomer as Customer & {
+                            addressLine1?: string;
+                            addressLine2?: string;
+                            city?: string;
+                            state?: string;
+                            pincode?: string;
+                            gstin?: string;
+                          };
+                          const addr = [
+                            c.addressLine1,
+                            c.addressLine2,
+                            c.city,
+                            c.state,
+                            c.pincode,
+                          ]
+                            .filter(Boolean)
+                            .join(", ");
+                          return {
+                            ...(addr ? { recipientAddress: addr } : {}),
+                            ...(c.gstin ? { gstin: c.gstin } : {}),
+                          };
+                        })()
+                      : {}),
+                    ...(compositionScheme && { compositionScheme: true }),
+                    items: validItems.map((it) => ({
+                      name: it.name.trim(),
+                      qty: Math.max(1, parseFloat(it.qty) || 1),
+                      unit: it.unit,
+                      rate: parseFloat(it.rate) || 0,
+                      discount: parseFloat(it.discount) || 0,
+                      amount: it.amount,
+                      hsnCode: it.hsnCode,
+                    })),
+                    subtotal,
+                    discountAmt,
+                    cgst,
+                    sgst,
+                    total: finalTotal,
+                    amountInWords: grandTotalWords,
+                    notes: notes.trim() || undefined,
+                  } as PreviewData
+                }
               />
             </ScrollView>
           </View>
@@ -1796,13 +2073,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => {
-                  saveInvoiceBar();
-                  setShowInvoiceBarEdit(false);
-                  if (documentTitle === "billOfSupply") {
-                    setWithGst(false);
-                  }
-                }}
+                onPress={handleInvoiceBarSave}
                 className="flex-1 h-12 items-center justify-center bg-primary rounded-xl"
               >
                 <Text className="text-white font-bold text-sm">Save</Text>
@@ -1888,7 +2159,10 @@ export function BillingScreen({ navigation, route }: BillingProps) {
         <View className="flex-1 bg-black/50 items-center justify-center px-6">
           <View className="bg-white rounded-3xl w-full p-6">
             <Text className="text-green-600 font-bold text-lg mb-3">
-              ✅ {savedInvoice?.fromOffline ? "Queued for Sync!" : "Invoice Created!"}
+              ✅{" "}
+              {savedInvoice?.fromOffline
+                ? "Queued for Sync!"
+                : "Invoice Created!"}
             </Text>
             {savedInvoice?.fromOffline && (
               <Text className="text-amber-600 text-sm mb-2">
@@ -1914,11 +2188,14 @@ export function BillingScreen({ navigation, route }: BillingProps) {
                 <View className="flex-row justify-between">
                   <Text className="text-sm text-slate-500">Due</Text>
                   <Text className="text-sm font-medium text-slate-800">
-                    {new Date(computedDueDate || dueDate).toLocaleDateString("en-IN", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })}
+                    {new Date(computedDueDate || dueDate).toLocaleDateString(
+                      "en-IN",
+                      {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      },
+                    )}
                   </Text>
                 </View>
               )}
@@ -1997,7 +2274,13 @@ function ProductPickerModal({
   visible: boolean;
   onClose: () => void;
   catalog: Product[];
-  getEffectivePrice: (p: Product & { wholesalePrice?: number | string | null; priceTier2?: number | string | null; priceTier3?: number | string | null }) => number;
+  getEffectivePrice: (
+    p: Product & {
+      wholesalePrice?: number | string | null;
+      priceTier2?: number | string | null;
+      priceTier3?: number | string | null;
+    },
+  ) => number;
   onSelect: (p: Product) => void;
 }) {
   const [search, setSearch] = useState("");
@@ -2016,7 +2299,9 @@ function ProductPickerModal({
         className="absolute bottom-0 left-0 right-0 max-h-[85%] bg-white rounded-t-2xl"
       >
         <View className="flex-row items-center justify-between px-4 py-3 border-b border-slate-200">
-          <Text className="text-base font-bold text-slate-800">Browse / Add items</Text>
+          <Text className="text-base font-bold text-slate-800">
+            Browse / Add items
+          </Text>
           <TouchableOpacity onPress={onClose} className="p-2 -m-2">
             <Ionicons name="close" size={24} color="#64748b" />
           </TouchableOpacity>
@@ -2042,7 +2327,8 @@ function ProductPickerModal({
           ListHeaderComponent={
             search.trim() ? null : (
               <Text className="px-4 py-2 text-[11px] text-slate-500">
-                {catalog.length} item{catalog.length !== 1 ? "s" : ""} — tap to add, or type above to search
+                {catalog.length} item{catalog.length !== 1 ? "s" : ""} — tap to
+                add, or type above to search
               </Text>
             )
           }
@@ -2055,13 +2341,17 @@ function ProductPickerModal({
                 className="flex-row items-center justify-between px-4 py-3 border-b border-slate-50"
               >
                 <View className="flex-1 min-w-0">
-                  <Text className="text-sm font-medium text-slate-800" numberOfLines={1}>
+                  <Text
+                    className="text-sm font-medium text-slate-800"
+                    numberOfLines={1}
+                  >
                     {p.name}
                   </Text>
                   <Text
                     className={`text-[11px] ${outOfStock ? "text-red-500" : lowStock ? "text-orange-500" : "text-slate-400"}`}
                   >
-                    {p.unit} · {outOfStock ? "Out of stock" : `Stock: ${p.stock}`}
+                    {p.unit} ·{" "}
+                    {outOfStock ? "Out of stock" : `Stock: ${p.stock}`}
                   </Text>
                 </View>
                 <View className="flex-row items-center gap-2">
@@ -2099,7 +2389,13 @@ function MobileItemRow({
   item: BillingItem;
   catalog: Product[];
   isFirst: boolean;
-  getEffectivePrice: (p: Product & { wholesalePrice?: number | string | null; priceTier2?: number | string | null; priceTier3?: number | string | null }) => number;
+  getEffectivePrice: (
+    p: Product & {
+      wholesalePrice?: number | string | null;
+      priceTier2?: number | string | null;
+      priceTier3?: number | string | null;
+    },
+  ) => number;
   onUpdate: (patch: Partial<BillingItem>) => void;
   onRemove: () => void;
 }) {
@@ -2132,7 +2428,14 @@ function MobileItemRow({
         ? searchData.products
         : instantHits;
 
-  const handleSelect = (p: Product & { wholesalePrice?: number | string | null; priceTier2?: number | string | null; priceTier3?: number | string | null; hsnCode?: string }) => {
+  const handleSelect = (
+    p: Product & {
+      wholesalePrice?: number | string | null;
+      priceTier2?: number | string | null;
+      priceTier3?: number | string | null;
+      hsnCode?: string;
+    },
+  ) => {
     onUpdate({
       name: p.name,
       rate: String(getEffectivePrice(p)),
@@ -2149,7 +2452,10 @@ function MobileItemRow({
         const { product } = await productApi.byBarcode(barcode);
         handleSelect(product);
       } catch {
-        Alert.alert("Not found", "No product with this barcode in your catalog.");
+        Alert.alert(
+          "Not found",
+          "No product with this barcode in your catalog.",
+        );
       }
     },
     [handleSelect],
@@ -2188,7 +2494,10 @@ function MobileItemRow({
             hint="Point at product barcode"
           />
           {focused && suggestions.length > 0 && (
-            <View className="absolute top-10 left-0 right-0 z-50 bg-white border border-slate-200 rounded-lg shadow-lg max-h-44 overflow-hidden min-w-0" style={{ elevation: 8 }}>
+            <View
+              className="absolute top-10 left-0 right-0 z-50 bg-white border border-slate-200 rounded-lg shadow-lg max-h-44 overflow-hidden min-w-0"
+              style={{ elevation: 8 }}
+            >
               <FlatList
                 data={suggestions.slice(0, 6)}
                 keyExtractor={(p) => p.id}
@@ -2202,7 +2511,10 @@ function MobileItemRow({
                       className="flex-row items-center justify-between px-3 py-2 border-b border-slate-100"
                     >
                       <View className="flex-1 min-w-0">
-                        <Text className="text-sm font-medium text-slate-800" numberOfLines={1}>
+                        <Text
+                          className="text-sm font-medium text-slate-800"
+                          numberOfLines={1}
+                        >
                           {p.name}
                         </Text>
                         <Text
@@ -2225,10 +2537,16 @@ function MobileItemRow({
         /* Expanded: full edit */
         <>
           <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-sm font-semibold text-slate-800 flex-1" numberOfLines={1}>
+            <Text
+              className="text-sm font-semibold text-slate-800 flex-1"
+              numberOfLines={1}
+            >
               {item.name}
             </Text>
-            <TouchableOpacity onPress={() => setExpanded(false)} className="p-1">
+            <TouchableOpacity
+              onPress={() => setExpanded(false)}
+              className="p-1"
+            >
               <Ionicons name="chevron-up" size={18} color="#64748b" />
             </TouchableOpacity>
           </View>
@@ -2257,7 +2575,9 @@ function MobileItemRow({
             </View>
             <View className="flex-row gap-2">
               <View className="flex-1 min-w-0">
-                <Text className="text-[10px] text-slate-500 mb-0.5">Rate ₹</Text>
+                <Text className="text-[10px] text-slate-500 mb-0.5">
+                  Rate ₹
+                </Text>
                 <TextInput
                   value={item.rate}
                   onChangeText={(v) => onUpdate({ rate: v })}
@@ -2268,7 +2588,9 @@ function MobileItemRow({
                 />
               </View>
               <View className="flex-1 min-w-0">
-                <Text className="text-[10px] text-slate-500 mb-0.5">Disc %</Text>
+                <Text className="text-[10px] text-slate-500 mb-0.5">
+                  Disc %
+                </Text>
                 <TextInput
                   value={item.discount}
                   onChangeText={(v) => onUpdate({ discount: v })}
@@ -2285,7 +2607,10 @@ function MobileItemRow({
               <Text className="text-red-500 text-xs font-medium">Remove</Text>
             </TouchableOpacity>
             <Text className="font-bold text-primary">
-              ₹{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+              ₹
+              {item.amount.toLocaleString("en-IN", {
+                minimumFractionDigits: 2,
+              })}
             </Text>
           </View>
         </>
@@ -2297,11 +2622,15 @@ function MobileItemRow({
           className="flex-row items-center gap-2 py-1"
         >
           <View className="flex-1 min-w-0">
-            <Text className="text-sm font-medium text-slate-800" numberOfLines={1}>
+            <Text
+              className="text-sm font-medium text-slate-800"
+              numberOfLines={1}
+            >
               {item.name}
             </Text>
             <Text className="text-[11px] text-slate-500">
-              {item.qty} {item.unit} × ₹{parseFloat(item.rate || "0").toLocaleString("en-IN")}
+              {item.qty} {item.unit} × ₹
+              {parseFloat(item.rate || "0").toLocaleString("en-IN")}
               {item.discount ? ` (−${item.discount}%)` : ""}
             </Text>
           </View>
