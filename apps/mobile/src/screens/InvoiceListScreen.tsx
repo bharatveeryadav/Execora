@@ -24,6 +24,8 @@ import { invoiceApi, purchaseApi } from "../lib/api";
 import { inr, type Invoice } from "@execora/shared";
 import { useWsInvalidation } from "../hooks/useWsInvalidation";
 import { useResponsive } from "../hooks/useResponsive";
+import { FilterBar } from "../components/composites/FilterBar";
+import { TabBar, type TabItem } from "../components/composites/TabBar";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ErrorCard } from "../components/ui/ErrorCard";
 import { TYPO } from "../lib/typography";
@@ -403,6 +405,29 @@ export function InvoiceListScreen({ navigation }: Props) {
       ? `${customFrom.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}–${customTo.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}`
       : DATE_LABELS[dateFilter];
 
+  const dateFilterOptions = useMemo(
+    () => DATE_FILTERS.map((id) => ({ id, label: DATE_LABELS[id] })),
+    [],
+  );
+
+  const activeDateFilters = useMemo(
+    () => [{ id: dateFilter, label: dateFilterLabel }],
+    [dateFilter, dateFilterLabel],
+  );
+
+  const statusTabItems = useMemo(
+    (): TabItem[] =>
+      STATUS_TABS.map((tab) => {
+        const key = tab.toLowerCase();
+        return {
+          id: tab,
+          label: tab,
+          badge: tab === "All" ? invoicesByDate.length : (counts[key] ?? 0),
+        };
+      }),
+    [counts, invoicesByDate.length],
+  );
+
   const renderInvoiceRow = useCallback(
     ({ item: inv }: { item: Invoice }) => {
       const invAny = inv as any;
@@ -677,67 +702,15 @@ export function InvoiceListScreen({ navigation }: Props) {
 
           {/* Status tabs — web: underline style, only for Sales/Quotation */}
           {showInvoiceList && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              className="mt-0 -mx-1"
-              contentContainerStyle={{ paddingHorizontal: 4, flexGrow: 0 }}
-            >
-              <View
-                className="flex-row border-t border-slate-200"
-                style={{ flexShrink: 0 }}
-              >
-                {STATUS_TABS.map((tab) => {
-                  const key = tab.toLowerCase();
-                  const count =
-                    tab === "All" ? invoicesByDate.length : (counts[key] ?? 0);
-                  const active = statusTab === tab;
-                  return (
-                    <Pressable
-                      key={tab}
-                      onPress={() =>
-                        requestAnimationFrame(() => setStatusTab(tab))
-                      }
-                      className="flex-row items-center gap-1.5 px-3 py-2 border-b-2"
-                      style={({ pressed }) => ({
-                        opacity: pressed ? 0.8 : 1,
-                        borderBottomColor: active ? "#e67e22" : "transparent",
-                      })}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          fontWeight: "500",
-                          color: active ? "#e67e22" : "#64748b",
-                        }}
-                      >
-                        {tab}
-                      </Text>
-                      {count > 0 && (
-                        <View
-                          style={{
-                            borderRadius: 9999,
-                            paddingHorizontal: 5,
-                            paddingVertical: 1,
-                            backgroundColor: "#e2e8f0",
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: 10,
-                              fontWeight: "600",
-                              color: "#475569",
-                            }}
-                          >
-                            {count}
-                          </Text>
-                        </View>
-                      )}
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </ScrollView>
+            <TabBar
+              tabs={statusTabItems}
+              activeTab={statusTab}
+              onChange={(tab) =>
+                requestAnimationFrame(() => setStatusTab(tab as StatusTab))
+              }
+              scrollable
+              className="mt-0"
+            />
           )}
 
           {/* Compact controls container: search/date + totals */}
@@ -764,35 +737,25 @@ export function InvoiceListScreen({ navigation }: Props) {
                   className="flex-1 min-w-0 text-sm text-slate-800 py-1.5"
                 />
               </View>
-              {showInvoiceList && !search.trim() && !stackSearchControls && (
-                <Pressable
-                  onPress={() => setDateFilterModalOpen(true)}
-                  className="flex-row items-center gap-1 px-2 py-1.5 rounded-lg"
-                  style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
-                >
-                  <Ionicons name="calendar-outline" size={14} color="#64748b" />
-                  <Text
-                    className="text-xs text-slate-600"
-                    numberOfLines={1}
-                    style={{ maxWidth: 100 }}
-                  >
-                    {dateFilterLabel}
-                  </Text>
-                </Pressable>
-              )}
             </View>
 
-            {showInvoiceList && !search.trim() && stackSearchControls && (
-              <Pressable
-                onPress={() => setDateFilterModalOpen(true)}
-                className="mt-1.5 flex-row items-center justify-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5"
-                style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
-              >
-                <Ionicons name="calendar-outline" size={14} color="#64748b" />
-                <Text className="text-xs text-slate-600" numberOfLines={1}>
-                  {dateFilterLabel}
-                </Text>
-              </Pressable>
+            {showInvoiceList && !search.trim() && (
+              <FilterBar
+                options={dateFilterOptions}
+                activeFilters={activeDateFilters}
+                onFilterChange={(toAdd) => {
+                  handleDateSelect(toAdd as DateFilter);
+                }}
+                onClearAll={() => {
+                  setDateFilter("all");
+                  setDateFilterModalOpen(false);
+                }}
+                variant="modal"
+                isOpen={dateFilterModalOpen}
+                onOpenChange={setDateFilterModalOpen}
+                maxVisible={3}
+                className={stackSearchControls ? "mt-1.5" : "ml-1"}
+              />
             )}
 
             {showInvoiceList && filteredInvoices.length > 0 && (
@@ -997,47 +960,6 @@ export function InvoiceListScreen({ navigation }: Props) {
       >
         <Ionicons name="add" size={28} color="#fff" />
       </Pressable>
-
-      {/* Date filter modal — web: Select dropdown */}
-      <Modal visible={dateFilterModalOpen} transparent animationType="fade">
-        <Pressable
-          className="flex-1 bg-black/50 justify-end"
-          onPress={() => setDateFilterModalOpen(false)}
-        >
-          <Pressable
-            className="bg-white rounded-t-2xl p-4 pb-8"
-            onPress={(e) => e.stopPropagation()}
-          >
-            <Text className="text-base font-bold text-slate-800 mb-3">
-              Date
-            </Text>
-            <ScrollView style={{ maxHeight: 300 }}>
-              {DATE_FILTERS.map((f) => (
-                <Pressable
-                  key={f}
-                  onPress={() => handleDateSelect(f)}
-                  className="py-3 px-4 rounded-lg"
-                  style={({ pressed }) => ({
-                    opacity: pressed ? 0.8 : 1,
-                    backgroundColor:
-                      dateFilter === f ? "#f1f5f9" : "transparent",
-                  })}
-                >
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      fontWeight: dateFilter === f ? "600" : "400",
-                      color: "#334155",
-                    }}
-                  >
-                    {DATE_LABELS[f]}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </Pressable>
-        </Pressable>
-      </Modal>
 
       {/* Custom date range modal — web: Popover with From/To calendar */}
       <Modal visible={customDateModalOpen} transparent animationType="fade">
