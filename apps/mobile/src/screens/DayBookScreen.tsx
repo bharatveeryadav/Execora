@@ -2,7 +2,7 @@
  * DayBookScreen — all transactions in one view (per Sprint 10).
  * Combines invoices, payments, expenses, cash in/out.
  */
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -57,11 +57,11 @@ export function DayBookScreen() {
     staleTime: 30_000,
   });
 
-  const refetch = () => {
+  const refetch = useCallback(() => {
     refetchInv();
     refetchExp();
     refetchCb();
-  };
+  }, [refetchCb, refetchExp, refetchInv]);
 
   const transactions = useMemo(() => {
     const list: Array<{ id: string; type: string; date: string; label: string; amount: number; sign: "in" | "out" }> = [];
@@ -106,8 +106,40 @@ export function DayBookScreen() {
     return list;
   }, [invData, expData, cbData, from, to]);
 
-  const moneyIn = transactions.filter((t) => t.sign === "in").reduce((s, t) => s + t.amount, 0);
-  const moneyOut = transactions.filter((t) => t.sign === "out").reduce((s, t) => s + t.amount, 0);
+  const { moneyIn, moneyOut } = useMemo(() => {
+    let inTotal = 0;
+    let outTotal = 0;
+    for (const t of transactions) {
+      if (t.sign === "in") inTotal += t.amount;
+      else outTotal += t.amount;
+    }
+    return { moneyIn: inTotal, moneyOut: outTotal };
+  }, [transactions]);
+
+  const keyExtractor = useCallback((t: { id: string }) => t.id, []);
+
+  const renderTransactionItem = useCallback(
+    ({ item }: { item: any }) => (
+      <View
+        style={{
+          paddingHorizontal: contentPad,
+          paddingVertical: SIZES.SPACING.md,
+          minHeight: SIZES.TOUCH_MIN,
+        }}
+        className="flex-row items-center justify-between border-b border-slate-100"
+      >
+        <View>
+          <Text className="font-medium text-slate-800">{item.label}</Text>
+          <Text className="text-xs text-slate-500">{item.date}</Text>
+        </View>
+        <Text className={item.sign === "in" ? "text-emerald-600 font-semibold" : "text-red-600 font-semibold"}>
+          {item.sign === "in" ? "+" : "-"}
+          {formatCurrency(item.amount)}
+        </Text>
+      </View>
+    ),
+    [contentPad],
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
@@ -148,26 +180,13 @@ export function DayBookScreen() {
 
       <FlatList
         data={transactions}
-        keyExtractor={(t) => t.id}
+        keyExtractor={keyExtractor}
         refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} />}
-        renderItem={({ item }) => (
-          <View
-            style={{
-              paddingHorizontal: contentPad,
-              paddingVertical: SIZES.SPACING.md,
-              minHeight: SIZES.TOUCH_MIN,
-            }}
-            className="flex-row items-center justify-between border-b border-slate-100"
-          >
-            <View>
-              <Text className="font-medium text-slate-800">{item.label}</Text>
-              <Text className="text-xs text-slate-500">{item.date}</Text>
-            </View>
-            <Text className={item.sign === "in" ? "text-emerald-600 font-semibold" : "text-red-600 font-semibold"}>
-              {item.sign === "in" ? "+" : "-"}{formatCurrency(item.amount)}
-            </Text>
-          </View>
-        )}
+        renderItem={renderTransactionItem}
+        initialNumToRender={12}
+        maxToRenderPerBatch={12}
+        windowSize={7}
+        removeClippedSubviews
         ListEmptyComponent={<Text className="text-slate-500 text-center py-8">No transactions</Text>}
       />
     </SafeAreaView>

@@ -1,14 +1,13 @@
 /**
  * PurchasesScreen — stock purchases list with add/delete (per Sprint 12).
  */
-import React, { useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
   FlatList,
   RefreshControl,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
 } from "react-native";
 import { showAlert } from "../lib/alerts";
@@ -43,7 +42,6 @@ function getMonthRange() {
 export function PurchasesScreen() {
   const qc = useQueryClient();
   const { contentPad, contentWidth } = useResponsive();
-  const { from, to } = getMonthRange();
   const [period, setPeriod] = useState<"week" | "month">("month");
   const [addOpen, setAddOpen] = useState(false);
   const [category, setCategory] = useState(CATEGORIES[0]);
@@ -55,15 +53,18 @@ export function PurchasesScreen() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   useWsInvalidation(["purchases", "cashbook"]);
 
-  const range =
-    period === "week"
-      ? (() => {
-          const now = new Date();
-          const start = new Date(now);
-          start.setDate(now.getDate() - 7);
-          return { from: start.toISOString().slice(0, 10), to: now.toISOString().slice(0, 10) };
-        })()
-      : getMonthRange();
+  const range = useMemo(() => {
+    if (period === "week") {
+      const now = new Date();
+      const start = new Date(now);
+      start.setDate(now.getDate() - 7);
+      return {
+        from: start.toISOString().slice(0, 10),
+        to: now.toISOString().slice(0, 10),
+      };
+    }
+    return getMonthRange();
+  }, [period]);
 
   const { data, refetch, isFetching } = useQuery({
     queryKey: ["purchases", range.from, range.to],
@@ -102,7 +103,7 @@ export function PurchasesScreen() {
     },
   });
 
-  const handleAdd = () => {
+  const handleAdd = useCallback(() => {
     const amt = parseFloat(amount);
     if (!itemName.trim()) {
       showAlert("Required", "Please enter item name.");
@@ -126,9 +127,9 @@ export function PurchasesScreen() {
         onError: (err: Error) => showAlert("Error", err?.message ?? "Failed to add purchase"),
       }
     );
-  };
+  }, [amount, category, createMutation, date, itemName, note, quantity, vendor]);
 
-  const handleDelete = (id: string, item: string, amountVal: number) => {
+  const handleDelete = useCallback((id: string, item: string, amountVal: number) => {
     showAlert("Delete purchase", `Delete ${item} for ${formatCurrency(amountVal)}?`, [
       { text: "Cancel", style: "cancel" },
       {
@@ -137,7 +138,31 @@ export function PurchasesScreen() {
         onPress: () => deleteMutation.mutate(id),
       },
     ]);
-  };
+  }, [deleteMutation]);
+
+  const keyExtractor = useCallback((p: { id: string }) => p.id, []);
+  const openAddSheet = useCallback(() => setAddOpen(true), []);
+
+  const renderPurchaseItem = useCallback(
+    ({ item }: { item: any }) => (
+      <TouchableOpacity
+        onLongPress={() => handleDelete(item.id, item.category, Number(item.amount))}
+        style={{
+          paddingHorizontal: contentPad,
+          paddingVertical: SIZES.SPACING.md,
+          minHeight: SIZES.TOUCH_MIN,
+        }}
+        className="flex-row items-center justify-between border-b border-slate-100"
+      >
+        <View>
+          <Text className="font-semibold text-slate-800">{item.category}</Text>
+          {item.vendor && <Text className="text-sm text-slate-500">{item.vendor}</Text>}
+        </View>
+        <Text className="font-bold text-slate-800">{formatCurrency(Number(item.amount))}</Text>
+      </TouchableOpacity>
+    ),
+    [contentPad, handleDelete],
+  );
 
   const purchases = data?.purchases ?? [];
   const total = data?.total ?? 0;
@@ -156,7 +181,7 @@ export function PurchasesScreen() {
         <View className="flex-row items-center justify-between">
           <Text className="text-xl font-bold text-slate-800">Purchases</Text>
           <TouchableOpacity
-            onPress={() => setAddOpen(true)}
+            onPress={openAddSheet}
             style={{ minHeight: SIZES.TOUCH_MIN }}
             className="bg-primary px-4 py-2 rounded-lg items-center justify-center"
           >
@@ -198,27 +223,13 @@ export function PurchasesScreen() {
 
       <FlatList
         data={purchases}
-        keyExtractor={(p) => p.id}
+        keyExtractor={keyExtractor}
         refreshControl={<RefreshControl refreshing={isFetching} onRefresh={refetch} />}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onLongPress={() =>
-              handleDelete(item.id, item.category, Number(item.amount))
-            }
-            style={{
-              paddingHorizontal: contentPad,
-              paddingVertical: SIZES.SPACING.md,
-              minHeight: SIZES.TOUCH_MIN,
-            }}
-            className="flex-row items-center justify-between border-b border-slate-100"
-          >
-            <View>
-              <Text className="font-semibold text-slate-800">{item.category}</Text>
-              {item.vendor && <Text className="text-sm text-slate-500">{item.vendor}</Text>}
-            </View>
-            <Text className="font-bold text-slate-800">{formatCurrency(Number(item.amount))}</Text>
-          </TouchableOpacity>
-        )}
+        renderItem={renderPurchaseItem}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={7}
+        removeClippedSubviews
         ListEmptyComponent={
           isFetching ? (
             <View className="py-16 items-center">
@@ -230,7 +241,7 @@ export function PurchasesScreen() {
               title="No purchases yet"
               description="Record stock purchases here"
               actionLabel="Add purchase"
-              onAction={() => setAddOpen(true)}
+              onAction={openAddSheet}
             />
           )
         }

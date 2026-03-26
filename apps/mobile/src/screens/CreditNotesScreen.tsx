@@ -2,7 +2,7 @@
  * CreditNotesScreen — Credit notes list (Sprint 22).
  * GET /api/v1/credit-notes
  */
-import React from "react";
+import React, { useCallback } from "react";
 import {
   View,
   Text,
@@ -35,6 +35,32 @@ export function CreditNotesScreen() {
 
   const notes = data?.creditNotes ?? [];
 
+  const keyExtractor = useCallback((n: { id: string }) => n.id, []);
+
+  const renderCreditNote = useCallback(({ item }: { item: any }) => {
+    const sc = STATUS_COLORS[item.status] ?? STATUS_COLORS.draft;
+    return (
+      <TouchableOpacity
+        className="flex-row items-center rounded-xl border border-slate-200 bg-card px-4 py-3"
+        activeOpacity={0.7}
+      >
+        <View className="flex-1">
+          <Text className="font-bold text-slate-800">{item.creditNoteNo}</Text>
+          <Text className="text-xs text-slate-500">
+            {item.customer?.name ?? "—"}{" "}
+            {item.invoice?.invoiceNo ? `• Inv ${item.invoice.invoiceNo}` : ""}
+          </Text>
+        </View>
+        <View className="items-end">
+          <Text className="font-bold text-primary">{formatCurrency(item.total)}</Text>
+          <View className={`mt-1 px-2 py-0.5 rounded-full ${sc}`}>
+            <Text className="text-[10px] font-semibold">{item.status}</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  }, []);
+
   if (isError) {
     return (
       <SafeAreaView className="flex-1 bg-background">
@@ -55,11 +81,15 @@ export function CreditNotesScreen() {
 
       <FlatList
         data={notes}
-        keyExtractor={(n) => n.id}
+        keyExtractor={keyExtractor}
         refreshControl={
           <RefreshControl refreshing={isFetching} onRefresh={refetch} />
         }
         contentContainerStyle={{ padding: contentPad, paddingBottom: 32 }}
+        initialNumToRender={12}
+        maxToRenderPerBatch={12}
+        windowSize={7}
+        removeClippedSubviews
         ItemSeparatorComponent={() => <View className="h-2" />}
         ListEmptyComponent={
           isFetching ? (
@@ -74,28 +104,7 @@ export function CreditNotesScreen() {
             />
           )
         }
-        renderItem={({ item }) => {
-          const sc = STATUS_COLORS[item.status] ?? STATUS_COLORS.draft;
-          return (
-            <TouchableOpacity
-              className="flex-row items-center rounded-xl border border-slate-200 bg-card px-4 py-3"
-              activeOpacity={0.7}
-            >
-              <View className="flex-1">
-                <Text className="font-bold text-slate-800">{item.creditNoteNo}</Text>
-                <Text className="text-xs text-slate-500">
-                  {item.customer?.name ?? "—"} {item.invoice?.invoiceNo ? `• Inv ${item.invoice.invoiceNo}` : ""}
-                </Text>
-              </View>
-              <View className="items-end">
-                <Text className="font-bold text-primary">{formatCurrency(item.total)}</Text>
-                <View className={`mt-1 px-2 py-0.5 rounded-full ${sc}`}>
-                  <Text className="text-[10px] font-semibold">{item.status}</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          );
-        }}
+        renderItem={renderCreditNote}
       />
         </View>
       </View>

@@ -24,7 +24,15 @@ export interface BarcodeScannerProps {
   hint?: string;
 }
 
-const BARCODE_TYPES = ["ean13", "ean8", "upc_a", "upc_e", "code128", "code39", "qr"] as const;
+const BARCODE_TYPES = [
+  "ean13",
+  "ean8",
+  "upc_a",
+  "upc_e",
+  "code128",
+  "code39",
+  "qr",
+] as const;
 
 export function BarcodeScanner({
   visible,
@@ -53,7 +61,7 @@ export function BarcodeScanner({
       onScan(data.trim());
       onClose();
     },
-    [onScan, onClose]
+    [onScan, onClose],
   );
 
   const handleClose = () => {
@@ -92,7 +100,10 @@ export function BarcodeScanner({
             >
               <Text style={styles.primaryButtonText}>Allow camera</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleClose} style={styles.secondaryButton}>
+            <TouchableOpacity
+              onPress={handleClose}
+              style={styles.secondaryButton}
+            >
               <Text style={styles.secondaryButtonText}>Cancel</Text>
             </TouchableOpacity>
           </View>

@@ -27,7 +27,7 @@ export function Chip({ label, selected, onPress, className }: ChipProps) {
       className={cn(
         "rounded-lg items-center justify-center",
         selected ? "bg-primary" : "bg-slate-100",
-        className
+        className,
       )}
     >
       <Text
@@ -35,7 +35,7 @@ export function Chip({ label, selected, onPress, className }: ChipProps) {
         maxFontSizeMultiplier={MAX_FONT_SIZE_MULTIPLIER}
         className={cn(
           "font-semibold",
-          selected ? "text-white" : "text-slate-600"
+          selected ? "text-white" : "text-slate-600",
         )}
       >
         {label}

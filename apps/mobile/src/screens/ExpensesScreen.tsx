@@ -1,17 +1,14 @@
 /**
  * ExpensesScreen — expense list with add/delete (per Sprint 9).
  */
-import React, { useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
   FlatList,
   TouchableOpacity,
   RefreshControl,
-  Alert,
   ActivityIndicator,
-  TextInput,
-  ScrollView,
 } from "react-native";
 import { showAlert } from "../lib/alerts";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -61,7 +58,7 @@ export function ExpensesScreen() {
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   useWsInvalidation(["expenses", "cashbook"]);
 
-  const { from, to } = (() => {
+  const { from, to } = useMemo(() => {
     const now = new Date();
     if (period === "week") {
       const start = new Date(now);
@@ -72,7 +69,7 @@ export function ExpensesScreen() {
       };
     }
     return getMonthRange();
-  })();
+  }, [period]);
 
   const { data, refetch, isFetching } = useQuery({
     queryKey: ["expenses", from, to],
@@ -102,7 +99,7 @@ export function ExpensesScreen() {
     },
   });
 
-  const handleAdd = () => {
+  const handleAdd = useCallback(() => {
     const amt = parseFloat(amount);
     if (!amount || amt <= 0) {
       showAlert("Invalid amount", "Please enter a valid amount.");
@@ -120,9 +117,9 @@ export function ExpensesScreen() {
         onError: (err: Error) => showAlert("Error", err?.message ?? "Failed to add expense"),
       }
     );
-  };
+  }, [amount, category, createMutation, date, note, vendor]);
 
-  const handleDelete = (id: string, categoryName: string, amountVal: number) => {
+  const handleDelete = useCallback((id: string, categoryName: string, amountVal: number) => {
     showAlert("Delete expense", `Delete ${categoryName} for ${formatCurrency(amountVal)}?`, [
       { text: "Cancel", style: "cancel" },
       {
@@ -131,7 +128,33 @@ export function ExpensesScreen() {
         onPress: () => deleteMutation.mutate(id),
       },
     ]);
-  };
+  }, [deleteMutation]);
+
+  const keyExtractor = useCallback((e: { id: string }) => e.id, []);
+  const openAddSheet = useCallback(() => setAddOpen(true), []);
+
+  const renderExpenseItem = useCallback(
+    ({ item }: { item: any }) => (
+      <TouchableOpacity
+        onLongPress={() => handleDelete(item.id, item.category, Number(item.amount))}
+        style={{
+          paddingHorizontal: contentPad,
+          paddingVertical: SIZES.SPACING.md,
+          minHeight: SIZES.TOUCH_MIN,
+        }}
+        className="flex-row items-center justify-between border-b border-slate-100"
+      >
+        <View>
+          <Text className="font-semibold text-slate-800">{item.category}</Text>
+          {item.vendor && (
+            <Text className="text-sm text-slate-500">{item.vendor}</Text>
+          )}
+        </View>
+        <Text className="font-bold text-red-600">{formatCurrency(Number(item.amount))}</Text>
+      </TouchableOpacity>
+    ),
+    [contentPad, handleDelete],
+  );
 
   const expenses = data?.expenses ?? [];
   const total = data?.total ?? 0;
@@ -150,7 +173,7 @@ export function ExpensesScreen() {
         <View className="flex-row items-center justify-between">
           <Text className="text-xl font-bold text-slate-800">Expenses</Text>
           <TouchableOpacity
-            onPress={() => setAddOpen(true)}
+            onPress={openAddSheet}
             style={{ minHeight: SIZES.TOUCH_MIN }}
             className="bg-primary px-4 py-2 rounded-lg items-center justify-center"
           >
@@ -192,29 +215,15 @@ export function ExpensesScreen() {
 
       <FlatList
         data={expenses}
-        keyExtractor={(e) => e.id}
+        keyExtractor={keyExtractor}
         refreshControl={
           <RefreshControl refreshing={isFetching} onRefresh={refetch} />
         }
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onLongPress={() => handleDelete(item.id, item.category, Number(item.amount))}
-            style={{
-              paddingHorizontal: contentPad,
-              paddingVertical: SIZES.SPACING.md,
-              minHeight: SIZES.TOUCH_MIN,
-            }}
-            className="flex-row items-center justify-between border-b border-slate-100"
-          >
-            <View>
-              <Text className="font-semibold text-slate-800">{item.category}</Text>
-              {item.vendor && (
-                <Text className="text-sm text-slate-500">{item.vendor}</Text>
-              )}
-            </View>
-            <Text className="font-bold text-red-600">{formatCurrency(Number(item.amount))}</Text>
-          </TouchableOpacity>
-        )}
+        renderItem={renderExpenseItem}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={7}
+        removeClippedSubviews
         ListEmptyComponent={
           isFetching ? (
             <View className="py-16 items-center">
@@ -226,7 +235,7 @@ export function ExpensesScreen() {
               title="No expenses yet"
               description="Track your business expenses here"
               actionLabel="Add expense"
-              onAction={() => setAddOpen(true)}
+              onAction={openAddSheet}
             />
           )
         }

@@ -2,7 +2,7 @@
  * IndirectIncomeScreen — Income-type expenses (Sprint 22).
  * expenseApi.list with type=income
  */
-import React, { useState } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -37,7 +37,7 @@ function getPeriodRange(period: string) {
 
 export function IndirectIncomeScreen() {
   const [period, setPeriod] = useState<"week" | "month">("month");
-  const { from, to } = getPeriodRange(period);
+  const { from, to } = useMemo(() => getPeriodRange(period), [period]);
   useWsInvalidation(["expenses"]);
 
   const { data, isFetching, isError, refetch } = useQuery({
@@ -49,11 +49,36 @@ export function IndirectIncomeScreen() {
   const expenses = data?.expenses ?? [];
   const total = data?.total ?? 0;
 
+  const keyExtractor = useCallback((e: { id: string }) => e.id, []);
+
+  const renderIncomeItem = useCallback(
+    ({ item }: { item: any }) => (
+      <View className="flex-row items-center justify-between rounded-xl border border-slate-200 bg-card px-4 py-3">
+        <View>
+          <Text className="font-medium text-slate-800">{item.category}</Text>
+          {item.note && (
+            <Text className="text-sm text-slate-500">{item.note}</Text>
+          )}
+          {item.vendor && (
+            <Text className="text-xs text-slate-400">{item.vendor}</Text>
+          )}
+        </View>
+        <Text className="font-bold text-emerald-600">
+          +{formatCurrency(Number(item.amount))}
+        </Text>
+      </View>
+    ),
+    [],
+  );
+
   if (isError) {
     return (
       <SafeAreaView className="flex-1 bg-background">
         <View className="flex-1 justify-center px-4">
-          <ErrorCard message="Failed to load income" onRetry={() => refetch()} />
+          <ErrorCard
+            message="Failed to load income"
+            onRetry={() => refetch()}
+          />
         </View>
       </SafeAreaView>
     );
@@ -62,10 +87,20 @@ export function IndirectIncomeScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "bottom"]}>
       <View className="px-4 pt-4 pb-3 border-b border-slate-200 bg-card">
-        <Text className="text-xl font-bold tracking-tight text-slate-800 mb-3">Indirect Income</Text>
+        <Text className="text-xl font-bold tracking-tight text-slate-800 mb-3">
+          Indirect Income
+        </Text>
         <View className="flex-row gap-2">
-          <Chip label="Week" selected={period === "week"} onPress={() => setPeriod("week")} />
-          <Chip label="Month" selected={period === "month"} onPress={() => setPeriod("month")} />
+          <Chip
+            label="Week"
+            selected={period === "week"}
+            onPress={() => setPeriod("week")}
+          />
+          <Chip
+            label="Month"
+            selected={period === "month"}
+            onPress={() => setPeriod("month")}
+          />
         </View>
         <Text className="text-sm font-semibold text-emerald-600 mt-2">
           Total: {formatCurrency(total)}
@@ -74,11 +109,15 @@ export function IndirectIncomeScreen() {
 
       <FlatList
         data={expenses}
-        keyExtractor={(e) => e.id}
+        keyExtractor={keyExtractor}
         refreshControl={
           <RefreshControl refreshing={isFetching} onRefresh={refetch} />
         }
         contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+        initialNumToRender={12}
+        maxToRenderPerBatch={12}
+        windowSize={7}
+        removeClippedSubviews
         ItemSeparatorComponent={() => <View className="h-2" />}
         ListEmptyComponent={
           isFetching ? (
@@ -93,18 +132,7 @@ export function IndirectIncomeScreen() {
             />
           )
         }
-        renderItem={({ item }) => (
-          <View className="flex-row items-center justify-between rounded-xl border border-slate-200 bg-card px-4 py-3">
-            <View>
-              <Text className="font-medium text-slate-800">{item.category}</Text>
-              {item.note && <Text className="text-sm text-slate-500">{item.note}</Text>}
-              {item.vendor && <Text className="text-xs text-slate-400">{item.vendor}</Text>}
-            </View>
-            <Text className="font-bold text-emerald-600">
-              +{formatCurrency(Number(item.amount))}
-            </Text>
-          </View>
-        )}
+        renderItem={renderIncomeItem}
       />
     </SafeAreaView>
   );

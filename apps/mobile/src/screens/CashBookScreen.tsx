@@ -1,7 +1,7 @@
 /**
  * CashBookScreen — cash in/out ledger (per Sprint 10).
  */
-import React, { useState } from "react";
+import React, { useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -27,7 +27,7 @@ function getMonthRange() {
 }
 
 export function CashBookScreen() {
-  const { from, to } = getMonthRange();
+  const { from, to } = useMemo(() => getMonthRange(), []);
   const { contentPad } = useResponsive();
   useWsInvalidation(["cashbook", "expenses"]);
 
@@ -41,6 +41,39 @@ export function CashBookScreen() {
   const totalIn = data?.totalIn ?? 0;
   const totalOut = data?.totalOut ?? 0;
   const balance = data?.balance ?? 0;
+
+  const keyExtractor = useCallback((e: { id: string }) => e.id, []);
+
+  const renderCashbookItem = useCallback(
+    ({ item }: { item: any }) => {
+      const amt = Number(item.amount);
+      const isIn = item.type === "in" || amt > 0;
+      return (
+        <View
+          style={{ paddingHorizontal: contentPad, paddingVertical: 12 }}
+          className="flex-row items-center justify-between border-b border-slate-100"
+        >
+          <View>
+            <Text className="font-medium text-slate-800">
+              {item.category ?? item.type}
+            </Text>
+            {item.note && (
+              <Text className="text-sm text-slate-500">{item.note}</Text>
+            )}
+          </View>
+          <Text
+            className={
+              isIn ? "text-emerald-600 font-semibold" : "text-red-600 font-semibold"
+            }
+          >
+            {isIn ? "+" : "-"}
+            {formatCurrency(Math.abs(amt))}
+          </Text>
+        </View>
+      );
+    },
+    [contentPad],
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
@@ -61,25 +94,15 @@ export function CashBookScreen() {
 
       <FlatList
         data={entries}
-        keyExtractor={(e) => e.id}
+        keyExtractor={keyExtractor}
         refreshControl={
           <RefreshControl refreshing={isFetching} onRefresh={refetch} />
         }
-        renderItem={({ item }) => {
-          const amt = Number(item.amount);
-          const isIn = item.type === "in" || amt > 0;
-          return (
-            <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="flex-row items-center justify-between border-b border-slate-100">
-              <View>
-                <Text className="font-medium text-slate-800">{item.category ?? item.type}</Text>
-                {item.note && <Text className="text-sm text-slate-500">{item.note}</Text>}
-              </View>
-              <Text className={isIn ? "text-emerald-600 font-semibold" : "text-red-600 font-semibold"}>
-                {isIn ? "+" : "-"}{formatCurrency(Math.abs(amt))}
-              </Text>
-            </View>
-          );
-        }}
+        renderItem={renderCashbookItem}
+        initialNumToRender={12}
+        maxToRenderPerBatch={12}
+        windowSize={7}
+        removeClippedSubviews
         ListEmptyComponent={
           <Text className="text-slate-500 text-center py-8">No entries</Text>
         }

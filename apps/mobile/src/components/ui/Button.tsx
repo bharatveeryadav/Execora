@@ -3,11 +3,7 @@
  * Variants: primary, outline, ghost, danger; sizes: sm, md, lg.
  */
 import React from "react";
-import {
-  TouchableOpacity,
-  Text,
-  ActivityIndicator,
-} from "react-native";
+import { TouchableOpacity, Text, ActivityIndicator } from "react-native";
 import { cn } from "../../lib/utils";
 import { hapticLight } from "../../lib/haptics";
 import { SIZES } from "../../lib/constants";
@@ -30,7 +26,10 @@ const variantTextStyles: Record<Variant, string> = {
   danger: "text-white",
 };
 
-const sizeStyles: Record<Size, { minHeight: number; paddingHorizontal: number; paddingVertical: number }> = {
+const sizeStyles: Record<
+  Size,
+  { minHeight: number; paddingHorizontal: number; paddingVertical: number }
+> = {
   sm: {
     minHeight: SIZES.BUTTON.sm.minHeight,
     paddingHorizontal: SIZES.BUTTON.sm.paddingX,
@@ -94,13 +93,15 @@ export function Button({
         "rounded-lg border items-center justify-center flex-row",
         variantContainerStyles[variant],
         isDisabled && "opacity-50",
-        className
+        className,
       )}
     >
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={variant === "primary" || variant === "danger" ? "#fff" : "#475569"}
+          color={
+            variant === "primary" || variant === "danger" ? "#fff" : "#475569"
+          }
         />
       ) : (
         <Text
@@ -109,7 +110,7 @@ export function Button({
           className={cn(
             "font-semibold",
             variantTextStyles[variant],
-            textClassName
+            textClassName,
           )}
         >
           {children}

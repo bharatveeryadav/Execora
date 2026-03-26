@@ -45,7 +45,7 @@ export function Input({
         className={cn(
           "border border-slate-200 rounded-xl px-4 text-slate-800 bg-white",
           error && "border-red-400",
-          className
+          className,
         )}
         {...props}
       />

@@ -2,7 +2,7 @@
  * ExpiryScreen — Product expiry management (Sprint 21).
  * GET /api/v1/products/expiry-page, PATCH batches/:id/write-off
  */
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,7 +10,6 @@ import {
   RefreshControl,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from "react-native";
 import { showAlert } from "../lib/alerts";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -56,23 +55,86 @@ export function ExpiryScreen() {
   });
 
   const batches = data?.batches ?? [];
-  const summary = data?.summary ?? { expiredCount: 0, critical7: 0, warning30: 0, valueAtRisk: 0 };
-
-  const handleWriteOff = (batchId: string, productName: string) => {
-    showAlert(
-      "Write off batch?",
-      `This will reduce stock to 0 for "${productName}". This action cannot be undone.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Write off", style: "destructive", onPress: () => writeOff.mutate(batchId) },
-      ]
-    );
+  const summary = data?.summary ?? {
+    expiredCount: 0,
+    critical7: 0,
+    warning30: 0,
+    valueAtRisk: 0,
   };
+
+  const handleWriteOff = useCallback(
+    (batchId: string, productName: string) => {
+      showAlert(
+        "Write off batch?",
+        `This will reduce stock to 0 for "${productName}". This action cannot be undone.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Write off",
+            style: "destructive",
+            onPress: () => writeOff.mutate(batchId),
+          },
+        ],
+      );
+    },
+    [writeOff],
+  );
+
+  const keyExtractor = useCallback((b: { id: string }) => b.id, []);
+
+  const renderBatch = useCallback(
+    ({ item }: { item: any }) => {
+      const isExpired = item.status === "expired";
+      return (
+        <View className="rounded-xl border border-slate-200 bg-card px-4 py-3">
+          <View className="flex-row items-start justify-between">
+            <View className="flex-1">
+              <Text className="font-bold text-slate-800">
+                {item.product.name}
+              </Text>
+              <Text className="text-xs text-slate-500 mt-0.5">
+                Batch {item.batchNo}{" "}
+                {item.product.unit && `• ${item.quantity} ${item.product.unit}`}
+              </Text>
+              <Text
+                className={`text-xs mt-1 ${isExpired ? "text-red-600" : "text-amber-600"}`}
+              >
+                Expiry:{" "}
+                {new Date(item.expiryDate).toLocaleDateString("en-IN", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })}
+              </Text>
+            </View>
+            {isExpired && item.quantity > 0 && (
+              <TouchableOpacity
+                onPress={() => handleWriteOff(item.id, item.product.name)}
+                disabled={writeOff.isPending}
+                className="bg-red-100 px-3 py-1.5 rounded-lg min-h-[36px] justify-center"
+              >
+                {writeOff.isPending ? (
+                  <ActivityIndicator size="small" color="#dc2626" />
+                ) : (
+                  <Text className="text-xs font-semibold text-red-700">
+                    Write off
+                  </Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      );
+    },
+    [handleWriteOff, writeOff.isPending],
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "bottom"]}>
       <View className="px-4 pt-4 pb-3 border-b border-slate-200 bg-card">
-        <Text className="text-xl font-bold tracking-tight text-slate-800 mb-3">Product Expiry</Text>
+        <Text className="text-xl font-bold tracking-tight text-slate-800 mb-3">
+          Product Expiry
+        </Text>
         <View className="flex-row flex-wrap gap-2">
           {FILTERS.map((f) => (
             <Chip
@@ -84,25 +146,46 @@ export function ExpiryScreen() {
           ))}
         </View>
         <View className="flex-row flex-wrap gap-3 mt-3">
-          <Text className="text-xs text-slate-500">Expired: {summary.expiredCount}</Text>
-          <Text className="text-xs text-amber-600">7d: {summary.critical7}</Text>
-          <Text className="text-xs text-amber-500">30d: {summary.warning30}</Text>
-          <Text className="text-xs text-slate-500">At risk: ₹{summary.valueAtRisk.toLocaleString("en-IN")}</Text>
+          <Text className="text-xs text-slate-500">
+            Expired: {summary.expiredCount}
+          </Text>
+          <Text className="text-xs text-amber-600">
+            7d: {summary.critical7}
+          </Text>
+          <Text className="text-xs text-amber-500">
+            30d: {summary.warning30}
+          </Text>
+          <Text className="text-xs text-slate-500">
+            At risk: ₹{summary.valueAtRisk.toLocaleString("en-IN")}
+          </Text>
         </View>
       </View>
 
       {isError ? (
-        <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: contentPad }}>
-          <ErrorCard message="Failed to load expiry data" onRetry={() => refetch()} />
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            paddingHorizontal: contentPad,
+          }}
+        >
+          <ErrorCard
+            message="Failed to load expiry data"
+            onRetry={() => refetch()}
+          />
         </View>
       ) : (
         <FlatList
           data={batches}
-          keyExtractor={(b) => b.id}
+          keyExtractor={keyExtractor}
           refreshControl={
             <RefreshControl refreshing={isFetching} onRefresh={refetch} />
           }
           contentContainerStyle={{ padding: contentPad, paddingBottom: 32 }}
+          initialNumToRender={12}
+          maxToRenderPerBatch={12}
+          windowSize={7}
+          removeClippedSubviews
           ItemSeparatorComponent={() => <View className="h-2" />}
           ListEmptyComponent={
             isFetching ? (
@@ -117,37 +200,7 @@ export function ExpiryScreen() {
               />
             )
           }
-          renderItem={({ item }) => {
-            const isExpired = item.status === "expired";
-            return (
-              <View className="rounded-xl border border-slate-200 bg-card px-4 py-3">
-                <View className="flex-row items-start justify-between">
-                  <View className="flex-1">
-                    <Text className="font-bold text-slate-800">{item.product.name}</Text>
-                    <Text className="text-xs text-slate-500 mt-0.5">
-                      Batch {item.batchNo} {item.product.unit && `• ${item.quantity} ${item.product.unit}`}
-                    </Text>
-                    <Text className={`text-xs mt-1 ${isExpired ? "text-red-600" : "text-amber-600"}`}>
-                      Expiry: {new Date(item.expiryDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
-                    </Text>
-                  </View>
-                  {isExpired && item.quantity > 0 && (
-                    <TouchableOpacity
-                      onPress={() => handleWriteOff(item.id, item.product.name)}
-                      disabled={writeOff.isPending}
-                      className="bg-red-100 px-3 py-1.5 rounded-lg min-h-[36px] justify-center"
-                    >
-                      {writeOff.isPending ? (
-                        <ActivityIndicator size="small" color="#dc2626" />
-                      ) : (
-                        <Text className="text-xs font-semibold text-red-700">Write off</Text>
-                      )}
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-            );
-          }}
+          renderItem={renderBatch}
         />
       )}
     </SafeAreaView>

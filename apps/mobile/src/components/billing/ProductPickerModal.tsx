@@ -3,7 +3,7 @@
  * Used in BillingScreen to add items to invoice
  */
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -46,6 +46,59 @@ export function ProductPickerModal({
     return catalog.filter((p) => p.name.toLowerCase().includes(q));
   }, [catalog, search]);
 
+  const keyExtractor = useCallback((p: Product) => p.id, []);
+
+  const listHeader = useMemo(
+    () =>
+      search.trim() ? null : (
+        <Text className="px-4 py-2 text-[11px] text-slate-500">
+          {catalog.length} item{catalog.length !== 1 ? "s" : ""} — tap to add,
+          or type above to search
+        </Text>
+      ),
+    [catalog.length, search],
+  );
+
+  const renderProductItem = useCallback(
+    ({ item: p }: { item: Product }) => {
+      const outOfStock = Number(p.stock) <= 0;
+      const lowStock = !outOfStock && Number(p.stock) < 5;
+      return (
+        <TouchableOpacity
+          onPress={() => onSelect(p)}
+          className="flex-row items-center justify-between px-4 py-3 border-b border-slate-50"
+        >
+          <View className="flex-1 min-w-0">
+            <Text
+              className="text-sm font-medium text-slate-800"
+              numberOfLines={1}
+            >
+              {p.name}
+            </Text>
+            <Text
+              className={`text-[11px] ${
+                outOfStock
+                  ? "text-red-500"
+                  : lowStock
+                    ? "text-orange-500"
+                    : "text-slate-400"
+              }`}
+            >
+              {p.unit} · {outOfStock ? "Out of stock" : `Stock: ${p.stock}`}
+            </Text>
+          </View>
+          <View className="flex-row items-center gap-2">
+            <Text className="text-sm font-bold text-primary">
+              ₹{getEffectivePrice(p).toLocaleString("en-IN")}
+            </Text>
+            <Ionicons name="add-circle" size={22} color="#e67e22" />
+          </View>
+        </TouchableOpacity>
+      );
+    },
+    [getEffectivePrice, onSelect],
+  );
+
   if (!visible) return null;
 
   return (
@@ -79,54 +132,15 @@ export function ProductPickerModal({
 
         <FlatList
           data={filtered}
-          keyExtractor={(p) => p.id}
+          keyExtractor={keyExtractor}
           keyboardShouldPersistTaps="always"
           className="max-h-80"
-          ListHeaderComponent={
-            search.trim() ? null : (
-              <Text className="px-4 py-2 text-[11px] text-slate-500">
-                {catalog.length} item{catalog.length !== 1 ? "s" : ""} — tap to
-                add, or type above to search
-              </Text>
-            )
-          }
-          renderItem={({ item: p }) => {
-            const outOfStock = Number(p.stock) <= 0;
-            const lowStock = !outOfStock && Number(p.stock) < 5;
-            return (
-              <TouchableOpacity
-                onPress={() => onSelect(p)}
-                className="flex-row items-center justify-between px-4 py-3 border-b border-slate-50"
-              >
-                <View className="flex-1 min-w-0">
-                  <Text
-                    className="text-sm font-medium text-slate-800"
-                    numberOfLines={1}
-                  >
-                    {p.name}
-                  </Text>
-                  <Text
-                    className={`text-[11px] ${
-                      outOfStock
-                        ? "text-red-500"
-                        : lowStock
-                          ? "text-orange-500"
-                          : "text-slate-400"
-                    }`}
-                  >
-                    {p.unit} ·{" "}
-                    {outOfStock ? "Out of stock" : `Stock: ${p.stock}`}
-                  </Text>
-                </View>
-                <View className="flex-row items-center gap-2">
-                  <Text className="text-sm font-bold text-primary">
-                    ₹{getEffectivePrice(p).toLocaleString("en-IN")}
-                  </Text>
-                  <Ionicons name="add-circle" size={22} color="#e67e22" />
-                </View>
-              </TouchableOpacity>
-            );
-          }}
+          ListHeaderComponent={listHeader}
+          renderItem={renderProductItem}
+          initialNumToRender={12}
+          maxToRenderPerBatch={12}
+          windowSize={7}
+          removeClippedSubviews
           ListEmptyComponent={
             <View className="py-8 items-center">
               <Text className="text-slate-400 text-sm">

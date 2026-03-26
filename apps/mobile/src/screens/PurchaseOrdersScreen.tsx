@@ -2,7 +2,7 @@
  * PurchaseOrdersScreen — Purchase orders list (Sprint 22).
  * GET /api/v1/purchase-orders
  */
-import React from "react";
+import React, { useCallback } from "react";
 import {
   View,
   Text,
@@ -34,11 +34,41 @@ export function PurchaseOrdersScreen() {
 
   const orders = data?.purchaseOrders ?? [];
 
+  const keyExtractor = useCallback((o: { id: string }) => o.id, []);
+
+  const renderOrder = useCallback(({ item }: { item: any }) => {
+    const sc = STATUS_COLORS[item.status] ?? STATUS_COLORS.draft;
+    return (
+      <TouchableOpacity
+        className="flex-row items-center rounded-xl border border-slate-200 bg-card px-4 py-3"
+        activeOpacity={0.7}
+      >
+        <View className="flex-1">
+          <Text className="font-bold text-slate-800">{item.poNo}</Text>
+          <Text className="text-xs text-slate-500">
+            {(item as any).supplier?.name ?? "—"}
+          </Text>
+        </View>
+        <View className="items-end">
+          <Text className="font-bold text-primary">
+            {formatCurrency((item as any).total ?? 0)}
+          </Text>
+          <View className={`mt-1 px-2 py-0.5 rounded-full ${sc}`}>
+            <Text className="text-[10px] font-semibold">{item.status}</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  }, []);
+
   if (isError) {
     return (
       <SafeAreaView className="flex-1 bg-background">
         <View className="flex-1 justify-center px-4">
-          <ErrorCard message="Failed to load purchase orders" onRetry={() => refetch()} />
+          <ErrorCard
+            message="Failed to load purchase orders"
+            onRetry={() => refetch()}
+          />
         </View>
       </SafeAreaView>
     );
@@ -47,16 +77,22 @@ export function PurchaseOrdersScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "bottom"]}>
       <View className="px-4 pt-4 pb-3 border-b border-slate-200 bg-card">
-        <Text className="text-xl font-bold tracking-tight text-slate-800">Purchase Orders</Text>
+        <Text className="text-xl font-bold tracking-tight text-slate-800">
+          Purchase Orders
+        </Text>
       </View>
 
       <FlatList
         data={orders}
-        keyExtractor={(o) => o.id}
+        keyExtractor={keyExtractor}
         refreshControl={
           <RefreshControl refreshing={isFetching} onRefresh={refetch} />
         }
         contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+        initialNumToRender={12}
+        maxToRenderPerBatch={12}
+        windowSize={7}
+        removeClippedSubviews
         ItemSeparatorComponent={() => <View className="h-2" />}
         ListEmptyComponent={
           isFetching ? (
@@ -71,28 +107,7 @@ export function PurchaseOrdersScreen() {
             />
           )
         }
-        renderItem={({ item }) => {
-          const sc = STATUS_COLORS[item.status] ?? STATUS_COLORS.draft;
-          return (
-            <TouchableOpacity
-              className="flex-row items-center rounded-xl border border-slate-200 bg-card px-4 py-3"
-              activeOpacity={0.7}
-            >
-              <View className="flex-1">
-                <Text className="font-bold text-slate-800">{item.poNo}</Text>
-                <Text className="text-xs text-slate-500">
-                  {(item as any).supplier?.name ?? "—"}
-                </Text>
-              </View>
-              <View className="items-end">
-                <Text className="font-bold text-primary">{formatCurrency((item as any).total ?? 0)}</Text>
-                <View className={`mt-1 px-2 py-0.5 rounded-full ${sc}`}>
-                  <Text className="text-[10px] font-semibold">{item.status}</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          );
-        }}
+        renderItem={renderOrder}
       />
     </SafeAreaView>
   );

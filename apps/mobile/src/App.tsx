@@ -1,6 +1,12 @@
 import "./global.css";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import { View, Text, TextInput, StyleSheet, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  TouchableOpacity,
+} from "react-native";
 import { ScaledText } from "./components/ui/ScaledText";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {

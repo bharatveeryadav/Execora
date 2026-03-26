@@ -56,7 +56,7 @@ export function VoiceScreen() {
     {
       id: _msgId++,
       role: "system",
-      text: "Namaste! Bol sakte ho: \"Rahul ko 500 ka bill banao\", \"Cheeni ka stock check karo\", \"Aaj ki report do\".",
+      text: 'Namaste! Bol sakte ho: "Rahul ko 500 ka bill banao", "Cheeni ka stock check karo", "Aaj ki report do".',
     },
   ]);
   const [input, setInput] = useState("");
@@ -119,7 +119,10 @@ export function VoiceScreen() {
 
   // ── Message handler ───────────────────────────────────────────────────────────
 
-  function handleServerMessage(msg: { type: string; data?: Record<string, unknown> }) {
+  function handleServerMessage(msg: {
+    type: string;
+    data?: Record<string, unknown>;
+  }) {
     switch (msg.type) {
       case "voice:response": {
         const text =
@@ -132,7 +135,11 @@ export function VoiceScreen() {
       case "voice:intent": {
         // Intent confirmed — surface to user if no response follows
         if (msg.data?.intent) {
-          appendMsg("assistant", `Intent: ${msg.data.intent}`, msg.data.intent as string);
+          appendMsg(
+            "assistant",
+            `Intent: ${msg.data.intent}`,
+            msg.data.intent as string,
+          );
         }
         break;
       }
@@ -152,10 +159,7 @@ export function VoiceScreen() {
   }
 
   function appendMsg(role: MsgRole, text: string, intent?: string) {
-    setMessages((prev) => [
-      ...prev,
-      { id: _msgId++, role, text, intent },
-    ]);
+    setMessages((prev) => [...prev, { id: _msgId++, role, text, intent }]);
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
   }
 
@@ -163,7 +167,8 @@ export function VoiceScreen() {
 
   function send() {
     const text = input.trim();
-    if (!text || !ws.current || ws.current.readyState !== WebSocket.OPEN) return;
+    if (!text || !ws.current || ws.current.readyState !== WebSocket.OPEN)
+      return;
 
     appendMsg("user", text);
     setInput("");
@@ -191,7 +196,9 @@ export function VoiceScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingHorizontal: contentPad }]}>
         <Text style={styles.headerTitle}>Voice Billing</Text>
-        <View style={[styles.dot, connected ? styles.dotGreen : styles.dotRed]} />
+        <View
+          style={[styles.dot, connected ? styles.dotGreen : styles.dotRed]}
+        />
         <Text style={styles.statusLabel}>
           {connecting ? "Connecting…" : connected ? "Connected" : "Offline"}
         </Text>
@@ -221,13 +228,13 @@ export function VoiceScreen() {
                   : styles.bubbleAssistant,
             ]}
           >
-            {m.intent && (
-              <Text style={styles.intentBadge}>{m.intent}</Text>
-            )}
+            {m.intent && <Text style={styles.intentBadge}>{m.intent}</Text>}
             <Text
               style={[
                 styles.bubbleText,
-                m.role === "user" ? styles.bubbleTextUser : styles.bubbleTextOther,
+                m.role === "user"
+                  ? styles.bubbleTextUser
+                  : styles.bubbleTextOther,
               ]}
             >
               {m.text}

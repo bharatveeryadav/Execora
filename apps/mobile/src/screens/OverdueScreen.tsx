@@ -39,7 +39,10 @@ interface OverdueCustomer {
 
 // ── OverdueScreen ─────────────────────────────────────────────────────────────
 
-type Props = NativeStackScreenProps<import("../navigation").InvoicesStackParams, "Overdue">;
+type Props = NativeStackScreenProps<
+  import("../navigation").InvoicesStackParams,
+  "Overdue"
+>;
 
 export function OverdueScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
@@ -82,7 +85,11 @@ export function OverdueScreen({ navigation }: Props) {
       activeOpacity={0.75}
     >
       <View style={styles.cardLeft}>
-        <Text style={styles.customerName} numberOfLines={1} ellipsizeMode="tail">
+        <Text
+          style={styles.customerName}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
           {item.name}
         </Text>
         {item.landmark ? (
@@ -102,7 +109,9 @@ export function OverdueScreen({ navigation }: Props) {
         {item.phone ? (
           <TouchableOpacity
             style={styles.waBtn}
-            onPress={() => openWhatsApp(item.phone!, item.name, Math.abs(item.balance))}
+            onPress={() =>
+              openWhatsApp(item.phone!, item.name, Math.abs(item.balance))
+            }
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Text style={styles.waBtnText}>WhatsApp</Text>
@@ -116,54 +125,60 @@ export function OverdueScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container}>
       <View style={{ flex: 1, width: "100%", alignItems: "center" }}>
         <View style={{ width: "100%", maxWidth: contentWidth, flex: 1 }}>
-      {/* Header */}
-      <View style={[styles.header, { paddingHorizontal: contentPad }]}>
-        <Text style={styles.headerTitle}>Overdue / Udhaar</Text>
-        {isFetching && !refreshing ? (
-          <ActivityIndicator size="small" color="#e67e22" />
-        ) : null}
-      </View>
+          {/* Header */}
+          <View style={[styles.header, { paddingHorizontal: contentPad }]}>
+            <Text style={styles.headerTitle}>Overdue / Udhaar</Text>
+            {isFetching && !refreshing ? (
+              <ActivityIndicator size="small" color="#e67e22" />
+            ) : null}
+          </View>
 
-      {/* Summary banner */}
-      {customers.length > 0 && (
-        <View style={[styles.summaryBanner, { paddingHorizontal: contentPad }]}>
-          <Text style={styles.summaryText}>
-            {customers.length} customers · Total pending:{" "}
-            <Text style={styles.summaryAmount}>{inr(totalPending)}</Text>
-          </Text>
-        </View>
-      )}
-
-      {/* List */}
-      <FlatList
-        data={customers}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        getItemLayout={(_, index) => ({ length: 80, offset: 80 * index, index })}
-        contentContainerStyle={
-          customers.length === 0
-            ? styles.emptyContainer
-            : { ...styles.listContent, padding: contentPad }
-        }
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#e67e22"
-          />
-        }
-        ListEmptyComponent={
-          isFetching ? null : (
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyIcon}>🎉</Text>
-              <Text style={styles.emptyTitle}>Sab clear hai!</Text>
-              <Text style={styles.emptySubtitle}>
-                Koi pending balance nahi hai.
+          {/* Summary banner */}
+          {customers.length > 0 && (
+            <View
+              style={[styles.summaryBanner, { paddingHorizontal: contentPad }]}
+            >
+              <Text style={styles.summaryText}>
+                {customers.length} customers · Total pending:{" "}
+                <Text style={styles.summaryAmount}>{inr(totalPending)}</Text>
               </Text>
             </View>
-          )
-        }
-      />
+          )}
+
+          {/* List */}
+          <FlatList
+            data={customers}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            getItemLayout={(_, index) => ({
+              length: 80,
+              offset: 80 * index,
+              index,
+            })}
+            contentContainerStyle={
+              customers.length === 0
+                ? styles.emptyContainer
+                : { ...styles.listContent, padding: contentPad }
+            }
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor="#e67e22"
+              />
+            }
+            ListEmptyComponent={
+              isFetching ? null : (
+                <View style={styles.emptyBox}>
+                  <Text style={styles.emptyIcon}>🎉</Text>
+                  <Text style={styles.emptyTitle}>Sab clear hai!</Text>
+                  <Text style={styles.emptySubtitle}>
+                    Koi pending balance nahi hai.
+                  </Text>
+                </View>
+              )
+            }
+          />
         </View>
       </View>
     </SafeAreaView>
