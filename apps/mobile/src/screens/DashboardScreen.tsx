@@ -51,6 +51,7 @@ import {
 } from "../components/dashboard/QuickActionsSection";
 import { RecentActivitySection } from "../components/dashboard/RecentActivitySection";
 import { showInfo } from "../lib/alerts";
+import { SIZES } from "../lib/constants";
 import { formatCurrency } from "../lib/utils";
 import { TYPO } from "../lib/typography";
 
@@ -2079,7 +2080,9 @@ export function DashboardScreen({ navigation }: Props) {
                               activeOpacity={0.85}
                               style={{
                                 width: popupTileWidth,
-                                minHeight: compactAddPopup ? 58 : 62,
+                                minHeight: compactAddPopup
+                                  ? SIZES.TOUCH_MIN + 14
+                                  : SIZES.TOUCH_MIN + 18,
                                 alignItems: "center",
                                 justifyContent: "center",
                                 gap: 4,

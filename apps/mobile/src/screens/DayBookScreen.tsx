@@ -16,6 +16,7 @@ import { invoiceApi, expenseApi, cashbookApi } from "../lib/api";
 import { useWsInvalidation } from "../hooks/useWsInvalidation";
 import { useResponsive } from "../hooks/useResponsive";
 import { formatCurrency } from "../lib/utils";
+import { SIZES } from "../lib/constants";
 
 type Period = "today" | "week" | "month";
 
@@ -117,6 +118,7 @@ export function DayBookScreen() {
             <TouchableOpacity
               key={p}
               onPress={() => requestAnimationFrame(() => setPeriod(p))}
+              style={{ minHeight: SIZES.TOUCH_MIN }}
               className={`px-3 py-2 rounded-lg ${period === p ? "bg-primary" : "bg-slate-100"}`}
             >
               <Text className={period === p ? "text-white font-semibold text-sm" : "text-slate-600 text-sm"}>
@@ -127,7 +129,13 @@ export function DayBookScreen() {
         </View>
       </View>
 
-      <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="flex-row bg-slate-50">
+      <View
+        style={{
+          paddingHorizontal: contentPad,
+          paddingVertical: SIZES.SPACING.md,
+        }}
+        className="flex-row bg-slate-50"
+      >
         <View className="flex-1">
           <Text className="text-xs text-slate-500">Money In</Text>
           <Text className="text-lg font-bold text-emerald-600">{formatCurrency(moneyIn)}</Text>
@@ -143,7 +151,14 @@ export function DayBookScreen() {
         keyExtractor={(t) => t.id}
         refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} />}
         renderItem={({ item }) => (
-          <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="flex-row items-center justify-between border-b border-slate-100">
+          <View
+            style={{
+              paddingHorizontal: contentPad,
+              paddingVertical: SIZES.SPACING.md,
+              minHeight: SIZES.TOUCH_MIN,
+            }}
+            className="flex-row items-center justify-between border-b border-slate-100"
+          >
             <View>
               <Text className="font-medium text-slate-800">{item.label}</Text>
               <Text className="text-xs text-slate-500">{item.date}</Text>

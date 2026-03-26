@@ -7,11 +7,11 @@ import {
   TouchableOpacity,
   Text,
   ActivityIndicator,
-  ViewStyle,
-  TextStyle,
 } from "react-native";
 import { cn } from "../../lib/utils";
 import { hapticLight } from "../../lib/haptics";
+import { SIZES } from "../../lib/constants";
+import { MAX_FONT_SIZE_MULTIPLIER } from "../../lib/typography";
 
 type Variant = "primary" | "outline" | "ghost" | "danger";
 type Size = "sm" | "md" | "lg";
@@ -30,16 +30,28 @@ const variantTextStyles: Record<Variant, string> = {
   danger: "text-white",
 };
 
-const sizeStyles: Record<Size, string> = {
-  sm: "px-3 min-h-[44px] py-2",
-  md: "px-4 min-h-[44px] py-2.5",
-  lg: "px-6 min-h-[48px] py-3",
+const sizeStyles: Record<Size, { minHeight: number; paddingHorizontal: number; paddingVertical: number }> = {
+  sm: {
+    minHeight: SIZES.BUTTON.sm.minHeight,
+    paddingHorizontal: SIZES.BUTTON.sm.paddingX,
+    paddingVertical: SIZES.BUTTON.sm.paddingY,
+  },
+  md: {
+    minHeight: SIZES.BUTTON.md.minHeight,
+    paddingHorizontal: SIZES.BUTTON.md.paddingX,
+    paddingVertical: SIZES.BUTTON.md.paddingY,
+  },
+  lg: {
+    minHeight: SIZES.BUTTON.lg.minHeight,
+    paddingHorizontal: SIZES.BUTTON.lg.paddingX,
+    paddingVertical: SIZES.BUTTON.lg.paddingY,
+  },
 };
 
-const sizeTextStyles: Record<Size, string> = {
-  sm: "text-sm",
-  md: "text-base",
-  lg: "text-lg",
+const sizeTextStyles: Record<Size, { fontSize: number }> = {
+  sm: { fontSize: SIZES.BUTTON.sm.fontSize },
+  md: { fontSize: SIZES.BUTTON.md.fontSize },
+  lg: { fontSize: SIZES.BUTTON.lg.fontSize },
 };
 
 export interface ButtonProps {
@@ -77,10 +89,10 @@ export function Button({
       onPress={handlePress}
       disabled={isDisabled}
       activeOpacity={0.7}
+      style={sizeStyles[size]}
       className={cn(
         "rounded-lg border items-center justify-center flex-row",
         variantContainerStyles[variant],
-        sizeStyles[size],
         isDisabled && "opacity-50",
         className
       )}
@@ -92,10 +104,11 @@ export function Button({
         />
       ) : (
         <Text
+          style={sizeTextStyles[size]}
+          maxFontSizeMultiplier={MAX_FONT_SIZE_MULTIPLIER}
           className={cn(
             "font-semibold",
             variantTextStyles[variant],
-            sizeTextStyles[size],
             textClassName
           )}
         >

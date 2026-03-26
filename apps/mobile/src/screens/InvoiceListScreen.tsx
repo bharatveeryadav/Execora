@@ -29,6 +29,7 @@ import { TabBar, type TabItem } from "../components/composites/TabBar";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ErrorCard } from "../components/ui/ErrorCard";
 import { TYPO } from "../lib/typography";
+import { SIZES } from "../lib/constants";
 import type { InvoicesStackParams } from "../navigation";
 
 type DocTypeTab = "sales" | "purchase" | "quotation";
@@ -502,7 +503,7 @@ export function InvoiceListScreen({ navigation }: Props) {
           >
             <Text
               style={{
-                fontSize: 10,
+                fontSize: SIZES.FONT.xs,
                 fontWeight: "600",
                 color: s.textColor,
                 textTransform: "capitalize",
@@ -514,7 +515,7 @@ export function InvoiceListScreen({ navigation }: Props) {
           </View>
           <Text
             style={{
-              fontSize: 13,
+              fontSize: SIZES.FONT.base,
               fontWeight: "700",
               color: amtColor,
               textDecorationLine:
@@ -673,7 +674,7 @@ export function InvoiceListScreen({ navigation }: Props) {
               >
                 <Text
                   style={{
-                    fontSize: 12,
+                    fontSize: SIZES.FONT.sm,
                     fontWeight: docTypeTab === id ? "600" : "500",
                     color: docTypeTab === id ? "#0f172a" : "#94a3b8",
                   }}

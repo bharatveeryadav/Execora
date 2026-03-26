@@ -2,6 +2,8 @@ import React from "react";
 import { View, Text, TouchableOpacity, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { TYPO } from "../../lib/typography";
+import { SIZES } from "../../lib/constants";
+import { MAX_FONT_SIZE_MULTIPLIER } from "../../lib/typography";
 
 export type QuickActionItem = {
   label: string;
@@ -60,9 +62,12 @@ export function QuickActionsSection({
             <TouchableOpacity
               onPress={onToggleExpand}
               activeOpacity={0.8}
+              style={{ minHeight: SIZES.TOUCH_MIN }}
               className="flex-row items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1"
             >
               <Text
+                style={{ fontSize: SIZES.FONT.sm }}
+                maxFontSizeMultiplier={MAX_FONT_SIZE_MULTIPLIER}
                 className="text-xs font-semibold text-slate-600"
                 numberOfLines={1}
               >
@@ -87,6 +92,7 @@ export function QuickActionsSection({
               activeOpacity={0.85}
               className="flex-row items-center gap-1 rounded-full border border-primary/35 bg-primary/15 px-2.5 py-1"
               style={{
+                minHeight: SIZES.TOUCH_MIN,
                 shadowColor: actionPrimaryColor,
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.2,
@@ -108,6 +114,8 @@ export function QuickActionsSection({
                 <Ionicons name="add" size={12} color="#fff" />
               </Animated.View>
               <Text
+                style={{ fontSize: SIZES.FONT.sm }}
+                maxFontSizeMultiplier={MAX_FONT_SIZE_MULTIPLIER}
                 className="text-xs font-semibold text-primary"
                 numberOfLines={1}
               >
@@ -145,6 +153,8 @@ export function QuickActionsSection({
                 color={qa.primary ? "#ffffff" : qa.color}
               />
               <Text
+                style={{ fontSize: SIZES.FONT.sm }}
+                maxFontSizeMultiplier={MAX_FONT_SIZE_MULTIPLIER}
                 className={`${TYPO.micro} font-semibold text-center ${qa.primary ? "text-white" : "text-slate-600"}`}
                 numberOfLines={2}
               >

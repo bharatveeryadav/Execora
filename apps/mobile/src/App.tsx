@@ -1,6 +1,6 @@
 import "./global.css";
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, TextInput, StyleSheet, TouchableOpacity } from "react-native";
 import { ScaledText } from "./components/ui/ScaledText";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -35,9 +35,26 @@ import { OfflineBanner } from "./components/common/OfflineBanner";
 import { usePushAndDeepLinks } from "./hooks/usePushAndDeepLinks";
 import { TypographyProvider } from "./contexts/TypographyContext";
 import { storage } from "./lib/storage";
+import { SIZES } from "./lib/constants";
+import { MAX_FONT_SIZE_MULTIPLIER } from "./lib/typography";
 
 // Boot the API client once (token storage injected)
 bootApi();
+
+const TextComponent = Text as any;
+const TextInputComponent = TextInput as any;
+
+TextComponent.defaultProps = {
+  ...(TextComponent.defaultProps ?? {}),
+  allowFontScaling: true,
+  maxFontSizeMultiplier: MAX_FONT_SIZE_MULTIPLIER,
+};
+
+TextInputComponent.defaultProps = {
+  ...(TextInputComponent.defaultProps ?? {}),
+  allowFontScaling: true,
+  maxFontSizeMultiplier: MAX_FONT_SIZE_MULTIPLIER,
+};
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -258,20 +275,29 @@ const styles = StyleSheet.create({
     padding: 24,
     backgroundColor: "#fff",
   },
-  errorTitle: { fontSize: 18, fontWeight: "600", marginBottom: 8 },
+  errorTitle: {
+    fontSize: SIZES.FONT.xl,
+    fontWeight: "600",
+    marginBottom: SIZES.SPACING.sm,
+  },
   errorText: {
-    fontSize: 14,
+    fontSize: SIZES.FONT.base,
     color: "#666",
     textAlign: "center",
-    marginBottom: 16,
+    marginBottom: SIZES.SPACING.lg,
   },
   retryBtn: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+    minHeight: SIZES.TOUCH_MIN,
+    paddingHorizontal: SIZES.SPACING.xl,
+    paddingVertical: SIZES.SPACING.md,
     backgroundColor: "#e67e22",
-    borderRadius: 8,
+    borderRadius: SIZES.RADIUS.md,
   },
-  retryText: { color: "#fff", fontWeight: "600", fontSize: 16 },
+  retryText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: SIZES.FONT.lg,
+  },
 });
 
 export default function App() {

@@ -15,6 +15,7 @@ import {
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { Ionicons } from "@expo/vector-icons";
 import { hapticLight } from "../../lib/haptics";
+import { SIZES } from "../../lib/constants";
 
 export interface BarcodeScannerProps {
   visible: boolean;
@@ -147,9 +148,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     minWidth: 280,
   },
-  cardTitle: { fontSize: 18, fontWeight: "700", color: "#1e293b", marginBottom: 8 },
-  cardText: { fontSize: 14, color: "#64748b", textAlign: "center", marginBottom: 16 },
+  cardTitle: {
+    fontSize: SIZES.FONT.xl,
+    fontWeight: "700",
+    color: "#1e293b",
+    marginBottom: 8,
+  },
+  cardText: {
+    fontSize: SIZES.FONT.base,
+    color: "#64748b",
+    textAlign: "center",
+    marginBottom: 16,
+  },
   primaryButton: {
+    minHeight: SIZES.TOUCH_MIN,
     backgroundColor: "#e67e22",
     paddingVertical: 12,
     paddingHorizontal: 24,
@@ -158,9 +170,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
-  primaryButtonText: { color: "#fff", fontWeight: "600", fontSize: 16 },
-  secondaryButton: { paddingVertical: 12 },
-  secondaryButtonText: { color: "#64748b", fontSize: 16 },
+  primaryButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: SIZES.FONT.lg,
+  },
+  secondaryButton: { minHeight: SIZES.TOUCH_MIN, paddingVertical: 12 },
+  secondaryButtonText: { color: "#64748b", fontSize: SIZES.FONT.lg },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -170,7 +186,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   closeButton: { padding: 8 },
-  title: { fontSize: 18, fontWeight: "600", color: "#fff" },
+  title: { fontSize: SIZES.FONT.xl, fontWeight: "600", color: "#fff" },
   placeholder: { width: 44 },
   cameraWrap: { flex: 1, position: "relative" },
   viewfinder: {
@@ -189,5 +205,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "rgba(0,0,0,0.7)",
   },
-  hint: { fontSize: 14, color: "#94a3b8", textAlign: "center" },
+  hint: { fontSize: SIZES.FONT.base, color: "#94a3b8", textAlign: "center" },
 });

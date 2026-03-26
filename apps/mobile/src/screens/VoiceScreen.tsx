@@ -28,6 +28,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { tokenStorage } from "../lib/storage";
 import { getApiBaseUrl } from "../lib/api";
 import { useResponsive } from "../hooks/useResponsive";
+import { SIZES } from "../lib/constants";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -288,18 +289,28 @@ const styles = StyleSheet.create({
     borderBottomColor: "#e2e8f0",
     gap: 6,
   },
-  headerTitle: { fontSize: 17, fontWeight: "700", color: "#0f172a", flex: 1 },
+  headerTitle: {
+    fontSize: SIZES.FONT.lg,
+    fontWeight: "700",
+    color: "#0f172a",
+    flex: 1,
+  },
   dot: { width: 8, height: 8, borderRadius: 4 },
   dotGreen: { backgroundColor: "#22c55e" },
   dotRed: { backgroundColor: "#ef4444" },
-  statusLabel: { fontSize: 12, color: "#64748b" },
+  statusLabel: { fontSize: SIZES.FONT.sm, color: "#64748b" },
   reconnectBtn: {
+    minHeight: SIZES.TOUCH_MIN,
     paddingHorizontal: 10,
     paddingVertical: 4,
     backgroundColor: "#e67e22",
     borderRadius: 6,
   },
-  reconnectText: { color: "#fff", fontSize: 12, fontWeight: "600" },
+  reconnectText: {
+    color: "#fff",
+    fontSize: SIZES.FONT.sm,
+    fontWeight: "600",
+  },
 
   chat: { flex: 1 },
   chatContent: { padding: 12, gap: 8 },
@@ -330,14 +341,14 @@ const styles = StyleSheet.create({
     maxWidth: "96%",
   },
   intentBadge: {
-    fontSize: 10,
+    fontSize: SIZES.FONT.xs,
     fontWeight: "700",
     color: "#e67e22",
     marginBottom: 2,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-  bubbleText: { fontSize: 14, lineHeight: 20 },
+  bubbleText: { fontSize: SIZES.FONT.base, lineHeight: 20 },
   bubbleTextUser: { color: "#fff" },
   bubbleTextOther: { color: "#1e293b" },
 
@@ -353,19 +364,19 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    minHeight: 44,
+    minHeight: SIZES.TOUCH_MIN,
     borderWidth: 1,
     borderColor: "#e2e8f0",
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: 14,
+    fontSize: SIZES.FONT.base,
     color: "#0f172a",
     backgroundColor: "#f8fafc",
   },
   sendBtn: {
     minWidth: 60,
-    height: 44,
+    minHeight: SIZES.TOUCH_MIN,
     borderRadius: 10,
     backgroundColor: "#e67e22",
     alignItems: "center",
@@ -373,11 +384,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   sendBtnDisabled: { backgroundColor: "#c7d2fe" },
-  sendBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  sendBtnText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: SIZES.FONT.base,
+  },
 
   hint: {
     textAlign: "center",
-    fontSize: 11,
+    fontSize: SIZES.FONT.sm,
     color: "#94a3b8",
     paddingBottom: 8,
     backgroundColor: "#fff",

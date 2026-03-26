@@ -9,6 +9,28 @@ export const SIZES = {
   // Touch target (Apple: 44×44 minimum)
   TOUCH_MIN: 44,
 
+  // Button sizing scale
+  BUTTON: {
+    sm: {
+      minHeight: 44,
+      paddingX: 12,
+      paddingY: 8,
+      fontSize: 12,
+    },
+    md: {
+      minHeight: 44,
+      paddingX: 16,
+      paddingY: 10,
+      fontSize: 14,
+    },
+    lg: {
+      minHeight: 48,
+      paddingX: 20,
+      paddingY: 12,
+      fontSize: 16,
+    },
+  },
+
   // Spacing scale
   SPACING: {
     xs: 4,

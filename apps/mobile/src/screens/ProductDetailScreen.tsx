@@ -19,6 +19,7 @@ import { productApi, apiFetch } from "@execora/shared";
 import { Ionicons } from "@expo/vector-icons";
 import { useWsInvalidation } from "../hooks/useWsInvalidation";
 import { useResponsive } from "../hooks/useResponsive";
+import { SIZES } from "../lib/constants";
 
 function num(v: string | number | undefined | null): number {
   if (v === undefined || v === null) return 0;
@@ -164,7 +165,13 @@ export function ProductDetailScreen({ navigation, route }: Props) {
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
       {/* Header: back, product name, menu */}
-      <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="flex-row items-center justify-between border-b border-slate-200 bg-white">
+      <View
+        style={{
+          paddingHorizontal: contentPad,
+          paddingVertical: SIZES.SPACING.md,
+        }}
+        className="flex-row items-center justify-between border-b border-slate-200 bg-white"
+      >
         <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 -ml-2">
           <Ionicons name="arrow-back" size={24} color="#0f172a" />
         </TouchableOpacity>
@@ -186,7 +193,13 @@ export function ProductDetailScreen({ navigation, route }: Props) {
         <TouchableOpacity
           onPress={goToUpdate}
           activeOpacity={0.8}
-          style={{ marginHorizontal: contentPad, marginTop: 12, paddingHorizontal: contentPad, paddingVertical: 12 }}
+          style={{
+            marginHorizontal: contentPad,
+            marginTop: SIZES.SPACING.md,
+            paddingHorizontal: contentPad,
+            paddingVertical: SIZES.SPACING.md,
+            minHeight: SIZES.TOUCH_MIN,
+          }}
           className="flex-row items-center justify-between rounded-xl bg-slate-200/80"
         >
           <Text className="text-sm font-medium text-slate-700">Add Missing Details — Tap to edit</Text>
@@ -214,7 +227,13 @@ export function ProductDetailScreen({ navigation, route }: Props) {
           <DetailRow label="MRP (₹)" value={mrp ? `₹${parseFloat(mrp).toFixed(2)}` : "—"} onDoubleTap={goToUpdate} contentPad={contentPad} />
           <DetailRow label="Barcode" value={barcode || "—"} addButton={!barcode} onDoubleTap={goToUpdate} contentPad={contentPad} />
 
-          <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="border-t border-slate-100">
+          <View
+            style={{
+              paddingHorizontal: contentPad,
+              paddingVertical: SIZES.SPACING.md,
+            }}
+            className="border-t border-slate-100"
+          >
             <Text className="text-xs text-slate-500 mb-1">Product Description</Text>
             <TouchableOpacity onPress={goToUpdate} className="py-2">
               <Text className="text-sm text-slate-800">{description || "—"}</Text>
@@ -224,12 +243,22 @@ export function ProductDetailScreen({ navigation, route }: Props) {
       </ScrollView>
 
       {/* Footer: STOCK OUT / STOCK IN */}
-      <View style={{ paddingHorizontal: contentPad, paddingTop: 12, paddingBottom: 24 }} className="flex-row border-t border-slate-200 bg-white">
+      <View
+        style={{
+          paddingHorizontal: contentPad,
+          paddingTop: SIZES.SPACING.md,
+          paddingBottom: SIZES.SPACING.xl,
+        }}
+        className="flex-row border-t border-slate-200 bg-white"
+      >
         <TouchableOpacity
           onPress={() => adjustStockMutation.mutate({ op: "subtract" })}
           disabled={adjustStockMutation.isPending || num(stock) <= 0}
           className="flex-1 py-3.5 rounded-xl bg-red-500 items-center justify-center mr-2"
-          style={{ opacity: num(stock) <= 0 ? 0.5 : 1 }}
+          style={{
+            minHeight: SIZES.BUTTON.lg.minHeight,
+            opacity: num(stock) <= 0 ? 0.5 : 1,
+          }}
         >
           {adjustStockMutation.isPending && (adjustStockMutation.variables as { op: string })?.op === "subtract" ? (
             <ActivityIndicator size="small" color="#fff" />
@@ -241,6 +270,7 @@ export function ProductDetailScreen({ navigation, route }: Props) {
           onPress={() => adjustStockMutation.mutate({ op: "add" })}
           disabled={adjustStockMutation.isPending}
           className="flex-1 py-3.5 rounded-xl bg-green-500 items-center justify-center ml-2"
+          style={{ minHeight: SIZES.BUTTON.lg.minHeight }}
         >
           {adjustStockMutation.isPending && (adjustStockMutation.variables as { op: string })?.op === "add" ? (
             <ActivityIndicator size="small" color="#fff" />
@@ -276,7 +306,13 @@ function DetailRow({
 
   return (
     <TouchableOpacity onPress={handlePress} activeOpacity={onDoubleTap ? 0.7 : 1} disabled={!onDoubleTap}>
-      <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="border-t border-slate-100">
+      <View
+        style={{
+          paddingHorizontal: contentPad,
+          paddingVertical: SIZES.SPACING.md,
+        }}
+        className="border-t border-slate-100"
+      >
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-2">
             <View>

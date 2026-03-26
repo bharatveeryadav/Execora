@@ -25,6 +25,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@execora/shared";
 import { inr } from "@execora/shared";
 import { useResponsive } from "../hooks/useResponsive";
+import { SIZES } from "../lib/constants";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -183,7 +184,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: "#e2e8f0",
   },
-  headerTitle: { fontSize: 18, fontWeight: "800", color: "#0f172a" },
+  headerTitle: {
+    fontSize: SIZES.FONT.xl,
+    fontWeight: "800",
+    color: "#0f172a",
+  },
 
   summaryBanner: {
     backgroundColor: "#fff7ed",
@@ -192,7 +197,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
-  summaryText: { fontSize: 13, color: "#92400e" },
+  summaryText: { fontSize: SIZES.FONT.base, color: "#92400e" },
   summaryAmount: { fontWeight: "700", color: "#dc2626" },
 
   listContent: { gap: 8 },
@@ -211,17 +216,17 @@ const styles = StyleSheet.create({
   },
   cardLeft: { flex: 1, minWidth: 0, gap: 2 },
   customerName: {
-    fontSize: 15,
+    fontSize: SIZES.FONT.lg,
     fontWeight: "700",
     color: "#0f172a",
     flexShrink: 1,
   },
-  landmark: { fontSize: 12, color: "#94a3b8", flexShrink: 1 },
-  phone: { fontSize: 12, color: "#64748b", flexShrink: 1 },
+  landmark: { fontSize: SIZES.FONT.sm, color: "#94a3b8", flexShrink: 1 },
+  phone: { fontSize: SIZES.FONT.sm, color: "#64748b", flexShrink: 1 },
 
   cardRight: { alignItems: "flex-end", gap: 6, minWidth: 90 },
   balance: {
-    fontSize: 16,
+    fontSize: SIZES.FONT.lg,
     fontWeight: "800",
     color: "#dc2626",
   },
@@ -229,15 +234,23 @@ const styles = StyleSheet.create({
     backgroundColor: "#25d366",
     borderRadius: 6,
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    minHeight: 28,
+    paddingVertical: 8,
+    minHeight: SIZES.TOUCH_MIN,
     alignItems: "center",
     justifyContent: "center",
   },
-  waBtnText: { color: "#fff", fontSize: 11, fontWeight: "700" },
+  waBtnText: {
+    color: "#fff",
+    fontSize: SIZES.FONT.sm,
+    fontWeight: "700",
+  },
 
   emptyBox: { alignItems: "center", gap: 8, paddingTop: 60 },
   emptyIcon: { fontSize: 48 },
-  emptyTitle: { fontSize: 20, fontWeight: "800", color: "#0f172a" },
-  emptySubtitle: { fontSize: 14, color: "#64748b" },
+  emptyTitle: {
+    fontSize: SIZES.FONT["2xl"],
+    fontWeight: "800",
+    color: "#0f172a",
+  },
+  emptySubtitle: { fontSize: SIZES.FONT.base, color: "#64748b" },
 });

@@ -18,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
+import { SIZES } from "../lib/constants";
 import { storage, DOC_SETTINGS_KEY, INV_TEMPLATE_KEY, BIZ_STORAGE_KEY } from "../lib/storage";
 import {
   TEMPLATES,
@@ -437,10 +438,20 @@ export function DocumentSettingsScreen({ navigation }: Props) {
       <View className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200">
         <TouchableOpacity
           onPress={handleUpdate}
-          className="py-4 rounded-xl items-center justify-center"
-          style={{ backgroundColor: hasChanges ? "#e67e22" : "#e2e8f0" }}
+          className="rounded-xl items-center justify-center"
+          style={{
+            minHeight: SIZES.BUTTON.lg.minHeight,
+            paddingVertical: SIZES.BUTTON.lg.paddingY,
+            backgroundColor: hasChanges ? "#e67e22" : "#e2e8f0",
+          }}
         >
-          <Text style={{ fontWeight: "700", fontSize: 16, color: hasChanges ? "#fff" : "#64748b" }}>
+          <Text
+            style={{
+              fontWeight: "700",
+              fontSize: SIZES.BUTTON.lg.fontSize,
+              color: hasChanges ? "#fff" : "#64748b",
+            }}
+          >
             Update Document Settings
           </Text>
         </TouchableOpacity>

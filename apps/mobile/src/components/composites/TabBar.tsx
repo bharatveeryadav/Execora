@@ -7,6 +7,8 @@
 import React, { useCallback } from "react";
 import { View, TouchableOpacity, Text, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { SIZES } from "../../lib/constants";
+import { MAX_FONT_SIZE_MULTIPLIER } from "../../lib/typography";
 
 export interface TabItem {
   id: string;
@@ -52,8 +54,8 @@ export const TabBar = React.memo(function TabBar({
         const isActive = activeTab === tab.id;
         const baseStyle =
           variant === "pills"
-            ? "rounded-full px-4 py-2 border border-slate-200"
-            : `${scrollable ? "" : "flex-1 "}px-3 py-3 border-b-2`;
+            ? "rounded-full min-h-[44px] px-4 border border-slate-200"
+            : `${scrollable ? "" : "flex-1 "}min-h-[44px] px-3 border-b-2`;
 
         return (
           <TouchableOpacity
@@ -83,6 +85,8 @@ export const TabBar = React.memo(function TabBar({
               />
             )}
             <Text
+              style={{ fontSize: SIZES.FONT.base }}
+              maxFontSizeMultiplier={MAX_FONT_SIZE_MULTIPLIER}
               className={`text-sm font-semibold ${
                 isActive
                   ? variant === "pills"
@@ -96,7 +100,11 @@ export const TabBar = React.memo(function TabBar({
             </Text>
             {tab.badge !== undefined && tab.badge > 0 && (
               <View className="bg-red-500 rounded-full px-1.5 py-0.5 ml-1">
-                <Text className="text-white text-xs font-bold">
+                <Text
+                  style={{ fontSize: SIZES.FONT.xs }}
+                  maxFontSizeMultiplier={MAX_FONT_SIZE_MULTIPLIER}
+                  className="text-white font-bold"
+                >
                   {tab.badge > 99 ? "99+" : tab.badge}
                 </Text>
               </View>
