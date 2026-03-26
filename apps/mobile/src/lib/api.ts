@@ -12,6 +12,7 @@ import {
   invoiceApi,
   authApi,
   apiFetch,
+  type Product,
 } from "@execora/shared";
 import { tokenStorage } from "./storage";
 
@@ -25,16 +26,26 @@ export const getApiBaseUrl = (): string => {
 
 export const invoiceExtApi = {
   cancel: (id: string) =>
-    apiFetch<{ invoice: unknown }>(`/api/v1/invoices/${id}/cancel`, { method: 'POST' }),
+    apiFetch<{ invoice: unknown }>(`/api/v1/invoices/${id}/cancel`, {
+      method: "POST",
+    }),
 
-  update: (id: string, data: { items?: Array<{ productName: string; quantity: number }>; notes?: string }) =>
+  update: (
+    id: string,
+    data: {
+      items?: Array<{ productName: string; quantity: number }>;
+      notes?: string;
+    },
+  ) =>
     apiFetch<{ invoice: unknown }>(`/api/v1/invoices/${id}`, {
-      method: 'PATCH',
+      method: "PATCH",
       body: JSON.stringify(data),
     }),
 
   sendEmail: (id: string) =>
-    apiFetch<{ sent: boolean }>(`/api/v1/invoices/${id}/send-email`, { method: 'POST' }),
+    apiFetch<{ sent: boolean }>(`/api/v1/invoices/${id}/send-email`, {
+      method: "POST",
+    }),
 };
 
 // ── Extended customer API ─────────────────────────────────────────────────────
@@ -57,21 +68,46 @@ export const customerExtApi = {
     }),
 
   delete: (id: string) =>
-    apiFetch<{ success: boolean }>(`/api/v1/customers/${id}`, { method: 'DELETE' }),
+    apiFetch<{ success: boolean }>(`/api/v1/customers/${id}`, {
+      method: "DELETE",
+    }),
 
   getLedger: (id: string) =>
-    apiFetch<{ entries: Array<{ id: string; type: string; description: string; amount: string | number; createdAt: string }> }>(
-      `/api/v1/customers/${id}/ledger`
-    ),
+    apiFetch<{
+      entries: Array<{
+        id: string;
+        type: string;
+        description: string;
+        amount: string | number;
+        createdAt: string;
+      }>;
+    }>(`/api/v1/customers/${id}/ledger`),
 
   getCommPrefs: (id: string) =>
-    apiFetch<{ prefs: { whatsappEnabled?: boolean; whatsappNumber?: string; emailEnabled?: boolean; emailAddress?: string; smsEnabled?: boolean; preferredLanguage?: string } | null }>(
-      `/api/v1/customers/${id}/comm-prefs`
-    ),
+    apiFetch<{
+      prefs: {
+        whatsappEnabled?: boolean;
+        whatsappNumber?: string;
+        emailEnabled?: boolean;
+        emailAddress?: string;
+        smsEnabled?: boolean;
+        preferredLanguage?: string;
+      } | null;
+    }>(`/api/v1/customers/${id}/comm-prefs`),
 
-  updateCommPrefs: (id: string, data: { whatsappEnabled?: boolean; whatsappNumber?: string; emailEnabled?: boolean; emailAddress?: string; smsEnabled?: boolean; preferredLanguage?: string }) =>
+  updateCommPrefs: (
+    id: string,
+    data: {
+      whatsappEnabled?: boolean;
+      whatsappNumber?: string;
+      emailEnabled?: boolean;
+      emailAddress?: string;
+      smsEnabled?: boolean;
+      preferredLanguage?: string;
+    },
+  ) =>
     apiFetch<{ prefs: unknown }>(`/api/v1/customers/${id}/comm-prefs`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
     }),
 };
@@ -80,13 +116,23 @@ export const customerExtApi = {
 
 export const reminderApi = {
   list: (customerId?: string) =>
-    apiFetch<{ reminders: Array<{ id: string; status: string; scheduledTime: string; message?: string }> }>(
-      `/api/v1/reminders${customerId ? `?customerId=${customerId}` : ''}`
-    ),
+    apiFetch<{
+      reminders: Array<{
+        id: string;
+        status: string;
+        scheduledTime: string;
+        message?: string;
+      }>;
+    }>(`/api/v1/reminders${customerId ? `?customerId=${customerId}` : ""}`),
 
-  create: (data: { customerId: string; amount?: number; datetime: string; message?: string }) =>
-    apiFetch<{ reminder: unknown }>('/api/v1/reminders', {
-      method: 'POST',
+  create: (data: {
+    customerId: string;
+    amount?: number;
+    datetime: string;
+    message?: string;
+  }) =>
+    apiFetch<{ reminder: unknown }>("/api/v1/reminders", {
+      method: "POST",
       body: JSON.stringify({
         customerId: data.customerId,
         amount: data.amount,
@@ -99,9 +145,16 @@ export const reminderApi = {
 // ── Payments API ──────────────────────────────────────────────────────────────
 
 export const paymentApi = {
-  record: (data: { customerId?: string; invoiceId?: string; amount: number; method: string; reference?: string; date?: string }) =>
-    apiFetch<{ payment: unknown }>('/api/v1/payments', {
-      method: 'POST',
+  record: (data: {
+    customerId?: string;
+    invoiceId?: string;
+    amount: number;
+    method: string;
+    reference?: string;
+    date?: string;
+  }) =>
+    apiFetch<{ payment: unknown }>("/api/v1/payments", {
+      method: "POST",
       body: JSON.stringify(data),
     }),
 };
@@ -109,18 +162,41 @@ export const paymentApi = {
 // ── Expenses API ──────────────────────────────────────────────────────────────
 
 export const expenseApi = {
-  list: (params: { from?: string; to?: string; category?: string; type?: "expense" | "income" } = {}) => {
+  list: (
+    params: {
+      from?: string;
+      to?: string;
+      category?: string;
+      type?: "expense" | "income";
+    } = {},
+  ) => {
     const q = new URLSearchParams();
     if (params.from) q.set("from", params.from);
     if (params.to) q.set("to", params.to);
     if (params.category) q.set("category", params.category);
     if (params.type) q.set("type", params.type);
     const s = q.toString();
-    return apiFetch<{ expenses: Array<{ id: string; category: string; amount: string | number; note?: string; vendor?: string; date: string }>; total: number; count: number }>(
-      `/api/v1/expenses${s ? `?${s}` : ""}`,
-    );
+    return apiFetch<{
+      expenses: Array<{
+        id: string;
+        category: string;
+        amount: string | number;
+        note?: string;
+        vendor?: string;
+        date: string;
+      }>;
+      total: number;
+      count: number;
+    }>(`/api/v1/expenses${s ? `?${s}` : ""}`);
   },
-  create: (data: { category: string; amount: number; note?: string; vendor?: string; date?: string; type?: "expense" | "income" }) =>
+  create: (data: {
+    category: string;
+    amount: number;
+    note?: string;
+    vendor?: string;
+    date?: string;
+    type?: "expense" | "income";
+  }) =>
     apiFetch<{ expense: unknown }>("/api/v1/expenses", {
       method: "POST",
       body: JSON.stringify(data),
@@ -132,9 +208,11 @@ export const expenseApi = {
     if (params.from) q.set("from", params.from);
     if (params.to) q.set("to", params.to);
     const s = q.toString();
-    return apiFetch<{ total: number; byCategory: Record<string, number>; count: number }>(
-      `/api/v1/expenses/summary${s ? `?${s}` : ""}`,
-    );
+    return apiFetch<{
+      total: number;
+      byCategory: Record<string, number>;
+      count: number;
+    }>(`/api/v1/expenses/summary${s ? `?${s}` : ""}`);
   },
 };
 
@@ -147,7 +225,14 @@ export const cashbookApi = {
     if (params.to) q.set("to", params.to);
     const s = q.toString();
     return apiFetch<{
-      entries: Array<{ id: string; type: string; date: string; category?: string; note?: string; amount: string | number }>;
+      entries: Array<{
+        id: string;
+        type: string;
+        date: string;
+        category?: string;
+        note?: string;
+        amount: string | number;
+      }>;
       totalIn: number;
       totalOut: number;
       balance: number;
@@ -198,7 +283,14 @@ export const purchaseApi = {
     if (params.to) q.set("to", params.to);
     const s = q.toString();
     return apiFetch<{
-      purchases: Array<{ id: string; category: string; amount: string | number; note?: string; vendor?: string; date: string }>;
+      purchases: Array<{
+        id: string;
+        category: string;
+        amount: string | number;
+        note?: string;
+        vendor?: string;
+        date: string;
+      }>;
       total: number;
       count: number;
     }>(`/api/v1/purchases${s ? `?${s}` : ""}`);
@@ -271,8 +363,8 @@ export function bootApi(): void {
 
 export const pushApi = {
   register: (token: string, platform?: string) =>
-    apiFetch<{ ok: boolean }>('/api/v1/push/register', {
-      method: 'POST',
+    apiFetch<{ ok: boolean }>("/api/v1/push/register", {
+      method: "POST",
       body: JSON.stringify({ token, platform }),
     }),
 };
@@ -281,15 +373,31 @@ export const pushApi = {
 
 export const feedbackApi = {
   submit: (data: { npsScore: number; text?: string }) =>
-    apiFetch<{ feedback: { id: string; npsScore: number; text: string | null; createdAt: string } }>(
-      "/api/v1/feedback",
-      { method: "POST", body: JSON.stringify(data) },
-    ),
+    apiFetch<{
+      feedback: {
+        id: string;
+        npsScore: number;
+        text: string | null;
+        createdAt: string;
+      };
+    }>("/api/v1/feedback", { method: "POST", body: JSON.stringify(data) }),
 };
 
-// ── Product extensions (low-stock, expiry, write-off) ──────────────────────────
+// ── Product extensions (low-stock, expiry, write-off, inventory management) ─
 
 export const productExtApi = {
+  // Low-stock alerts and expiry tracking
+  lowStock: () =>
+    apiFetch<{
+      products: Array<{
+        id: string;
+        name: string;
+        stock: number;
+        unit?: string;
+        minStock?: number;
+      }>;
+    }>("/api/v1/products/low-stock"),
+
   expiringBatches: (days = 30) =>
     apiFetch<{
       batches: Array<{
@@ -300,10 +408,7 @@ export const productExtApi = {
         product: { name: string; unit: string };
       }>;
     }>(`/api/v1/products/expiring?days=${days}`),
-  lowStock: () =>
-    apiFetch<{ products: Array<{ id: string; name: string; stock: number; unit?: string; minStock?: number }> }>(
-      "/api/v1/products/low-stock",
-    ),
+
   expiryPage: (filter: "expired" | "7d" | "30d" | "90d" | "all" = "30d") =>
     apiFetch<{
       batches: Array<{
@@ -323,10 +428,59 @@ export const productExtApi = {
         valueAtRisk: number;
       };
     }>(`/api/v1/products/expiry-page?filter=${filter}`),
+
   writeOffBatch: (batchId: string) =>
     apiFetch<{ ok: boolean; batchNo: string; qtyWrittenOff: number }>(
       `/api/v1/products/batches/${batchId}/write-off`,
       { method: "PATCH" },
+    ),
+
+  create: (data: {
+    name: string;
+    price?: number;
+    unit?: string;
+    category?: string;
+    stock?: number;
+    minStock?: number;
+    barcode?: string;
+  }) =>
+    apiFetch<{ product: Product & { minStock?: number } }>("/api/v1/products", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  update: (
+    id: string,
+    data: {
+      isFeatured?: boolean;
+      name?: string;
+      price?: number;
+      category?: string;
+    },
+  ) =>
+    apiFetch<{ product: Product & { minStock?: number } }>(
+      `/api/v1/products/${id}`,
+      { method: "PUT", body: JSON.stringify(data) },
+    ),
+
+  adjustStock: (
+    id: string,
+    quantity: number,
+    operation: "add" | "subtract",
+    reason = "Mobile app adjustment",
+  ) =>
+    apiFetch<{ product: Product & { minStock?: number } }>(
+      `/api/v1/products/${id}/stock`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ quantity, operation, reason }),
+      },
+    ),
+
+  // Image & media
+  getImageUrls: (ids: string[]) =>
+    apiFetch<Record<string, string>>(
+      `/api/v1/products/image-urls?ids=${ids.slice(0, 50).join(",")}`,
     ),
 };
 
@@ -339,9 +493,9 @@ export const reportsApi = {
     if (params?.to) q.set("to", params.to);
     if (params?.fy) q.set("fy", params.fy);
     const s = q.toString();
-    return apiFetch<{ report: { fy: string; b2b: unknown[]; b2cs: unknown[]; hsn: unknown[] } }>(
-      `/api/v1/reports/gstr1${s ? `?${s}` : ""}`,
-    );
+    return apiFetch<{
+      report: { fy: string; b2b: unknown[]; b2cs: unknown[]; hsn: unknown[] };
+    }>(`/api/v1/reports/gstr1${s ? `?${s}` : ""}`);
   },
   pnl: (params?: { from?: string; to?: string; fy?: string }) => {
     const q = new URLSearchParams();
@@ -424,7 +578,11 @@ export const purchaseOrderApi = {
 // ── Monitoring API (Sprint 14) ───────────────────────────────────────────────
 
 export const monitoringApi = {
-  getEvents: (params?: { limit?: number; offset?: number; unreadOnly?: boolean }) => {
+  getEvents: (params?: {
+    limit?: number;
+    offset?: number;
+    unreadOnly?: boolean;
+  }) => {
     const q = new URLSearchParams();
     if (params?.limit) q.set("limit", String(params.limit));
     if (params?.offset) q.set("offset", String(params.offset));
@@ -458,7 +616,8 @@ export const monitoringApi = {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });
-    if (!res.ok) throw new Error(await res.text().catch(() => String(res.status)));
+    if (!res.ok)
+      throw new Error(await res.text().catch(() => String(res.status)));
   },
   markRead: async (id: string) => {
     const baseUrl = getApiBaseUrl();
@@ -470,7 +629,8 @@ export const monitoringApi = {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });
-    if (!res.ok) throw new Error(await res.text().catch(() => String(res.status)));
+    if (!res.ok)
+      throw new Error(await res.text().catch(() => String(res.status)));
   },
   logEvent: (data: {
     eventType: string;
@@ -496,23 +656,39 @@ export const monitoringApi = {
       conversionRate: number | null;
       hourlyBills: Record<string, number>;
       peakHour: number | null;
-      byEmployee: Record<string, { bills: number; payments: number; cancellations: number; totalAmount: number }>;
+      byEmployee: Record<
+        string,
+        {
+          bills: number;
+          payments: number;
+          cancellations: number;
+          totalAmount: number;
+        }
+      >;
     }>(`/api/v1/monitoring/stats${s ? `?${s}` : ""}`);
   },
-  submitCashReconciliation: (data: { date: string; actual: number; expected: number; note?: string }) =>
+  submitCashReconciliation: (data: {
+    date: string;
+    actual: number;
+    expected: number;
+    note?: string;
+  }) =>
     apiFetch<{ ok: boolean }>("/api/v1/monitoring/cash-reconciliation", {
       method: "POST",
       body: JSON.stringify(data),
     }),
   getCashReconciliation: (date: string) =>
-    apiFetch<{ reconciliation: { id: string; description: string; meta: unknown } | null }>(
-      `/api/v1/monitoring/cash-reconciliation/${date}`,
-    ),
+    apiFetch<{
+      reconciliation: { id: string; description: string; meta: unknown } | null;
+    }>(`/api/v1/monitoring/cash-reconciliation/${date}`),
 };
 
 // Re-export the API functions so screens import from one place
 export const authExtApi = {
-  uploadLogo: async (uri: string, mimeType = "image/jpeg"): Promise<{ logoObjectKey: string }> => {
+  uploadLogo: async (
+    uri: string,
+    mimeType = "image/jpeg",
+  ): Promise<{ logoObjectKey: string }> => {
     const base = getApiBaseUrl();
     const token = tokenStorage.getToken();
     if (!token) throw new Error("Not authenticated");

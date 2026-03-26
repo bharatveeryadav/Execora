@@ -42,7 +42,7 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { productApi, apiFetch } from "@execora/shared";
+import { productApi } from "@execora/shared";
 import { BarcodeScanner } from "../components/common/BarcodeScanner";
 import { hapticLight } from "../lib/haptics";
 import { storage } from "../lib/storage";
@@ -50,6 +50,8 @@ import type { Product } from "@execora/shared";
 import { Ionicons } from "@expo/vector-icons";
 import { useWsInvalidation } from "../hooks/useWsInvalidation";
 import { useResponsive } from "../hooks/useResponsive";
+import { productExtApi } from "../lib/api";
+import { QUERY_KEYS } from "../lib/queryKeys";
 
 // ── Helper: parse numeric fields returned as string | number from API ─────────
 
@@ -83,62 +85,6 @@ const STATUS_STYLES: Record<
     label: "In Stock",
     dot: "🟢",
   },
-};
-
-// ── API helpers not yet in shared productApi ──────────────────────────────────
-
-const productExtApi = {
-  lowStock: () =>
-    apiFetch<{ products: Array<Product & { minStock?: number }> }>(
-      "/api/v1/products/low-stock",
-    ),
-
-  getImageUrls: (ids: string[]) =>
-    apiFetch<Record<string, string>>(
-      `/api/v1/products/image-urls?ids=${ids.slice(0, 50).join(",")}`,
-    ),
-
-  adjustStock: (
-    id: string,
-    quantity: number,
-    operation: "add" | "subtract",
-    reason = "Mobile app adjustment",
-  ) =>
-    apiFetch<{ product: Product & { minStock?: number } }>(
-      `/api/v1/products/${id}/stock`,
-      {
-        method: "PATCH",
-        body: JSON.stringify({ quantity, operation, reason }),
-      },
-    ),
-
-  create: (data: {
-    name: string;
-    price?: number;
-    unit?: string;
-    category?: string;
-    stock?: number;
-    minStock?: number;
-    barcode?: string;
-  }) =>
-    apiFetch<{ product: Product & { minStock?: number } }>("/api/v1/products", {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-
-  update: (
-    id: string,
-    data: {
-      isFeatured?: boolean;
-      name?: string;
-      price?: number;
-      category?: string;
-    },
-  ) =>
-    apiFetch<{ product: Product & { minStock?: number } }>(
-      `/api/v1/products/${id}`,
-      { method: "PUT", body: JSON.stringify(data) },
-    ),
 };
 
 // ── Filter & sort types ────────────────────────────────────────────────────────
@@ -221,7 +167,7 @@ export function ItemsScreen({ navigation }: Props) {
     isFetching,
     refetch,
   } = useQuery({
-    queryKey: ["products", "mobile", "all", page],
+    queryKey: QUERY_KEYS.products.page(page),
     queryFn: () => productApi.list(page, 50),
     staleTime: 30_000,
   });
@@ -252,7 +198,7 @@ export function ItemsScreen({ navigation }: Props) {
   }, [hasMore, isFetching]);
 
   const { data: lowData } = useQuery({
-    queryKey: ["products", "mobile", "lowStock"],
+    queryKey: QUERY_KEYS.products.lowStock(),
     queryFn: () => productExtApi.lowStock(),
     staleTime: 30_000,
   });
@@ -344,7 +290,7 @@ export function ItemsScreen({ navigation }: Props) {
     [filtered],
   );
   const { data: imageUrlsMap = {} } = useQuery({
-    queryKey: ["productImageUrls", imageIds.join(",")],
+    queryKey: QUERY_KEYS.products.imageUrls(imageIds),
     queryFn: () => productExtApi.getImageUrls(imageIds),
     enabled: imageIds.length > 0,
     staleTime: 50 * 60 * 1000,
@@ -363,7 +309,7 @@ export function ItemsScreen({ navigation }: Props) {
       op: "add" | "subtract";
     }) => productExtApi.adjustStock(id, qty, op),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["products"] });
+      void qc.invalidateQueries({ queryKey: QUERY_KEYS.products.all() });
     },
     onError: (e: Error) => {
       Alert.alert("Error", e.message ?? "Stock adjustment failed");
@@ -374,7 +320,7 @@ export function ItemsScreen({ navigation }: Props) {
     mutationFn: ({ id, isFeatured }: { id: string; isFeatured: boolean }) =>
       productExtApi.update(id, { isFeatured }),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["products"] });
+      void qc.invalidateQueries({ queryKey: QUERY_KEYS.products.all() });
     },
   });
 
@@ -789,7 +735,9 @@ export function ItemsScreen({ navigation }: Props) {
             onRefresh={() => {
               setPage(1);
               setAccumulatedProducts([]);
-              void qc.invalidateQueries({ queryKey: ["products"] });
+              void qc.invalidateQueries({
+                queryKey: QUERY_KEYS.products.all(),
+              });
             }}
           />
         }
@@ -890,7 +838,7 @@ export function ItemsScreen({ navigation }: Props) {
         visible={addOpen}
         onClose={() => setAddOpen(false)}
         onCreated={() => {
-          void qc.invalidateQueries({ queryKey: ["products"] });
+          void qc.invalidateQueries({ queryKey: QUERY_KEYS.products.all() });
           setAddOpen(false);
         }}
         categories={[
@@ -908,7 +856,7 @@ export function ItemsScreen({ navigation }: Props) {
           product={adjustTarget}
           onClose={() => setAdjustTarget(null)}
           onAdjusted={() => {
-            void qc.invalidateQueries({ queryKey: ["products"] });
+            void qc.invalidateQueries({ queryKey: QUERY_KEYS.products.all() });
             setAdjustTarget(null);
           }}
         />
