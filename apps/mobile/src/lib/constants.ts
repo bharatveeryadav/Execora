@@ -8,7 +8,7 @@
 export const SIZES = {
   // Touch target (Apple: 44×44 minimum)
   TOUCH_MIN: 44,
-  
+
   // Spacing scale
   SPACING: {
     xs: 4,
@@ -18,7 +18,7 @@ export const SIZES = {
     xl: 24,
     xxl: 32,
   },
-  
+
   // Border radius scale
   RADIUS: {
     sm: 6,
@@ -27,7 +27,7 @@ export const SIZES = {
     xl: 16,
     full: 9999,
   },
-  
+
   // Font sizes
   FONT: {
     xs: 10,
@@ -39,7 +39,7 @@ export const SIZES = {
     "3xl": 24,
     "4xl": 32,
   },
-  
+
   // List row heights
   LIST_ROW: 56,
   LIST_ROW_COMPACT: 44,
@@ -54,7 +54,7 @@ export const COLORS = {
   warning: "#f39c12",
   error: "#e74c3c",
   danger: "#c0392b",
-  
+
   // Neutral scale
   slate: {
     50: "#f8fafc",
@@ -68,7 +68,7 @@ export const COLORS = {
     800: "#1e293b",
     900: "#0f172a",
   },
-  
+
   // Semantic colors
   bg: {
     primary: "#f8fafc",
@@ -77,14 +77,14 @@ export const COLORS = {
     warning: "#fef3c7",
     error: "#fee2e2",
   },
-  
+
   text: {
     primary: "#0f172a",
     secondary: "#475569",
     tertiary: "#94a3b8",
     inverted: "#ffffff",
   },
-  
+
   border: {
     light: "#e2e8f0",
     medium: "#cbd5e1",
@@ -151,30 +151,30 @@ export const PAYMENT_METHOD_ICONS = {
 
 // ── Animation Timings ──────────────────────────────────────────────────────
 export const ANIMATIONS = {
-  fast: 150,      // Quick interactions
-  normal: 300,    // Standard transitions
-  slow: 500,      // Slow reveals
-  slower: 800,    // Very slow animations
+  fast: 150, // Quick interactions
+  normal: 300, // Standard transitions
+  slow: 500, // Slow reveals
+  slower: 800, // Very slow animations
 };
 
 // ── Debounce/Throttle Intervals ────────────────────────────────────────────
 export const INTERVALS = {
-  SEARCH_DEBOUNCE: 500,     // ms before API call after typing
-  DRAFT_AUTO_SAVE: 2000,    // ms debounce for auto-save
-  REFRESH_TIMEOUT: 5000,    // ms before considering refresh failed
-  SYNC_CHECK: 10000,        // ms between offline sync attempts
-  WS_RECONNECT: 3000,       // ms between WebSocket reconnect attempts
-  TOOLTIP_SHOW: 2000,       // ms before showing tooltip
-  TOAST_DURATION: 3000,     // ms toast stays visible
+  SEARCH_DEBOUNCE: 500, // ms before API call after typing
+  DRAFT_AUTO_SAVE: 2000, // ms debounce for auto-save
+  REFRESH_TIMEOUT: 5000, // ms before considering refresh failed
+  SYNC_CHECK: 10000, // ms between offline sync attempts
+  WS_RECONNECT: 3000, // ms between WebSocket reconnect attempts
+  TOOLTIP_SHOW: 2000, // ms before showing tooltip
+  TOAST_DURATION: 3000, // ms toast stays visible
 };
 
 // ── Date/Time Formats ──────────────────────────────────────────────────────
 export const DATE_FORMATS = {
-  short: "dd-MMM",          // 15-Jan
-  full: "dd-MMM-yyyy",      // 15-Jan-2024
-  time: "HH:mm",            // 14:30
+  short: "dd-MMM", // 15-Jan
+  full: "dd-MMM-yyyy", // 15-Jan-2024
+  time: "HH:mm", // 14:30
   dateTime: "dd-MMM HH:mm", // 15-Jan 14:30
-  iso: "yyyy-MM-dd",        // 2024-01-15 (API)
+  iso: "yyyy-MM-dd", // 2024-01-15 (API)
 } as const;
 
 // ── Error Messages ─────────────────────────────────────────────────────────
@@ -208,29 +208,29 @@ export const STORAGE_KEYS = {
   TOKEN: "execora_token",
   REFRESH: "execora_refresh",
   USER: "execora_user",
-  
+
   // Drafts
   DRAFT: "execora_draft_v1",
   DRAFT_TIMESTAMP: "execora_draft_ts",
-  
+
   // Invoice bar
   INVOICE_BAR: "execora_invoice_bar",
   INVOICE_PREFIX: "execora_invoice_prefix",
   INVOICE_TEMPLATE: "execora_invoice_template",
-  
+
   // Setup
   BIZ_PROFILE: "execora_biz_profile",
   PRICE_TIER: "execora_price_tier",
   DOC_SETTINGS: "execora_doc_settings",
-  
+
   // Offline
   QUEUE: "execora:queue",
   PRODUCTS_CACHE: "execora:products_cache",
-  
+
   // Features
   LAST_INVOICE_DATE: "execora_last_inv_date",
   ONBOARDING_COMPLETE: "execora_onboarding",
-  
+
   // Monitoring
   LAST_SYNC: "execora:last_sync",
   SYNC_ERROR: "execora:sync_error",
@@ -243,26 +243,26 @@ export const API_ENDPOINTS = {
   REFRESH: "/api/v1/auth/refresh",
   ME: "/api/v1/auth/me",
   LOGOUT: "/api/v1/auth/logout",
-  
+
   // Invoices
   INVOICES: "/api/v1/invoices",
   INVOICE_DETAIL: (id: string) => `/api/v1/invoices/${id}`,
   INVOICE_CANCEL: (id: string) => `/api/v1/invoices/${id}/cancel`,
   INVOICE_PDF: (id: string) => `/api/v1/invoices/${id}/pdf`,
-  
+
   // Customers
   CUSTOMERS: "/api/v1/customers",
   CUSTOMER_DETAIL: (id: string) => `/api/v1/customers/${id}`,
   CUSTOMERS_SEARCH: "/api/v1/customers/search",
-  
+
   // Products
   PRODUCTS: "/api/v1/products",
   PRODUCT_CATALOG: "/api/v1/products/catalog",
-  
+
   // Dashboard
   SUMMARY: "/api/v1/dashboard/summary",
   TREND: "/api/v1/dashboard/trend",
-  
+
   // Settings
   SETTINGS: "/api/v1/settings",
   BILLING_SETTINGS: "/api/v1/settings/billing",

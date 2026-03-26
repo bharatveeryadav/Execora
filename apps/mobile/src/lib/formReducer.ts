@@ -4,33 +4,38 @@
  * Enables predictable state transitions and easier testing
  */
 
-import type { BillingItem, Customer, PaymentMode, PaymentSplit } from "@execora/shared";
+import type {
+  BillingItem,
+  Customer,
+  PaymentMode,
+  PaymentSplit,
+} from "@execora/shared";
 
 export type FormState = {
   // Items
   items: BillingItem[];
-  
+
   // Customer
   selectedCustomer: Customer | null;
   customerQuery: string;
   showCustSuggest: boolean;
-  
+
   // Pricing
   withGst: boolean;
   discountPct: string;
   discountFlat: string;
   roundOffEnabled: boolean;
-  
+
   // Payment
   paymentMode: PaymentMode;
   paymentAmount: string;
   splitEnabled: boolean;
   splits: PaymentSplit[];
-  
+
   // Metadata
   notes: string;
   dueDate: string;
-  
+
   // UI State
   activeRow: number | null;
   showNewCust: boolean;
@@ -50,18 +55,18 @@ export type FormAction =
   | { type: "UPDATE_ITEM"; id: number; patch: Partial<BillingItem> }
   | { type: "REMOVE_ITEM"; id: number }
   | { type: "CLEAR_ITEMS" }
-  
+
   // Customer
   | { type: "SET_CUSTOMER"; customer: Customer | null }
   | { type: "SET_CUSTOMER_QUERY"; query: string }
   | { type: "TOGGLE_CUSTOMER_SUGGEST" }
-  
+
   // Pricing
   | { type: "SET_WITH_GST"; value: boolean }
   | { type: "SET_DISCOUNT_PCT"; value: string }
   | { type: "SET_DISCOUNT_FLAT"; value: string }
   | { type: "SET_ROUND_OFF"; value: boolean }
-  
+
   // Payment
   | { type: "SET_PAYMENT_MODE"; mode: PaymentMode }
   | { type: "SET_PAYMENT_AMOUNT"; amount: string }
@@ -69,11 +74,11 @@ export type FormAction =
   | { type: "ADD_SPLIT" }
   | { type: "UPDATE_SPLIT"; id: number; patch: Partial<PaymentSplit> }
   | { type: "REMOVE_SPLIT"; id: number }
-  
+
   // Metadata
   | { type: "SET_NOTES"; notes: string }
   | { type: "SET_DUE_DATE"; date: string }
-  
+
   // UI
   | { type: "SET_ACTIVE_ROW"; id: number | null }
   | { type: "TOGGLE_NEW_CUST_MODAL"; value: boolean }
@@ -85,7 +90,7 @@ export type FormAction =
   | { type: "TOGGLE_INVOICE_STYLE"; expand: boolean }
   | { type: "TOGGLE_INVOICE_BAR_EDIT"; value: boolean }
   | { type: "TOGGLE_PREVIEW"; value: boolean }
-  
+
   // Batch operations
   | { type: "RESET_FORM" }
   | { type: "LOAD_DRAFT"; draft: Partial<FormState> };
@@ -95,8 +100,7 @@ export function formReducer(state: FormState, action: FormAction): FormState {
     // Items ────────────────────────────────────────────────────────────────
     case "ADD_ITEM": {
       // Dynamically generate IDs
-      const nextId =
-        Math.max(0, ...state.items.map((i) => i.id ?? 0)) + 1;
+      const nextId = Math.max(0, ...state.items.map((i) => i.id ?? 0)) + 1;
       return {
         ...state,
         items: [
@@ -125,7 +129,9 @@ export function formReducer(state: FormState, action: FormAction): FormState {
                 // Compute amount whenever rate/qty/discount change
                 amount:
                   action.patch.amount ??
-                  (action.patch.rate || action.patch.qty || action.patch.discount
+                  (action.patch.rate ||
+                  action.patch.qty ||
+                  action.patch.discount
                     ? computeAmount(
                         action.patch.rate ?? it.rate,
                         action.patch.qty ?? it.qty,
@@ -141,9 +147,10 @@ export function formReducer(state: FormState, action: FormAction): FormState {
     case "REMOVE_ITEM":
       return {
         ...state,
-        items: state.items.length > 1
-          ? state.items.filter((it) => it.id !== action.id)
-          : state.items,
+        items:
+          state.items.length > 1
+            ? state.items.filter((it) => it.id !== action.id)
+            : state.items,
       };
 
     case "CLEAR_ITEMS":
@@ -234,14 +241,10 @@ export function formReducer(state: FormState, action: FormAction): FormState {
       };
 
     case "ADD_SPLIT": {
-      const nextId =
-        Math.max(0, ...state.splits.map((s) => s.id ?? 0)) + 1;
+      const nextId = Math.max(0, ...state.splits.map((s) => s.id ?? 0)) + 1;
       return {
         ...state,
-        splits: [
-          ...state.splits,
-          { id: nextId, mode: "cash", amount: "" },
-        ],
+        splits: [...state.splits, { id: nextId, mode: "cash", amount: "" }],
       };
     }
 
@@ -391,7 +394,11 @@ export function getInitialFormState(): FormState {
 }
 
 // Helper function for item amount calculation
-function computeAmount(rate: string | number, qty: string | number, discount: string | number): number {
+function computeAmount(
+  rate: string | number,
+  qty: string | number,
+  discount: string | number,
+): number {
   const r = parseFloat(String(rate)) || 0;
   const q = parseFloat(String(qty)) || 0;
   const d = parseFloat(String(discount)) || 0;

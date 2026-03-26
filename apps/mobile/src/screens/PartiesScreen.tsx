@@ -2,7 +2,7 @@
  * PartiesScreen — Customers + Vendors tabs (matches web Parties.tsx).
  * Modern UI/UX: TYPO scale, 44pt touch targets (iOS HIG), 8px spacing grid.
  */
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -37,6 +37,8 @@ import { useResponsive } from "../hooks/useResponsive";
 import { inr, type Customer } from "@execora/shared";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ErrorCard } from "../components/ui/ErrorCard";
+import { FilterBar } from "../components/composites/FilterBar";
+import { TabBar, type TabItem } from "../components/composites/TabBar";
 import { TYPO } from "../lib/typography";
 import type { CustomersStackParams } from "../navigation";
 
@@ -46,6 +48,10 @@ type Tab = "customers" | "vendors";
 type FilterTab = "all" | "outstanding" | "clear" | "aging";
 
 const CUSTOMER_TAGS = ["VIP", "Wholesale", "Blacklist", "Regular"] as const;
+const PARTY_TABS: TabItem[] = [
+  { id: "customers", label: "Customers", icon: "people" },
+  { id: "vendors", label: "Vendors", icon: "cube" },
+];
 
 type Props = NativeStackScreenProps<CustomersStackParams, "CustomerList">;
 
@@ -201,6 +207,24 @@ export function PartiesScreen({ navigation }: Props) {
     .sort(
       (a, b) => parseFloat(String(b.balance)) - parseFloat(String(a.balance)),
     );
+
+  const customerFilterOptions = useMemo(
+    () => [
+      { id: "all", label: `All (${customers.length})` },
+      { id: "outstanding", label: `Has Due (${outCount})` },
+      { id: "clear", label: `Clear (${clearCount})` },
+      { id: "aging", label: `Aging (${agingCustomers.length})` },
+    ],
+    [agingCustomers.length, clearCount, customers.length, outCount],
+  );
+
+  const activeCustomerFilters = useMemo(
+    () =>
+      customerFilterOptions
+        .filter((option) => option.id === filter)
+        .map((option) => ({ id: option.id, label: option.label })),
+    [customerFilterOptions, filter],
+  );
 
   // ── Mutations ──────────────────────────────────────────────────────────
 
@@ -495,45 +519,13 @@ export function PartiesScreen({ navigation }: Props) {
             </View>
           </View>
 
-          {/* Segmented control — 44pt touch targets */}
-          <View className="flex-row rounded-2xl bg-slate-100 p-1">
-            <Pressable
-              onPress={() => setTab("customers")}
-              className={`flex-1 flex-row items-center justify-center gap-2 py-3 rounded-xl min-h-[44] ${tab === "customers" ? "bg-white shadow-sm" : ""}`}
-              style={({ pressed }) => ({
-                opacity: pressed && tab !== "customers" ? 0.7 : 1,
-              })}
-            >
-              <Ionicons
-                name="people"
-                size={20}
-                color={tab === "customers" ? "#0f172a" : "#64748b"}
-              />
-              <Text
-                className={`text-sm font-semibold ${tab === "customers" ? "text-slate-800" : "text-slate-500"}`}
-              >
-                Customers
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setTab("vendors")}
-              className={`flex-1 flex-row items-center justify-center gap-2 py-3 rounded-xl min-h-[44] ${tab === "vendors" ? "bg-white shadow-sm" : ""}`}
-              style={({ pressed }) => ({
-                opacity: pressed && tab !== "vendors" ? 0.7 : 1,
-              })}
-            >
-              <Ionicons
-                name="cube"
-                size={20}
-                color={tab === "vendors" ? "#0f172a" : "#64748b"}
-              />
-              <Text
-                className={`text-sm font-semibold ${tab === "vendors" ? "text-slate-800" : "text-slate-500"}`}
-              >
-                Vendors
-              </Text>
-            </Pressable>
-          </View>
+          <TabBar
+            tabs={PARTY_TABS}
+            activeTab={tab}
+            onChange={(nextTab) => setTab(nextTab as Tab)}
+            variant="pills"
+            className="rounded-2xl bg-slate-100 p-1"
+          />
         </View>
       </View>
 
@@ -614,55 +606,19 @@ export function PartiesScreen({ navigation }: Props) {
                 </View>
               </View>
 
-              {/* Filter chips — 44pt touch targets */}
-              <View className="flex-row rounded-2xl bg-slate-100 p-1 mb-4">
-                {[
-                  {
-                    key: "all" as FilterTab,
-                    label: "All",
-                    count: customers.length,
-                  },
-                  {
-                    key: "outstanding" as FilterTab,
-                    label: "Has Due",
-                    count: outCount,
-                  },
-                  {
-                    key: "clear" as FilterTab,
-                    label: "Clear",
-                    count: clearCount,
-                  },
-                  {
-                    key: "aging" as FilterTab,
-                    label: "Aging",
-                    count: agingCustomers.length,
-                  },
-                ].map(({ key, label, count }) => (
-                  <Pressable
-                    key={key}
-                    onPress={() => requestAnimationFrame(() => setFilter(key))}
-                    className={`flex-1 items-center justify-center py-2.5 rounded-xl min-h-[44] ${filter === key ? "bg-white shadow-sm" : ""}`}
-                    style={({ pressed }) => ({
-                      opacity: pressed && filter !== key ? 0.7 : 1,
-                    })}
-                  >
-                    <Text
-                      className={`text-xs font-semibold ${filter === key ? "text-slate-800" : "text-slate-500"}`}
-                    >
-                      {label}
-                    </Text>
-                    <View
-                      className={`rounded-full px-2 py-0.5 mt-1 ${filter === key ? "bg-primary/15" : "bg-slate-200"}`}
-                    >
-                      <Text
-                        className={`text-[11px] font-bold ${filter === key ? "text-primary" : "text-slate-500"}`}
-                      >
-                        {count}
-                      </Text>
-                    </View>
-                  </Pressable>
-                ))}
-              </View>
+              <FilterBar
+                options={customerFilterOptions}
+                activeFilters={activeCustomerFilters}
+                onFilterChange={(nextFilter, toRemove) => {
+                  requestAnimationFrame(() => {
+                    setFilter(toRemove ? "all" : (nextFilter as FilterTab));
+                  });
+                }}
+                onClearAll={() => setFilter("all")}
+                variant="chips"
+                maxVisible={4}
+                className="mb-4"
+              />
 
               {/* Aging buckets */}
               {filter === "aging" && (
