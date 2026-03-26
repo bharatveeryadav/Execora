@@ -2,7 +2,13 @@
  * DashboardScreen — Full parity with web Index.tsx.
  * Order: Greeting → BusinessHealthScore → AiAgentFeed → QuickActions → KPICards → RecentActivity → LowStock → ExpiryAlert
  */
-import React, { useState, useEffect, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from "react";
 import {
   View,
   Text,
@@ -38,6 +44,7 @@ import { useWS } from "../hooks/useWS";
 import { wsClient } from "../lib/ws";
 import { PressableCard } from "../components/ui/Card";
 import { Skeleton } from "../components/ui/Skeleton";
+import { TabBar, type TabItem } from "../components/composites/TabBar";
 import { formatCurrency } from "../lib/utils";
 import { TYPO } from "../lib/typography";
 
@@ -404,6 +411,20 @@ const PERIOD_LABELS: Record<PeriodKey, string> = {
   custom: "Custom",
 };
 
+const PERIOD_MODAL_OPTIONS: readonly PeriodKey[] = [
+  "today",
+  "yesterday",
+  "thisWeek",
+  "lastWeek",
+  "thisMonth",
+  "lastMonth",
+  "halfYearly",
+  "thisYear",
+  "lastYear",
+];
+
+const SELECTABLE_YEAR_COUNT = 5;
+
 function getPeriodRange(
   key: PeriodKey,
   customFrom?: Date,
@@ -478,6 +499,10 @@ type Props = BottomTabScreenProps<
   import("../navigation").MainTabParams,
   "Dashboard"
 >;
+
+type MoreRoute = keyof import("../navigation").MoreStackParams;
+type CustomerRoute = keyof import("../navigation").CustomersStackParams;
+type InvoiceRoute = keyof import("../navigation").InvoicesStackParams;
 
 export function DashboardScreen({ navigation }: Props) {
   const { contentWidth, contentPad: padding } = useResponsive();
@@ -560,6 +585,38 @@ export function DashboardScreen({ navigation }: Props) {
     customTo,
     selectedYear,
   );
+
+  const numbersPeriodLabel = useMemo(() => {
+    if (numbersPeriod === "custom") {
+      return `${numbersRange.from}-${numbersRange.to}`;
+    }
+    if (numbersPeriod === "year") {
+      return String(selectedYear);
+    }
+    return PERIOD_LABELS[numbersPeriod];
+  }, [numbersPeriod, numbersRange.from, numbersRange.to, selectedYear]);
+
+  const selectableYears = useMemo(
+    () =>
+      Array.from(
+        { length: SELECTABLE_YEAR_COUNT },
+        (_, i) => new Date().getFullYear() - i,
+      ),
+    [],
+  );
+
+  const closePeriodModal = useCallback(() => setPeriodModalOpen(false), []);
+
+  const selectNumbersPeriod = useCallback((period: PeriodKey) => {
+    setNumbersPeriod(period);
+    setPeriodModalOpen(false);
+  }, []);
+
+  const selectYearPeriod = useCallback((year: number) => {
+    setSelectedYear(year);
+    setNumbersPeriod("year");
+    setPeriodModalOpen(false);
+  }, []);
 
   const {
     data: summaryDaily,
@@ -772,6 +829,16 @@ export function DashboardScreen({ navigation }: Props) {
     outputRange: [0.18, 0.35],
   });
 
+  const commandCategoryTabs = useMemo(
+    (): TabItem[] =>
+      COMMAND_SETS.map((set) => ({
+        id: set.category,
+        label: set.category,
+        icon: set.icon,
+      })),
+    [],
+  );
+
   useEffect(() => {
     const tick = () => {
       setCmdItemIdx((i) => {
@@ -873,45 +940,56 @@ export function DashboardScreen({ navigation }: Props) {
     return () => offs.forEach((o) => o());
   }, [qc]);
 
+  const navigateInvoicesTab = useCallback(() => {
+    (navigation as any).navigate("InvoicesTab");
+  }, [navigation]);
+
+  const navigateMoreStack = useCallback(
+    (screen: MoreRoute) => {
+      (navigation as any).navigate("MoreTab", { screen });
+    },
+    [navigation],
+  );
+
+  const navigateCustomerStack = useCallback(
+    (screen: CustomerRoute) => {
+      (navigation.getParent() as any)?.navigate("CustomersTab", { screen });
+    },
+    [navigation],
+  );
+
+  const navigateInvoiceStack = useCallback(
+    (screen: InvoiceRoute, params?: Record<string, unknown>) => {
+      (navigation as any).navigate(
+        "InvoicesTab",
+        params ? { screen, params } : { screen },
+      );
+    },
+    [navigation],
+  );
+
   const handleQuickAction = (
     route: string,
     params?: Record<string, unknown>,
   ) => {
-    if (route === "BillingForm")
-      return navigation.navigate("InvoicesTab", {
-        screen: "BillingForm",
-        params,
-      } as never);
-    if (route === "InvoicesTab") return navigation.navigate("InvoicesTab");
-    if (route === "Reports")
-      return navigation.navigate("MoreTab", { screen: "Reports" });
+    if (route === "BillingForm") return navigateMoreStack("Billing");
+    if (route === "InvoicesTab") return navigateInvoicesTab();
+    if (route === "Reports") return navigateMoreStack("Reports");
     if (route === "DocumentTemplates")
-      return navigation.navigate("MoreTab", { screen: "DocumentTemplates" });
-    if (route === "PurchaseOrders")
-      return navigation.navigate("MoreTab", { screen: "PurchaseOrders" });
-    if (route === "SalesOrders")
-      return navigation.navigate("MoreTab", { screen: "SalesOrders" });
-    if (route === "Purchases")
-      return navigation.navigate("MoreTab", { screen: "Purchases" });
+      return navigateMoreStack("DocumentTemplates");
+    if (route === "PurchaseOrders") return navigateMoreStack("PurchaseOrders");
+    if (route === "SalesOrders") return navigateMoreStack("SalesOrders");
+    if (route === "Purchases") return navigateMoreStack("Purchases");
     if (route === "PurchasePaymentOut")
-      return navigation.navigate("MoreTab", { screen: "PurchasePaymentOut" });
-    if (route === "PurchaseReturn")
-      return navigation.navigate("MoreTab", { screen: "PurchaseReturn" });
-    if (route === "CreditNotes")
-      return navigation.navigate("InvoicesTab", {
-        screen: "CreditNotes",
-      } as never);
+      return navigateMoreStack("PurchasePaymentOut");
+    if (route === "PurchaseReturn") return navigateMoreStack("PurchaseReturn");
+    if (route === "CreditNotes") return navigateInvoiceStack("CreditNotes");
     if (route === "DeliveryChallans")
-      return navigation.navigate("MoreTab", { screen: "DeliveryChallans" });
-    if (route === "Payment")
-      return navigation
-        .getParent()
-        ?.navigate("CustomersTab" as never, { screen: "Payment" } as never);
-    if (route === "Items")
-      return navigation.navigate("MoreTab", { screen: "Items" });
+      return navigateMoreStack("DeliveryChallans");
+    if (route === "Payment") return navigateCustomerStack("Payment");
+    if (route === "Items") return navigateMoreStack("Items");
     if (route === "CustomersTab") return navigation.navigate("CustomersTab");
-    if (route === "Expenses")
-      return navigation.navigate("MoreTab", { screen: "Expenses" });
+    if (route === "Expenses") return navigateMoreStack("Expenses");
   };
 
   const currentSet = COMMAND_SETS[cmdSetIdx];
@@ -994,9 +1072,7 @@ export function DashboardScreen({ navigation }: Props) {
                     <TouchableOpacity
                       onPress={() => {
                         setBusinessMenuOpen(false);
-                        navigation.navigate("MoreTab", {
-                          screen: "CompanyProfile",
-                        });
+                        navigateMoreStack("CompanyProfile");
                       }}
                       activeOpacity={0.7}
                     >
@@ -1044,9 +1120,7 @@ export function DashboardScreen({ navigation }: Props) {
                   <TouchableOpacity
                     onPress={() => {
                       setBusinessMenuOpen(false);
-                      navigation.navigate("MoreTab", {
-                        screen: "CompanyProfile",
-                      });
+                      navigateMoreStack("CompanyProfile");
                     }}
                     className="flex-row items-center gap-1.5 py-2.5 px-4 rounded-lg bg-primary/10"
                   >
@@ -1153,7 +1227,7 @@ export function DashboardScreen({ navigation }: Props) {
                   }}
                 >
                   <TouchableOpacity
-                    onPress={() => navigation.navigate("InvoicesTab")}
+                    onPress={navigateInvoicesTab}
                     style={{
                       flex: 1,
                       alignItems: "center",
@@ -1173,7 +1247,7 @@ export function DashboardScreen({ navigation }: Props) {
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onPress={() => navigation.navigate("InvoicesTab")}
+                    onPress={navigateInvoicesTab}
                     style={{
                       flex: 1,
                       alignItems: "center",
@@ -1196,14 +1270,7 @@ export function DashboardScreen({ navigation }: Props) {
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onPress={() =>
-                      navigation
-                        .getParent()
-                        ?.navigate(
-                          "CustomersTab" as never,
-                          { screen: "Payment" } as never,
-                        )
-                    }
+                    onPress={() => navigateCustomerStack("Payment")}
                     style={{
                       flex: 1,
                       alignItems: "center",
@@ -1233,14 +1300,7 @@ export function DashboardScreen({ navigation }: Props) {
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onPress={() =>
-                      navigation
-                        .getParent()
-                        ?.navigate(
-                          "CustomersTab" as never,
-                          { screen: "Overdue" } as never,
-                        )
-                    }
+                    onPress={() => navigateCustomerStack("Overdue")}
                     style={{ flex: 1, alignItems: "center" }}
                     activeOpacity={0.7}
                   >
@@ -1297,9 +1357,7 @@ export function DashboardScreen({ navigation }: Props) {
                     return (
                       <>
                         <TouchableOpacity
-                          onPress={() =>
-                            navigation.navigate("MoreTab", { screen: "Items" })
-                          }
+                          onPress={() => navigateMoreStack("Items")}
                           activeOpacity={0.8}
                           style={cardStyle(flashStock)}
                         >
@@ -1333,14 +1391,7 @@ export function DashboardScreen({ navigation }: Props) {
                           </Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                          onPress={() =>
-                            navigation
-                              .getParent()
-                              ?.navigate(
-                                "CustomersTab" as never,
-                                { screen: "Overdue" } as never,
-                              )
-                          }
+                          onPress={() => navigateCustomerStack("Overdue")}
                           activeOpacity={0.8}
                           style={cardStyle(flashReceivables)}
                         >
@@ -1379,14 +1430,7 @@ export function DashboardScreen({ navigation }: Props) {
                 </View>
                 {overdueList.length > 0 && (
                   <TouchableOpacity
-                    onPress={() =>
-                      navigation
-                        .getParent()
-                        ?.navigate(
-                          "CustomersTab" as never,
-                          { screen: "Overdue" } as never,
-                        )
-                    }
+                    onPress={() => navigateCustomerStack("Overdue")}
                     activeOpacity={0.9}
                     className="flex-row flex-wrap items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 mb-2"
                   >
@@ -1425,14 +1469,7 @@ export function DashboardScreen({ navigation }: Props) {
                 )}
                 {upcomingReminders.length > 0 && (
                   <TouchableOpacity
-                    onPress={() =>
-                      navigation
-                        .getParent()
-                        ?.navigate(
-                          "CustomersTab" as never,
-                          { screen: "Overdue" } as never,
-                        )
-                    }
+                    onPress={() => navigateCustomerStack("Overdue")}
                     activeOpacity={0.9}
                     className="flex-row flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5"
                   >
@@ -1495,11 +1532,7 @@ export function DashboardScreen({ navigation }: Props) {
               className="self-start flex-row items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5"
             >
               <Text className="text-[11px] font-semibold text-slate-600">
-                {numbersPeriod === "custom"
-                  ? `${numbersRange.from}–${numbersRange.to}`
-                  : numbersPeriod === "year"
-                    ? String(selectedYear)
-                    : PERIOD_LABELS[numbersPeriod]}
+                {numbersPeriodLabel}
               </Text>
               <Ionicons name="chevron-down" size={12} color="#64748b" />
             </TouchableOpacity>
@@ -1513,7 +1546,7 @@ export function DashboardScreen({ navigation }: Props) {
             }}
           >
             <PressableCard
-              onPress={() => navigation.navigate("InvoicesTab")}
+              onPress={navigateInvoicesTab}
               style={{ width: (contentWidth - 6) / 2 - 3, minWidth: 0 }}
               className="shadow-sm py-2 px-2"
             >
@@ -1540,14 +1573,7 @@ export function DashboardScreen({ navigation }: Props) {
               </View>
             </PressableCard>
             <PressableCard
-              onPress={() =>
-                navigation
-                  .getParent()
-                  ?.navigate(
-                    "CustomersTab" as never,
-                    { screen: "Overdue" } as never,
-                  )
-              }
+              onPress={() => navigateCustomerStack("Overdue")}
               style={{ width: (contentWidth - 6) / 2 - 3, minWidth: 0 }}
               className="shadow-sm py-2 px-2"
             >
@@ -1571,14 +1597,7 @@ export function DashboardScreen({ navigation }: Props) {
               </View>
             </PressableCard>
             <PressableCard
-              onPress={() =>
-                navigation
-                  .getParent()
-                  ?.navigate(
-                    "CustomersTab" as never,
-                    { screen: "Payment" } as never,
-                  )
-              }
+              onPress={() => navigateCustomerStack("Payment")}
               style={{ width: (contentWidth - 6) / 2 - 3, minWidth: 0 }}
               className="shadow-sm py-2 px-2"
             >
@@ -1602,9 +1621,7 @@ export function DashboardScreen({ navigation }: Props) {
               </View>
             </PressableCard>
             <PressableCard
-              onPress={() =>
-                navigation.navigate("MoreTab", { screen: "Reports" })
-              }
+              onPress={() => navigateMoreStack("Reports")}
               style={{ width: (contentWidth - 6) / 2 - 3, minWidth: 0 }}
               className="shadow-sm py-2 px-2"
             >
@@ -1640,7 +1657,7 @@ export function DashboardScreen({ navigation }: Props) {
           <Modal visible={periodModalOpen} transparent animationType="fade">
             <Pressable
               className="flex-1 bg-black/50 justify-end"
-              onPress={() => setPeriodModalOpen(false)}
+              onPress={closePeriodModal}
             >
               <Pressable
                 onPress={(e) => e.stopPropagation()}
@@ -1654,25 +1671,10 @@ export function DashboardScreen({ navigation }: Props) {
                   showsVerticalScrollIndicator={false}
                   style={{ maxHeight: 400 }}
                 >
-                  {(
-                    [
-                      "today",
-                      "yesterday",
-                      "thisWeek",
-                      "lastWeek",
-                      "thisMonth",
-                      "lastMonth",
-                      "halfYearly",
-                      "thisYear",
-                      "lastYear",
-                    ] as const
-                  ).map((k) => (
+                  {PERIOD_MODAL_OPTIONS.map((k) => (
                     <TouchableOpacity
                       key={k}
-                      onPress={() => {
-                        setNumbersPeriod(k);
-                        setPeriodModalOpen(false);
-                      }}
+                      onPress={() => selectNumbersPeriod(k)}
                       className={`py-2.5 px-3 rounded-lg mb-1 ${numbersPeriod === k ? "bg-primary/10" : ""}`}
                     >
                       <Text
@@ -1683,10 +1685,7 @@ export function DashboardScreen({ navigation }: Props) {
                     </TouchableOpacity>
                   ))}
                   <TouchableOpacity
-                    onPress={() => {
-                      setNumbersPeriod("year");
-                      setPeriodModalOpen(false);
-                    }}
+                    onPress={() => selectNumbersPeriod("year")}
                     className={`py-2.5 px-3 rounded-lg mb-1 ${numbersPeriod === "year" ? "bg-primary/10" : ""}`}
                   >
                     <Text
@@ -1700,16 +1699,11 @@ export function DashboardScreen({ navigation }: Props) {
                     showsHorizontalScrollIndicator={false}
                     style={{ marginVertical: 8 }}
                   >
-                    {[0, 1, 2, 3, 4].map((i) => {
-                      const y = new Date().getFullYear() - i;
+                    {selectableYears.map((y) => {
                       return (
                         <TouchableOpacity
                           key={y}
-                          onPress={() => {
-                            setSelectedYear(y);
-                            setNumbersPeriod("year");
-                            setPeriodModalOpen(false);
-                          }}
+                          onPress={() => selectYearPeriod(y)}
                           className={`py-2 px-3 rounded-lg mr-2 ${selectedYear === y ? "bg-primary" : "bg-slate-100"}`}
                         >
                           <Text
@@ -1722,10 +1716,7 @@ export function DashboardScreen({ navigation }: Props) {
                     })}
                   </ScrollView>
                   <TouchableOpacity
-                    onPress={() => {
-                      setNumbersPeriod("pastYears");
-                      setPeriodModalOpen(false);
-                    }}
+                    onPress={() => selectNumbersPeriod("pastYears")}
                     className={`py-2.5 px-3 rounded-lg mb-1 ${numbersPeriod === "pastYears" ? "bg-primary/10" : ""}`}
                   >
                     <Text
@@ -1777,7 +1768,7 @@ export function DashboardScreen({ navigation }: Props) {
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        onPress={() => setPeriodModalOpen(false)}
+                        onPress={closePeriodModal}
                         className="mt-3 bg-primary rounded-lg py-2.5 items-center"
                       >
                         <Text className="text-sm font-semibold text-white">
@@ -1827,49 +1818,23 @@ export function DashboardScreen({ navigation }: Props) {
               </View>
             </View>
           </View>
-          {/* Category chips */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{
-              gap: 6,
-              paddingBottom: 12,
-              paddingHorizontal: 4,
+          {/* Category tabs */}
+          <TabBar
+            tabs={commandCategoryTabs}
+            activeTab={COMMAND_SETS[cmdSetIdx]?.category ?? ""}
+            onChange={(tab) => {
+              const nextIdx = COMMAND_SETS.findIndex(
+                (set) => set.category === tab,
+              );
+              if (nextIdx >= 0) {
+                setCmdSetIdx(nextIdx);
+                setCmdItemIdx(0);
+              }
             }}
-            style={{ marginHorizontal: -4 }}
-          >
-            {COMMAND_SETS.map((s, i) => (
-              <TouchableOpacity
-                key={s.category}
-                onPress={() => {
-                  setCmdSetIdx(i);
-                  setCmdItemIdx(0);
-                }}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 4,
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                  borderRadius: 999,
-                  borderWidth: 1,
-                  borderColor: i === cmdSetIdx ? "#e67e22" : "#e2e8f0",
-                  backgroundColor: i === cmdSetIdx ? "#e67e22" : "#fafbfc",
-                }}
-              >
-                <Ionicons
-                  name={s.icon}
-                  size={14}
-                  color={i === cmdSetIdx ? "#fff" : "#64748b"}
-                />
-                <Text
-                  className={`text-xs font-medium ${i === cmdSetIdx ? "text-white" : "text-slate-500"}`}
-                >
-                  {s.category}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+            variant="pills"
+            scrollable
+            className="mb-3"
+          />
           {feed.length > 0 && (
             <View className="rounded-xl border border-slate-200 bg-card px-4 py-2 mb-4">
               <View className="flex-row items-center gap-2 border-b border-slate-100 pb-2 mb-2">
@@ -2104,13 +2069,7 @@ export function DashboardScreen({ navigation }: Props) {
                   <TouchableOpacity
                     key={inv.id}
                     onPress={() =>
-                      navigation.getParent()?.navigate(
-                        "InvoicesTab" as never,
-                        {
-                          screen: "InvoiceDetail",
-                          params: { id: inv.id },
-                        } as never,
-                      )
+                      navigateInvoiceStack("InvoiceDetail", { id: inv.id })
                     }
                     className={`flex-row items-center px-4 py-3 ${idx > 0 ? "border-t border-slate-100" : ""}`}
                   >
@@ -2159,9 +2118,7 @@ export function DashboardScreen({ navigation }: Props) {
           {/* 7 — Low Stock */}
           {!loadingLowStock && lowStock.length > 0 && (
             <TouchableOpacity
-              onPress={() =>
-                navigation.navigate("MoreTab", { screen: "Items" })
-              }
+              onPress={() => navigateMoreStack("Items")}
               activeOpacity={0.9}
               className="flex-row flex-wrap items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 mb-5"
             >
@@ -2231,9 +2188,7 @@ export function DashboardScreen({ navigation }: Props) {
               })}
               {batches.length > 6 && (
                 <TouchableOpacity
-                  onPress={() =>
-                    navigation.navigate("MoreTab", { screen: "Expiry" })
-                  }
+                  onPress={() => navigateMoreStack("Expiry")}
                   className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5"
                 >
                   <Text className={TYPO.caption}>
@@ -2242,9 +2197,7 @@ export function DashboardScreen({ navigation }: Props) {
                 </TouchableOpacity>
               )}
               <TouchableOpacity
-                onPress={() =>
-                  navigation.navigate("MoreTab", { screen: "Expiry" })
-                }
+                onPress={() => navigateMoreStack("Expiry")}
                 className="ml-auto"
               >
                 <Text className={TYPO.caption}>View All →</Text>
@@ -2433,7 +2386,7 @@ export function DashboardScreen({ navigation }: Props) {
                 <TouchableOpacity
                   onPress={() => {
                     setExpirySelected(null);
-                    navigation.navigate("MoreTab", { screen: "Expiry" });
+                    navigateMoreStack("Expiry");
                   }}
                   className="bg-primary rounded-xl py-3 items-center"
                 >
