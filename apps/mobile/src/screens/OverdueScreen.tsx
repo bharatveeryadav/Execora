@@ -64,21 +64,23 @@ export function OverdueScreen({ navigation }: Props) {
     setRefreshing(false);
   }, [refetch]);
 
-  function openWhatsApp(phone: string, name: string, balance: number) {
+  const openWhatsApp = useCallback((phone: string, name: string, balance: number) => {
     const msg = encodeURIComponent(
       `Hello ${name}, aapka ${inr(balance)} pending hai. Please settle karein. Thank you!`,
     );
     Linking.openURL(`https://wa.me/${phone.replace(/\D/g, "")}?text=${msg}`);
-  }
+  }, []);
 
-  function openCustomer(id: string) {
+  const openCustomer = useCallback((id: string) => {
     (navigation.getParent() as any)?.navigate("CustomersTab", {
       screen: "CustomerDetail",
       params: { id },
     });
-  }
+  }, [navigation]);
 
-  const renderItem = ({ item }: { item: OverdueCustomer }) => (
+  const keyExtractor = useCallback((item: OverdueCustomer) => item.id, []);
+
+  const renderItem = useCallback(({ item }: { item: OverdueCustomer }) => (
     <TouchableOpacity
       style={styles.card}
       onPress={() => openCustomer(item.id)}
@@ -119,7 +121,7 @@ export function OverdueScreen({ navigation }: Props) {
         ) : null}
       </View>
     </TouchableOpacity>
-  );
+  ), [openCustomer, openWhatsApp]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -148,8 +150,12 @@ export function OverdueScreen({ navigation }: Props) {
           {/* List */}
           <FlatList
             data={customers}
-            keyExtractor={(item) => item.id}
+            keyExtractor={keyExtractor}
             renderItem={renderItem}
+            initialNumToRender={15}
+            maxToRenderPerBatch={10}
+            windowSize={7}
+            removeClippedSubviews
             getItemLayout={(_, index) => ({
               length: 80,
               offset: 80 * index,
