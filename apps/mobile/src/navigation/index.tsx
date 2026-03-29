@@ -8,6 +8,7 @@ import {
 } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { ErrorBoundary } from "../components/ui/ErrorBoundary";
 
 import { DashboardScreen } from "../screens/DashboardScreen";
 import { BillingScreen } from "../screens/BillingScreen";
@@ -168,6 +169,7 @@ function AuthNavigator({ onLogin }: { onLogin: () => void }) {
 
 function BillingNavigator() {
   return (
+    <ErrorBoundary>
     <BillingStack.Navigator
       screenOptions={{
         headerStyle: { backgroundColor: "#fff" },
@@ -187,6 +189,7 @@ function BillingNavigator() {
         options={{ headerShown: false }}
       />
     </BillingStack.Navigator>
+    </ErrorBoundary>
   );
 }
 
@@ -194,6 +197,7 @@ function BillingNavigator() {
 
 function InvoicesNavigator() {
   return (
+    <ErrorBoundary>
     <InvoicesStack.Navigator
       screenOptions={{
         headerShown: false,
@@ -258,6 +262,7 @@ function InvoicesNavigator() {
         options={{ headerShown: true, title: "Overdue / Udhaar" }}
       />
     </InvoicesStack.Navigator>
+    </ErrorBoundary>
   );
 }
 
@@ -265,6 +270,7 @@ function InvoicesNavigator() {
 
 function CustomersNavigator() {
   return (
+    <ErrorBoundary>
     <CustomersStack.Navigator
       screenOptions={{
         headerShown: false,
@@ -282,6 +288,7 @@ function CustomersNavigator() {
         options={{ headerShown: true, title: "Overdue / Udhaar" }}
       />
     </CustomersStack.Navigator>
+    </ErrorBoundary>
   );
 }
 
@@ -289,6 +296,7 @@ function CustomersNavigator() {
 
 function ItemsNavigator() {
   return (
+    <ErrorBoundary>
     <ItemsStack.Navigator
       screenOptions={{
         headerShown: false,
@@ -303,6 +311,7 @@ function ItemsNavigator() {
         options={{ headerShown: true, title: "More", headerBackTitle: "Items" }}
       />
     </ItemsStack.Navigator>
+    </ErrorBoundary>
   );
 }
 
@@ -310,6 +319,7 @@ function ItemsNavigator() {
 
 function MoreNavigator() {
   return (
+    <ErrorBoundary>
     <MoreStack.Navigator
       screenOptions={{
         headerStyle: { backgroundColor: "#fff" },
@@ -523,6 +533,7 @@ function MoreNavigator() {
         options={{ title: "Feedback" }}
       />
     </MoreStack.Navigator>
+    </ErrorBoundary>
   );
 }
 
@@ -602,9 +613,10 @@ function MainTabs() {
     >
       <Tab.Screen
         name="Dashboard"
-        component={DashboardScreen}
         options={{ tabBarLabel: "Home" }}
-      />
+      >
+        {(props) => <ErrorBoundary><DashboardScreen {...props} /></ErrorBoundary>}
+      </Tab.Screen>
       <Tab.Screen
         name="InvoicesTab"
         component={InvoicesNavigator}
