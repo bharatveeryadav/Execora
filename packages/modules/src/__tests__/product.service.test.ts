@@ -110,7 +110,7 @@ test('createProduct: respects provided unit', async () => {
 test('getProductById: returns product when found', async () => {
   const restores: RestoreFn[] = [];
   try {
-    restores.push(patchMethod(prisma.product as any, 'findUnique', async () => makeProduct()));
+    restores.push(patchMethod(prisma.product as any, 'findFirst', async () => makeProduct()));
 
     const result = await productService.getProductById('prod-test-001');
     assert.ok(result !== null);
@@ -123,7 +123,7 @@ test('getProductById: returns product when found', async () => {
 test('getProductById: returns null when not found', async () => {
   const restores: RestoreFn[] = [];
   try {
-    restores.push(patchMethod(prisma.product as any, 'findUnique', async () => null));
+    restores.push(patchMethod(prisma.product as any, 'findFirst', async () => null));
 
     const result = await productService.getProductById('nonexistent');
     assert.equal(result, null);
@@ -155,6 +155,8 @@ test('updateStock: subtracts quantity when operation is "subtract"', async () =>
   const restores: RestoreFn[] = [];
   try {
     const updated: any[] = [];
+    // subtract path calls findFirst first to check stock availability
+    restores.push(patchMethod(prisma.product as any, 'findFirst', async () => makeProduct({ stock: 100 })));
     restores.push(patchMethod(prisma.product as any, 'update', async (args: any) => {
       updated.push(args);
       return makeProduct({ stock: 90 });
@@ -200,10 +202,13 @@ test('searchProducts: returns empty array when no match', async () => {
 test('getLowStockProducts: returns products with stock <= threshold', async () => {
   const restores: RestoreFn[] = [];
   try {
-    const lowStock = [makeProduct({ stock: 2 }), makeProduct({ id: 'p2', stock: 4 })];
-    restores.push(patchMethod(prisma.product as any, 'findMany', async () => lowStock));
+    const rawRows = [
+      { id: 'p1', name: 'Item A', category: 'cat', description: null, price: '100', unit: 'pcs', stock: 2, min_stock: 5, is_active: true, created_at: new Date(), updated_at: new Date() },
+      { id: 'p2', name: 'Item B', category: 'cat', description: null, price: '200', unit: 'kg',  stock: 4, min_stock: 5, is_active: true, created_at: new Date(), updated_at: new Date() },
+    ];
+    restores.push(patchMethod(prisma as any, '$queryRaw', async () => rawRows));
 
-    const results = await productService.getLowStockProducts(5);
+    const results = await productService.getLowStockProducts();
     assert.equal(results.length, 2);
     assert.ok(results.every((p) => p.stock <= 5));
   } finally {
@@ -242,6 +247,8 @@ test('getStock: returns 0 when product not found', async () => {
 test('updatePrice: updates product price and returns updated product', async () => {
   const restores: RestoreFn[] = [];
   try {
+    // updatePrice calls findFirst to verify the product exists, then update
+    restores.push(patchMethod(prisma.product as any, 'findFirst', async () => makeProduct()));
     restores.push(patchMethod(prisma.product as any, 'update', async () => makeProduct({ price: { toString: () => '75' } })));
 
     const result = await productService.updatePrice('prod-001', 75);
