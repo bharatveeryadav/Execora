@@ -37,8 +37,9 @@ test('recordPayment: creates Payment record and decrements balance', async () =>
     const mockPayment = makePayment({ method: 'cash', status: 'completed' });
 
     const txProxy = {
-      payment:  { create: async () => mockPayment },
-      customer: { update: async () => makeCustomer() },
+      payment:  { create: async () => mockPayment, update: async () => mockPayment },
+      invoice:  { findMany: async () => [], update: async () => ({}) },
+      customer: { update: async () => makeCustomer(), findUnique: async () => makeCustomer() },
     };
     restores.push(patchMethod(prisma as any, '$transaction', makePrismaTransaction(txProxy)));
 
@@ -92,8 +93,9 @@ test('recordPayment: accepts all valid payment modes', async () => {
     try {
       const mockPayment = makePayment({ method: mode === 'other' ? 'bank' : mode });
       const txProxy = {
-        payment:  { create: async () => mockPayment },
-        customer: { update: async () => makeCustomer() },
+        payment:  { create: async () => mockPayment, update: async () => mockPayment },
+        invoice:  { findMany: async () => [], update: async () => ({}) },
+        customer: { update: async () => makeCustomer(), findUnique: async () => makeCustomer() },
       };
       restores.push(patchMethod(prisma as any, '$transaction', makePrismaTransaction(txProxy)));
 

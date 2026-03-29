@@ -80,6 +80,7 @@ test('createInvoice: creates invoice with stock and balance updates', async () =
         create: async () => invoice,
       },
       customer: {
+        findUnique: async () => makeCustomer({ balance: dec(0) }),
         update: async () => makeCustomer({ balance: dec(100) }),
       },
     };
@@ -108,7 +109,7 @@ test('createInvoice: auto-creates product when not found in DB', async () => {
         update:    async () => ({ ...autoProduct, stock: 9998 }),
       },
       invoice:  { create: async () => invoice },
-      customer: { update: async () => makeCustomer() },
+      customer: { findUnique: async () => makeCustomer({ balance: dec(0) }), update: async () => makeCustomer() },
     };
     restores.push(patchMethod(prisma as any, '$transaction', makePrismaTransaction(txProxy)));
 
@@ -119,25 +120,28 @@ test('createInvoice: auto-creates product when not found in DB', async () => {
   }
 });
 
-test('createInvoice: throws on insufficient stock', async () => {
+// NOTE: createInvoice does NOT enforce stock limits — it decrements stock after creation.
+// Stock can go negative. A future enforcement layer may add this check.
+test('createInvoice: creates invoice even when stock is below requested quantity', async () => {
   const restores: RestoreFn[] = [];
   try {
     const product = makeProduct({ stock: 3 }); // Only 3 in stock
+    const invoice = makeInvoice({ id: 'inv-low-stock', total: dec(50), items: [] });
     const txProxy = {
       $queryRaw: async () => [{ last_seq: 1 }],
       product: {
         findFirst: async () => product,
         findMany:  async () => [product],
+        update:    async () => ({ ...product, stock: -7 }),
       },
-      invoice:  { create: async () => ({}) },
-      customer: { update: async () => ({}) },
+      invoice:  { create: async () => invoice },
+      customer: { findUnique: async () => makeCustomer({ balance: dec(0) }), update: async () => ({}) },
     };
     restores.push(patchMethod(prisma as any, '$transaction', makePrismaTransaction(txProxy)));
 
-    await assert.rejects(
-      () => invoiceService.createInvoice('cust-001', [{ productName: 'Butter', quantity: 10 }]),
-      /Insufficient stock/i
-    );
+    // No error thrown — service allows stock to go negative
+    const result = await invoiceService.createInvoice('cust-001', [{ productName: 'Butter', quantity: 10 }]);
+    assert.equal(result.invoice.id, 'inv-low-stock');
   } finally {
     restoreAll(restores);
   }

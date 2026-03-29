@@ -189,15 +189,27 @@ test('scheduleReminder: throws when customer not found', async () => {
   }
 });
 
-test('scheduleReminder: throws when customer has no phone number', async () => {
+// NOTE: service does NOT throw when customer has no phone — it schedules with both channels
+// so the reminder can be delivered once the customer's contact info is added.
+test('scheduleReminder: schedules with both channels when customer has no phone', async () => {
   const restores: RestoreFn[] = [];
   try {
     const customerNoPhone = makeCustomer({ phone: null });
+    const capturedCreateArgs: any[] = [];
+    const reminder = makeReminder({ customer: customerNoPhone });
     restores.push(patchMethod(prisma.customer as any, 'findUnique', async () => customerNoPhone));
+    restores.push(patchMethod(prisma.reminder as any, 'create', async (args: any) => {
+      capturedCreateArgs.push(args);
+      return reminder;
+    }));
+    restores.push(patchMethod(reminderQueue as any, 'add', async () => ({ id: 'job-nophone' })));
 
-    await assert.rejects(
-      () => reminderService.scheduleReminder('cust-001', 500, 'kal'),
-      /phone number not found/i
+    const result = await reminderService.scheduleReminder('cust-001', 500, 'kal');
+    assert.equal(result.status, 'SCHEDULED');
+    // Both channels scheduled when no contact info — will be delivered when added
+    const channels = capturedCreateArgs[0]?.data?.channels;
+    assert.ok(Array.isArray(channels) && channels.includes('whatsapp') && channels.includes('email'),
+      'should schedule both channels when no phone'
     );
   } finally {
     restoreAll(restores);

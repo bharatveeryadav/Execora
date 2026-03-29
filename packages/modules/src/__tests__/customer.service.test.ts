@@ -64,7 +64,7 @@ test('getCustomerById: returns customer with invoices and reminders', async () =
   const restores: RestoreFn[] = [];
   try {
     const mockCustomer = makeCustomer({ invoices: [{ id: 'inv-1' }], reminders: [] });
-    restores.push(patchMethod(prisma.customer as any, 'findUnique', async () => mockCustomer));
+    restores.push(patchMethod(prisma.customer as any, 'findFirst', async () => mockCustomer));
 
     const result = await customerService.getCustomerById('cust-test-001');
     assert.ok(result !== null);
@@ -78,7 +78,7 @@ test('getCustomerById: returns customer with invoices and reminders', async () =
 test('getCustomerById: returns null when not found', async () => {
   const restores: RestoreFn[] = [];
   try {
-    restores.push(patchMethod(prisma.customer as any, 'findUnique', async () => null));
+    restores.push(patchMethod(prisma.customer as any, 'findFirst', async () => null));
 
     const result = await customerService.getCustomerById('nonexistent');
     assert.equal(result, null);
