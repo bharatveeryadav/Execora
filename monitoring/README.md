@@ -22,10 +22,10 @@ npm install prom-client
 
 ```bash
 # Start all monitoring services
-docker-compose -f docker-compose.monitoring.yml up -d
+node scripts/docker/compose.mjs -f docker-compose.monitoring.yml up -d
 
 # Check status
-docker-compose -f docker-compose.monitoring.yml ps
+node scripts/docker/compose.mjs -f docker-compose.monitoring.yml ps
 ```
 
 ### 3. Start Your Application
@@ -39,7 +39,6 @@ npm run dev
 - **Grafana**: http://localhost:3001
   - Username: `admin`
   - Password: `admin`
-  
 - **Prometheus**: http://localhost:9090
 
 - **Loki**: http://localhost:3100
@@ -48,20 +47,20 @@ npm run dev
 
 ### Application Metrics (`:9091/metrics`)
 
-| Metric | Type | Description |
-|--------|------|-------------|
-| `http_requests_total` | Counter | Total HTTP requests |
-| `http_request_duration_seconds` | Histogram | Request latency |
-| `websocket_connections_active` | Gauge | Active WS connections |
-| `voice_commands_total` | Counter | Voice commands processed |
-| `invoice_operations_total` | Counter | Invoice operations |
-| `payments_processed_total` | Counter | Payments processed |
-| `payment_amount_inr` | Histogram | Payment amounts |
-| `db_query_duration_seconds` | Histogram | Database query time |
-| `stt_processing_duration_seconds` | Histogram | STT processing time |
-| `tts_processing_duration_seconds` | Histogram | TTS processing time |
-| `task_queue_pending` | Gauge | Pending tasks |
-| `errors_total` | Counter | Total errors |
+| Metric                            | Type      | Description              |
+| --------------------------------- | --------- | ------------------------ |
+| `http_requests_total`             | Counter   | Total HTTP requests      |
+| `http_request_duration_seconds`   | Histogram | Request latency          |
+| `websocket_connections_active`    | Gauge     | Active WS connections    |
+| `voice_commands_total`            | Counter   | Voice commands processed |
+| `invoice_operations_total`        | Counter   | Invoice operations       |
+| `payments_processed_total`        | Counter   | Payments processed       |
+| `payment_amount_inr`              | Histogram | Payment amounts          |
+| `db_query_duration_seconds`       | Histogram | Database query time      |
+| `stt_processing_duration_seconds` | Histogram | STT processing time      |
+| `tts_processing_duration_seconds` | Histogram | TTS processing time      |
+| `task_queue_pending`              | Gauge     | Pending tasks            |
+| `errors_total`                    | Counter   | Total errors             |
 
 ### System Metrics (Node Exporter)
 
@@ -114,7 +113,9 @@ sum(rate(payment_amount_inr_sum[1h]))
 ## 📊 Pre-built Dashboards
 
 ### Main Dashboard
+
 Shows:
+
 - Request rate and latency
 - Error rate
 - Active connections
@@ -122,21 +123,27 @@ Shows:
 - Database performance
 
 ### Business Metrics Dashboard
+
 Shows:
+
 - Invoice creation rate
 - Payment processing
 - Customer operations
 - Voice command success rate
 
 ### Performance Dashboard
+
 Shows:
+
 - API response times (p50, p95, p99)
 - Database query durations
 - STT/TTS processing times
 - Task queue metrics
 
 ### Server Dashboard (`Execora Server Monitoring`)
+
 Shows:
+
 - CPU usage and trend
 - Memory usage and trend
 - 1-minute host load
@@ -170,7 +177,7 @@ Prometheus loads the alert file via:
 ### Restart Monitoring Stack After Changes
 
 ```bash
-docker-compose -f docker-compose.monitoring.yml up -d --force-recreate prometheus grafana
+node scripts/docker/compose.mjs -f docker-compose.monitoring.yml up -d --force-recreate prometheus grafana
 ```
 
 ### Validate Alerts Loaded
@@ -200,23 +207,27 @@ LOG_FILE_PATH=./logs/app.log
 
 ```typescript
 // src/lib/logger.ts
-import pino from 'pino';
-import fs from 'fs';
+import pino from "pino";
+import fs from "fs";
 
-const logFilePath = './logs/app.log';
+const logFilePath = "./logs/app.log";
 
 // Ensure logs directory exists
-fs.mkdirSync('./logs', { recursive: true });
+fs.mkdirSync("./logs", { recursive: true });
 
-export const logger = pino({
-  level: 'info',
-  transport: process.env.NODE_ENV === 'development'
-    ? { target: 'pino-pretty', options: { colorize: true } }
-    : undefined,
-}, pino.multistream([
-  { stream: process.stdout }, // Console
-  { stream: pino.destination(logFilePath) }, // File for Loki
-]));
+export const logger = pino(
+  {
+    level: "info",
+    transport:
+      process.env.NODE_ENV === "development"
+        ? { target: "pino-pretty", options: { colorize: true } }
+        : undefined,
+  },
+  pino.multistream([
+    { stream: process.stdout }, // Console
+    { stream: pino.destination(logFilePath) }, // File for Loki
+  ]),
+);
 ```
 
 ## 🎯 Monitoring Checklist
@@ -283,16 +294,19 @@ docker restart execora-grafana
 ## 📊 Example Dashboard Panels
 
 ### Request Rate Panel
+
 ```promql
 sum(rate(http_requests_total[5m])) by (method)
 ```
 
 ### Error Rate Panel
+
 ```promql
 sum(rate(http_requests_total{status_code=~"5.."}[5m])) / sum(rate(http_requests_total[5m]))
 ```
 
 ### Memory Usage Panel
+
 ```promql
 process_resident_memory_bytes
 ```

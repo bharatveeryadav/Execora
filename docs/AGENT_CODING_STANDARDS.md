@@ -1,3 +1,5 @@
+> Backend Truth: Active runtime behavior is defined by apps/api/src/index.ts, apps/api/src/api/index.ts, and apps/api/src/ws/enhanced-handler.ts.\n> Canonical refs: docs/README.md, docs/features/README.md, docs/api/API.md, docs/AUTH.md.\n\n
+
 # Execora — Agent Coding Standards & Production Engineering Guide
 
 > **READ THIS FILE BEFORE WRITING A SINGLE LINE OF CODE.**

@@ -83,7 +83,7 @@ export interface InvoiceItemInput {
 
 // ── Feature flags — data-driven per-tenant capability gating ─────────────────
 //
-// Tier mapping (see docs/PRODUCT_STRATEGY_2026.md Section 3):
+// Tier mapping (see docs/README.md Section 3):
 //   Free    — VOICE_BILLING (rate-limited), WALK_IN_BILLING, UDHAAR_TRACKING, WHATSAPP_REMINDERS (5/mo)
 //   Starter — + GSTR1_EXPORT, EMAIL_DELIVERY, UNLIMITED_VOICE (2 users)
 //   Business — + BATCH_EXPIRY, PNL_REPORTS, BARCODE_SCAN, OCR_PURCHASE_BILL, CREDIT_LIMITS (5 users)

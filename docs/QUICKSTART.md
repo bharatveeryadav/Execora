@@ -1,3 +1,23 @@
+> Backend Truth: Active runtime behavior is defined by apps/api/src/index.ts, apps/api/src/api/index.ts, and apps/api/src/ws/enhanced-handler.ts.\n> Canonical refs: docs/README.md, docs/features/README.md, docs/api/API.md, docs/AUTH.md.\n\n
+
+# Quickstart (Docs Entry)
+
+This path is kept for compatibility.
+
+The actively maintained quickstart is:
+
+- [../QUICKSTART.md](../QUICKSTART.md)
+
+## Why This File Exists
+
+- Prevent broken links from older documentation references.
+- Keep one canonical quickstart source to avoid drift.
+- Preserve stable docs paths for tooling and contributors.
+
+## Policy
+
+If quickstart content needs updates, edit `../QUICKSTART.md`.
+
 # 🚀 Execora Quick Start Guide
 
 Get Execora running in under 5 minutes!
@@ -7,6 +27,7 @@ Get Execora running in under 5 minutes!
 ## 🆕 What's New
 
 Recent updates include:
+
 - ✅ **Per-conversation memory**: Say "Check balance" after mentioning a customer → system remembers!
 - ✅ **Parallel task execution**: Execute 3 commands simultaneously (was sequential before)
 - ✅ **Response templates**: 2ms responses for 99% of commands (was 1200ms with LLM)
@@ -74,6 +95,7 @@ curl http://localhost:3000/api/v1/summary/daily
 ```
 
 ### Performance Improvements (New!)
+
 - ✅ 2ms response time for common commands (templates)
 - ✅ Multi-command conversations with 5min memory
 - ✅ 3 parallel task execution per conversation
@@ -86,6 +108,7 @@ To enable WhatsApp reminders:
 
 1. Get WhatsApp Business API credentials
 2. Add to `.env`:
+
 ```env
 WHATSAPP_PHONE_NUMBER_ID=your_phone_id
 WHATSAPP_ACCESS_TOKEN=your_token
@@ -93,6 +116,7 @@ WHATSAPP_WEBHOOK_VERIFY_TOKEN=any_random_string
 ```
 
 3. Restart:
+
 ```bash
 docker-compose restart app worker
 ```
@@ -132,6 +156,7 @@ npm run db:studio
 ## 🎙️ Voice Commands to Try
 
 ### Single Commands
+
 1. **Check Balance**: "Rahul ka balance batao"
 2. **Create Invoice**: "Rahul ko 2 milk aur 1 bread ka bill bana do"
 3. **Record Payment**: "Rahul ne 200 cash me diye"
@@ -139,6 +164,7 @@ npm run db:studio
 5. **Check Stock**: "Milk ka stock kitna hai"
 
 ### Multi-Command Conversations (New!)
+
 Try these back-to-back to see **conversation memory** in action:
 
 ```
@@ -158,6 +184,7 @@ Try these back-to-back to see **conversation memory** in action:
 ## 🐛 Troubleshooting
 
 ### Connection Failed?
+
 ```bash
 # Check services are running
 docker-compose ps
@@ -167,6 +194,7 @@ docker-compose restart
 ```
 
 ### Database Error?
+
 ```bash
 # Reset database
 docker-compose down -v
@@ -176,21 +204,25 @@ docker-compose exec app npx prisma db seed
 ```
 
 ### Port Already in Use?
+
 Edit `docker-compose.yml` and change port mappings:
+
 ```yaml
 ports:
-  - "3001:3000"  # Changed from 3000:3000
+  - "3001:3000" # Changed from 3000:3000
 ```
 
 ## 📖 Next Steps
 
 ### For Users
+
 1. Read [README.md](README.md) for full feature list
 2. Explore API at http://localhost:3000/api/
 3. Try multi-command conversations
 4. Enable WhatsApp integration (optional)
 
 ### For Developers
+
 1. Review [DEVELOPER_GUIDE.md](docs/implementation/DEVELOPER_GUIDE.md) for technical details
 2. Check [IMPLEMENTATION_DETAILS.md](docs/implementation/IMPLEMENTATION_DETAILS.md) for what's new
 3. Study `prisma/schema.prisma` for database schema
@@ -200,6 +232,7 @@ ports:
 ## 🎉 You're Ready!
 
 Execora is now processing voice commands in real-time with:
+
 - ✨ **Instant responses** (2ms for common commands)
 - 🧠 **Conversation memory** (remembers customer context)
 - ⚡ **Parallel execution** (up to 3 tasks simultaneously)

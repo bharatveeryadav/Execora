@@ -60,6 +60,7 @@ export type FormAction =
   | { type: "SET_CUSTOMER"; customer: Customer | null }
   | { type: "SET_CUSTOMER_QUERY"; query: string }
   | { type: "TOGGLE_CUSTOMER_SUGGEST" }
+  | { type: "SET_CUSTOMER_SUGGEST"; value: boolean }
 
   // Pricing
   | { type: "SET_WITH_GST"; value: boolean }
@@ -187,6 +188,12 @@ export function formReducer(state: FormState, action: FormAction): FormState {
       return {
         ...state,
         showCustSuggest: !state.showCustSuggest,
+      };
+
+    case "SET_CUSTOMER_SUGGEST":
+      return {
+        ...state,
+        showCustSuggest: action.value,
       };
 
     // Pricing ───────────────────────────────────────────────────────────────

@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist-test",
+    "rootDir": "./src",
+    "noEmit": false,
+    "skipLibCheck": true,
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "jsx": "react"
+  },
+  "include": ["src/lib/**/*.ts", "src/__tests__/**/*.ts"],
+  "exclude": ["node_modules", "dist", "dist-test"]
+}

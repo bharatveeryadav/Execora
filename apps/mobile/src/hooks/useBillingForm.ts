@@ -61,6 +61,10 @@ export function useBillingForm(initialDraft?: Partial<FormState>) {
     dispatch({ type: "TOGGLE_CUSTOMER_SUGGEST" });
   }, []);
 
+  const setCustSuggest = useCallback((value: boolean) => {
+    dispatch({ type: "SET_CUSTOMER_SUGGEST", value });
+  }, []);
+
   // ──────────────────────────────────────────────────────────────────────────
   // Pricing helpers
   // ──────────────────────────────────────────────────────────────────────────
@@ -197,6 +201,7 @@ export function useBillingForm(initialDraft?: Partial<FormState>) {
     setCustomer,
     setCustomerQuery,
     toggleCustomerSuggest,
+    setCustSuggest,
 
     // Pricing
     setWithGst,

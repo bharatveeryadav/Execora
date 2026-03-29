@@ -1,3 +1,21 @@
+> Backend Truth: Active runtime behavior is defined by apps/api/src/index.ts, apps/api/src/api/index.ts, and apps/api/src/ws/enhanced-handler.ts.\n> Canonical refs: docs/README.md, docs/features/README.md, docs/api/API.md, docs/AUTH.md.\n\n
+
+# Regression Testing (Merged)
+
+Regression testing documentation has been consolidated into:
+
+- [README.md](README.md)
+
+For archived detailed historical notes, see:
+
+- [../archive/legacy/REGRESSION_TESTING_legacy.md](../archive/legacy/REGRESSION_TESTING_legacy.md)
+
+## Quick Run
+
+```bash
+bash scripts/testing/regression-test.sh
+```
+
 # Regression Testing Guide
 
 Complete guide to running and understanding the Execora regression test suite.
@@ -5,6 +23,7 @@ Complete guide to running and understanding the Execora regression test suite.
 ## 🚀 Quick Start
 
 ### Run Once
+
 ```bash
 cd /home/bharat/Music/execora-complete-with-audio/execora
 bash scripts/testing/regression-test.sh
@@ -12,6 +31,7 @@ bash scripts/testing/regression-test.sh
 ```
 
 ### Continuous Monitoring (5-min live test)
+
 ```bash
 bash scripts/testing/regression-test.sh
 # When prompted: Press 'y' for continuous mode
@@ -20,6 +40,7 @@ bash scripts/testing/regression-test.sh
 ```
 
 ### Background Testing
+
 ```bash
 bash scripts/testing/regression-test.sh &
 # Your test runs in background
@@ -35,38 +56,47 @@ Executes 9 test suites generating **21 API requests** across different scenarios
 ### Test Suite Breakdown
 
 **Suite 1: Health Checks** (3 tests)
+
 - ✓ Verify API responds to `/health` endpoint
 - ✓ Baseline for measuring performance
 
 **Suite 2: Validation Errors** (3 tests)
+
 - Tests invalid input handling
 - Expected: 400 status (actual: 404 - route differences)
 
 **Suite 3: Not Found Errors** (5 tests)
+
 - ✓ Request customers with non-existent IDs (9991-9995)
 - ✓ All return proper 404 responses
 
 **Suite 4: Product Endpoint** (3 tests)
+
 - ✓ Request invalid product IDs
 - ✓ Test product service error handling
 
 **Suite 5: Invoice Endpoint** (2 tests)
+
 - ✓ Request non-existent invoices
 - ✓ Test invoicing service errors
 
 **Suite 6: WebSocket Errors** (2 tests)
+
 - ✓ Request invalid WebSocket paths
 - ✓ Verify WS connection error handling
 
 **Suite 7: Database Operations** (3 tests)
+
 - Tests database operation errors
 - Tests business logic validation
 
 **Suite 8: Concurrent Load** (10 tests)
+
 - ✓ 10 simultaneous requests (parallel)
 - Tests system under concurrent load
 
 **Suite 9: Rapid Fire** (15 tests)
+
 - ✓ 15 sequential requests rapidly
 - Tests system under burst traffic
 
@@ -82,16 +112,19 @@ Pass Rate: 71%
 ```
 
 ### Passed Tests ✓
+
 - All health checks (3/3)
 - All 404 errors (12/12)
 - All concurrent requests (10/10)
 - All rapid fire requests (15/15)
 
 ### Failed Tests ✗ (Expected)
+
 - Validation errors (0/3) - Routes don't exist
 - Database errors (0/3) - Routes don't exist
 
 ### Analysis
+
 - 6 failures are **expected** (routes not implemented)
 - Actual error handling works for existing endpoints
 - System handles load well (concurrent + rapid fire pass)
@@ -125,20 +158,21 @@ Total Time: ~60 seconds
 ## 📊 View Results in Grafana
 
 ### Access Dashboard
+
 **URL:** http://localhost:3001/d/execora-errors-prod  
 **Login:** admin / admin
 
 ### Real-Time Panels Update
 
-| Panel | What Shows | Updates |
-|-------|-----------|---------|
-| 🚨 Total Requests | 21+ (all test requests) | 10s |
-| 🔥 Errors | ~5-10 (404s from tests) | 10s |
-| 📊 Request Volume | Spikes during rapid fire | 10s |
-| 📋 All Logs | Detailed trace per request | 10s |
-| ⏱️ Activity Trend | Spike during test | 10s |
-| 💚 Activity Gauge | Increases during test | 10s |
-| 📈 Request Rate | Shows 20+ req/sec | 10s |
+| Panel             | What Shows                 | Updates |
+| ----------------- | -------------------------- | ------- |
+| 🚨 Total Requests | 21+ (all test requests)    | 10s     |
+| 🔥 Errors         | ~5-10 (404s from tests)    | 10s     |
+| 📊 Request Volume | Spikes during rapid fire   | 10s     |
+| 📋 All Logs       | Detailed trace per request | 10s     |
+| ⏱️ Activity Trend | Spike during test          | 10s     |
+| 💚 Activity Gauge | Increases during test      | 10s     |
+| 📈 Request Rate   | Shows 20+ req/sec          | 10s     |
 
 ---
 
@@ -206,6 +240,7 @@ Generated 5 errors → Visible in dashboard now
 ## 🎯 Continuous Monitoring Use Cases
 
 ### Scenario 1: Demo/Presentation
+
 ```bash
 # Start test in continuous mode
 bash scripts/testing/regression-test.sh
@@ -215,6 +250,7 @@ bash scripts/testing/regression-test.sh
 ```
 
 ### Scenario 2: Load Testing
+
 ```bash
 # Run in background for 5 minutes
 timeout 300 bash scripts/testing/regression-test.sh &
@@ -222,6 +258,7 @@ timeout 300 bash scripts/testing/regression-test.sh &
 ```
 
 ### Scenario 3: Finding Issues
+
 ```bash
 # Monitor while making code changes
 bash scripts/testing/regression-test.sh  # y for continuous
@@ -235,23 +272,28 @@ bash scripts/testing/regression-test.sh  # y for continuous
 ## 🛠️ Advanced Usage
 
 ### Run Specific Count
+
 Modify `scripts/testing/regression-test.sh`:
+
 ```bash
 # Change line with "for i in {1..15}" to desired count
 for i in {1..30}  # Run 30 rapid requests
 ```
 
 ### Extract Just Errors
+
 ```bash
 bash scripts/testing/regression-test.sh 2>&1 | grep "✗"
 ```
 
 ### Get Pass Rate Only
+
 ```bash
 bash scripts/testing/regression-test.sh 2>&1 | grep "Pass Rate"
 ```
 
 ### Schedule Regular Tests
+
 ```bash
 # Run test every 6 hours (Linux cron)
 0 */6 * * * /home/bharat/Music/execora-complete-with-audio/execora/scripts/testing/regression-test.sh
@@ -264,6 +306,7 @@ bash scripts/testing/regression-test.sh 2>&1 | grep "Pass Rate"
 ### Metric Insights
 
 **🚨 Total Requests spike:** System receiving requests properly
+
 ```
 Before: 5 req/min (normal traffic)
 Test: 30 req/min (test traffic)
@@ -271,12 +314,14 @@ After: 5 req/min (back to normal)
 ```
 
 **🔥 Error Count shows:** Which requests had errors
+
 ```
 404 errors: 5-10 (expected for not-found tests)
 Success: 10-15 (health checks and concurrent)
 ```
 
 **⏱️ Activity Trend shows:** Traffic pattern
+
 ```
 Flat before test
 Spike during test (15-second high activity)
@@ -288,6 +333,7 @@ Back to baseline after
 ## 🆘 Troubleshooting
 
 ### "Connection refused" Error?
+
 ```bash
 # Check if API is running
 curl http://localhost:3000/health
@@ -297,6 +343,7 @@ docker-compose up -d
 ```
 
 ### Test hangs?
+
 ```bash
 # Press Ctrl+C
 # Check if services are responsive
@@ -304,6 +351,7 @@ docker-compose ps
 ```
 
 ### Logs not in Grafana?
+
 ```bash
 # Wait 5-10 seconds (Loki pipeline delay)
 # Then refresh dashboard
@@ -312,6 +360,7 @@ curl 'http://localhost:3100/loki/api/v1/labels'
 ```
 
 ### Dashboard showing "No data"?
+
 ```bash
 # Check datasource
 # URL: http://localhost:3001/connections/datasources/

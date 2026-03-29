@@ -7,13 +7,14 @@ Get Execora running in under 5 minutes!
 ## 🆕 What's New
 
 Recent updates include:
+
 - ✅ **Per-conversation memory**: Say "Check balance" after mentioning a customer → system remembers!
 - ✅ **Parallel task execution**: Execute 3 commands simultaneously (was sequential before)
 - ✅ **Response templates**: 2ms responses for 99% of commands (was 1200ms with LLM)
 - ✅ **3-layer caching**: Customer search, balance queries, conversation context
 - ✅ **Database validation**: Fails fast with clear errors if schema is incomplete
 
-See [IMPLEMENTATION_DETAILS.md](docs/implementation/IMPLEMENTATION_DETAILS.md) for technical breakdown.
+See [docs/README.md](docs/README.md) for the complete technical breakdown.
 
 ## ⚡ Fastest Start (Docker)
 
@@ -28,17 +29,17 @@ cp .env.example .env
 # 3. Add your OpenAI API key to .env
 # OPENAI_API_KEY=sk-your-key-here
 
-# 4. Start everything with Docker
-docker-compose up -d
+# 4. Start everything with Docker (cross-platform)
+pnpm docker:up
 
 # 5. Wait 30 seconds for services to start, then initialize database
-docker-compose exec app npx prisma db push
+pnpm docker:db:push
 
 # 6. Load sample data (optional)
-docker-compose exec app npx prisma db seed
+pnpm docker:seed
 
-# 7. Open browser
-open http://localhost:3000
+# 7. Open in your browser
+# http://localhost:3000
 ```
 
 Done! Execora is running.
@@ -74,6 +75,7 @@ curl http://localhost:3000/api/v1/summary/daily
 ```
 
 ### Performance Improvements (New!)
+
 - ✅ 2ms response time for common commands (templates)
 - ✅ Multi-command conversations with 5min memory
 - ✅ 3 parallel task execution per conversation
@@ -86,6 +88,7 @@ To enable WhatsApp reminders:
 
 1. Get WhatsApp Business API credentials
 2. Add to `.env`:
+
 ```env
 WHATSAPP_PHONE_NUMBER_ID=your_phone_id
 WHATSAPP_ACCESS_TOKEN=your_token
@@ -93,37 +96,38 @@ WHATSAPP_WEBHOOK_VERIFY_TOKEN=any_random_string
 ```
 
 3. Restart:
+
 ```bash
-docker-compose restart app worker
+pnpm docker:restart
 ```
 
 ## 🔍 View Logs
 
 ```bash
 # All logs
-docker-compose logs -f
+pnpm docker:logs
 
 # Just app
-docker-compose logs -f app
+pnpm docker:logs:app
 
 # Just worker
-docker-compose logs -f worker
+pnpm docker:logs:worker
 ```
 
 ## 🛠️ Useful Commands
 
 ```bash
 # Stop everything
-docker-compose down
+pnpm docker:down
 
 # Restart after code changes
-docker-compose up -d --build
+pnpm docker:up
 
 # Access database
-docker-compose exec postgres psql -U execora -d execora
+node scripts/docker/compose.mjs exec postgres psql -U execora -d execora
 
 # View MinIO files
-open http://localhost:9001  # admin / minioadmin
+# http://localhost:9001  # admin / minioadmin
 
 # Database UI
 npm run db:studio
@@ -132,6 +136,7 @@ npm run db:studio
 ## 🎙️ Voice Commands to Try
 
 ### Single Commands
+
 1. **Check Balance**: "Rahul ka balance batao"
 2. **Create Invoice**: "Rahul ko 2 milk aur 1 bread ka bill bana do"
 3. **Record Payment**: "Rahul ne 200 cash me diye"
@@ -139,6 +144,7 @@ npm run db:studio
 5. **Check Stock**: "Milk ka stock kitna hai"
 
 ### Multi-Command Conversations (New!)
+
 Try these back-to-back to see **conversation memory** in action:
 
 ```
@@ -158,48 +164,55 @@ Try these back-to-back to see **conversation memory** in action:
 ## 🐛 Troubleshooting
 
 ### Connection Failed?
+
 ```bash
 # Check services are running
-docker-compose ps
+pnpm docker:ps
 
 # Restart everything
-docker-compose restart
+pnpm docker:restart
 ```
 
 ### Database Error?
+
 ```bash
 # Reset database
-docker-compose down -v
-docker-compose up -d
-docker-compose exec app npx prisma db push
-docker-compose exec app npx prisma db seed
+node scripts/docker/compose.mjs down -v
+pnpm docker:up
+pnpm docker:db:push
+pnpm docker:seed
 ```
 
 ### Port Already in Use?
+
 Edit `docker-compose.yml` and change port mappings:
+
 ```yaml
 ports:
-  - "3001:3000"  # Changed from 3000:3000
+  - "3001:3000" # Changed from 3000:3000
 ```
 
 ## 📖 Next Steps
 
 ### For Users
+
 1. Read [README.md](README.md) for full feature list
 2. Explore API at http://localhost:3000/api/
 3. Try multi-command conversations
 4. Enable WhatsApp integration (optional)
 
 ### For Developers
-1. Review [DEVELOPER_GUIDE.md](docs/implementation/DEVELOPER_GUIDE.md) for technical details
-2. Check [IMPLEMENTATION_DETAILS.md](docs/implementation/IMPLEMENTATION_DETAILS.md) for what's new
+
+1. Review [docs/README.md](docs/README.md) for technical details
+2. Check [docs/README.md](docs/README.md) for recent changes
 3. Study `prisma/schema.prisma` for database schema
 4. Explore `src/integrations/openai.ts` for LLM customization
-5. See [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) for system design
+5. See [docs/README.md](docs/README.md) for system design
 
 ## 🎉 You're Ready!
 
 Execora is now processing voice commands in real-time with:
+
 - ✨ **Instant responses** (2ms for common commands)
 - 🧠 **Conversation memory** (remembers customer context)
 - ⚡ **Parallel execution** (up to 3 tasks simultaneously)
@@ -208,4 +221,4 @@ Execora is now processing voice commands in real-time with:
 Try speaking or typing commands to see the AI in action.
 
 For production deployment, see [README.md](README.md) security notes.
-For developers, see [DEVELOPER_GUIDE.md](docs/implementation/DEVELOPER_GUIDE.md).
+For developers, see [docs/README.md](docs/README.md).

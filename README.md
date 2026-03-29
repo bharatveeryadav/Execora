@@ -2,34 +2,40 @@
 
 **Production-Grade Voice Processing System** for small merchants managing invoices, payments, customers, and reminders through voice commands.
 
-| Grade | Status | Details |
-|-------|--------|---------|
-| **Overall** | B+ | Production-ready for SME use with security hardening |
-| **Architecture** | A+ | Modular, transaction-safe, scalable |
-| **Security** | D | Critical gaps to fix (JWT, WebSocket auth, secrets) |
-| **Timeline** | 2-3 weeks | To production-grade deployment |
+| Grade            | Status    | Details                                              |
+| ---------------- | --------- | ---------------------------------------------------- |
+| **Overall**      | B+        | Production-ready for SME use with security hardening |
+| **Architecture** | A+        | Modular, transaction-safe, scalable                  |
+| **Security**     | D         | Critical gaps to fix (JWT, WebSocket auth, secrets)  |
+| **Timeline**     | 2-3 weeks | To production-grade deployment                       |
 
 ---
 
 ## 📚 Documentation Hub (Lifecycle Order)
 
 ### 1) Quickstart
-→ [QUICKSTART.md](QUICKSTART.md), [docs/QUICKSTART.md](docs/QUICKSTART.md), [START_HERE.md](START_HERE.md)
+
+→ [QUICKSTART.md](QUICKSTART.md), [docs/README.md](docs/README.md), [START_HERE.md](START_HERE.md)
 
 ### 2) Development
-→ [docs/audit/CODE_AUDIT_SUMMARY.md](docs/audit/CODE_AUDIT_SUMMARY.md), [docs/implementation/DEVELOPER_GUIDE.md](docs/implementation/DEVELOPER_GUIDE.md)
+
+→ [CONTRIBUTING.md](CONTRIBUTING.md), [docs/implementation/DEVELOPER_GUIDE.md](docs/implementation/DEVELOPER_GUIDE.md)
 
 ### 3) Testing
-→ [docs/testing/README.md](docs/testing/README.md), [docs/testing/REGRESSION_TESTING.md](docs/testing/REGRESSION_TESTING.md)
+
+→ [docs/testing/README.md](docs/testing/README.md)
 
 ### 4) Deployment & CI/CD
-→ [docs/cicd/CICD_QUICK_START.md](docs/cicd/CICD_QUICK_START.md), [docs/cicd/GITHUB_ACTIONS_SETUP.md](docs/cicd/GITHUB_ACTIONS_SETUP.md), [docs/production/README.md](docs/production/README.md)
+
+→ [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md), [docs/cicd/README.md](docs/cicd/README.md), [docs/production/PRODUCTION_STRATEGY.md](docs/production/PRODUCTION_STRATEGY.md)
 
 ### 5) Operations & Monitoring
-→ [docs/ops/ENVIRONMENT_MANAGEMENT.md](docs/ops/ENVIRONMENT_MANAGEMENT.md), [docs/monitoring/README.md](docs/monitoring/README.md), [docs/ops/PRODUCTION_QUICK_REFERENCE.md](docs/ops/PRODUCTION_QUICK_REFERENCE.md)
+
+→ [docs/ops/README.md](docs/ops/README.md), [monitoring/README.md](monitoring/README.md), [docs/monitoring/OBSERVABILITY_ACCESS.md](docs/monitoring/OBSERVABILITY_ACCESS.md)
 
 ### 6) Audit & Security
-→ [docs/security/SECURITY_HARDENING_GUIDE.md](docs/security/SECURITY_HARDENING_GUIDE.md), [docs/audit/PRODUCTION_READINESS_AUDIT.md](docs/audit/PRODUCTION_READINESS_AUDIT.md), [docs/audit/AUDIT_EXECUTIVE_SUMMARY.md](docs/audit/AUDIT_EXECUTIVE_SUMMARY.md), [docs/audit/AUDIT_DOCUMENTS_INDEX.md](docs/audit/AUDIT_DOCUMENTS_INDEX.md)
+
+→ [SECURITY.md](SECURITY.md), [docs/security/README.md](docs/security/README.md), [docs/security/SECURITY_HARDENING_GUIDE.md](docs/security/SECURITY_HARDENING_GUIDE.md)
 
 ---
 
@@ -50,30 +56,31 @@
 
 ### Technology Stack
 
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| **Language** | TypeScript 5.3 | Type safety |
-| **Runtime** | Node.js 20+ | JavaScript server |
-| **Web Framework** | Fastify 4.26 | High-performance HTTP server |
-| **Real-time** | WebSocket (ws) | Bidirectional communication |
-| **Database** | PostgreSQL 15 + Prisma 5.9 | Data persistence & ORM |
-| **Cache** | Redis 7 | Session & query caching |
-| **Queue** | BullMQ 5.1 | Job processing |
-| **Storage** | MinIO 7.1 | S3-compatible object storage |
-| **LLM** | OpenAI GPT-4 | Intent extraction |
-| **STT** | Deepgram 3.4 | Speech-to-text streaming |
-| **TTS** | ElevenLabs | Voice synthesis |
-| **Email** | Nodemailer 6.9 | SMTP email delivery |
-| **Logging** | Pino 8.19 | Structured logging |
-| **Monitoring** | Prometheus 15.1 | Metrics collection |
-| **Dashboard** | Grafana | Visualization |
-| **Testing** | Node:test | Native test runner |
+| Layer             | Technology                 | Purpose                      |
+| ----------------- | -------------------------- | ---------------------------- |
+| **Language**      | TypeScript 5.3             | Type safety                  |
+| **Runtime**       | Node.js 20+                | JavaScript server            |
+| **Web Framework** | Fastify 4.26               | High-performance HTTP server |
+| **Real-time**     | WebSocket (ws)             | Bidirectional communication  |
+| **Database**      | PostgreSQL 15 + Prisma 5.9 | Data persistence & ORM       |
+| **Cache**         | Redis 7                    | Session & query caching      |
+| **Queue**         | BullMQ 5.1                 | Job processing               |
+| **Storage**       | MinIO 7.1                  | S3-compatible object storage |
+| **LLM**           | OpenAI GPT-4               | Intent extraction            |
+| **STT**           | Deepgram 3.4               | Speech-to-text streaming     |
+| **TTS**           | ElevenLabs                 | Voice synthesis              |
+| **Email**         | Nodemailer 6.9             | SMTP email delivery          |
+| **Logging**       | Pino 8.19                  | Structured logging           |
+| **Monitoring**    | Prometheus 15.1            | Metrics collection           |
+| **Dashboard**     | Grafana                    | Visualization                |
+| **Testing**       | Node:test                  | Native test runner           |
 
 ---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Node.js ≥ 20
 - PostgreSQL 15+
 - Redis 7+
@@ -99,16 +106,18 @@ npm run dev
 ```
 
 **Access:**
+
 - API: `http://localhost:3000`
 - WebSocket: `ws://localhost:3000/ws`
 - Metrics: `http://localhost:3000/metrics`
 - Health: `http://localhost:3000/health`
 
 ### Docker Quick Start
+
 ```bash
-docker-compose up -d
-npm run db:push
-npm run seed
+pnpm docker:up
+pnpm docker:db:push
+pnpm docker:seed
 ```
 
 ---
@@ -116,32 +125,38 @@ npm run seed
 ## 🎙️ Voice Commands (Hindi/English)
 
 ### Invoice Creation
+
 ```
 "Rahul ko 2 milk aur 1 bread ka bill bana do"
 ```
 
 ### Payment Reminder
+
 ```
 "Rahul ko 500 ka reminder kal shaam 7 baje bhejna"
 ```
 
 ### Record Payment
+
 ```
 "Rahul ne 200 cash me diye"
 "Suresh ne 500 UPI kiya"
 ```
 
 ### Check Balance
+
 ```
 "Rahul ka balance batao"
 ```
 
 ### Check Stock
+
 ```
 "Milk ka stock kitna hai?"
 ```
 
 ### Daily Summary
+
 ```
 "Aaj kitna sale hua?"
 ```
@@ -236,44 +251,52 @@ docs/
 ### REST Endpoints
 
 #### Customers
+
 - `GET /api/v1/customers/search?q={query}` - Search customers
 - `GET /api/v1/customers/:id` - Get customer details
 - `POST /api/v1/customers` - Create customer
 
 #### Invoices
+
 - `GET /api/v1/invoices` - List invoices
 - `POST /api/v1/invoices` - Create invoice
 - `POST /api/v1/invoices/:id/cancel` - Cancel invoice
 
 #### Ledger
+
 - `POST /api/v1/ledger/payment` - Record payment
 - `POST /api/v1/ledger/credit` - Add credit
 - `GET /api/v1/ledger/:customerId` - Get ledger entries
 
 #### Reminders
+
 - `GET /api/v1/reminders` - List pending reminders
 - `POST /api/v1/reminders` - Schedule reminder
 - `POST /api/v1/reminders/:id/cancel` - Cancel reminder
 
 #### Products
+
 - `GET /api/v1/products` - List all products
 - `POST /api/v1/products` - Create product
 - `GET /api/v1/products/low-stock` - Get low stock products
 
 #### Summary
+
 - `GET /api/v1/summary/daily` - Get daily sales summary
 
-See [docs/api/API.md](docs/api/API.md) for complete OpenAPI specification.
+See [docs/README.md](docs/README.md) for complete OpenAPI specification.
 
 ### WebSocket Events
 
 **Client → Server**:
+
 - `voice:transcript` - Streaming transcript
 - `voice:final` - Final transcript to process
 - `recording:start` - Start recording
 - `recording:stop` - Stop recording
 
 **Server → Client**:
+
 - `voice:start` - Connection established
 - `voice:transcript` - Transcript update
 - `voice:intent` - Intent extracted
@@ -324,6 +347,7 @@ NODE_TEST_COVERAGE=1 npm test
 ```
 
 **Coverage:**
+
 - Customer service: >85%
 - Invoice service: >80%
 - Ledger service: >80%
@@ -398,24 +422,28 @@ See [.env.example](.env.example) for complete template.
 ### Before Going Live ✅
 
 **Security** (2-3 days)
+
 - [ ] Add JWT authentication
 - [ ] Secure WebSocket with tokens
 - [ ] Migrate secrets to vault
 - [ ] Enable webhook signature verification
 
 **Reliability** (2 days)
+
 - [ ] Fix database migration race condition
 - [ ] Add per-user rate limiting
 - [ ] Tune database connection pool
 - [ ] Configure health checks
 
 **Observability** (2 days)
+
 - [ ] Setup APM (Datadog/New Relic)
 - [ ] Add distributed tracing
 - [ ] Configure alerting
 - [ ] Create incident response runbooks
 
 **Testing** (3 days)
+
 - [ ] Load test (100 → 1000 concurrent)
 - [ ] Security audit
 - [ ] Backup/restore test
@@ -423,13 +451,13 @@ See [.env.example](.env.example) for complete template.
 
 ### Security Hardening
 
-See [docs/security/SECURITY_HARDENING_GUIDE.md](docs/security/SECURITY_HARDENING_GUIDE.md) for step-by-step implementation of all 7 critical security fixes.
+See [docs/README.md](docs/README.md) for step-by-step implementation of all 7 critical security fixes.
 
 ### Deploy to Production
 
 ```bash
 # Using Docker Compose
-docker-compose -f docker-compose.yml up -d
+pnpm docker:up
 
 # Or manual deployment
 npm run build
@@ -455,7 +483,7 @@ Critical Fixes Required:
 3. Secrets Management (Vault) — 1 day
 4. Production Timeline: 2-3 weeks
 
-Detailed audit: [docs/audit/PRODUCTION_READINESS_AUDIT.md](docs/audit/PRODUCTION_READINESS_AUDIT.md) (40+ pages)
+Detailed audit: [docs/README.md](docs/README.md) (40+ pages)
 ```
 
 ---
@@ -463,7 +491,8 @@ Detailed audit: [docs/audit/PRODUCTION_READINESS_AUDIT.md](docs/audit/PRODUCTION
 ## 🔐 Security Notes
 
 ⚠️ **Before Production:**
-- [ ] Enable JWT authentication (see [docs/security/SECURITY_HARDENING_GUIDE.md](docs/security/SECURITY_HARDENING_GUIDE.md))
+
+- [ ] Enable JWT authentication (see [docs/README.md](docs/README.md))
 - [ ] Secure WebSocket with bearer tokens
 - [ ] Never hardcode secrets in code
 - [ ] Use strong database passwords
@@ -477,18 +506,21 @@ Detailed audit: [docs/audit/PRODUCTION_READINESS_AUDIT.md](docs/audit/PRODUCTION
 ## 📞 Support & Contributing
 
 ### Getting Help
+
 1. Check [docs/](docs/) for documentation
-2. Review [docs/audit/CODE_AUDIT_SUMMARY.md](docs/audit/CODE_AUDIT_SUMMARY.md) for architecture patterns
+2. Review [docs/README.md](docs/README.md) for architecture patterns
 3. Search existing issues
 4. Create detailed issue with reproduction steps
 
 ### Contributing
-- See [docs/implementation/DEVELOPER_GUIDE.md](docs/implementation/DEVELOPER_GUIDE.md)
-- Follow code patterns in [docs/audit/CODE_AUDIT_SUMMARY.md](docs/audit/CODE_AUDIT_SUMMARY.md)
+
+- See [docs/README.md](docs/README.md)
+- Follow code patterns in [docs/README.md](docs/README.md)
 - Run tests: `npm test`
 - Update docs for new features
 
 ### Reporting Security Issues
+
 ⚠️ **Do NOT create public issues for security problems**  
 → Contact security team privately
 
@@ -496,25 +528,25 @@ Detailed audit: [docs/audit/PRODUCTION_READINESS_AUDIT.md](docs/audit/PRODUCTION
 
 ## 📖 Complete Documentation
 
-| Purpose | Link |
-|---------|------|
-| **Getting Started** | [docs/QUICKSTART.md](docs/QUICKSTART.md) |
-| **Start Here** | [START_HERE.md](START_HERE.md) |
-| **Developer Guide** | [docs/implementation/DEVELOPER_GUIDE.md](docs/implementation/DEVELOPER_GUIDE.md) |
-| **Testing Guide** | [docs/testing/README.md](docs/testing/README.md) |
-| **Regression Testing** | [docs/testing/REGRESSION_TESTING.md](docs/testing/REGRESSION_TESTING.md) |
-| **CI/CD Quick Start** | [docs/cicd/CICD_QUICK_START.md](docs/cicd/CICD_QUICK_START.md) |
-| **Production Strategy** | [docs/production/README.md](docs/production/README.md) |
-| **Monitoring & Observability** | [docs/monitoring/README.md](docs/monitoring/README.md) |
-| **Environment Management** | [docs/ops/ENVIRONMENT_MANAGEMENT.md](docs/ops/ENVIRONMENT_MANAGEMENT.md) |
-| **Security Fixes** | [docs/security/SECURITY_HARDENING_GUIDE.md](docs/security/SECURITY_HARDENING_GUIDE.md) |
-| **Executive Summary** | [AUDIT_EXECUTIVE_SUMMARY.md](AUDIT_EXECUTIVE_SUMMARY.md) |
-| **Full Production Audit** | [docs/audit/PRODUCTION_READINESS_AUDIT.md](docs/audit/PRODUCTION_READINESS_AUDIT.md) |
-| **Code Architecture** | [docs/audit/CODE_AUDIT_SUMMARY.md](docs/audit/CODE_AUDIT_SUMMARY.md) |
-| **Doc Navigation** | [docs/audit/AUDIT_DOCUMENTS_INDEX.md](docs/audit/AUDIT_DOCUMENTS_INDEX.md) |
-| **API Reference** | [docs/api/API.md](docs/api/API.md) |
-| **Architecture Deep Dive** | [docs/architecture/](docs/architecture/) |
-| **Quick Reference** | [docs/ops/PRODUCTION_QUICK_REFERENCE.md](docs/ops/PRODUCTION_QUICK_REFERENCE.md) |
+| Purpose                        | Link                                                     |
+| ------------------------------ | -------------------------------------------------------- |
+| **Getting Started**            | [docs/README.md](docs/README.md)                         |
+| **Start Here**                 | [START_HERE.md](START_HERE.md)                           |
+| **Developer Guide**            | [docs/README.md](docs/README.md)                         |
+| **Testing Guide**              | [docs/README.md](docs/README.md)                         |
+| **Regression Testing**         | [docs/README.md](docs/README.md)                         |
+| **CI/CD Quick Start**          | [docs/README.md](docs/README.md)                         |
+| **Production Strategy**        | [docs/README.md](docs/README.md)                         |
+| **Monitoring & Observability** | [docs/README.md](docs/README.md)                         |
+| **Environment Management**     | [docs/README.md](docs/README.md)                         |
+| **Security Fixes**             | [docs/README.md](docs/README.md)                         |
+| **Executive Summary**          | [AUDIT_EXECUTIVE_SUMMARY.md](AUDIT_EXECUTIVE_SUMMARY.md) |
+| **Full Production Audit**      | [docs/README.md](docs/README.md)                         |
+| **Code Architecture**          | [docs/README.md](docs/README.md)                         |
+| **Doc Navigation**             | [docs/README.md](docs/README.md)                         |
+| **API Reference**              | [docs/README.md](docs/README.md)                         |
+| **Architecture Deep Dive**     | [docs/architecture/](docs/architecture/)                 |
+| **Quick Reference**            | [docs/README.md](docs/README.md)                         |
 
 ---
 
@@ -537,6 +569,7 @@ MIT License
 ## 🙏 Acknowledgments
 
 Built with:
+
 - Fastify (high-performance HTTP)
 - Prisma (ORM)
 - BullMQ (job queue)

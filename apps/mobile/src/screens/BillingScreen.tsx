@@ -31,7 +31,6 @@ import {
   Platform,
   ActivityIndicator,
   Pressable,
-  Linking,
   Alert,
   Image,
 } from "react-native";
@@ -75,7 +74,9 @@ import {
   BIZ_STORAGE_KEY,
   DOC_SETTINGS_KEY,
 } from "../lib/storage";
-import { BarcodeScanner } from "../components/common/BarcodeScanner";
+import { MobileItemRow } from "../components/billing/MobileItemRow";
+import { ProductPickerModal } from "../components/billing/ProductPickerModal";
+import { SuccessModal } from "../components/billing/SuccessModal";
 import { printReceipt } from "../lib/printReceipt";
 import { useOffline } from "../contexts/OfflineContext";
 import { useResponsive } from "../hooks/useResponsive";
@@ -84,6 +85,7 @@ import { hapticSuccess, hapticError, hapticLight } from "../lib/haptics";
 import { cacheProducts } from "../lib/offlineQueue";
 import type { ReceiptData } from "../lib/thermalReceipt";
 import type { BillingStackParams } from "../navigation";
+import { useBillingForm } from "../hooks/useBillingForm";
 import {
   InvoiceTemplatePreview,
   TemplateThumbnail,
@@ -93,23 +95,9 @@ import {
 } from "../components/InvoiceTemplatePreview";
 
 // ── ID counters ───────────────────────────────────────────────────────────────
-
+// _id is used only to assign unique IDs to restored draft items.
+// New items use the formReducer (max(id)+1). New splits use the formReducer too.
 let _id = 1;
-const newItem = (): BillingItem => ({
-  id: _id++,
-  name: "",
-  qty: "1",
-  rate: "",
-  unit: "pcs",
-  discount: "",
-  amount: 0,
-});
-let _splitId = 1;
-const newSplit = (mode: PaymentMode = "cash"): PaymentSplit => ({
-  id: _splitId++,
-  mode,
-  amount: "",
-});
 
 const DUE_DATE_PRESETS = [15, 30, 60] as const;
 type DocumentTitle = "invoice" | "billOfSupply";
@@ -151,50 +139,85 @@ export function BillingScreen({ navigation, route }: BillingProps) {
   const insets = useSafeAreaInsets();
   const startAsWalkIn = route.params?.startAsWalkIn;
 
-  // ── State ─────────────────────────────────────────────────────────────────
-  const [items, setItems] = useState<BillingItem[]>([newItem()]);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
-    null,
+  // ── Form state (useBillingForm) ────────────────────────────────────────────
+  const initialRoundOffRef = useRef(
+    (() => {
+      try {
+        const raw = storage.getString(BIZ_STORAGE_KEY);
+        const p = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
+        return p.roundOff === true || p.roundOff === "true";
+      } catch {
+        return false;
+      }
+    })(),
   );
-  const [customerQuery, setCustomerQuery] = useState("");
-  const [showCustSuggest, setShowCustSuggest] = useState(false);
-  const [withGst, setWithGst] = useState(false);
-  const [discountPct, setDiscountPct] = useState("");
-  const [discountFlat, setDiscountFlat] = useState("");
-  const [paymentMode, setPaymentMode] = useState<PaymentMode>("cash");
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [splitEnabled, setSplitEnabled] = useState(false);
-  const [splits, setSplits] = useState<PaymentSplit[]>([newSplit("cash")]);
-  const [notes, setNotes] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [roundOffEnabled, setRoundOffEnabled] = useState(() => {
-    try {
-      const raw = storage.getString(BIZ_STORAGE_KEY);
-      const p = raw ? (JSON.parse(raw) as Record<string, unknown>) : {};
-      return p.roundOff === true || p.roundOff === "true";
-    } catch {
-      return false;
-    }
-  });
-  const [draftBanner, setDraftBanner] = useState(false);
-  // Active row for product suggestions
-  const [activeRow, setActiveRow] = useState<number | null>(null);
-  // New customer dialog
-  const [showNewCust, setShowNewCust] = useState(false);
-  const [productPickerOpen, setProductPickerOpen] = useState(false);
-  const [newCustName, setNewCustName] = useState("");
-  const [newCustPhone, setNewCustPhone] = useState("");
-  // Success modal
+  const {
+    state: {
+      items,
+      selectedCustomer,
+      customerQuery,
+      showCustSuggest,
+      withGst,
+      discountPct,
+      discountFlat,
+      roundOffEnabled,
+      paymentMode,
+      paymentAmount,
+      splitEnabled,
+      splits,
+      notes,
+      dueDate,
+      draftBanner,
+      activeRow,
+      showNewCust,
+      productPickerOpen,
+      newCustName,
+      newCustPhone,
+      billingSetupExpanded,
+      invoiceStyleExpanded,
+      showInvoiceBarEdit,
+      showPreview,
+    },
+    dispatch: formDispatch,
+    addItem: formAddItem,
+    updateItem: formUpdateItem,
+    removeItem: formRemoveItem,
+    setCustomer,
+    setCustomerQuery,
+    setCustSuggest,
+    setWithGst,
+    setDiscountPct,
+    setDiscountFlat,
+    setRoundOff,
+    setPaymentMode,
+    setPaymentAmount,
+    toggleSplit,
+    addSplit,
+    updateSplit,
+    removeSplit,
+    setNotes,
+    setDueDate,
+    setActiveRow,
+    toggleNewCustModal,
+    setNewCustName,
+    setNewCustPhone,
+    toggleProductPicker,
+    toggleDraftBanner,
+    toggleBillingSetup,
+    toggleInvoiceStyle,
+    toggleInvoiceBarEdit,
+    togglePreview,
+    resetForm: formReset,
+    loadDraft,
+  } = useBillingForm({ roundOffEnabled: initialRoundOffRef.current });
+
+  // Success modal state (not part of form state)
   const [savedInvoice, setSavedInvoice] = useState<{
     id: string;
     no: string;
     total: number;
     fromOffline?: boolean;
   } | null>(null);
-  const [showPreview, setShowPreview] = useState(false);
-  // Billing setup & invoice style collapsibles
-  const [billingSetupExpanded, setBillingSetupExpanded] = useState(false);
-  const [invoiceStyleExpanded, setInvoiceStyleExpanded] = useState(false);
   const [invoiceTemplate, setInvoiceTemplate] = useState<TemplateId>(() => {
     const t = storage.getString(INV_TEMPLATE_KEY) as TemplateId | undefined;
     return t && TEMPLATES.some((x) => x.id === t) ? t : "classic";
@@ -260,7 +283,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
       : undefined;
 
   // ── Invoice bar (Indian standard) ───────────────────────────────────────
-  const [showInvoiceBarEdit, setShowInvoiceBarEdit] = useState(false);
+  // showInvoiceBarEdit is managed by useBillingForm (toggleInvoiceBarEdit)
   const [invoicePrefix, setInvoicePrefix] = useState(
     () => (readInvoiceBar().invoicePrefix as string) ?? "INV-",
   );
@@ -471,24 +494,13 @@ export function BillingScreen({ navigation, route }: BillingProps) {
   }, [navigation, logoDataUrl]);
 
   // ── Item helpers ──────────────────────────────────────────────────────────
-  const updateItem = useCallback((id: number, patch: Partial<BillingItem>) => {
-    setItems((prev) =>
-      prev.map((it) => {
-        if (it.id !== id) return it;
-        const updated = { ...it, ...patch };
-        updated.amount = computeAmount(
-          patch.rate ?? it.rate,
-          patch.qty ?? it.qty,
-          patch.discount ?? it.discount,
-        );
-        return updated;
-      }),
-    );
-  }, []);
+  // updateItem + removeItem come from useBillingForm (formUpdateItem, formRemoveItem)
+  const updateItem = formUpdateItem;
+  const removeItem = formRemoveItem;
   const addItem = useCallback(() => {
     hapticLight();
-    setItems((prev) => [...prev, newItem()]);
-  }, []);
+    formAddItem();
+  }, [formAddItem]);
   const addItemWithProduct = useCallback(
     (
       p: Product & {
@@ -500,29 +512,28 @@ export function BillingScreen({ navigation, route }: BillingProps) {
     ) => {
       hapticLight();
       const rate = getEffectivePrice(p);
-      const qty = "1";
-      const discount = "";
-      setItems((prev) => [
-        ...prev,
-        {
-          ...newItem(),
-          name: p.name,
-          rate: String(rate),
-          unit: p.unit ?? "pcs",
-          productId: p.id,
-          hsnCode: p.hsnCode,
-          amount: computeAmount(String(rate), qty, discount),
+      const nextId = Math.max(0, ...items.map((i) => i.id ?? 0)) + 1;
+      formDispatch({
+        type: "LOAD_DRAFT",
+        draft: {
+          items: [
+            ...items,
+            {
+              id: nextId,
+              name: p.name,
+              qty: "1",
+              rate: String(rate),
+              unit: p.unit ?? "pcs",
+              productId: p.id,
+              hsnCode: p.hsnCode,
+              discount: "",
+              amount: computeAmount(String(rate), "1", ""),
+            },
+          ],
         },
-      ]);
+      });
     },
-    [getEffectivePrice],
-  );
-  const removeItem = useCallback(
-    (id: number) =>
-      setItems((prev) =>
-        prev.length > 1 ? prev.filter((it) => it.id !== id) : prev,
-      ),
-    [],
+    [getEffectivePrice, items, formDispatch],
   );
 
   // ── Draft auto-save (2 s debounce) ───────────────────────────────────────
@@ -582,29 +593,39 @@ export function BillingScreen({ navigation, route }: BillingProps) {
         ...it,
         id: _id++,
       }));
-      setItems(restored);
-      if (d.withGst !== undefined) setWithGst(Boolean(d.withGst));
-      if (d.discountPct) setDiscountPct(String(d.discountPct));
-      if (d.discountFlat) setDiscountFlat(String(d.discountFlat));
-      if (d.paymentMode) setPaymentMode(d.paymentMode as PaymentMode);
-      if (d.paymentAmount) setPaymentAmount(String(d.paymentAmount));
-      if (d.splitEnabled) setSplitEnabled(Boolean(d.splitEnabled));
-      if (d.notes) setNotes(String(d.notes));
-      if (d.dueDate) setDueDate(String(d.dueDate));
-      if (d.customerName) {
-        setSelectedCustomer({
-          id: String(d.customerId ?? ""),
-          tenantId: "",
-          name: String(d.customerName),
-          phone: d.customerPhone ? String(d.customerPhone) : undefined,
-          balance: 0,
-          totalPurchases: 0,
-          totalPayments: 0,
-          createdAt: "",
-          updatedAt: "",
-        });
-      }
-      setDraftBanner(true);
+      loadDraft({
+        items: restored,
+        ...(d.withGst !== undefined ? { withGst: Boolean(d.withGst) } : {}),
+        ...(d.discountPct ? { discountPct: String(d.discountPct) } : {}),
+        ...(d.discountFlat ? { discountFlat: String(d.discountFlat) } : {}),
+        ...(d.paymentMode
+          ? { paymentMode: d.paymentMode as PaymentMode }
+          : {}),
+        ...(d.paymentAmount
+          ? { paymentAmount: String(d.paymentAmount) }
+          : {}),
+        ...(d.splitEnabled
+          ? { splitEnabled: Boolean(d.splitEnabled) }
+          : {}),
+        ...(d.notes ? { notes: String(d.notes) } : {}),
+        ...(d.dueDate ? { dueDate: String(d.dueDate) } : {}),
+        ...(d.customerName
+          ? {
+              selectedCustomer: {
+                id: String(d.customerId ?? ""),
+                tenantId: "",
+                name: String(d.customerName),
+                phone: d.customerPhone ? String(d.customerPhone) : undefined,
+                balance: 0,
+                totalPurchases: 0,
+                totalPayments: 0,
+                createdAt: "",
+                updatedAt: "",
+              },
+            }
+          : {}),
+        draftBanner: true,
+      });
     } catch {
       storage.delete(DRAFT_KEY);
     }
@@ -627,7 +648,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
   useEffect(() => {
     if (startAsWalkIn && !draftRestoredRef.current) {
       createWalkIn.mutate(undefined, {
-        onSuccess: (c) => setSelectedCustomer(c),
+        onSuccess: (c) => setCustomer(c),
       });
     }
   }, [startAsWalkIn]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -640,9 +661,9 @@ export function BillingScreen({ navigation, route }: BillingProps) {
       }),
     onSuccess: (data) => {
       const c = (data as { customer: Customer }).customer;
-      setSelectedCustomer(c);
+      setCustomer(c);
       setCustomerQuery("");
-      setShowNewCust(false);
+      toggleNewCustModal(false);
       setNewCustName("");
       setNewCustPhone("");
       void qc.invalidateQueries({ queryKey: ["customers"] });
@@ -783,27 +804,15 @@ export function BillingScreen({ navigation, route }: BillingProps) {
   const isSubmitting = createWalkIn.isPending || createInvoice.isPending;
 
   const discardDraft = useCallback(() => {
-    setDraftBanner(false);
-    setItems([newItem()]);
-    setSelectedCustomer(null);
-    setCustomerQuery("");
-    setWithGst(false);
-    setDiscountPct("");
-    setDiscountFlat("");
-    setPaymentMode("cash");
-    setPaymentAmount("");
-    setSplitEnabled(false);
-    setSplits([newSplit("cash")]);
-    setNotes("");
-    setDueDate("");
-    setRoundOffEnabled(false);
+    formReset();
     storage.delete(DRAFT_KEY);
-  }, []);
+  }, [formReset]);
 
   const resetForm = useCallback(() => {
     setSavedInvoice(null);
-    discardDraft();
-  }, [discardDraft]);
+    formReset();
+    storage.delete(DRAFT_KEY);
+  }, [formReset]);
 
   const handlePrintReceipt = useCallback(async () => {
     if (!savedInvoice) return;
@@ -885,16 +894,16 @@ export function BillingScreen({ navigation, route }: BillingProps) {
   }, []);
 
   const handleRoundOffChange = useCallback((v: boolean) => {
-    setRoundOffEnabled(v);
+    setRoundOff(v);
     const stored = readBizProfile();
     stored.roundOff = v;
     storage.set(BIZ_STORAGE_KEY, JSON.stringify(stored));
-  }, []);
+  }, [setRoundOff]);
 
   const handleNavigateSettings = useCallback(() => {
-    setBillingSetupExpanded(false);
+    toggleBillingSetup(false);
     (navigation as any).getParent()?.navigate("Settings");
-  }, [navigation]);
+  }, [navigation, toggleBillingSetup]);
 
   const handlePriceTierChange = useCallback(
     (idx: number) => {
@@ -906,16 +915,16 @@ export function BillingScreen({ navigation, route }: BillingProps) {
   );
 
   const handleInvoiceBarEdit = useCallback(() => {
-    setShowInvoiceBarEdit(true);
-  }, []);
+    toggleInvoiceBarEdit(true);
+  }, [toggleInvoiceBarEdit]);
 
   const handleInvoiceBarSave = useCallback(() => {
     saveInvoiceBar();
-    setShowInvoiceBarEdit(false);
+    toggleInvoiceBarEdit(false);
     if (documentTitle === "billOfSupply") {
       setWithGst(false);
     }
-  }, [documentTitle]);
+  }, [documentTitle, toggleInvoiceBarEdit, setWithGst]);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -948,7 +957,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
 
               {/* ── Billing setup (collapsible) ───────────────────────────── */}
               <TouchableOpacity
-                onPress={() => setBillingSetupExpanded((e) => !e)}
+                onPress={() => toggleBillingSetup(!billingSetupExpanded)}
                 activeOpacity={0.7}
                 className="rounded-xl border border-slate-200 bg-white overflow-hidden mb-2"
               >
@@ -1020,7 +1029,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
 
               {/* ── Invoice Style (collapsible) ───────────────────────────── */}
               <TouchableOpacity
-                onPress={() => setInvoiceStyleExpanded((e) => !e)}
+                onPress={() => toggleInvoiceStyle(!invoiceStyleExpanded)}
                 activeOpacity={0.7}
                 className="rounded-xl border border-slate-200 bg-white overflow-hidden mb-2"
               >
@@ -1136,7 +1145,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
                     <TouchableOpacity
                       onPress={() =>
                         createWalkIn.mutate(undefined, {
-                          onSuccess: (c) => setSelectedCustomer(c),
+                          onSuccess: (c) => setCustomer(c),
                         })
                       }
                       disabled={createWalkIn.isPending}
@@ -1195,7 +1204,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
                     </View>
                     <TouchableOpacity
                       onPress={() => {
-                        setSelectedCustomer(null);
+                        setCustomer(null);
                         setCustomerQuery("");
                       }}
                       className="border border-slate-300 rounded-lg px-3 py-2 ml-2"
@@ -1218,11 +1227,11 @@ export function BillingScreen({ navigation, route }: BillingProps) {
                         value={customerQuery}
                         onChangeText={(t) => {
                           setCustomerQuery(t);
-                          setShowCustSuggest(true);
+                          setCustSuggest(true);
                         }}
-                        onFocus={() => setShowCustSuggest(true)}
+                        onFocus={() => setCustSuggest(true)}
                         onBlur={() =>
-                          setTimeout(() => setShowCustSuggest(false), 150)
+                          setTimeout(() => setCustSuggest(false), 150)
                         }
                         placeholder="Search customer… (blank = Walk-in)"
                         placeholderTextColor="#94a3b8"
@@ -1238,9 +1247,9 @@ export function BillingScreen({ navigation, route }: BillingProps) {
                           <TouchableOpacity
                             key={c.id}
                             onPress={() => {
-                              setSelectedCustomer(c);
+                              setCustomer(c);
                               setCustomerQuery("");
-                              setShowCustSuggest(false);
+                              setCustSuggest(false);
                             }}
                             className="flex-row items-center px-3 py-3 border-b border-slate-100 last:border-0"
                           >
@@ -1257,8 +1266,8 @@ export function BillingScreen({ navigation, route }: BillingProps) {
                         <TouchableOpacity
                           onPress={() => {
                             setNewCustName(customerQuery.trim());
-                            setShowNewCust(true);
-                            setShowCustSuggest(false);
+                            toggleNewCustModal(true);
+                            setCustSuggest(false);
                           }}
                           className="flex-row items-center px-3 py-3 border-t border-slate-100 bg-primary/10"
                         >
@@ -1324,7 +1333,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
                   ))}
                   <View className="flex-row border-t border-slate-100">
                     <TouchableOpacity
-                      onPress={() => setProductPickerOpen(true)}
+                      onPress={() => toggleProductPicker(true)}
                       className="flex-1 flex-row items-center justify-center gap-2 px-3 py-2.5"
                     >
                       <Ionicons
@@ -1455,7 +1464,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
                         </Text>
                         <Switch
                           value={roundOffEnabled}
-                          onValueChange={setRoundOffEnabled}
+                          onValueChange={handleRoundOffChange}
                           trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
                           thumbColor={roundOffEnabled ? "#e67e22" : "#f4f4f5"}
                         />
@@ -1485,8 +1494,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
                     <Switch
                       value={splitEnabled}
                       onValueChange={(v) => {
-                        setSplitEnabled(v);
-                        if (v) setSplits([newSplit("cash")]);
+                        toggleSplit(v);
                       }}
                       trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
                       thumbColor={splitEnabled ? "#e67e22" : "#f4f4f5"}
@@ -1593,11 +1601,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
                             <TouchableOpacity
                               key={id}
                               onPress={() =>
-                                setSplits((prev) =>
-                                  prev.map((s) =>
-                                    s.id === sp.id ? { ...s, mode: id } : s,
-                                  ),
-                                )
+                                updateSplit(sp.id, { mode: id })
                               }
                               className={`w-9 h-9 items-center justify-center rounded-lg border ${sp.mode === id ? "border-primary bg-primary/10" : "border-transparent"}`}
                             >
@@ -1614,11 +1618,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
                           <TextInput
                             value={sp.amount}
                             onChangeText={(v) =>
-                              setSplits((prev) =>
-                                prev.map((s) =>
-                                  s.id === sp.id ? { ...s, amount: v } : s,
-                                ),
-                              )
+                              updateSplit(sp.id, { amount: v })
                             }
                             keyboardType="decimal-pad"
                             placeholder="Amount"
@@ -1641,21 +1641,11 @@ export function BillingScreen({ navigation, route }: BillingProps) {
                                       (a, s) => a + (parseFloat(s.amount) || 0),
                                       0,
                                     );
-                                setSplits((prev) =>
-                                  prev.map((s) =>
-                                    s.id === sp.id
-                                      ? {
-                                          ...s,
-                                          amount: String(
-                                            Math.max(
-                                              0,
-                                              Math.round(rest * 100) / 100,
-                                            ),
-                                          ),
-                                        }
-                                      : s,
+                                updateSplit(sp.id, {
+                                  amount: String(
+                                    Math.max(0, Math.round(rest * 100) / 100),
                                   ),
-                                );
+                                });
                               }}
                               className="rounded-lg ml-2 px-2 py-1.5 bg-primary/10"
                             >
@@ -1675,13 +1665,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
                             </TouchableOpacity>
                           )}
                         <TouchableOpacity
-                          onPress={() =>
-                            setSplits((prev) =>
-                              prev.length > 1
-                                ? prev.filter((s) => s.id !== sp.id)
-                                : prev,
-                            )
-                          }
+                          onPress={() => removeSplit(sp.id)}
                           className="ml-2 w-9 h-9 items-center justify-center"
                         >
                           <Text className="text-red-400 text-lg">×</Text>
@@ -1695,7 +1679,11 @@ export function BillingScreen({ navigation, route }: BillingProps) {
                           const next =
                             PAY_MODES.find((m) => !usedModes.includes(m.id))
                               ?.id ?? "cash";
-                          setSplits((prev) => [...prev, newSplit(next)]);
+                          const nextSplitId =
+                            Math.max(0, ...splits.map((s) => s.id ?? 0)) + 1;
+                          addSplit();
+                          if (next !== "cash")
+                            updateSplit(nextSplitId, { mode: next });
                         }}
                         className="flex-row items-center px-3 py-3"
                       >
@@ -1784,7 +1772,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
       {/* ── Preview Modal (with template switching) ────────────────────── */}
       <Modal visible={showPreview} transparent animationType="slide">
         <View className="flex-1 bg-black/40">
-          <Pressable className="flex-1" onPress={() => setShowPreview(false)} />
+          <Pressable className="flex-1" onPress={() => togglePreview(false)} />
           <View className="bg-white rounded-t-3xl max-h-[90%]">
             <View className="flex-row items-center justify-between px-5 py-4 border-b border-slate-200">
               <Text className="text-lg font-bold text-slate-800">
@@ -1793,7 +1781,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
                   "Classic"}
               </Text>
               <TouchableOpacity
-                onPress={() => setShowPreview(false)}
+                onPress={() => togglePreview(false)}
                 className="p-2 -m-2"
               >
                 <Ionicons name="close" size={24} color="#64748b" />
@@ -1916,7 +1904,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
       <Modal visible={showInvoiceBarEdit} transparent animationType="slide">
         <Pressable
           className="flex-1 bg-black/40"
-          onPress={() => setShowInvoiceBarEdit(false)}
+          onPress={() => toggleInvoiceBarEdit(false)}
         />
         <View className="bg-white rounded-t-3xl px-5 pt-5 pb-8 max-h-[85%]">
           <ScrollView showsVerticalScrollIndicator={false}>
@@ -2066,7 +2054,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
             </View>
             <View className="flex-row gap-3">
               <TouchableOpacity
-                onPress={() => setShowInvoiceBarEdit(false)}
+                onPress={() => toggleInvoiceBarEdit(false)}
                 className="flex-1 h-12 items-center justify-center border border-slate-200 rounded-xl"
               >
                 <Text className="text-sm font-semibold text-slate-600">
@@ -2088,12 +2076,12 @@ export function BillingScreen({ navigation, route }: BillingProps) {
       <Modal visible={productPickerOpen} transparent animationType="slide">
         <ProductPickerModal
           visible={productPickerOpen}
-          onClose={() => setProductPickerOpen(false)}
+          onClose={() => toggleProductPicker(false)}
           catalog={catalog}
           getEffectivePrice={getEffectivePrice}
           onSelect={(p) => {
             addItemWithProduct(p);
-            setProductPickerOpen(false);
+            toggleProductPicker(false);
           }}
         />
       </Modal>
@@ -2102,7 +2090,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
       <Modal visible={showNewCust} transparent animationType="slide">
         <Pressable
           className="flex-1 bg-black/40"
-          onPress={() => setShowNewCust(false)}
+          onPress={() => toggleNewCustModal(false)}
         />
         <View className="bg-white rounded-t-3xl px-5 pt-5 pb-8">
           <Text className="text-base font-bold text-slate-800 mb-4">
@@ -2133,7 +2121,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
           />
           <View className="flex-row gap-3">
             <TouchableOpacity
-              onPress={() => setShowNewCust(false)}
+              onPress={() => toggleNewCustModal(false)}
               className="flex-1 h-12 items-center justify-center border border-slate-200 rounded-xl"
             >
               <Text className="text-sm font-semibold text-slate-600">
@@ -2156,519 +2144,20 @@ export function BillingScreen({ navigation, route }: BillingProps) {
       </Modal>
 
       {/* ── Success Modal ─────────────────────────────────────────────── */}
-      <Modal visible={!!savedInvoice} transparent animationType="fade">
-        <View className="flex-1 bg-black/50 items-center justify-center px-6">
-          <View className="bg-white rounded-3xl w-full p-6">
-            <Text className="text-green-600 font-bold text-lg mb-3">
-              ✅{" "}
-              {savedInvoice?.fromOffline
-                ? "Queued for Sync!"
-                : "Invoice Created!"}
-            </Text>
-            {savedInvoice?.fromOffline && (
-              <Text className="text-amber-600 text-sm mb-2">
-                Will sync when you're back online
-              </Text>
-            )}
-            <View className="bg-slate-50 rounded-xl px-4 py-3 mb-4 space-y-2">
-              <View className="flex-row justify-between">
-                <Text className="text-sm text-slate-500">Invoice #</Text>
-                <Text className="text-sm font-bold text-slate-800">
-                  {savedInvoice?.no}
-                </Text>
-              </View>
-              {selectedCustomer && (
-                <View className="flex-row justify-between">
-                  <Text className="text-sm text-slate-500">Customer</Text>
-                  <Text className="text-sm font-medium text-slate-800">
-                    {selectedCustomer.name}
-                  </Text>
-                </View>
-              )}
-              {(computedDueDate || dueDate) && (
-                <View className="flex-row justify-between">
-                  <Text className="text-sm text-slate-500">Due</Text>
-                  <Text className="text-sm font-medium text-slate-800">
-                    {new Date(computedDueDate || dueDate).toLocaleDateString(
-                      "en-IN",
-                      {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      },
-                    )}
-                  </Text>
-                </View>
-              )}
-              <View className="flex-row justify-between pt-2 border-t border-slate-200">
-                <Text className="text-sm text-slate-500">Amount</Text>
-                <Text className="text-lg font-black text-primary">
-                  ₹{inr(savedInvoice?.total ?? 0)}
-                </Text>
-              </View>
-            </View>
-            {selectedCustomer?.phone && (
-              <TouchableOpacity
-                onPress={() => {
-                  if (!savedInvoice) return;
-                  const phone = selectedCustomer.phone!.replace(/\D/g, "");
-                  const effDue = computedDueDate || dueDate;
-                  const msg = encodeURIComponent(
-                    `Invoice #${savedInvoice.no}\nAmount: ₹${inr(savedInvoice.total)}\nFrom: My Shop${effDue ? `\nDue: ${new Date(effDue).toLocaleDateString("en-IN")}` : ""}`,
-                  );
-                  void Linking.openURL(`https://wa.me/91${phone}?text=${msg}`);
-                }}
-                className="flex-row items-center justify-center gap-2 bg-green-500 rounded-2xl h-12 mb-3"
-              >
-                <Text className="text-white text-2xl">💬</Text>
-                <Text className="text-white font-semibold text-sm">
-                  Share on WhatsApp
-                </Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              onPress={() => void handlePrintReceipt()}
-              className="flex-row items-center justify-center gap-2 bg-slate-700 rounded-2xl h-12 mb-3"
-            >
-              <Ionicons name="print-outline" size={20} color="#fff" />
-              <Text className="text-white font-semibold text-sm">
-                Print Receipt
-              </Text>
-            </TouchableOpacity>
-            <View className="flex-row gap-3">
-              <TouchableOpacity
-                onPress={() => {
-                  setSavedInvoice(null);
-                  navigation.navigate("Invoices" as never);
-                }}
-                className="flex-1 h-12 items-center justify-center border border-slate-200 rounded-xl"
-              >
-                <Text className="text-sm font-semibold text-slate-700">
-                  View Invoice
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={resetForm}
-                className="flex-1 h-12 items-center justify-center bg-primary rounded-xl"
-              >
-                <Text className="text-white font-bold text-sm">
-                  New Invoice
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <SuccessModal
+        invoice={savedInvoice}
+        customer={selectedCustomer}
+        computedDueDate={computedDueDate}
+        dueDate={dueDate}
+        inr={inr}
+        onPrint={() => void handlePrintReceipt()}
+        onViewInvoice={() => {
+          setSavedInvoice(null);
+          navigation.navigate("Invoices" as never);
+        }}
+        onNewInvoice={resetForm}
+      />
     </SafeAreaView>
-  );
-}
-
-// ── Product Picker Modal (Browse products from store) ───────────────────────────
-
-function ProductPickerModal({
-  visible,
-  onClose,
-  catalog,
-  getEffectivePrice,
-  onSelect,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  catalog: Product[];
-  getEffectivePrice: (
-    p: Product & {
-      wholesalePrice?: number | string | null;
-      priceTier2?: number | string | null;
-      priceTier3?: number | string | null;
-    },
-  ) => number;
-  onSelect: (p: Product) => void;
-}) {
-  const [search, setSearch] = useState("");
-  const filtered = useMemo(() => {
-    if (!search.trim()) return catalog;
-    const fuzzy = fuzzyFilter(catalog, search);
-    if (fuzzy.length > 0) return fuzzy;
-    const q = search.trim().toLowerCase();
-    return catalog.filter((p) => p.name.toLowerCase().includes(q));
-  }, [catalog, search]);
-
-  const keyExtractor = useCallback((p: Product) => p.id, []);
-
-  const listHeader = useMemo(
-    () =>
-      search.trim() ? null : (
-        <Text className="px-4 py-2 text-[11px] text-slate-500">
-          {catalog.length} item{catalog.length !== 1 ? "s" : ""} — tap to
-          add, or type above to search
-        </Text>
-      ),
-    [catalog.length, search],
-  );
-
-  const renderCatalogItem = useCallback(
-    ({ item: p }: { item: Product }) => {
-      const outOfStock = Number(p.stock) <= 0;
-      const lowStock = !outOfStock && Number(p.stock) < 5;
-      return (
-        <TouchableOpacity
-          onPress={() => onSelect(p)}
-          className="flex-row items-center justify-between px-4 py-3 border-b border-slate-50"
-        >
-          <View className="flex-1 min-w-0">
-            <Text
-              className="text-sm font-medium text-slate-800"
-              numberOfLines={1}
-            >
-              {p.name}
-            </Text>
-            <Text
-              className={`text-[11px] ${outOfStock ? "text-red-500" : lowStock ? "text-orange-500" : "text-slate-400"}`}
-            >
-              {p.unit} · {outOfStock ? "Out of stock" : `Stock: ${p.stock}`}
-            </Text>
-          </View>
-          <View className="flex-row items-center gap-2">
-            <Text className="text-sm font-bold text-primary">
-              ₹{getEffectivePrice(p).toLocaleString("en-IN")}
-            </Text>
-            <Ionicons name="add-circle" size={22} color="#e67e22" />
-          </View>
-        </TouchableOpacity>
-      );
-    },
-    [getEffectivePrice, onSelect],
-  );
-  if (!visible) return null;
-  return (
-    <Pressable className="flex-1 bg-black/40" onPress={onClose}>
-      <Pressable
-        onPress={(e) => e.stopPropagation()}
-        className="absolute bottom-0 left-0 right-0 max-h-[85%] bg-white rounded-t-2xl"
-      >
-        <View className="flex-row items-center justify-between px-4 py-3 border-b border-slate-200">
-          <Text className="text-base font-bold text-slate-800">
-            Browse / Add items
-          </Text>
-          <TouchableOpacity onPress={onClose} className="p-2 -m-2">
-            <Ionicons name="close" size={24} color="#64748b" />
-          </TouchableOpacity>
-        </View>
-        <View className="px-4 py-2 border-b border-slate-100">
-          <View className="flex-row items-center bg-slate-100 rounded-lg px-3">
-            <Ionicons name="search" size={18} color="#94a3b8" />
-            <TextInput
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Type to search all items…"
-              placeholderTextColor="#94a3b8"
-              className="flex-1 py-2.5 px-2 text-sm text-slate-800"
-              autoFocus
-            />
-          </View>
-        </View>
-        <FlatList
-          data={filtered}
-          keyExtractor={keyExtractor}
-          keyboardShouldPersistTaps="always"
-          className="max-h-80"
-          ListHeaderComponent={listHeader}
-          renderItem={renderCatalogItem}
-          initialNumToRender={12}
-          maxToRenderPerBatch={12}
-          windowSize={7}
-          removeClippedSubviews
-          ListEmptyComponent={
-            <View className="py-8 items-center">
-              <Text className="text-slate-400 text-sm">
-                {search ? "No products match" : "No products in catalog"}
-              </Text>
-            </View>
-          }
-        />
-      </Pressable>
-    </Pressable>
-  );
-}
-
-// ── Mobile Item Row (compact inbox-style) ──────────────────────────────────────
-
-function MobileItemRow({
-  item,
-  catalog,
-  isFirst,
-  getEffectivePrice,
-  onUpdate,
-  onRemove,
-}: {
-  item: BillingItem;
-  catalog: Product[];
-  isFirst: boolean;
-  getEffectivePrice: (
-    p: Product & {
-      wholesalePrice?: number | string | null;
-      priceTier2?: number | string | null;
-      priceTier3?: number | string | null;
-    },
-  ) => number;
-  onUpdate: (patch: Partial<BillingItem>) => void;
-  onRemove: () => void;
-}) {
-  const [focused, setFocused] = useState(false);
-  const [expanded, setExpanded] = useState(false);
-  const [debouncedQ, setDebouncedQ] = useState("");
-  const [scanOpen, setScanOpen] = useState(false);
-  const hasProduct = item.name.trim().length > 0;
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedQ(item.name.trim()), 80);
-    return () => clearTimeout(t);
-  }, [item.name]);
-
-  const { data: searchData } = useQuery({
-    queryKey: ["product-search", debouncedQ],
-    queryFn: () => productApi.search(debouncedQ),
-    enabled: debouncedQ.length >= 1,
-    staleTime: 30_000,
-  });
-
-  const instantHits = useMemo(
-    () => fuzzyFilter(catalog, item.name),
-    [catalog, item.name],
-  );
-  const suggestions: Product[] =
-    item.name.trim().length === 0
-      ? []
-      : searchData?.products?.length
-        ? searchData.products
-        : instantHits;
-
-  const handleSelect = (
-    p: Product & {
-      wholesalePrice?: number | string | null;
-      priceTier2?: number | string | null;
-      priceTier3?: number | string | null;
-      hsnCode?: string;
-    },
-  ) => {
-    onUpdate({
-      name: p.name,
-      rate: String(getEffectivePrice(p)),
-      unit: p.unit ?? "pcs",
-      productId: p.id,
-      hsnCode: p.hsnCode,
-    });
-    setFocused(false);
-  };
-
-  const handleBarcodeScan = useCallback(
-    async (barcode: string) => {
-      try {
-        const { product } = await productApi.byBarcode(barcode);
-        handleSelect(product);
-      } catch {
-        showAlert(
-          "Not found",
-          "No product with this barcode in your catalog.",
-        );
-      }
-    },
-    [handleSelect],
-  );
-
-  const keyExtractorSuggestion = useCallback((p: Product) => p.id, []);
-
-  const renderSuggestion = useCallback(
-    ({ item: p }: { item: Product }) => {
-      const outOfStock = Number(p.stock) <= 0;
-      const lowStock = !outOfStock && Number(p.stock) < 5;
-      return (
-        <TouchableOpacity
-          onPress={() => handleSelect(p)}
-          className="flex-row items-center justify-between px-3 py-2 border-b border-slate-100"
-        >
-          <View className="flex-1 min-w-0">
-            <Text className="text-sm font-medium text-slate-800" numberOfLines={1}>
-              {p.name}
-            </Text>
-            <Text
-              className={`text-[11px] ${outOfStock ? "text-red-500" : lowStock ? "text-orange-500" : "text-slate-400"}`}
-            >
-              {p.unit} · {outOfStock ? "Out" : `Stock: ${p.stock}`}
-            </Text>
-          </View>
-          <Text className="text-sm font-bold text-primary shrink-0 ml-2">
-            ₹{getEffectivePrice(p).toLocaleString("en-IN")}
-          </Text>
-        </TouchableOpacity>
-      );
-    },
-    [getEffectivePrice, handleSelect],
-  );
-
-  return (
-    <View
-      className={`px-3 py-1.5 min-w-0 ${isFirst ? "" : "border-t border-slate-100"}`}
-    >
-      {!hasProduct ? (
-        /* New row: compact search bar */
-        <View className="relative min-w-0">
-          <View className="flex-row items-center border border-slate-200 rounded-lg bg-white overflow-hidden min-w-0">
-            <TextInput
-              value={item.name}
-              onChangeText={(t) => onUpdate({ name: t })}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setTimeout(() => setFocused(false), 200)}
-              placeholder="Type or scan product…"
-              placeholderTextColor="#94a3b8"
-              className="flex-1 min-w-0 px-3 h-9 text-sm text-slate-800"
-              autoFocus={isFirst && item.name === ""}
-            />
-            <TouchableOpacity
-              onPress={() => setScanOpen(true)}
-              className="w-9 h-9 items-center justify-center border-l border-slate-200"
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Ionicons name="barcode-outline" size={20} color="#e67e22" />
-            </TouchableOpacity>
-          </View>
-          <BarcodeScanner
-            visible={scanOpen}
-            onClose={() => setScanOpen(false)}
-            onScan={handleBarcodeScan}
-            hint="Point at product barcode"
-          />
-          {focused && suggestions.length > 0 && (
-            <View
-              className="absolute top-10 left-0 right-0 z-50 bg-white border border-slate-200 rounded-lg shadow-lg max-h-44 overflow-hidden min-w-0"
-              style={{ elevation: 8 }}
-            >
-              <FlatList
-                data={suggestions.slice(0, 6)}
-                keyExtractor={keyExtractorSuggestion}
-                keyboardShouldPersistTaps="always"
-                renderItem={renderSuggestion}
-                initialNumToRender={6}
-                maxToRenderPerBatch={6}
-                windowSize={3}
-              />
-            </View>
-          )}
-        </View>
-      ) : expanded ? (
-        /* Expanded: full edit */
-        <>
-          <View className="flex-row items-center justify-between mb-2">
-            <Text
-              className="text-sm font-semibold text-slate-800 flex-1"
-              numberOfLines={1}
-            >
-              {item.name}
-            </Text>
-            <TouchableOpacity
-              onPress={() => setExpanded(false)}
-              className="p-1"
-            >
-              <Ionicons name="chevron-up" size={18} color="#64748b" />
-            </TouchableOpacity>
-          </View>
-          {/* 2x2 grid so Qty/Unit/Rate/Disc have room for full text */}
-          <View className="gap-2 mb-2">
-            <View className="flex-row gap-2">
-              <View className="flex-1 min-w-0">
-                <Text className="text-[10px] text-slate-500 mb-0.5">Qty</Text>
-                <TextInput
-                  value={item.qty}
-                  onChangeText={(v) => onUpdate({ qty: v })}
-                  keyboardType="decimal-pad"
-                  className="border border-slate-200 rounded-lg px-2 h-9 text-sm"
-                />
-              </View>
-              <View className="flex-1 min-w-0">
-                <Text className="text-[10px] text-slate-500 mb-0.5">Unit</Text>
-                <TextInput
-                  value={item.unit}
-                  onChangeText={(v) => onUpdate({ unit: v })}
-                  placeholder="pcs"
-                  placeholderTextColor="#94a3b8"
-                  className="border border-slate-200 rounded-lg px-2 h-9 text-sm"
-                />
-              </View>
-            </View>
-            <View className="flex-row gap-2">
-              <View className="flex-1 min-w-0">
-                <Text className="text-[10px] text-slate-500 mb-0.5">
-                  Rate ₹
-                </Text>
-                <TextInput
-                  value={item.rate}
-                  onChangeText={(v) => onUpdate({ rate: v })}
-                  keyboardType="decimal-pad"
-                  placeholder="0"
-                  placeholderTextColor="#94a3b8"
-                  className="border border-slate-200 rounded-lg px-2 h-9 text-sm"
-                />
-              </View>
-              <View className="flex-1 min-w-0">
-                <Text className="text-[10px] text-slate-500 mb-0.5">
-                  Disc %
-                </Text>
-                <TextInput
-                  value={item.discount}
-                  onChangeText={(v) => onUpdate({ discount: v })}
-                  keyboardType="decimal-pad"
-                  placeholder="0"
-                  placeholderTextColor="#94a3b8"
-                  className="border border-slate-200 rounded-lg px-2 h-9 text-sm"
-                />
-              </View>
-            </View>
-          </View>
-          <View className="flex-row items-center justify-between">
-            <TouchableOpacity onPress={onRemove} className="py-1">
-              <Text className="text-red-500 text-xs font-medium">Remove</Text>
-            </TouchableOpacity>
-            <Text className="font-bold text-primary">
-              ₹
-              {item.amount.toLocaleString("en-IN", {
-                minimumFractionDigits: 2,
-              })}
-            </Text>
-          </View>
-        </>
-      ) : (
-        /* Compact: single row — name | qty×rate | amount | actions */
-        <TouchableOpacity
-          onPress={() => setExpanded(true)}
-          activeOpacity={0.7}
-          className="flex-row items-center gap-2 py-1"
-        >
-          <View className="flex-1 min-w-0">
-            <Text
-              className="text-sm font-medium text-slate-800"
-              numberOfLines={1}
-            >
-              {item.name}
-            </Text>
-            <Text className="text-[11px] text-slate-500">
-              {item.qty} {item.unit} × ₹
-              {parseFloat(item.rate || "0").toLocaleString("en-IN")}
-              {item.discount ? ` (−${item.discount}%)` : ""}
-            </Text>
-          </View>
-          <Text className="text-sm font-bold text-primary shrink-0 w-16 text-right">
-            ₹{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-          </Text>
-          <TouchableOpacity
-            onPress={onRemove}
-            className="w-8 h-8 items-center justify-center rounded-lg bg-red-50"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="trash-outline" size={16} color="#dc2626" />
-          </TouchableOpacity>
-        </TouchableOpacity>
-      )}
-    </View>
   );
 }
 

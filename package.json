@@ -31,7 +31,18 @@
     "mobile": "pnpm --filter @execora/mobile start",
     "mobile:android": "pnpm --filter @execora/mobile android",
     "mobile:build:android": "pnpm --filter @execora/mobile build:android",
-    "mobile:build:android:local": "pnpm --filter @execora/mobile build:android:local"
+    "mobile:build:android:local": "pnpm --filter @execora/mobile build:android:local",
+    "docker:up": "node scripts/docker/compose.mjs up -d --build",
+    "docker:down": "node scripts/docker/compose.mjs down",
+    "docker:ps": "node scripts/docker/compose.mjs ps",
+    "docker:logs": "node scripts/docker/compose.mjs logs -f",
+    "docker:logs:app": "node scripts/docker/compose.mjs logs -f app",
+    "docker:logs:worker": "node scripts/docker/compose.mjs logs -f worker",
+    "docker:restart": "node scripts/docker/compose.mjs restart app worker",
+    "docker:db:push": "node scripts/docker/compose.mjs exec app pnpm db:push",
+    "docker:seed": "node scripts/docker/compose.mjs exec app pnpm seed",
+    "docker:prod:up": "node scripts/docker/compose.mjs -f docker-compose.yml -f docker-compose.prod.yml up -d --build",
+    "docker:prod:down": "node scripts/docker/compose.mjs -f docker-compose.yml -f docker-compose.prod.yml down"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -2,7 +2,9 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "commonjs",
-    "lib": ["ES2022"],
+    "lib": [
+      "ES2022"
+    ],
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": true,
@@ -14,18 +16,25 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "types": ["node"],
-
-    /* Path aliases — use @/ as the src/ root shorthand.
-     * Example: import { logger } from '@/infrastructure/logger'
-     * Dev (tsx):  resolved natively by esbuild
-     * Prod (tsc): npm run build runs "tsc && tsc-alias" to rewrite dist/ paths
-     * Future monorepo: extend with @execora/infrastructure, @execora/modules etc. */
+    "types": [
+      "node"
+    ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": [
+        "src/*"
+      ]
     }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "src/**/*.test.ts", "src/**/*.spec.ts", "src/__tests__"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/**/*.test.ts",
+    "src/**/*.spec.ts",
+    "src/__tests__"
+  ],
+  "extends": "expo/tsconfig.base"
 }

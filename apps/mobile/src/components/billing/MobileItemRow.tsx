@@ -100,6 +100,36 @@ export function MobileItemRow({
     [handleSelect],
   );
 
+  const keyExtractorSuggestion = useCallback((p: Product) => p.id, []);
+
+  const renderSuggestion = useCallback(
+    ({ item: p }: { item: Product }) => {
+      const outOfStock = Number(p.stock) <= 0;
+      const lowStock = !outOfStock && Number(p.stock) < 5;
+      return (
+        <TouchableOpacity
+          onPress={() => handleSelect(p)}
+          className="flex-row items-center justify-between px-3 py-2 border-b border-slate-100"
+        >
+          <View className="flex-1 min-w-0">
+            <Text className="text-sm font-medium text-slate-800" numberOfLines={1}>
+              {p.name}
+            </Text>
+            <Text
+              className={`text-[11px] ${outOfStock ? "text-red-500" : lowStock ? "text-orange-500" : "text-slate-400"}`}
+            >
+              {p.unit} · {outOfStock ? "Out" : `Stock: ${p.stock}`}
+            </Text>
+          </View>
+          <Text className="text-sm font-bold text-primary shrink-0 ml-2">
+            ₹{getEffectivePrice(p).toLocaleString("en-IN")}
+          </Text>
+        </TouchableOpacity>
+      );
+    },
+    [getEffectivePrice, handleSelect],
+  );
+
   return (
     <View
       className={`px-3 py-1.5 min-w-0 ${isFirst ? "" : "border-t border-slate-100"}`}
@@ -139,41 +169,12 @@ export function MobileItemRow({
             >
               <FlatList
                 data={suggestions.slice(0, 6)}
-                keyExtractor={(p) => p.id}
+                keyExtractor={keyExtractorSuggestion}
                 keyboardShouldPersistTaps="always"
-                renderItem={({ item: p }) => {
-                  const outOfStock = Number(p.stock) <= 0;
-                  const lowStock = !outOfStock && Number(p.stock) < 5;
-                  return (
-                    <TouchableOpacity
-                      onPress={() => handleSelect(p)}
-                      className="flex-row items-center justify-between px-3 py-2 border-b border-slate-100"
-                    >
-                      <View className="flex-1 min-w-0">
-                        <Text
-                          className="text-sm font-medium text-slate-800"
-                          numberOfLines={1}
-                        >
-                          {p.name}
-                        </Text>
-                        <Text
-                          className={`text-[11px] ${
-                            outOfStock
-                              ? "text-red-500"
-                              : lowStock
-                                ? "text-orange-500"
-                                : "text-slate-400"
-                          }`}
-                        >
-                          {p.unit} · {outOfStock ? "Out" : `Stock: ${p.stock}`}
-                        </Text>
-                      </View>
-                      <Text className="text-sm font-bold text-primary shrink-0 ml-2">
-                        ₹{getEffectivePrice(p).toLocaleString("en-IN")}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                }}
+                renderItem={renderSuggestion}
+                initialNumToRender={6}
+                maxToRenderPerBatch={6}
+                windowSize={3}
               />
             </View>
           )}

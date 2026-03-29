@@ -67,7 +67,7 @@ IDE diagnostics are often stale — verify real errors with `npx tsc --noEmit`.
 ## Architecture Modes
 - **Mode 1 Voice**: STT → LLM extracts JSON → switch(intent) → handler. Deterministic.
 - **Mode 2 Classic**: React form → REST API → service → WebSocket broadcast. No AI.
-- **Mode 3 Agent**: PLANNED. LLM chains tool calls. See `docs/PRODUCT_REQUIREMENTS.md` Section 6.
+- **Mode 3 Agent**: PLANNED. LLM chains tool calls. See `docs/README.md` Section 6.
 
 ## Before building any feature
-Read `docs/PRODUCT_REQUIREMENTS.md` Section 13 (Built vs Pending) first.
+Read `docs/README.md` Section 13 (Built vs Pending) first.
