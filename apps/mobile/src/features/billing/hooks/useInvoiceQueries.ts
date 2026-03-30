@@ -54,7 +54,7 @@ export function useInvoicesByCustomer(
 export function useCancelInvoice(id: string, onSuccess?: () => void) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => invoiceExtApi.cancel(id),
+    mutationFn: () => invoiceExtApi.cancelInvoice(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEYS.invoices.all() });
       qc.invalidateQueries({ queryKey: QUERY_KEYS.invoices.detail(id) });
@@ -69,7 +69,7 @@ export function useUpdateInvoice(id: string, onSuccess?: () => void) {
     mutationFn: (payload: {
       items: Array<{ productName: string; quantity: number }>;
       notes?: string;
-    }) => invoiceExtApi.update(id, payload),
+    }) => invoiceExtApi.updateInvoice(id, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEYS.invoices.detail(id) });
       qc.invalidateQueries({ queryKey: QUERY_KEYS.invoices.all() });
@@ -80,7 +80,7 @@ export function useUpdateInvoice(id: string, onSuccess?: () => void) {
 
 export function useSendInvoiceEmail(id: string, onSuccess?: () => void) {
   return useMutation({
-    mutationFn: () => invoiceExtApi.sendEmail(id),
+    mutationFn: () => invoiceExtApi.sendInvoiceEmail(id),
     onSuccess: () => onSuccess?.(),
   });
 }

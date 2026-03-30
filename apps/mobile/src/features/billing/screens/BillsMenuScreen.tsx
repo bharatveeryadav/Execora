@@ -105,7 +105,7 @@ export function BillsMenuScreen({ navigation }: Props) {
         .getParent()
         ?.navigate("MoreTab", {
           screen: "Billing",
-          params: { screen: "BillingForm" },
+          params: { screen: "InvoiceForm" },
         });
       return;
     }

@@ -1,2 +1,3 @@
-// Backward-compat re-export — hook moved to features/billing
-export * from '../features/billing/hooks/useBillingForm';
+// DEPRECATED: Use @/features/billing/hooks/useInvoiceForm instead
+// This is a backward-compatibility re-export only
+export { useInvoiceForm as useBillingForm } from '../features/billing/hooks/useInvoiceForm';

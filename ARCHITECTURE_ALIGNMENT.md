@@ -33,6 +33,7 @@ features/
 ```
 
 **Feature Structure (per feature):**
+
 ```
 <feature>/
 ├── screens/
@@ -75,6 +76,7 @@ features/
 ### Web App (`apps/web/src/pages/`) ⚠️ **NOT ALIGNED** — Needs Migration
 
 **Current (Flat Pages):**
+
 ```
 pages/
 ├── Index.tsx
@@ -103,12 +105,14 @@ pages/
 ```
 
 **Problem**:
+
 - No domain grouping → Hard to locate related features
 - Scales poorly as features grow
 - Mobile and web code can't share folder structure conventions
 - New developer onboarding: "where does X belong?"
 
 **Proposed Target (Feature-Based):**
+
 ```
 features/
 ├── sales/
@@ -164,6 +168,7 @@ features/
 ### Backend (`apps/api/src/api/routes/`) ✅ **ALIGNED**
 
 **Domain-separated routes (already implemented):**
+
 ```
 routes/
 ├── admin.routes.ts              (users, roles, permissions)
@@ -189,6 +194,7 @@ routes/
 ```
 
 **Business Logic Separation:**
+
 ```
 packages/modules/src/modules/
 ├── customer/                    (customer service, reminders)
@@ -218,14 +224,14 @@ packages/
 
 ## 2. COMPARISON: PROPOSED vs. ACTUAL
 
-| Layer | Proposed | Actual | Status | Gap |
-|-------|----------|--------|--------|-----|
-| **Mobile features** | 9+ domain-based | 9 domain-based ✅ | ✅ Match | None |
-| **Mobile feature structure** | feature/{components,hooks,services} | feature/{screens,components,hooks,api} | ✅ Close match | Naming: `api` vs `services` (minor) |
-| **Web features** | 9+ domain-based (proposed) | 33 flat pages | ❌ Mismatch | **Web needs refactor** |
-| **Web feature structure** | feature/{components,hooks,services,pages} | (none yet) | ❌ Missing | Feature-based structure doesn't exist |
-| **Backend routes** | Domain-separated modules | 22 domain routes ✅ | ✅ Match | None |
-| **Backend business logic** | modules/ | packages/modules/ ✅ | ✅ Match | None |
+| Layer                        | Proposed                                  | Actual                                 | Status         | Gap                                   |
+| ---------------------------- | ----------------------------------------- | -------------------------------------- | -------------- | ------------------------------------- |
+| **Mobile features**          | 9+ domain-based                           | 9 domain-based ✅                      | ✅ Match       | None                                  |
+| **Mobile feature structure** | feature/{components,hooks,services}       | feature/{screens,components,hooks,api} | ✅ Close match | Naming: `api` vs `services` (minor)   |
+| **Web features**             | 9+ domain-based (proposed)                | 33 flat pages                          | ❌ Mismatch    | **Web needs refactor**                |
+| **Web feature structure**    | feature/{components,hooks,services,pages} | (none yet)                             | ❌ Missing     | Feature-based structure doesn't exist |
+| **Backend routes**           | Domain-separated modules                  | 22 domain routes ✅                    | ✅ Match       | None                                  |
+| **Backend business logic**   | modules/                                  | packages/modules/ ✅                   | ✅ Match       | None                                  |
 
 ---
 
@@ -262,12 +268,14 @@ Actual:
 ### ⚠️ Web App is NOT Aligned — Needs Feature-Based Migration
 
 **Current Problem:**
+
 - 33 individual page files in flat `pages/` directory
 - No domain grouping → cognitive load ↑
 - Can't share patterns with mobile team
 - Hard to maintain as features grow
 
 **Migration Path:**
+
 ```
 Phase 1: Create feature structure (don't delete old pages yet)
   apps/web/src/features/
@@ -295,6 +303,7 @@ Phase 4: Update route mapping
 Routes are separated by domain → mirrors what mobile/web features map to.
 
 **Alignment Map (Mobile Feature ↔ Backend Route):**
+
 ```
 Mobile                Backend
 ──────────────────────────────────
@@ -331,6 +340,7 @@ compliance/       ↔   gst.routes.ts
 ### Current (Working Well)
 
 **Mobile:**
+
 ```ts
 // Feature-scoped API client
 packages/modules/src/modules/invoice/
@@ -347,12 +357,14 @@ apps/mobile/src/features/billing/
 ```
 
 **Backend:**
+
 ```ts
 routes/invoice.routes.ts              (REST endpoints)
 modules/invoice/                       (business logic)
 ```
 
-**Key Insight:** 
+**Key Insight:**
+
 - `api/` (mobile) = `routes/` (backend) = REST endpoints
 - `hooks/` (mobile) = `services/` (packages/modules) = business logic
 - `components/` (mobile) = `components/` (web) = UI
@@ -374,6 +386,7 @@ features/billing/
 ```
 
 **Why NOT rename mobile's `api/` to `services/`?**
+
 - Mobile team is happy with `api/` (explicit about HTTP)
 - Renaming adds churn
 - Terminology difference is acceptable (both mean "where I talk to the backend")
@@ -385,6 +398,7 @@ features/billing/
 ### Accounting Feature (Your Example)
 
 **What exists (Mobile):**
+
 ```
 features/accounting/
 ├── screens/
@@ -420,6 +434,7 @@ features/accounting/
 ```
 
 **What should exist (aligned with proposal):**
+
 ```
 features/finance/accounting/
 ├── screens/
@@ -452,6 +467,7 @@ features/finance/accounting/
 ```
 
 **What terminology means what:**
+
 - **Cashbook** = Account ledger (list of txns per account over time)
 - **Daybook** = Daily journal (all txns in order by date)
 - **BalanceSheet** = Point-in-time account snapshot (Assets = Liab + Equity)
@@ -463,21 +479,25 @@ features/finance/accounting/
 ## 6. IMPLEMENTATION PRIORITIES
 
 ### Phase 1: Validate Mobile (Current Sprint)
+
 - [ ] Verify all 9 features follow `{screens, components, hooks, api, types}` pattern
 - [ ] Add missing hooks (e.g., `useAccountingQueries`)
 - [ ] Document feature structure for new developers
 - [ ] Add test files to all critical features
 
 ### Phase 2: Implement Missing Mobile APIs (Next 2 Sprints)
+
 - [ ] Implement `useReminders` hook (CustomerDetailScreen TODO)
 - [ ] Wire communication preferences API
 - [ ] Complete DocumentSettingsScreen API integration
 - [ ] Build RecurringScreen business flow
 
 ### Phase 3: Refactor Web to Features (2-3 Sprints)
+
 **Target**: Migrate web from flat `pages/` to feature-based structure
 
 **Steps:**
+
 1. Create `apps/web/src/features/` directory
 2. Mirror mobile's 9 features:
    - `sales/invoice/`, `sales/pos/` (from `Invoices.tsx`, `Billing*.tsx`)
@@ -494,6 +514,7 @@ features/finance/accounting/
 4. Migrate routes to feature-based imports
 
 ### Phase 4: Align Shared Code (Parallel)
+
 - [ ] Move domain-agnostic utils to `packages/shared/`
 - [ ] Share API clients across mobile/web (both import from `packages/types`)
 - [ ] Create `packages/api-client` for common fetch logic
@@ -502,16 +523,16 @@ features/finance/accounting/
 
 ## 7. GAPS & RECOMMENDATIONS
 
-| Gap | Severity | Current | Recommendation |
-|-----|----------|---------|-----------------|
-| Web not feature-based | 🔴 HIGH | pages/ (flat) | Migrate to features/ (phase 3) |
-| Missing mobile hooks | 🟡 MEDIUM | useInvoiceQueries only | Add useAccountingQueries, useCustomerQueries, etc. |
-| No shared API types | 🟡 MEDIUM | Each app duplicates | Move Invoice, Customer, Product to packages/types |
-| Mobile oversized screens | 🟡 MEDIUM | 2200+ line screens | Refactor: Dashboard→subcomponents, BillingScreen→steps |
-| Minimal test coverage | 🔴 HIGH | 2 test files total | Add tests to critical feature hooks |
-| Stale documentation | 🟡 MEDIUM | docs/ out of sync | Update docs/mobile/MASTER.md with feature structure |
-| Settings APIs incomplete | 🟡 MEDIUM | MMKV-only | Wire DocumentSettings, Recurring to backend |
-| No OCR module (web) | 🟡 MEDIUM | ImportScreen (mobile) | Build OCR feature for expenses (web) |
+| Gap                      | Severity  | Current                | Recommendation                                         |
+| ------------------------ | --------- | ---------------------- | ------------------------------------------------------ |
+| Web not feature-based    | 🔴 HIGH   | pages/ (flat)          | Migrate to features/ (phase 3)                         |
+| Missing mobile hooks     | 🟡 MEDIUM | useInvoiceQueries only | Add useAccountingQueries, useCustomerQueries, etc.     |
+| No shared API types      | 🟡 MEDIUM | Each app duplicates    | Move Invoice, Customer, Product to packages/types      |
+| Mobile oversized screens | 🟡 MEDIUM | 2200+ line screens     | Refactor: Dashboard→subcomponents, BillingScreen→steps |
+| Minimal test coverage    | 🔴 HIGH   | 2 test files total     | Add tests to critical feature hooks                    |
+| Stale documentation      | 🟡 MEDIUM | docs/ out of sync      | Update docs/mobile/MASTER.md with feature structure    |
+| Settings APIs incomplete | 🟡 MEDIUM | MMKV-only              | Wire DocumentSettings, Recurring to backend            |
+| No OCR module (web)      | 🟡 MEDIUM | ImportScreen (mobile)  | Build OCR feature for expenses (web)                   |
 
 ---
 
@@ -545,29 +566,32 @@ packages/
 
 ## 9. FINAL VERDICT
 
-| Component | Alignment | Grade | Action |
-|-----------|-----------|-------|--------|
-| **Mobile Architecture** | Feature-based ✅ | A+ | Maintain + enhance hooks |
-| **Web Architecture** | Page-based ❌ | D | Refactor to features (priority) |
-| **Backend Architecture** | Domain routes ✅ | A | Maintain |
-| **Shared Packages** | Partial 🟡 | B | Consolidate API clients |
-| **Overall System** | 70% aligned | C+ | Execute Phase 2 & 3 to reach A |
+| Component                | Alignment        | Grade | Action                          |
+| ------------------------ | ---------------- | ----- | ------------------------------- |
+| **Mobile Architecture**  | Feature-based ✅ | A+    | Maintain + enhance hooks        |
+| **Web Architecture**     | Page-based ❌    | D     | Refactor to features (priority) |
+| **Backend Architecture** | Domain routes ✅ | A     | Maintain                        |
+| **Shared Packages**      | Partial 🟡       | B     | Consolidate API clients         |
+| **Overall System**       | 70% aligned      | C+    | Execute Phase 2 & 3 to reach A  |
 
 ---
 
 ## 10. NEXT IMMEDIATE ACTIONS
 
 **For Mobile (This Week):**
+
 1. Implement missing hooks in accounting feature
 2. Wire customer reminders API
 3. Add test infrastructure (`jest` + `@testing-library/react-native`)
 
 **For Web (Next 2 Weeks):**
+
 1. Plan feature-based migration (create structure)
 2. Start with `features/sales/invoice/`
 3. Migrate 5 pages → feature components
 
 **For Shared (Parallel):**
+
 1. Move duplicate types to `packages/types`
 2. Consider `packages/api-client` for shared REST wrappers
 

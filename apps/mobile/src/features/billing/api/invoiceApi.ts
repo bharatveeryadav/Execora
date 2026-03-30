@@ -1,12 +1,12 @@
 import { apiFetch, invoiceApi } from "@execora/shared";
 
 export const invoiceExtApi = {
-  cancel: (id: string) =>
+  cancelInvoice: (id: string) =>
     apiFetch<{ invoice: unknown }>(`/api/v1/invoices/${id}/cancel`, {
       method: "POST",
     }),
 
-  update: (
+  updateInvoice: (
     id: string,
     data: {
       items?: Array<{ productName: string; quantity: number }>;
@@ -18,7 +18,7 @@ export const invoiceExtApi = {
       body: JSON.stringify(data),
     }),
 
-  sendEmail: (id: string) =>
+  sendInvoiceEmail: (id: string) =>
     apiFetch<{ sent: boolean }>(`/api/v1/invoices/${id}/send-email`, {
       method: "POST",
     }),

@@ -128,8 +128,8 @@ export type MoreStackParams = {
   Tutorial: { title?: string };
 };
 
-export type BillingStackParams = {
-  BillingForm: { startAsWalkIn?: boolean } | undefined;
+export type InvoiceStackParams = {
+  InvoiceForm: { startAsWalkIn?: boolean } | undefined;
   InvoiceDetail: { id: string };
 };
 
@@ -177,12 +177,12 @@ function AuthNavigator({ onLogin }: { onLogin: () => void }) {
   );
 }
 
-// ── Billing stack (Billing form → Invoice detail) ─────────────────────────────
+// ── Invoice stack (Billing form → Invoice detail) ─────────────────────────────
 
 function BillingNavigator() {
   return (
     <ErrorBoundary>
-      <BillingStack.Navigator
+      <InvoiceStack.Navigator
         screenOptions={{
           headerStyle: { backgroundColor: "#fff" },
           headerShadowVisible: true,
@@ -190,17 +190,17 @@ function BillingNavigator() {
           headerTitleStyle: { fontWeight: "700" },
         }}
       >
-        <BillingStack.Screen
-          name="BillingForm"
+        <InvoiceStack.Screen
+          name="InvoiceForm"
           component={BillingScreen}
           options={{ title: "New Invoice" }}
         />
-        <BillingStack.Screen
+        <InvoiceStack.Screen
           name="InvoiceDetail"
           component={InvoiceDetailScreen}
           options={{ headerShown: false }}
         />
-      </BillingStack.Navigator>
+      </InvoiceStack.Navigator>
     </ErrorBoundary>
   );
 }

@@ -67,7 +67,7 @@ import {
 import {
   storage,
   tokenStorage,
-  DRAFT_KEY,
+  INVOICE_DRAFT_KEY,
   INVOICE_BAR_KEY,
   PRICE_TIER_KEY,
   INV_TEMPLATE_KEY,
@@ -89,8 +89,8 @@ import {
 } from "../../../shared/lib/haptics";
 import { cacheProducts } from "../../../lib/offlineQueue";
 import type { ReceiptData } from "../../../lib/thermalReceipt";
-import type { BillingStackParams } from "../../../navigation";
-import { useBillingForm } from "../hooks/useBillingForm";
+import type { InvoiceStackParams } from "../../../navigation";
+import { useInvoiceForm } from "../hooks/useBillingForm";
 import {
   InvoiceTemplatePreview,
   TemplateThumbnail,
@@ -135,7 +135,7 @@ function persistInvoiceBar(data: Record<string, unknown>) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-type BillingProps = NativeStackScreenProps<BillingStackParams, "BillingForm">;
+type InvoiceProps = NativeStackScreenProps<InvoiceStackParams, "InvoiceForm">;
 
 export function BillingScreen({ navigation, route }: BillingProps) {
   const qc = useQueryClient();
@@ -144,7 +144,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
   const insets = useSafeAreaInsets();
   const startAsWalkIn = route.params?.startAsWalkIn;
 
-  // ── Form state (useBillingForm) ────────────────────────────────────────────
+  // ── Form state (useInvoiceForm) ────────────────────────────────────────────
   const initialRoundOffRef = useRef(
     (() => {
       try {
@@ -214,7 +214,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
     togglePreview,
     resetForm: formReset,
     loadDraft,
-  } = useBillingForm({ roundOffEnabled: initialRoundOffRef.current });
+  } = useInvoiceForm({ roundOffEnabled: initialRoundOffRef.current });
 
   // Success modal state (not part of form state)
   const [savedInvoice, setSavedInvoice] = useState<{
@@ -288,7 +288,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
       : undefined;
 
   // ── Invoice bar (Indian standard) ───────────────────────────────────────
-  // showInvoiceBarEdit is managed by useBillingForm (toggleInvoiceBarEdit)
+  // showInvoiceBarEdit is managed by useInvoiceForm (toggleInvoiceBarEdit)
   const [invoicePrefix, setInvoicePrefix] = useState(
     () => (readInvoiceBar().invoicePrefix as string) ?? "INV-",
   );
@@ -499,7 +499,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
   }, [navigation, logoDataUrl]);
 
   // ── Item helpers ──────────────────────────────────────────────────────────
-  // updateItem + removeItem come from useBillingForm (formUpdateItem, formRemoveItem)
+  // updateItem + removeItem come from useInvoiceForm (formUpdateItem, formRemoveItem)
   const updateItem = formUpdateItem;
   const removeItem = formRemoveItem;
   const addItem = useCallback(() => {
@@ -546,7 +546,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
     if (validItemCount === 0 && !selectedCustomer) return;
     const t = setTimeout(() => {
       storage.set(
-        DRAFT_KEY,
+        INVOICE_DRAFT_KEY,
         JSON.stringify({
           items: validItems,
           customerId: selectedCustomer?.id,
@@ -584,13 +584,13 @@ export function BillingScreen({ navigation, route }: BillingProps) {
 
   // ── Draft restore on mount ────────────────────────────────────────────────
   useEffect(() => {
-    const raw = storage.getString(DRAFT_KEY);
+    const raw = storage.getString(INVOICE_DRAFT_KEY);
     if (!raw) return;
     try {
       const d = JSON.parse(raw) as Record<string, unknown>;
       if (!Array.isArray(d.items) || !d.items.length || !d.savedAt) return;
       if (isDraftExpired(Number(d.savedAt))) {
-        storage.delete(DRAFT_KEY);
+        storage.delete(INVOICE_DRAFT_KEY);
         return;
       }
       draftRestoredRef.current = true;
@@ -626,7 +626,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
         draftBanner: true,
       });
     } catch {
-      storage.delete(DRAFT_KEY);
+      storage.delete(INVOICE_DRAFT_KEY);
     }
   }, []);
 
@@ -756,7 +756,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
       hapticSuccess();
       void qc.invalidateQueries({ queryKey: ["invoices"] });
       void qc.invalidateQueries({ queryKey: ["customers"] });
-      storage.delete(DRAFT_KEY);
+      storage.delete(INVOICE_DRAFT_KEY);
       const fromOffline = data.invoice.id.startsWith("offline-");
       setSavedInvoice({
         id: data.invoice.id,
@@ -804,13 +804,13 @@ export function BillingScreen({ navigation, route }: BillingProps) {
 
   const discardDraft = useCallback(() => {
     formReset();
-    storage.delete(DRAFT_KEY);
+    storage.delete(INVOICE_DRAFT_KEY);
   }, [formReset]);
 
   const resetForm = useCallback(() => {
     setSavedInvoice(null);
     formReset();
-    storage.delete(DRAFT_KEY);
+    storage.delete(INVOICE_DRAFT_KEY);
   }, [formReset]);
 
   const handlePrintReceipt = useCallback(async () => {

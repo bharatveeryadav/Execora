@@ -59,7 +59,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
   const { id } = route.params;
   const qc = useQueryClient();
 
-  const navigateBilling = () => {
+  const navigateInvoice = () => {
     (navigation.getParent() as any)?.navigate("MoreTab", {
       screen: "Billing",
     });
@@ -281,7 +281,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
                 <Text className="text-lg">📞</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity onPress={navigateBilling} className="p-2">
+            <TouchableOpacity onPress={navigateInvoice} className="p-2">
               <Text className="text-lg">🧾</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={openEdit} className="p-2">

@@ -401,7 +401,7 @@ export function InvoiceListScreen({ navigation }: Props) {
         } else {
           tabNav?.navigate("MoreTab", {
             screen: "Billing",
-            params: { screen: "BillingForm" },
+            params: { screen: "InvoiceForm" },
           });
         }
       } catch (_) {}

@@ -67,7 +67,7 @@ const QUICK_ACTIONS: QuickActionItem[] = [
     label: "Quick Sale",
     icon: "flash-outline",
     primary: true,
-    route: "BillingForm",
+    route: "InvoiceForm",
     color: "#ffffff",
     params: { startAsWalkIn: true },
   },
@@ -82,7 +82,7 @@ const QUICK_ACTIONS: QuickActionItem[] = [
     label: "New Invoice",
     icon: "add-circle-outline",
     primary: false,
-    route: "BillingForm",
+    route: "InvoiceForm",
     color: ACTION_COLORS.primary,
     params: { startAsWalkIn: false },
   },
@@ -265,7 +265,7 @@ const QUICK_ACTIONS_FOR_GRID = QUICK_ACTIONS.filter((action) => {
   if (
     ADD_TRANSACTION_ROUTES.has(action.route) &&
     action.route !== "InvoicesTab" &&
-    action.route !== "BillingForm"
+    action.route !== "InvoiceForm"
   ) {
     return false;
   }
@@ -972,7 +972,7 @@ export function DashboardScreen({ navigation }: Props) {
     route: string,
     params?: Record<string, unknown>,
   ) => {
-    if (route === "BillingForm") return navigateMoreStack("Billing");
+    if (route === "InvoiceForm") return navigateMoreStack("Invoice");
     if (route === "InvoicesTab") return navigateInvoicesTab();
     if (route === "Reports") return navigateMoreStack("Reports");
     if (route === "DocumentTemplates")
