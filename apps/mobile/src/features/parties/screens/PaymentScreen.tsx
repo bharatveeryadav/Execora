@@ -20,9 +20,9 @@ import { formatCurrency, toFloat } from "../../../lib/utils";
 import { showAlert, showError } from "../../../lib/alerts";
 import { hapticSuccess, hapticError } from "../../../lib/haptics";
 import { useResponsive } from "../../../hooks/useResponsive";
-import type { CustomersStackParams } from "../../../navigation";
+import type { PartiesStackParams } from "../../../navigation";
 
-type Props = NativeStackScreenProps<CustomersStackParams, "Payment">;
+type Props = NativeStackScreenProps<PartiesStackParams, "Payment">;
 
 const PAYMENT_METHODS = [
   { value: "cash", label: "💵 Cash" },

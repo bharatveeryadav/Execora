@@ -35,9 +35,9 @@ import {
 import { showError, showSuccess } from "../../../lib/alerts";
 import { CUSTOMER_TAGS, LANGUAGE_LABELS, LANGUAGES } from "../../../lib/constants";
 import { QUERY_KEYS } from "../../../lib/queryKeys";
-import type { CustomersStackParams } from "../../../navigation";
+import type { PartiesStackParams } from "../../../navigation";
 
-type Props = NativeStackScreenProps<CustomersStackParams, "CustomerDetail">;
+type Props = NativeStackScreenProps<PartiesStackParams, "PartyDetail">;
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

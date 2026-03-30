@@ -44,7 +44,7 @@ export function CustomersScreen() {
       <TouchableOpacity
         className="flex-row items-center rounded-xl border border-slate-200 bg-card px-4 py-3 shadow-sm"
         activeOpacity={0.7}
-        onPress={() => navigation.navigate("CustomerDetail", { id: c.id })}
+        onPress={() => navigation.navigate("PartyDetail", { id: c.id })}
       >
         <View className="w-10 h-10 rounded-full bg-primary/20 items-center justify-center mr-3">
           <Text className="text-primary font-bold">

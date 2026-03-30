@@ -153,7 +153,7 @@ const QUICK_ACTIONS: QuickActionItem[] = [
     label: "Parties",
     icon: "people-outline",
     primary: false,
-    route: "CustomersTab",
+    route: "PartiesTab",
     color: ACTION_COLORS.secondary,
   },
   {
@@ -501,7 +501,7 @@ type Props = BottomTabScreenProps<
 >;
 
 type MoreRoute = keyof import("../../../navigation").MoreStackParams;
-type CustomerRoute = keyof import("../../../navigation").CustomersStackParams;
+type PartyRoute = keyof import("../../../navigation").PartiesStackParams;
 type InvoiceRoute = keyof import("../../../navigation").InvoicesStackParams;
 
 export function DashboardScreen({ navigation }: Props) {
@@ -951,9 +951,9 @@ export function DashboardScreen({ navigation }: Props) {
     [navigation],
   );
 
-  const navigateCustomerStack = useCallback(
-    (screen: CustomerRoute) => {
-      (navigation as any).navigate("CustomersTab", { screen });
+  const navigatePartiesStack = useCallback(
+    (screen: PartyRoute) => {
+      (navigation as any).navigate("PartiesTab", { screen });
     },
     [navigation],
   );
@@ -986,9 +986,9 @@ export function DashboardScreen({ navigation }: Props) {
     if (route === "CreditNotes") return navigateInvoiceStack("CreditNotes");
     if (route === "DeliveryChallans")
       return navigateMoreStack("DeliveryChallans");
-    if (route === "Payment") return navigateCustomerStack("Payment");
+    if (route === "Payment") return navigatePartiesStack("Payment");
     if (route === "Items") return navigateMoreStack("Items");
-    if (route === "CustomersTab") return navigation.navigate("CustomersTab");
+    if (route === "PartiesTab") return navigation.navigate("PartiesTab");
     if (route === "Expenses") return navigateMoreStack("Expenses");
   };
 
@@ -1275,7 +1275,7 @@ export function DashboardScreen({ navigation }: Props) {
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onPress={() => navigateCustomerStack("Payment")}
+                    onPress={() => navigatePartiesStack("Payment")}
                     style={{
                       flex: 1,
                       alignItems: "center",
@@ -1305,7 +1305,7 @@ export function DashboardScreen({ navigation }: Props) {
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onPress={() => navigateCustomerStack("Overdue")}
+                    onPress={() => navigatePartiesStack("Overdue")}
                     style={{ flex: 1, alignItems: "center" }}
                     activeOpacity={0.7}
                   >
@@ -1396,7 +1396,7 @@ export function DashboardScreen({ navigation }: Props) {
                           </Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                          onPress={() => navigateCustomerStack("Overdue")}
+                          onPress={() => navigatePartiesStack("Overdue")}
                           activeOpacity={0.8}
                           style={cardStyle(flashReceivables)}
                         >
@@ -1435,7 +1435,7 @@ export function DashboardScreen({ navigation }: Props) {
                 </View>
                 {overdueList.length > 0 && (
                   <TouchableOpacity
-                    onPress={() => navigateCustomerStack("Overdue")}
+                    onPress={() => navigatePartiesStack("Overdue")}
                     activeOpacity={0.9}
                     className="flex-row flex-wrap items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 mb-2"
                   >
@@ -1474,7 +1474,7 @@ export function DashboardScreen({ navigation }: Props) {
                 )}
                 {upcomingReminders.length > 0 && (
                   <TouchableOpacity
-                    onPress={() => navigateCustomerStack("Overdue")}
+                    onPress={() => navigatePartiesStack("Overdue")}
                     activeOpacity={0.9}
                     className="flex-row flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5"
                   >
@@ -1578,7 +1578,7 @@ export function DashboardScreen({ navigation }: Props) {
               </View>
             </PressableCard>
             <PressableCard
-              onPress={() => navigateCustomerStack("Overdue")}
+              onPress={() => navigatePartiesStack("Overdue")}
               style={{ width: (contentWidth - 6) / 2 - 3, minWidth: 0 }}
               className="shadow-sm py-2 px-2"
             >
@@ -1602,7 +1602,7 @@ export function DashboardScreen({ navigation }: Props) {
               </View>
             </PressableCard>
             <PressableCard
-              onPress={() => navigateCustomerStack("Payment")}
+              onPress={() => navigatePartiesStack("Payment")}
               style={{ width: (contentWidth - 6) / 2 - 3, minWidth: 0 }}
               className="shadow-sm py-2 px-2"
             >

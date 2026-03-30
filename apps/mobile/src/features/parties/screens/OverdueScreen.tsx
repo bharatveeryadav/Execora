@@ -76,8 +76,8 @@ export function OverdueScreen({ navigation }: Props) {
 
   const openCustomer = useCallback(
     (id: string) => {
-      (navigation.getParent() as any)?.navigate("CustomersTab", {
-        screen: "CustomerDetail",
+      (navigation.getParent() as any)?.navigate("PartiesTab", {
+        screen: "PartyDetail",
         params: { id },
       });
     },

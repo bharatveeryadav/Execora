@@ -76,7 +76,7 @@ export type AuthStackParams = {
 export type MainTabParams = {
   Dashboard: undefined;
   ItemsTab: undefined;
-  CustomersTab: undefined;
+  PartiesTab: undefined;
   InvoicesTab: undefined;
   MoreTab: undefined;
 };
@@ -147,11 +147,11 @@ export type InvoicesStackParams = {
   Overdue: undefined;
 };
 
-export type CustomersStackParams = {
-  CustomerList: { initialTab?: "customers" | "vendors" } | undefined;
-  CustomersPage: undefined;
-  VendorsPage: undefined;
-  CustomerDetail: { id: string };
+export type PartiesStackParams = {
+  Parties: { initialTab?: "customers" | "vendors" } | undefined;
+  PartiesCustomersPage: undefined;
+  PartiesVendorsPage: undefined;
+  PartyDetail: { id: string };
   Payment: { customerId?: string };
   Overdue: undefined;
 };
@@ -163,7 +163,7 @@ const Auth = createNativeStackNavigator<AuthStackParams>();
 const Tab = createBottomTabNavigator<MainTabParams>();
 const InvoiceStack = createNativeStackNavigator<InvoiceStackParams>();
 const InvoicesStack = createNativeStackNavigator<InvoicesStackParams>();
-const CustomersStack = createNativeStackNavigator<CustomersStackParams>();
+const PartiesStack = createNativeStackNavigator<PartiesStackParams>();
 const ItemsStack = createNativeStackNavigator<ItemsStackParams>();
 const MoreStack = createNativeStackNavigator<MoreStackParams>();
 
@@ -288,39 +288,39 @@ function InvoicesNavigator() {
   );
 }
 
-// ── Customers stack ────────────────────────────────────────────────────────────
+// ── Parties stack ─────────────────────────────────────────────────────────────
 
-function CustomersNavigator() {
+function PartiesNavigator() {
   return (
     <ErrorBoundary>
-      <CustomersStack.Navigator
-        initialRouteName="CustomerList"
+      <PartiesStack.Navigator
+        initialRouteName="Parties"
         screenOptions={{
           headerShown: false,
         }}
       >
-        <CustomersStack.Screen name="CustomerList" component={PartiesScreen} />
-        <CustomersStack.Screen
-          name="CustomersPage"
+        <PartiesStack.Screen name="Parties" component={PartiesScreen} />
+        <PartiesStack.Screen
+          name="PartiesCustomersPage"
           component={PartiesScreen}
           initialParams={{ initialTab: "customers" }}
         />
-        <CustomersStack.Screen
-          name="VendorsPage"
+        <PartiesStack.Screen
+          name="PartiesVendorsPage"
           component={PartiesScreen}
           initialParams={{ initialTab: "vendors" }}
         />
-        <CustomersStack.Screen
-          name="CustomerDetail"
+        <PartiesStack.Screen
+          name="PartyDetail"
           component={CustomerDetailScreen}
         />
-        <CustomersStack.Screen name="Payment" component={PaymentScreen} />
-        <CustomersStack.Screen
+        <PartiesStack.Screen name="Payment" component={PaymentScreen} />
+        <PartiesStack.Screen
           name="Overdue"
           component={OverdueScreen}
           options={{ headerShown: true, title: "Overdue / Udhaar" }}
         />
-      </CustomersStack.Navigator>
+      </PartiesStack.Navigator>
     </ErrorBoundary>
   );
 }
@@ -586,7 +586,7 @@ function MoreNavigator() {
 const TAB_ICONS_FILLED: Record<string, keyof typeof Ionicons.glyphMap> = {
   Dashboard: "home",
   ItemsTab: "cube",
-  CustomersTab: "people",
+  PartiesTab: "people",
   InvoicesTab: "document-text",
   MoreTab: "apps",
 };
@@ -594,7 +594,7 @@ const TAB_ICONS_FILLED: Record<string, keyof typeof Ionicons.glyphMap> = {
 const TAB_ICONS_OUTLINE: Record<string, keyof typeof Ionicons.glyphMap> = {
   Dashboard: "home-outline",
   ItemsTab: "cube-outline",
-  CustomersTab: "people-outline",
+  PartiesTab: "people-outline",
   InvoicesTab: "document-text-outline",
   MoreTab: "apps-outline",
 };
@@ -680,12 +680,12 @@ function MainTabs() {
         options={{ tabBarLabel: "Items" }}
       />
       <Tab.Screen
-        name="CustomersTab"
-        component={CustomersNavigator}
+        name="PartiesTab"
+        component={PartiesNavigator}
         listeners={({ navigation }) => ({
           tabPress: () => {
-            (navigation as any).navigate("CustomersTab", {
-              screen: "CustomerList",
+            (navigation as any).navigate("PartiesTab", {
+              screen: "Parties",
             });
           },
         })}

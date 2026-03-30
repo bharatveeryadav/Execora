@@ -194,11 +194,11 @@ export function MoreScreen({ navigation }: Props) {
   const handlePress = (tile: Tile) => {
     const parent = navigation.getParent() as any;
     if (tile.route === "Payment") {
-      parent?.navigate("CustomersTab", { screen: "Payment" });
+      parent?.navigate("PartiesTab", { screen: "Payment" });
       return;
     }
     if (tile.route === "Overdue") {
-      parent?.navigate("CustomersTab", { screen: "Overdue" });
+      parent?.navigate("PartiesTab", { screen: "Overdue" });
       return;
     }
     navigation.navigate(tile.route as any, (tile.params ?? {}) as any);

@@ -82,7 +82,7 @@ function navigateFromDeepLink(
       });
     } else if (parsed.screen === "Payment" && parsed.params?.customerId) {
       (nav as any).navigate("Main", {
-        screen: "CustomersTab",
+        screen: "PartiesTab",
         params: {
           screen: "Payment",
           params: { customerId: parsed.params.customerId },
