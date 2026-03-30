@@ -1,0 +1,93 @@
+import { apiFetch, customerApi } from "@execora/shared";
+
+export const customerExtApi = {
+  create: (data: {
+    name: string;
+    phone?: string;
+    email?: string;
+    nickname?: string;
+    landmark?: string;
+    notes?: string;
+    openingBalance?: number;
+    creditLimit?: number;
+    tags?: string[];
+  }) =>
+    apiFetch<{ customer: unknown }>("/api/v1/customers", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) =>
+    apiFetch<{ success: boolean }>(`/api/v1/customers/${id}`, {
+      method: "DELETE",
+    }),
+
+  getLedger: (id: string) =>
+    apiFetch<{
+      entries: Array<{
+        id: string;
+        type: string;
+        description: string;
+        amount: string | number;
+        createdAt: string;
+      }>;
+    }>(`/api/v1/customers/${id}/ledger`),
+
+  getCommPrefs: (id: string) =>
+    apiFetch<{
+      prefs: {
+        whatsappEnabled?: boolean;
+        whatsappNumber?: string;
+        emailEnabled?: boolean;
+        emailAddress?: string;
+        smsEnabled?: boolean;
+        preferredLanguage?: string;
+      } | null;
+    }>(`/api/v1/customers/${id}/comm-prefs`),
+
+  updateCommPrefs: (
+    id: string,
+    data: {
+      whatsappEnabled?: boolean;
+      whatsappNumber?: string;
+      emailEnabled?: boolean;
+      emailAddress?: string;
+      smsEnabled?: boolean;
+      preferredLanguage?: string;
+    },
+  ) =>
+    apiFetch<{ prefs: unknown }>(`/api/v1/customers/${id}/comm-prefs`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+};
+
+export const reminderApi = {
+  list: (customerId?: string) =>
+    apiFetch<{
+      reminders: Array<{
+        id: string;
+        status: string;
+        scheduledTime: string;
+        message?: string;
+      }>;
+    }>(`/api/v1/reminders${customerId ? `?customerId=${customerId}` : ""}`),
+
+  create: (data: {
+    customerId: string;
+    amount?: number;
+    datetime: string;
+    message?: string;
+  }) =>
+    apiFetch<{ reminder: unknown }>("/api/v1/reminders", {
+      method: "POST",
+      body: JSON.stringify({
+        customerId: data.customerId,
+        amount: data.amount,
+        scheduledTime: data.datetime,
+        message: data.message,
+      }),
+    }),
+};
+
+export { customerApi };

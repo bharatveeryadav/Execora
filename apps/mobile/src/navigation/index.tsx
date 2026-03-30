@@ -10,44 +10,56 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { ErrorBoundary } from "../components/ui/ErrorBoundary";
 
-import { DashboardScreen } from "../screens/DashboardScreen";
-import { BillingScreen } from "../screens/BillingScreen";
-import { PartiesScreen } from "../screens/PartiesScreen";
-import { InvoiceListScreen } from "../screens/InvoiceListScreen";
-import { BillsMenuScreen } from "../screens/BillsMenuScreen";
-import { LoginScreen } from "../screens/LoginScreen";
-import { InvoiceDetailScreen } from "../screens/InvoiceDetailScreen";
-import { CustomerDetailScreen } from "../screens/CustomerDetailScreen";
-import { PaymentScreen } from "../screens/PaymentScreen";
-import { OverdueScreen } from "../screens/OverdueScreen";
-import { ItemsScreen } from "../screens/ItemsScreen";
-import { ItemsMenuScreen } from "../screens/ItemsMenuScreen";
-import { ProductDetailScreen } from "../screens/ProductDetailScreen";
-import { UpdateProductScreen } from "../screens/UpdateProductScreen";
-import { MoreScreen } from "../screens/MoreScreen";
-import { ExpensesScreen } from "../screens/ExpensesScreen";
-import { CashBookScreen } from "../screens/CashBookScreen";
-import { DayBookScreen } from "../screens/DayBookScreen";
-import { ReportsScreen } from "../screens/ReportsScreen";
-import { PurchasesScreen } from "../screens/PurchasesScreen";
-import { RecurringScreen } from "../screens/RecurringScreen";
-import { MonitoringScreen } from "../screens/MonitoringScreen";
-import { SettingsScreen } from "../screens/SettingsScreen";
-import { ComingSoonScreen } from "../screens/ComingSoonScreen";
-import { ImportScreen } from "../screens/ImportScreen";
-import { FeedbackScreen } from "../screens/FeedbackScreen";
-import { PubInvoiceScreen } from "../screens/PubInvoiceScreen";
-import { SettingsThermalScreen } from "../screens/SettingsThermalScreen";
-import { ExpiryScreen } from "../screens/ExpiryScreen";
-import { BalanceSheetScreen } from "../screens/BalanceSheetScreen";
-import { BankReconScreen } from "../screens/BankReconScreen";
-import { GstrScreen } from "../screens/GstrScreen";
-import { CreditNotesScreen } from "../screens/CreditNotesScreen";
-import { PurchaseOrdersScreen } from "../screens/PurchaseOrdersScreen";
-import { IndirectIncomeScreen } from "../screens/IndirectIncomeScreen";
-import { CompanyProfileScreen } from "../screens/CompanyProfileScreen";
-import { DocumentSettingsScreen } from "../screens/DocumentSettingsScreen";
-import { DocumentTemplatesScreen } from "../screens/DocumentTemplatesScreen";
+import { DashboardScreen } from "../features/dashboard";
+import { LoginScreen } from "../features/auth";
+import {
+  BillingScreen,
+  InvoiceListScreen,
+  BillsMenuScreen,
+  InvoiceDetailScreen,
+  PubInvoiceScreen,
+  CreditNotesScreen,
+} from "../features/billing";
+import {
+  PartiesScreen,
+  CustomerDetailScreen,
+  PaymentScreen,
+  OverdueScreen,
+} from "../features/customers";
+import {
+  ItemsScreen,
+  ItemsMenuScreen,
+  ProductDetailScreen,
+  UpdateProductScreen,
+} from "../features/products";
+import {
+  CashBookScreen,
+  DayBookScreen,
+  ReportsScreen,
+  BalanceSheetScreen,
+  BankReconScreen,
+  GstrScreen,
+} from "../features/accounting";
+import {
+  ExpensesScreen,
+  PurchasesScreen,
+  IndirectIncomeScreen,
+  PurchaseOrdersScreen,
+} from "../features/expenses";
+import {
+  MoreScreen,
+  ComingSoonScreen,
+  RecurringScreen,
+  MonitoringScreen,
+  SettingsScreen,
+  ImportScreen,
+  FeedbackScreen,
+  SettingsThermalScreen,
+  ExpiryScreen,
+  CompanyProfileScreen,
+  DocumentSettingsScreen,
+  DocumentTemplatesScreen,
+} from "../features/settings";
 
 // ── Param lists ───────────────────────────────────────────────────────────────
 

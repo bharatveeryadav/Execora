@@ -38,3 +38,10 @@ Consolidated ledger of tasks marked complete across product, backend, web, and m
 - STRATEGY_2026.md
 - MOBILE_APP_IMPLEMENTATION_STATUS.md
 - MOBILE_WEB_PARITY_SPRINT.md
+
+## Mobile Architecture Migration (March 2026)
+
+- Completed full screen ownership migration from `apps/mobile/src/screens` to feature-owned modules.
+- Legacy screen paths now serve as backward-compatibility re-export shims only.
+- Navigation imports were rewired to feature barrels for billing, customers, products, accounting, expenses, settings, dashboard, auth, and sync.
+- Data-layer decomposition completed via feature-owned APIs/hooks with compatibility shells retained in legacy locations.
