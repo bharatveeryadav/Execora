@@ -17,7 +17,7 @@ export {
   customerApi,
   customerExtApi,
   reminderApi,
-} from "../features/customers/api/customerApi";
+} from "../features/parties/api/customerApi";
 export { productApi, productExtApi } from "../features/products/api/productApi";
 export {
   cashbookApi,

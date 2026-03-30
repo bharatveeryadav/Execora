@@ -22,7 +22,7 @@ export {
   useCustomerLedger,
   useCustomerHealth,
   useOverdueCustomers,
-} from "../features/customers/hooks/useCustomerQueries";
+} from "../features/parties/hooks/useCustomerQueries";
 
 export {
   useProducts,

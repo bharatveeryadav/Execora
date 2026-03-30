@@ -25,7 +25,7 @@ import {
   CustomerDetailScreen,
   PaymentScreen,
   OverdueScreen,
-} from "../features/customers";
+} from "../features/parties";
 import {
   ItemsScreen,
   ItemsMenuScreen,
@@ -148,7 +148,9 @@ export type InvoicesStackParams = {
 };
 
 export type CustomersStackParams = {
-  CustomerList: undefined;
+  CustomerList: { initialTab?: "customers" | "vendors" } | undefined;
+  CustomersPage: undefined;
+  VendorsPage: undefined;
   CustomerDetail: { id: string };
   Payment: { customerId?: string };
   Overdue: undefined;
@@ -159,7 +161,7 @@ export type CustomersStackParams = {
 const Root = createNativeStackNavigator<RootStackParams>();
 const Auth = createNativeStackNavigator<AuthStackParams>();
 const Tab = createBottomTabNavigator<MainTabParams>();
-const BillingStack = createNativeStackNavigator<BillingStackParams>();
+const InvoiceStack = createNativeStackNavigator<InvoiceStackParams>();
 const InvoicesStack = createNativeStackNavigator<InvoicesStackParams>();
 const CustomersStack = createNativeStackNavigator<CustomersStackParams>();
 const ItemsStack = createNativeStackNavigator<ItemsStackParams>();
@@ -298,6 +300,16 @@ function CustomersNavigator() {
         }}
       >
         <CustomersStack.Screen name="CustomerList" component={PartiesScreen} />
+        <CustomersStack.Screen
+          name="CustomersPage"
+          component={PartiesScreen}
+          initialParams={{ initialTab: "customers" }}
+        />
+        <CustomersStack.Screen
+          name="VendorsPage"
+          component={PartiesScreen}
+          initialParams={{ initialTab: "vendors" }}
+        />
         <CustomersStack.Screen
           name="CustomerDetail"
           component={CustomerDetailScreen}

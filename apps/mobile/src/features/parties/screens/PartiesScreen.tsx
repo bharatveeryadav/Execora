@@ -2,7 +2,7 @@
  * PartiesScreen — Customers + Vendors tabs (matches web Parties.tsx).
  * Modern UI/UX: TYPO scale, 44pt touch targets (iOS HIG), 8px spacing grid.
  */
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -54,9 +54,10 @@ const PARTY_TABS: TabItem[] = [
   { id: "vendors", label: "Vendors", icon: "cube" },
 ];
 
-type Props = NativeStackScreenProps<CustomersStackParams, "CustomerList">;
+type CustomerRouteName = "CustomerList" | "CustomersPage" | "VendorsPage";
+type Props = NativeStackScreenProps<CustomersStackParams, CustomerRouteName>;
 
-export function PartiesScreen({ navigation }: Props) {
+export function PartiesScreen({ navigation, route }: Props) {
   const qc = useQueryClient();
   const { width, contentPad, contentWidth } = useResponsive();
   const insets = useSafeAreaInsets();
@@ -67,7 +68,10 @@ export function PartiesScreen({ navigation }: Props) {
   );
   useWsInvalidation(["customers", "summary"]);
 
-  const [tab, setTab] = useState<Tab>("customers");
+  const initialTab: Tab =
+    route.params?.initialTab ??
+    (route.name === "VendorsPage" ? "vendors" : "customers");
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterTab>("all");
   const [addOpen, setAddOpen] = useState(false);
@@ -92,6 +96,10 @@ export function PartiesScreen({ navigation }: Props) {
   const [vendorPhone, setVendorPhone] = useState("");
   const [vendorEmail, setVendorEmail] = useState("");
   const [vendorAddress, setVendorAddress] = useState("");
+
+  useEffect(() => {
+    setTab(initialTab);
+  }, [initialTab]);
 
   // ── Queries ─────────────────────────────────────────────────────────────
 
