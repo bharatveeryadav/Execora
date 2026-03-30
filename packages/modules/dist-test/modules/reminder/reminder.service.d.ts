@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 declare class ReminderService {
     private normalizeSpokenNumbers;
     private parseHourMinute;
@@ -15,21 +16,21 @@ declare class ReminderService {
      */
     scheduleReminder(customerId: string, amount: number, dateTimeStr: string, customMessage?: string): Promise<{
         customer: {
-            balance: import("@prisma/client/runtime/library").Decimal;
-            creditLimit: import("@prisma/client/runtime/library").Decimal;
-            totalPurchases: import("@prisma/client/runtime/library").Decimal;
-            totalPayments: import("@prisma/client/runtime/library").Decimal;
-            lastPaymentAmount: import("@prisma/client/runtime/library").Decimal | null;
+            tenantId: string;
+            balance: Prisma.Decimal;
+            creditLimit: Prisma.Decimal;
+            totalPurchases: Prisma.Decimal;
+            totalPayments: Prisma.Decimal;
+            lastPaymentAmount: Prisma.Decimal | null;
             averagePaymentDays: number | null;
             loyaltyPoints: number;
             visitCount: number;
-            averageBasketSize: import("@prisma/client/runtime/library").Decimal | null;
-            frequencyScore: import("@prisma/client/runtime/library").Decimal;
-            recencyScore: import("@prisma/client/runtime/library").Decimal;
-            monetaryScore: import("@prisma/client/runtime/library").Decimal;
-            overallScore: import("@prisma/client/runtime/library").Decimal | null;
+            averageBasketSize: Prisma.Decimal | null;
+            frequencyScore: Prisma.Decimal;
+            recencyScore: Prisma.Decimal;
+            monetaryScore: Prisma.Decimal;
+            overallScore: Prisma.Decimal | null;
             id: string;
-            tenantId: string;
             name: string;
             phone: string | null;
             alternatePhone: string[];
@@ -57,7 +58,7 @@ declare class ReminderService {
             preferredDays: string[];
             tags: string[];
             notes: string | null;
-            metadata: import("@prisma/client/runtime/library").JsonValue;
+            metadata: Prisma.JsonValue;
             voiceFingerprint: string | null;
             commonPhrases: string[];
             createdBy: string | null;
@@ -67,8 +68,8 @@ declare class ReminderService {
             deletedAt: Date | null;
         } | null;
     } & {
-        id: string;
         tenantId: string;
+        id: string;
         notes: string | null;
         createdBy: string | null;
         createdAt: Date;
@@ -81,11 +82,11 @@ declare class ReminderService {
         userId: string | null;
         reminderType: import(".prisma/client").$Enums.ReminderType;
         priority: import(".prisma/client").$Enums.ReminderPriority;
-        recurringPattern: import("@prisma/client/runtime/library").JsonValue | null;
+        recurringPattern: Prisma.JsonValue | null;
         expiresAt: Date | null;
         messageTemplateId: string | null;
         customMessage: string | null;
-        parameters: import("@prisma/client/runtime/library").JsonValue | null;
+        parameters: Prisma.JsonValue | null;
         channels: import(".prisma/client").$Enums.MessageChannel[];
         sentAt: Date | null;
         deliveredAt: Date | null;
@@ -99,8 +100,8 @@ declare class ReminderService {
      * Cancel a scheduled reminder
      */
     cancelReminder(reminderId: string): Promise<{
-        id: string;
         tenantId: string;
+        id: string;
         notes: string | null;
         createdBy: string | null;
         createdAt: Date;
@@ -113,11 +114,11 @@ declare class ReminderService {
         userId: string | null;
         reminderType: import(".prisma/client").$Enums.ReminderType;
         priority: import(".prisma/client").$Enums.ReminderPriority;
-        recurringPattern: import("@prisma/client/runtime/library").JsonValue | null;
+        recurringPattern: Prisma.JsonValue | null;
         expiresAt: Date | null;
         messageTemplateId: string | null;
         customMessage: string | null;
-        parameters: import("@prisma/client/runtime/library").JsonValue | null;
+        parameters: Prisma.JsonValue | null;
         channels: import(".prisma/client").$Enums.MessageChannel[];
         sentAt: Date | null;
         deliveredAt: Date | null;
@@ -132,21 +133,21 @@ declare class ReminderService {
      */
     modifyReminderTime(reminderId: string, newDateTimeStr: string): Promise<{
         customer: {
-            balance: import("@prisma/client/runtime/library").Decimal;
-            creditLimit: import("@prisma/client/runtime/library").Decimal;
-            totalPurchases: import("@prisma/client/runtime/library").Decimal;
-            totalPayments: import("@prisma/client/runtime/library").Decimal;
-            lastPaymentAmount: import("@prisma/client/runtime/library").Decimal | null;
+            tenantId: string;
+            balance: Prisma.Decimal;
+            creditLimit: Prisma.Decimal;
+            totalPurchases: Prisma.Decimal;
+            totalPayments: Prisma.Decimal;
+            lastPaymentAmount: Prisma.Decimal | null;
             averagePaymentDays: number | null;
             loyaltyPoints: number;
             visitCount: number;
-            averageBasketSize: import("@prisma/client/runtime/library").Decimal | null;
-            frequencyScore: import("@prisma/client/runtime/library").Decimal;
-            recencyScore: import("@prisma/client/runtime/library").Decimal;
-            monetaryScore: import("@prisma/client/runtime/library").Decimal;
-            overallScore: import("@prisma/client/runtime/library").Decimal | null;
+            averageBasketSize: Prisma.Decimal | null;
+            frequencyScore: Prisma.Decimal;
+            recencyScore: Prisma.Decimal;
+            monetaryScore: Prisma.Decimal;
+            overallScore: Prisma.Decimal | null;
             id: string;
-            tenantId: string;
             name: string;
             phone: string | null;
             alternatePhone: string[];
@@ -174,7 +175,7 @@ declare class ReminderService {
             preferredDays: string[];
             tags: string[];
             notes: string | null;
-            metadata: import("@prisma/client/runtime/library").JsonValue;
+            metadata: Prisma.JsonValue;
             voiceFingerprint: string | null;
             commonPhrases: string[];
             createdBy: string | null;
@@ -184,8 +185,8 @@ declare class ReminderService {
             deletedAt: Date | null;
         } | null;
     } & {
-        id: string;
         tenantId: string;
+        id: string;
         notes: string | null;
         createdBy: string | null;
         createdAt: Date;
@@ -198,11 +199,11 @@ declare class ReminderService {
         userId: string | null;
         reminderType: import(".prisma/client").$Enums.ReminderType;
         priority: import(".prisma/client").$Enums.ReminderPriority;
-        recurringPattern: import("@prisma/client/runtime/library").JsonValue | null;
+        recurringPattern: Prisma.JsonValue | null;
         expiresAt: Date | null;
         messageTemplateId: string | null;
         customMessage: string | null;
-        parameters: import("@prisma/client/runtime/library").JsonValue | null;
+        parameters: Prisma.JsonValue | null;
         channels: import(".prisma/client").$Enums.MessageChannel[];
         sentAt: Date | null;
         deliveredAt: Date | null;
@@ -221,8 +222,8 @@ declare class ReminderService {
             phone: string | null;
         } | null;
     } & {
-        id: string;
         tenantId: string;
+        id: string;
         notes: string | null;
         createdBy: string | null;
         createdAt: Date;
@@ -235,11 +236,11 @@ declare class ReminderService {
         userId: string | null;
         reminderType: import(".prisma/client").$Enums.ReminderType;
         priority: import(".prisma/client").$Enums.ReminderPriority;
-        recurringPattern: import("@prisma/client/runtime/library").JsonValue | null;
+        recurringPattern: Prisma.JsonValue | null;
         expiresAt: Date | null;
         messageTemplateId: string | null;
         customMessage: string | null;
-        parameters: import("@prisma/client/runtime/library").JsonValue | null;
+        parameters: Prisma.JsonValue | null;
         channels: import(".prisma/client").$Enums.MessageChannel[];
         sentAt: Date | null;
         deliveredAt: Date | null;
@@ -258,8 +259,8 @@ declare class ReminderService {
             phone: string | null;
         } | null;
     } & {
-        id: string;
         tenantId: string;
+        id: string;
         notes: string | null;
         createdBy: string | null;
         createdAt: Date;
@@ -272,11 +273,11 @@ declare class ReminderService {
         userId: string | null;
         reminderType: import(".prisma/client").$Enums.ReminderType;
         priority: import(".prisma/client").$Enums.ReminderPriority;
-        recurringPattern: import("@prisma/client/runtime/library").JsonValue | null;
+        recurringPattern: Prisma.JsonValue | null;
         expiresAt: Date | null;
         messageTemplateId: string | null;
         customMessage: string | null;
-        parameters: import("@prisma/client/runtime/library").JsonValue | null;
+        parameters: Prisma.JsonValue | null;
         channels: import(".prisma/client").$Enums.MessageChannel[];
         sentAt: Date | null;
         deliveredAt: Date | null;
@@ -301,21 +302,21 @@ declare class ReminderService {
      */
     getDueReminders(): Promise<({
         customer: {
-            balance: import("@prisma/client/runtime/library").Decimal;
-            creditLimit: import("@prisma/client/runtime/library").Decimal;
-            totalPurchases: import("@prisma/client/runtime/library").Decimal;
-            totalPayments: import("@prisma/client/runtime/library").Decimal;
-            lastPaymentAmount: import("@prisma/client/runtime/library").Decimal | null;
+            tenantId: string;
+            balance: Prisma.Decimal;
+            creditLimit: Prisma.Decimal;
+            totalPurchases: Prisma.Decimal;
+            totalPayments: Prisma.Decimal;
+            lastPaymentAmount: Prisma.Decimal | null;
             averagePaymentDays: number | null;
             loyaltyPoints: number;
             visitCount: number;
-            averageBasketSize: import("@prisma/client/runtime/library").Decimal | null;
-            frequencyScore: import("@prisma/client/runtime/library").Decimal;
-            recencyScore: import("@prisma/client/runtime/library").Decimal;
-            monetaryScore: import("@prisma/client/runtime/library").Decimal;
-            overallScore: import("@prisma/client/runtime/library").Decimal | null;
+            averageBasketSize: Prisma.Decimal | null;
+            frequencyScore: Prisma.Decimal;
+            recencyScore: Prisma.Decimal;
+            monetaryScore: Prisma.Decimal;
+            overallScore: Prisma.Decimal | null;
             id: string;
-            tenantId: string;
             name: string;
             phone: string | null;
             alternatePhone: string[];
@@ -343,7 +344,7 @@ declare class ReminderService {
             preferredDays: string[];
             tags: string[];
             notes: string | null;
-            metadata: import("@prisma/client/runtime/library").JsonValue;
+            metadata: Prisma.JsonValue;
             voiceFingerprint: string | null;
             commonPhrases: string[];
             createdBy: string | null;
@@ -353,8 +354,8 @@ declare class ReminderService {
             deletedAt: Date | null;
         } | null;
     } & {
-        id: string;
         tenantId: string;
+        id: string;
         notes: string | null;
         createdBy: string | null;
         createdAt: Date;
@@ -367,11 +368,11 @@ declare class ReminderService {
         userId: string | null;
         reminderType: import(".prisma/client").$Enums.ReminderType;
         priority: import(".prisma/client").$Enums.ReminderPriority;
-        recurringPattern: import("@prisma/client/runtime/library").JsonValue | null;
+        recurringPattern: Prisma.JsonValue | null;
         expiresAt: Date | null;
         messageTemplateId: string | null;
         customMessage: string | null;
-        parameters: import("@prisma/client/runtime/library").JsonValue | null;
+        parameters: Prisma.JsonValue | null;
         channels: import(".prisma/client").$Enums.MessageChannel[];
         sentAt: Date | null;
         deliveredAt: Date | null;
@@ -382,6 +383,15 @@ declare class ReminderService {
         lastError: string | null;
     })[]>;
     scheduleNextOccurrence(reminderId: string): Promise<object | null>;
+    /**
+     * Bulk-schedule reminders for multiple customers (e.g. all with overdue balance).
+     * daysOffset: how many days from now to schedule (default 0 = today 6pm IST).
+     */
+    bulkScheduleReminders(data: {
+        customerIds: string[];
+        message?: string;
+        daysOffset?: number;
+    }): Promise<any[]>;
 }
 export declare const reminderService: ReminderService;
 export {};

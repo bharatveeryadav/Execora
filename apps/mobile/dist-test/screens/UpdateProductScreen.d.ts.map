@@ -1,0 +1,1 @@
+{"version":3,"file":"UpdateProductScreen.d.ts","sourceRoot":"","sources":["../../src/screens/UpdateProductScreen.tsx"],"names":[],"mappings":"AAAA;;;;GAIG;AACH,OAAO,KAA8B,MAAM,OAAO,CAAC;AAiBnD,OAAO,KAAK,EAAE,sBAAsB,EAAE,MAAM,gCAAgC,CAAC;AAkC7E,KAAK,KAAK,GAAG,sBAAsB,CAAC,OAAO,eAAe,EAAE,gBAAgB,EAAE,eAAe,CAAC,CAAC;AAE/F,wBAAgB,mBAAmB,CAAC,EAAE,UAAU,EAAE,KAAK,EAAE,EAAE,KAAK,qBA0Z/D"}

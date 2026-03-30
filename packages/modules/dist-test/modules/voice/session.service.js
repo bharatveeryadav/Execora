@@ -5,6 +5,7 @@ const infrastructure_1 = require("@execora/infrastructure");
 const infrastructure_2 = require("@execora/infrastructure");
 const infrastructure_3 = require("@execora/infrastructure");
 const infrastructure_4 = require("@execora/infrastructure");
+const client_1 = require("@prisma/client");
 const BUCKET_NAME = process.env.MINIO_BUCKET || 'execora-audio';
 class VoiceSessionService {
     /**
@@ -34,7 +35,7 @@ class VoiceSessionService {
         try {
             const session = await infrastructure_1.prisma.conversationSession.update({
                 where: { id: sessionId },
-                data: { status: 'ended' },
+                data: { status: client_1.SessionStatus.ended },
             });
             infrastructure_2.logger.info({ sessionId, duration }, 'Session ended');
             return session;

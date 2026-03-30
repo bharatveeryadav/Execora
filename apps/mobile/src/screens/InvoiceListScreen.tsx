@@ -16,7 +16,10 @@ import {
   Platform,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
@@ -28,8 +31,10 @@ import { FilterBar } from "../components/composites/FilterBar";
 import { TabBar, type TabItem } from "../components/composites/TabBar";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ErrorCard } from "../components/ui/ErrorCard";
+import { Skeleton } from "../components/ui/Skeleton";
+import { ScreenInner } from "../components/ui/ScreenLayout";
 import { TYPO } from "../lib/typography";
-import { SIZES } from "../lib/constants";
+import { COLORS, SIZES, STATUS_COLORS } from "../lib/constants";
 import type { InvoicesStackParams } from "../navigation";
 
 type DocTypeTab = "sales" | "purchase" | "quotation";
@@ -98,12 +103,36 @@ const STATUS_STYLES: Record<
   string,
   { bgColor: string; iconColor: string; textColor: string }
 > = {
-  paid: { bgColor: "#dcfce7", iconColor: "#16a34a", textColor: "#15803d" },
-  pending: { bgColor: "#fef3c7", iconColor: "#d97706", textColor: "#b45309" },
-  partial: { bgColor: "#fef3c7", iconColor: "#d97706", textColor: "#b45309" },
-  draft: { bgColor: "#f1f5f9", iconColor: "#64748b", textColor: "#64748b" },
-  proforma: { bgColor: "#dbeafe", iconColor: "#2563eb", textColor: "#1d4ed8" },
-  cancelled: { bgColor: "#fee2e2", iconColor: "#94a3b8", textColor: "#94a3b8" },
+  paid: {
+    bgColor: STATUS_COLORS.paid.bg,
+    iconColor: STATUS_COLORS.paid.icon,
+    textColor: STATUS_COLORS.paid.text,
+  },
+  pending: {
+    bgColor: STATUS_COLORS.pending.bg,
+    iconColor: STATUS_COLORS.pending.icon,
+    textColor: STATUS_COLORS.pending.text,
+  },
+  partial: {
+    bgColor: STATUS_COLORS.partial.bg,
+    iconColor: STATUS_COLORS.partial.icon,
+    textColor: STATUS_COLORS.partial.text,
+  },
+  draft: {
+    bgColor: STATUS_COLORS.draft.bg,
+    iconColor: STATUS_COLORS.draft.icon,
+    textColor: STATUS_COLORS.draft.text,
+  },
+  proforma: {
+    bgColor: COLORS.bg.secondary,
+    iconColor: COLORS.secondary,
+    textColor: COLORS.secondary,
+  },
+  cancelled: {
+    bgColor: STATUS_COLORS.cancelled.bg,
+    iconColor: STATUS_COLORS.cancelled.icon,
+    textColor: STATUS_COLORS.cancelled.text,
+  },
 };
 
 // Web: getDateRange
@@ -206,10 +235,9 @@ function formatDate(d: string | Date | undefined): string {
 }
 
 type Props = NativeStackScreenProps<InvoicesStackParams, "InvoiceList">;
-
 export function InvoiceListScreen({ navigation }: Props) {
-  const { contentPad, contentWidth, isSmall } = useResponsive();
-  const compactHeader = contentWidth < 380;
+  const { width, contentPad, contentWidth, isSmall } = useResponsive();
+  const insets = useSafeAreaInsets();
   const stackSearchControls = contentWidth < 380;
   const [docTypeTab, setDocTypeTab] = useState<DocTypeTab>("sales");
   const [statusTab, setStatusTab] = useState<StatusTab>("All");
@@ -238,7 +266,12 @@ export function InvoiceListScreen({ navigation }: Props) {
     staleTime: 30_000,
   });
 
-  const { data: purchaseData, isFetching: purchasesLoading } = useQuery({
+  const {
+    data: purchaseData,
+    isFetching: purchasesLoading,
+    isError: isPurchaseError,
+    refetch: refetchPurchases,
+  } = useQuery({
     queryKey: ["purchases"],
     queryFn: () => purchaseApi.list({}),
     staleTime: 30_000,
@@ -349,11 +382,19 @@ export function InvoiceListScreen({ navigation }: Props) {
   };
 
   const showInvoiceList = docTypeTab === "sales" || docTypeTab === "quotation";
+  const isInvoicesInitialLoading = showInvoiceList && isFetching && !invData;
+  const isPurchasesInitialLoading =
+    docTypeTab === "purchase" && purchasesLoading && !purchaseData;
+  const fabBottom = Math.max(insets.bottom + 16, 20);
+  const fabRight = Math.max(
+    contentPad,
+    (width - contentWidth) / 2 + contentPad,
+  );
 
   const handleNewInvoice = useCallback(() => {
     InteractionManager.runAfterInteractions(() => {
       try {
-        const tabNav = (navigation.getParent as any)?.();
+        const tabNav = navigation.getParent() as any;
         if (docTypeTab === "purchase") {
           tabNav?.navigate("MoreTab", { screen: "Purchases" });
         } else {
@@ -436,10 +477,10 @@ export function InvoiceListScreen({ navigation }: Props) {
       const s = STATUS_STYLES[status] ?? STATUS_STYLES.draft;
       const amtColor =
         status === "paid"
-          ? "#16a34a"
+          ? COLORS.success
           : status === "cancelled"
-            ? "#94a3b8"
-            : "#0f172a";
+            ? COLORS.slate[400]
+            : COLORS.slate[900];
 
       return (
         <Pressable
@@ -544,7 +585,7 @@ export function InvoiceListScreen({ navigation }: Props) {
         onPress={() => {
           InteractionManager.runAfterInteractions(() => {
             try {
-              (navigation.getParent as any)?.()?.navigate("MoreTab", {
+              (navigation.getParent() as any)?.navigate("MoreTab", {
                 screen: "Purchases",
               });
             } catch (_) {}
@@ -640,10 +681,7 @@ export function InvoiceListScreen({ navigation }: Props) {
         }}
         className=""
       >
-        <View
-          style={{ width: "100%", maxWidth: contentWidth, alignSelf: "center" }}
-          className="rounded-xl border border-slate-200/80 bg-white px-3 pt-3 pb-2"
-        >
+        <ScreenInner className="rounded-xl border border-slate-200/80 bg-white px-3 pt-3 pb-2">
           {/* Doc type tabs — web: Sales | Purchase | Quotation */}
           <View className="flex-row items-center min-w-0">
             {[
@@ -734,9 +772,28 @@ export function InvoiceListScreen({ navigation }: Props) {
                   value={search}
                   onChangeText={setSearch}
                   placeholder={placeholder}
+                  accessibilityLabel="Search bills"
                   placeholderTextColor="#94a3b8"
                   className="flex-1 min-w-0 text-sm text-slate-800 py-1.5"
                 />
+                {!!search.trim() && (
+                  <Pressable
+                    onPress={() => setSearch("")}
+                    accessibilityRole="button"
+                    accessibilityLabel="Clear search"
+                    style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                    className="w-7 h-7 rounded-full bg-slate-100 items-center justify-center"
+                  >
+                    <Ionicons name="close" size={14} color="#64748b" />
+                  </Pressable>
+                )}
+                {isFetching && showInvoiceList && (
+                  <ActivityIndicator
+                    size="small"
+                    color={COLORS.primary}
+                    style={{ marginLeft: 6 }}
+                  />
+                )}
               </View>
             </View>
 
@@ -790,31 +847,38 @@ export function InvoiceListScreen({ navigation }: Props) {
             )}
 
             {showInvoiceList && (
-              <View className="mt-1.5 flex-row min-w-0" style={{ gap: 4 }}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ gap: 8, paddingRight: 2 }}
+                className="mt-2"
+              >
                 {QUICK_LINK_ITEMS.map((item) => (
                   <Pressable
                     key={item.id}
                     onPress={item.onPress}
-                    className="flex-1 flex-row items-center justify-center rounded-md border border-slate-200 py-2 bg-white min-h-[38]"
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open ${item.label}`}
+                    className="flex-row items-center justify-center rounded-xl border border-slate-200 px-3 py-2 bg-white min-h-[40]"
                     style={({ pressed }) => ({
                       opacity: pressed ? 0.7 : 1,
                       backgroundColor: pressed ? "#f8fafc" : "#fff",
-                      gap: 3,
+                      gap: 6,
                     })}
                   >
-                    <Ionicons name={item.icon} size={12} color="#64748b" />
+                    <Ionicons name={item.icon} size={14} color="#64748b" />
                     <Text
-                      className="text-[11px] font-medium text-slate-600"
+                      className="text-xs font-medium text-slate-600"
                       numberOfLines={1}
                     >
                       {item.label}
                     </Text>
                   </Pressable>
                 ))}
-              </View>
+              </ScrollView>
             )}
           </View>
-        </View>
+        </ScreenInner>
       </View>
 
       {/* List */}
@@ -826,14 +890,21 @@ export function InvoiceListScreen({ navigation }: Props) {
           alignItems: "center",
         }}
       >
-        <View
-          style={{ width: "100%", maxWidth: contentWidth, flex: 1 }}
-          className="min-w-0"
-        >
+        <ScreenInner style={{ flex: 1 }} className="min-w-0">
           {docTypeTab === "purchase" ? (
-            purchasesLoading ? (
-              <View className="py-16 items-center">
-                <ActivityIndicator size="large" color="#e67e22" />
+            isPurchaseError ? (
+              <View className="rounded-xl border border-slate-200 bg-white py-8 px-4">
+                <ErrorCard
+                  message="Failed to load purchases"
+                  onRetry={() => refetchPurchases()}
+                />
+              </View>
+            ) : isPurchasesInitialLoading ? (
+              <View className="rounded-xl border border-slate-200 bg-white p-4 gap-3">
+                <Skeleton className="h-14 w-full" />
+                <Skeleton className="h-14 w-full" />
+                <Skeleton className="h-14 w-full" />
+                <Skeleton className="h-14 w-full" />
               </View>
             ) : filteredPurchases.length === 0 ? (
               <View className="rounded-xl border border-slate-200 bg-white py-16">
@@ -851,7 +922,7 @@ export function InvoiceListScreen({ navigation }: Props) {
                       ? () => {
                           InteractionManager.runAfterInteractions(() => {
                             try {
-                              (navigation.getParent as any)?.()?.navigate(
+                              (navigation.getParent() as any)?.navigate(
                                 "MoreTab",
                                 { screen: "Purchases" },
                               );
@@ -873,6 +944,13 @@ export function InvoiceListScreen({ navigation }: Props) {
                     offset: ROW_HEIGHT * index,
                     index,
                   })}
+                  refreshControl={
+                    <RefreshControl
+                      refreshing={purchasesLoading}
+                      onRefresh={() => refetchPurchases()}
+                      tintColor={COLORS.primary}
+                    />
+                  }
                   ListFooterComponent={<View className="h-4" />}
                   style={{ flex: 1 }}
                   initialNumToRender={12}
@@ -888,6 +966,14 @@ export function InvoiceListScreen({ navigation }: Props) {
                 message="Failed to load invoices"
                 onRetry={() => refetch()}
               />
+            </View>
+          ) : isInvoicesInitialLoading ? (
+            <View className="rounded-xl border border-slate-200 bg-white p-4 gap-3">
+              <Skeleton className="h-14 w-full" />
+              <Skeleton className="h-14 w-full" />
+              <Skeleton className="h-14 w-full" />
+              <Skeleton className="h-14 w-full" />
+              <Skeleton className="h-14 w-full" />
             </View>
           ) : filteredInvoices.length === 0 ? (
             <View className="rounded-xl border border-slate-200 bg-white py-16">
@@ -928,7 +1014,7 @@ export function InvoiceListScreen({ navigation }: Props) {
                   <RefreshControl
                     refreshing={isFetching}
                     onRefresh={refetch}
-                    tintColor="#e67e22"
+                    tintColor={COLORS.primary}
                   />
                 }
                 ListFooterComponent={<View className="h-24" />}
@@ -940,17 +1026,21 @@ export function InvoiceListScreen({ navigation }: Props) {
               />
             </View>
           )}
-        </View>
+        </ScreenInner>
       </View>
 
       {/* FAB */}
       <Pressable
         onPress={handleNewInvoice}
         className="w-14 h-14 rounded-full bg-primary items-center justify-center"
+        accessibilityRole="button"
+        accessibilityLabel={
+          docTypeTab === "purchase" ? "Add purchase" : "Create invoice"
+        }
         style={({ pressed }) => ({
           position: "absolute",
-          bottom: 24,
-          right: contentPad,
+          bottom: fabBottom,
+          right: fabRight,
           opacity: pressed ? 0.9 : 1,
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 4 },
@@ -963,7 +1053,12 @@ export function InvoiceListScreen({ navigation }: Props) {
       </Pressable>
 
       {/* Custom date range modal — web: Popover with From/To calendar */}
-      <Modal visible={customDateModalOpen} transparent animationType="fade">
+      <Modal
+        visible={customDateModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCustomDateModalOpen(false)}
+      >
         <Pressable
           className="flex-1 bg-black/50 justify-center items-center p-4"
           onPress={() => {

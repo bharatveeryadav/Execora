@@ -30,18 +30,27 @@ class DeepgramAdapter {
     isAvailable() {
         return this.client !== null;
     }
-    async createLiveTranscription(onTranscript, onError) {
+    async createLiveTranscription(onTranscript, onError, options) {
         if (!this.client)
             throw new Error('Deepgram client not initialised');
+        const isPCM = options?.encoding === 'linear16';
+        const sampleRate = options?.sampleRate ?? 16000;
+        const channels = options?.channels ?? 1;
         const connection = this.client.listen.live({
             model: 'nova-3',
             language: 'hi-en',
             smart_format: true,
             punctuate: true,
+            numerals: true, // convert spoken numbers to digits (e.g. "do sau" → "200")
+            filler_words: false, // strip "um", "uh", fillers
             interim_results: true,
-            endpointing: 200,
-            utterance_end_ms: 500,
+            endpointing: 300, // 300 ms silence before committing (robust in noisy environments)
+            utterance_end_ms: 1000, // wait up to 1 s after last speech before final
+            channels,
+            // PCM-specific settings — only sent when frontend streams raw linear16
+            ...(isPCM ? { encoding: 'linear16', sample_rate: sampleRate } : {}),
         });
+        infrastructure_2.logger.info({ encoding: isPCM ? 'linear16' : 'webm', sampleRate, channels }, 'Deepgram live session opened');
         connection.on(sdk_1.LiveTranscriptionEvents.Transcript, (data) => {
             const text = data.channel?.alternatives?.[0]?.transcript;
             const isFinal = data.is_final;
@@ -65,7 +74,13 @@ class DeepgramAdapter {
             },
             finish: () => {
                 try {
-                    connection.finish();
+                    // requestClose() is the non-deprecated replacement for finish()
+                    if (typeof connection.requestClose === 'function') {
+                        connection.requestClose();
+                    }
+                    else {
+                        connection.finish();
+                    }
                 }
                 catch {
                     // Deepgram connection may already be closed

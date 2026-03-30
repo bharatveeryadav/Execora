@@ -36,7 +36,9 @@ function getTodayRange() {
 
 export function MonitoringScreen() {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"dashboard" | "activity" | "alerts" | "camera">("dashboard");
+  const [tab, setTab] = useState<
+    "dashboard" | "activity" | "alerts" | "camera"
+  >("dashboard");
   const [showCashModal, setShowCashModal] = useState(false);
   const [cashActual, setCashActual] = useState("");
   const [cashExpected, setCashExpected] = useState("");
@@ -45,7 +47,12 @@ export function MonitoringScreen() {
 
   const { from, to } = getTodayRange();
 
-  const { data: stats, isFetching: statsLoading, isError: statsError, refetch: refetchStats } = useQuery({
+  const {
+    data: stats,
+    isFetching: statsLoading,
+    isError: statsError,
+    refetch: refetchStats,
+  } = useQuery({
     queryKey: ["monitoring-stats", from, to],
     queryFn: () => monitoringApi.getStats({ from, to }),
     staleTime: 10_000,
@@ -58,7 +65,11 @@ export function MonitoringScreen() {
     staleTime: 30_000,
   });
 
-  const { data: eventsData, isFetching: eventsLoading, refetch: refetchEvents } = useQuery({
+  const {
+    data: eventsData,
+    isFetching: eventsLoading,
+    refetch: refetchEvents,
+  } = useQuery({
     queryKey: ["monitoring-events", tab],
     queryFn: () =>
       monitoringApi.getEvents({
@@ -79,14 +90,18 @@ export function MonitoringScreen() {
   const markAllRead = useMutation({
     mutationFn: () => monitoringApi.markAllRead(),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["monitoring-unread", "monitoring-events"] });
+      void qc.invalidateQueries({
+        queryKey: ["monitoring-unread", "monitoring-events"],
+      });
     },
   });
 
   const markRead = useMutation({
     mutationFn: (id: string) => monitoringApi.markRead(id),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["monitoring-unread", "monitoring-events"] });
+      void qc.invalidateQueries({
+        queryKey: ["monitoring-unread", "monitoring-events"],
+      });
     },
   });
 
@@ -109,7 +124,12 @@ export function MonitoringScreen() {
       const date = new Date().toISOString().slice(0, 10);
       const actual = parseFloat(cashActual) || 0;
       const expected = parseFloat(cashExpected) || 0;
-      return monitoringApi.submitCashReconciliation({ date, actual, expected, note: cashNote });
+      return monitoringApi.submitCashReconciliation({
+        date,
+        actual,
+        expected,
+        note: cashNote,
+      });
     },
     onSuccess: () => {
       hapticLight();
@@ -117,7 +137,9 @@ export function MonitoringScreen() {
       setCashActual("");
       setCashExpected("");
       setCashNote("");
-      void qc.invalidateQueries({ queryKey: ["monitoring-stats", "monitoring-events"] });
+      void qc.invalidateQueries({
+        queryKey: ["monitoring-stats", "monitoring-events"],
+      });
     },
     onError: (err: Error) => showAlert("Error", err.message),
   });
@@ -131,7 +153,8 @@ export function MonitoringScreen() {
   const events = eventsData?.events ?? [];
   const unreadCount = unreadData?.count ?? 0;
   const billCount = stats?.billCount ?? 0;
-  const totalSales = summary?.summary?.totalSales ?? stats?.totalBillAmount ?? 0;
+  const totalSales =
+    summary?.summary?.totalSales ?? stats?.totalBillAmount ?? 0;
   const footfall = stats?.footfall ?? 0;
   const conversionRate = stats?.conversionRate ?? 0;
   const hourlyBills = stats?.hourlyBills ?? {};
@@ -156,7 +179,10 @@ export function MonitoringScreen() {
   const isCameraTab = tab === "camera";
 
   return (
-    <SafeAreaView className={`flex-1 ${isCameraTab ? "bg-black" : "bg-background"}`} edges={["top", "bottom"]}>
+    <SafeAreaView
+      className={`flex-1 ${isCameraTab ? "bg-black" : "bg-background"}`}
+      edges={["top", "bottom"]}
+    >
       {isCameraTab ? (
         <>
           <View className="flex-row items-center justify-between px-4 py-3 bg-black/80">
@@ -168,21 +194,35 @@ export function MonitoringScreen() {
               onPress={() => setShowDrawerLog(true)}
               className="bg-primary px-4 py-2 rounded-lg"
             >
-              <Text className="text-white font-semibold text-sm">Log Drawer</Text>
+              <Text className="text-white font-semibold text-sm">
+                Log Drawer
+              </Text>
             </TouchableOpacity>
           </View>
           <View className="flex-1">
             <CameraView style={{ flex: 1 }} facing="back" />
           </View>
-          <Modal visible={showDrawerLog} transparent animationType="fade">
+          <Modal
+            visible={showDrawerLog}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowDrawerLog(false)}
+          >
             <View className="flex-1 bg-black/50 justify-center px-4">
               <View className="bg-white rounded-2xl p-4">
-                <Text className="text-lg font-bold mb-2">Log Drawer Opened</Text>
+                <Text className="text-lg font-bold mb-2">
+                  Log Drawer Opened
+                </Text>
                 <Text className="text-slate-600 text-sm mb-4">
-                  Record that the cash drawer was opened (e.g. for no-ring sale check).
+                  Record that the cash drawer was opened (e.g. for no-ring sale
+                  check).
                 </Text>
                 <TouchableOpacity
-                  onPress={() => logEvent.mutate("Cash drawer opened — manual log from mobile")}
+                  onPress={() =>
+                    logEvent.mutate(
+                      "Cash drawer opened — manual log from mobile",
+                    )
+                  }
                   disabled={logEvent.isPending}
                   className="bg-primary py-3 rounded-xl items-center"
                 >
@@ -204,168 +244,265 @@ export function MonitoringScreen() {
         </>
       ) : (
         <>
-      <View className="px-4 pt-4 pb-3 border-b border-slate-200 bg-card">
-        <View className="flex-row items-center justify-between mb-3">
-          <Text className="text-xl font-bold tracking-tight text-slate-800">Store Monitor</Text>
-          <TouchableOpacity onPress={() => refetch()} disabled={statsLoading}>
-            <Ionicons name="refresh" size={22} color={statsLoading ? "#94a3b8" : "#64748b"} />
-          </TouchableOpacity>
-        </View>
-        <View className="flex-row gap-2">
-          <Chip label="Dashboard" selected={tab === "dashboard"} onPress={() => setTab("dashboard")} />
-          <Chip label="Activity" selected={tab === "activity"} onPress={() => setTab("activity")} />
-          <Chip
-            label={`Alerts ${unreadCount > 0 ? `(${unreadCount})` : ""}`}
-            selected={tab === "alerts"}
-            onPress={() => setTab("alerts")}
-          />
-          <Chip label="Camera" selected={isCameraTab} onPress={() => setTab("camera")} />
-        </View>
-      </View>
-
-      <ScrollView
-        refreshControl={<RefreshControl refreshing={statsLoading || eventsLoading} onRefresh={refetch} />}
-        contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
-      >
-        {tab === "dashboard" && (
-          <>
-            {/* KPI bar */}
-            <View className="flex-row flex-wrap gap-2 mb-4">
-              <View className="flex-1 min-w-[140px] bg-primary/10 p-3 rounded-xl border border-primary/20">
-                <Text className="text-xs text-slate-600">Bills</Text>
-                <Text className="text-lg font-bold text-primary">{billCount}</Text>
-              </View>
-              <View className="flex-1 min-w-[140px] bg-emerald-50 p-3 rounded-xl border border-emerald-100">
-                <Text className="text-xs text-slate-600">Sales</Text>
-                <Text className="text-lg font-bold text-emerald-700">{formatCurrency(totalSales)}</Text>
-              </View>
-              <View className="flex-1 min-w-[140px] bg-amber-50 p-3 rounded-xl border border-amber-100">
-                <Text className="text-xs text-slate-600">Footfall</Text>
-                <Text className="text-lg font-bold text-amber-700">{footfall}</Text>
-              </View>
-              <View className="flex-1 min-w-[140px] bg-blue-50 p-3 rounded-xl border border-blue-100">
-                <Text className="text-xs text-slate-600">Conversion</Text>
-                <Text className="text-lg font-bold text-blue-700">{conversionRate}%</Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => setTab("alerts")}
-                className="flex-1 min-w-[140px] bg-red-50 p-3 rounded-xl border border-red-100"
-              >
-                <Text className="text-xs text-slate-600">Alerts</Text>
-                <Text className="text-lg font-bold text-red-700">{unreadCount}</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Hourly chart */}
-            <View className="mb-4">
-              <Text className="text-sm font-semibold text-slate-700 mb-2">Bills by hour</Text>
-              <View className="flex-row items-end h-24 gap-0.5">
-                {Array.from({ length: 24 }, (_, h) => {
-                  const count = hourlyBills[String(h)] ?? 0;
-                  const height = maxHourly > 0 ? (count / maxHourly) * 80 : 0;
-                  const isPeak = peakHour === h && count > 0;
-                  return (
-                    <View key={h} className="flex-1 items-center">
-                      <View
-                        className={`w-full rounded-t ${isPeak ? "bg-primary" : "bg-slate-300"}`}
-                        style={{ height: Math.max(height, 2) }}
-                      />
-                      <Text className="text-[8px] text-slate-400 mt-0.5">{h}</Text>
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-
-            {/* Employee cards */}
-            {Object.keys(byEmployee).length > 0 && (
-              <View className="mb-4">
-                <Text className="text-sm font-semibold text-slate-700 mb-2">Employees</Text>
-                <View className="gap-2">
-                  {Object.entries(byEmployee).map(([userId, emp]) => {
-                    const cancelRate = emp.bills > 0 ? (emp.cancellations / emp.bills) * 100 : 0;
-                    const badge = cancelRate > 10 ? "Alert" : cancelRate > 5 ? "Watch" : "OK";
-                    const badgeColor = badge === "Alert" ? "bg-red-100" : badge === "Watch" ? "bg-amber-100" : "bg-green-100";
-                    const textColor = badge === "Alert" ? "text-red-700" : badge === "Watch" ? "text-amber-700" : "text-green-700";
-                    return (
-                      <View key={userId} className="rounded-xl border border-slate-200 bg-card p-3">
-                        <View className="flex-row items-center justify-between mb-1">
-                          <Text className="font-medium text-slate-800">User {userId.slice(0, 8)}</Text>
-                          <View className={`px-2 py-0.5 rounded-full ${badgeColor}`}>
-                            <Text className={`text-[10px] font-semibold ${textColor}`}>{badge}</Text>
-                          </View>
-                        </View>
-                        <View className="h-2 bg-slate-100 rounded-full overflow-hidden mb-1">
-                          <View
-                            className={`h-full ${cancelRate > 10 ? "bg-red-500" : cancelRate > 5 ? "bg-amber-500" : "bg-green-500"}`}
-                            style={{ width: `${Math.min(cancelRate, 100)}%` }}
-                          />
-                        </View>
-                        <Text className="text-xs text-slate-500">
-                          Bills: {emp.bills} · Cancels: {emp.cancellations} · Cancel rate: {cancelRate.toFixed(1)}%
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </View>
-              </View>
-            )}
-
-            {/* Cash reconciliation */}
-            <View className="rounded-xl border border-slate-200 bg-card p-4">
-              <Text className="text-sm font-semibold text-slate-700 mb-2">EOD Cash Reconciliation</Text>
-              <Text className="text-xs text-slate-500 mb-3">
-                Record actual cash count vs expected at end of day.
+          <View className="px-4 pt-4 pb-3 border-b border-slate-200 bg-card">
+            <View className="flex-row items-center justify-between mb-3">
+              <Text className="text-xl font-bold tracking-tight text-slate-800">
+                Store Monitor
               </Text>
               <TouchableOpacity
-                onPress={() => setShowCashModal(true)}
-                className="bg-primary py-3 rounded-xl items-center"
+                onPress={() => refetch()}
+                disabled={statsLoading}
               >
-                <Text className="text-white font-semibold">Submit Cash Count</Text>
+                <Ionicons
+                  name="refresh"
+                  size={22}
+                  color={statsLoading ? "#94a3b8" : "#64748b"}
+                />
               </TouchableOpacity>
             </View>
-          </>
-        )}
+            <View className="flex-row gap-2">
+              <Chip
+                label="Dashboard"
+                selected={tab === "dashboard"}
+                onPress={() => setTab("dashboard")}
+              />
+              <Chip
+                label="Activity"
+                selected={tab === "activity"}
+                onPress={() => setTab("activity")}
+              />
+              <Chip
+                label={`Alerts ${unreadCount > 0 ? `(${unreadCount})` : ""}`}
+                selected={tab === "alerts"}
+                onPress={() => setTab("alerts")}
+              />
+              <Chip
+                label="Camera"
+                selected={isCameraTab}
+                onPress={() => setTab("camera")}
+              />
+            </View>
+          </View>
 
-        {(tab === "activity" || tab === "alerts") && (
-          <View className="mb-4">
-            {tab === "alerts" && unreadCount > 0 && (
-              <TouchableOpacity
-                onPress={() => markAllRead.mutate()}
-                className="mb-3 bg-slate-100 py-2 px-4 rounded-lg self-start"
-              >
-                <Text className="text-sm font-medium text-slate-700">Mark all read</Text>
-              </TouchableOpacity>
-            )}
-            {events.length === 0 ? (
-              <Text className="text-slate-500 text-center py-8">No events</Text>
-            ) : (
-              <View className="gap-2">
-                {events.map((e) => (
+          <ScrollView
+            refreshControl={
+              <RefreshControl
+                refreshing={statsLoading || eventsLoading}
+                onRefresh={refetch}
+              />
+            }
+            contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
+          >
+            {tab === "dashboard" && (
+              <>
+                {/* KPI bar */}
+                <View className="flex-row flex-wrap gap-2 mb-4">
+                  <View className="flex-1 min-w-[140px] bg-primary/10 p-3 rounded-xl border border-primary/20">
+                    <Text className="text-xs text-slate-600">Bills</Text>
+                    <Text className="text-lg font-bold text-primary">
+                      {billCount}
+                    </Text>
+                  </View>
+                  <View className="flex-1 min-w-[140px] bg-emerald-50 p-3 rounded-xl border border-emerald-100">
+                    <Text className="text-xs text-slate-600">Sales</Text>
+                    <Text className="text-lg font-bold text-emerald-700">
+                      {formatCurrency(totalSales)}
+                    </Text>
+                  </View>
+                  <View className="flex-1 min-w-[140px] bg-amber-50 p-3 rounded-xl border border-amber-100">
+                    <Text className="text-xs text-slate-600">Footfall</Text>
+                    <Text className="text-lg font-bold text-amber-700">
+                      {footfall}
+                    </Text>
+                  </View>
+                  <View className="flex-1 min-w-[140px] bg-blue-50 p-3 rounded-xl border border-blue-100">
+                    <Text className="text-xs text-slate-600">Conversion</Text>
+                    <Text className="text-lg font-bold text-blue-700">
+                      {conversionRate}%
+                    </Text>
+                  </View>
                   <TouchableOpacity
-                    key={e.id}
-                    onPress={() => e.severity !== "info" && markRead.mutate(e.id)}
-                    className={`rounded-xl border p-3 ${
-                      e.severity === "alert" ? "border-red-200 bg-red-50" : e.severity === "warning" ? "border-amber-200 bg-amber-50" : "border-slate-200 bg-card"
-                    } ${!e.isRead ? "border-l-4 border-l-primary" : ""}`}
+                    onPress={() => setTab("alerts")}
+                    className="flex-1 min-w-[140px] bg-red-50 p-3 rounded-xl border border-red-100"
                   >
-                    <Text className="text-sm font-medium text-slate-800">{e.description}</Text>
-                    <Text className="text-xs text-slate-500 mt-1">
-                      {e.eventType} · {new Date(e.createdAt).toLocaleString("en-IN")}
-                      {e.user?.name ? ` · ${e.user.name}` : ""}
+                    <Text className="text-xs text-slate-600">Alerts</Text>
+                    <Text className="text-lg font-bold text-red-700">
+                      {unreadCount}
                     </Text>
                   </TouchableOpacity>
-                ))}
+                </View>
+
+                {/* Hourly chart */}
+                <View className="mb-4">
+                  <Text className="text-sm font-semibold text-slate-700 mb-2">
+                    Bills by hour
+                  </Text>
+                  <View className="flex-row items-end h-24 gap-0.5">
+                    {Array.from({ length: 24 }, (_, h) => {
+                      const count = hourlyBills[String(h)] ?? 0;
+                      const height =
+                        maxHourly > 0 ? (count / maxHourly) * 80 : 0;
+                      const isPeak = peakHour === h && count > 0;
+                      return (
+                        <View key={h} className="flex-1 items-center">
+                          <View
+                            className={`w-full rounded-t ${isPeak ? "bg-primary" : "bg-slate-300"}`}
+                            style={{ height: Math.max(height, 2) }}
+                          />
+                          <Text className="text-[8px] text-slate-400 mt-0.5">
+                            {h}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+
+                {/* Employee cards */}
+                {Object.keys(byEmployee).length > 0 && (
+                  <View className="mb-4">
+                    <Text className="text-sm font-semibold text-slate-700 mb-2">
+                      Employees
+                    </Text>
+                    <View className="gap-2">
+                      {Object.entries(byEmployee).map(([userId, emp]) => {
+                        const cancelRate =
+                          emp.bills > 0
+                            ? (emp.cancellations / emp.bills) * 100
+                            : 0;
+                        const badge =
+                          cancelRate > 10
+                            ? "Alert"
+                            : cancelRate > 5
+                              ? "Watch"
+                              : "OK";
+                        const badgeColor =
+                          badge === "Alert"
+                            ? "bg-red-100"
+                            : badge === "Watch"
+                              ? "bg-amber-100"
+                              : "bg-green-100";
+                        const textColor =
+                          badge === "Alert"
+                            ? "text-red-700"
+                            : badge === "Watch"
+                              ? "text-amber-700"
+                              : "text-green-700";
+                        return (
+                          <View
+                            key={userId}
+                            className="rounded-xl border border-slate-200 bg-card p-3"
+                          >
+                            <View className="flex-row items-center justify-between mb-1">
+                              <Text className="font-medium text-slate-800">
+                                User {userId.slice(0, 8)}
+                              </Text>
+                              <View
+                                className={`px-2 py-0.5 rounded-full ${badgeColor}`}
+                              >
+                                <Text
+                                  className={`text-[10px] font-semibold ${textColor}`}
+                                >
+                                  {badge}
+                                </Text>
+                              </View>
+                            </View>
+                            <View className="h-2 bg-slate-100 rounded-full overflow-hidden mb-1">
+                              <View
+                                className={`h-full ${cancelRate > 10 ? "bg-red-500" : cancelRate > 5 ? "bg-amber-500" : "bg-green-500"}`}
+                                style={{
+                                  width: `${Math.min(cancelRate, 100)}%`,
+                                }}
+                              />
+                            </View>
+                            <Text className="text-xs text-slate-500">
+                              Bills: {emp.bills} · Cancels: {emp.cancellations}{" "}
+                              · Cancel rate: {cancelRate.toFixed(1)}%
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </View>
+                )}
+
+                {/* Cash reconciliation */}
+                <View className="rounded-xl border border-slate-200 bg-card p-4">
+                  <Text className="text-sm font-semibold text-slate-700 mb-2">
+                    EOD Cash Reconciliation
+                  </Text>
+                  <Text className="text-xs text-slate-500 mb-3">
+                    Record actual cash count vs expected at end of day.
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => setShowCashModal(true)}
+                    className="bg-primary py-3 rounded-xl items-center"
+                  >
+                    <Text className="text-white font-semibold">
+                      Submit Cash Count
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+
+            {(tab === "activity" || tab === "alerts") && (
+              <View className="mb-4">
+                {tab === "alerts" && unreadCount > 0 && (
+                  <TouchableOpacity
+                    onPress={() => markAllRead.mutate()}
+                    className="mb-3 bg-slate-100 py-2 px-4 rounded-lg self-start"
+                  >
+                    <Text className="text-sm font-medium text-slate-700">
+                      Mark all read
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {events.length === 0 ? (
+                  <Text className="text-slate-500 text-center py-8">
+                    No events
+                  </Text>
+                ) : (
+                  <View className="gap-2">
+                    {events.map((e) => (
+                      <TouchableOpacity
+                        key={e.id}
+                        onPress={() =>
+                          e.severity !== "info" && markRead.mutate(e.id)
+                        }
+                        className={`rounded-xl border p-3 ${
+                          e.severity === "alert"
+                            ? "border-red-200 bg-red-50"
+                            : e.severity === "warning"
+                              ? "border-amber-200 bg-amber-50"
+                              : "border-slate-200 bg-card"
+                        } ${!e.isRead ? "border-l-4 border-l-primary" : ""}`}
+                      >
+                        <Text className="text-sm font-medium text-slate-800">
+                          {e.description}
+                        </Text>
+                        <Text className="text-xs text-slate-500 mt-1">
+                          {e.eventType} ·{" "}
+                          {new Date(e.createdAt).toLocaleString("en-IN")}
+                          {e.user?.name ? ` · ${e.user.name}` : ""}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
               </View>
             )}
-          </View>
-        )}
-      </ScrollView>
+          </ScrollView>
         </>
       )}
 
       {/* Cash reconciliation modal */}
-      <Modal visible={showCashModal} transparent animationType="fade">
+      <Modal
+        visible={showCashModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowCashModal(false)}
+      >
         <View className="flex-1 bg-black/50 justify-center px-4">
           <View className="bg-white rounded-2xl p-4">
             <Text className="text-lg font-bold mb-3">EOD Cash Count</Text>
@@ -377,7 +514,9 @@ export function MonitoringScreen() {
               keyboardType="numeric"
               className="border border-slate-200 rounded-lg px-3 py-2 mb-3"
             />
-            <Text className="text-sm text-slate-600 mb-2">Actual count (₹)</Text>
+            <Text className="text-sm text-slate-600 mb-2">
+              Actual count (₹)
+            </Text>
             <TextInput
               value={cashActual}
               onChangeText={setCashActual}
@@ -396,9 +535,16 @@ export function MonitoringScreen() {
               disabled={submitCash.isPending || !cashActual || !cashExpected}
               className="bg-primary py-3 rounded-xl items-center mb-2"
             >
-              {submitCash.isPending ? <ActivityIndicator color="#fff" /> : <Text className="text-white font-semibold">Submit</Text>}
+              {submitCash.isPending ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text className="text-white font-semibold">Submit</Text>
+              )}
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setShowCashModal(false)} className="py-2 items-center">
+            <TouchableOpacity
+              onPress={() => setShowCashModal(false)}
+              className="py-2 items-center"
+            >
               <Text className="text-slate-500">Cancel</Text>
             </TouchableOpacity>
           </View>

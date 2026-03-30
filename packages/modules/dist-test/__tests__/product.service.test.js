@@ -87,7 +87,7 @@ const fixtures_1 = require("./helpers/fixtures");
 (0, node_test_1.default)('getProductById: returns product when found', async () => {
     const restores = [];
     try {
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.product, 'findUnique', async () => (0, fixtures_1.makeProduct)()));
+        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.product, 'findFirst', async () => (0, fixtures_1.makeProduct)()));
         const result = await product_service_1.productService.getProductById('prod-test-001');
         strict_1.default.ok(result !== null);
         strict_1.default.equal(result.id, 'prod-test-001');
@@ -99,7 +99,7 @@ const fixtures_1 = require("./helpers/fixtures");
 (0, node_test_1.default)('getProductById: returns null when not found', async () => {
     const restores = [];
     try {
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.product, 'findUnique', async () => null));
+        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.product, 'findFirst', async () => null));
         const result = await product_service_1.productService.getProductById('nonexistent');
         strict_1.default.equal(result, null);
     }
@@ -128,6 +128,8 @@ const fixtures_1 = require("./helpers/fixtures");
     const restores = [];
     try {
         const updated = [];
+        // subtract path calls findFirst first to check stock availability
+        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.product, 'findFirst', async () => (0, fixtures_1.makeProduct)({ stock: 100 })));
         restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.product, 'update', async (args) => {
             updated.push(args);
             return (0, fixtures_1.makeProduct)({ stock: 90 });
@@ -168,9 +170,12 @@ const fixtures_1 = require("./helpers/fixtures");
 (0, node_test_1.default)('getLowStockProducts: returns products with stock <= threshold', async () => {
     const restores = [];
     try {
-        const lowStock = [(0, fixtures_1.makeProduct)({ stock: 2 }), (0, fixtures_1.makeProduct)({ id: 'p2', stock: 4 })];
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.product, 'findMany', async () => lowStock));
-        const results = await product_service_1.productService.getLowStockProducts(5);
+        const rawRows = [
+            { id: 'p1', name: 'Item A', category: 'cat', description: null, price: '100', unit: 'pcs', stock: 2, min_stock: 5, is_active: true, created_at: new Date(), updated_at: new Date() },
+            { id: 'p2', name: 'Item B', category: 'cat', description: null, price: '200', unit: 'kg', stock: 4, min_stock: 5, is_active: true, created_at: new Date(), updated_at: new Date() },
+        ];
+        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma, '$queryRaw', async () => rawRows));
+        const results = await product_service_1.productService.getLowStockProducts();
         strict_1.default.equal(results.length, 2);
         strict_1.default.ok(results.every((p) => p.stock <= 5));
     }
@@ -205,6 +210,8 @@ const fixtures_1 = require("./helpers/fixtures");
 (0, node_test_1.default)('updatePrice: updates product price and returns updated product', async () => {
     const restores = [];
     try {
+        // updatePrice calls findFirst to verify the product exists, then update
+        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.product, 'findFirst', async () => (0, fixtures_1.makeProduct)()));
         restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.product, 'update', async () => (0, fixtures_1.makeProduct)({ price: { toString: () => '75' } })));
         const result = await product_service_1.productService.updatePrice('prod-001', 75);
         strict_1.default.ok(result !== null);

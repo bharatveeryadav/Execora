@@ -8,14 +8,25 @@ import { cn } from "../../lib/utils";
 export function Card({
   children,
   className,
+  style,
   ...props
 }: ViewProps & { children: React.ReactNode }) {
   return (
     <View
       className={cn(
-        "rounded-xl border border-slate-200 bg-card p-4 shadow-sm",
+        "rounded-2xl border border-slate-200/80 bg-white p-4",
         className
       )}
+      style={[
+        {
+          shadowColor: "#0f172a",
+          shadowOpacity: 0.05,
+          shadowOffset: { width: 0, height: 2 },
+          shadowRadius: 8,
+          elevation: 1,
+        },
+        style,
+      ]}
       {...props}
     >
       {children}
@@ -27,6 +38,7 @@ export function PressableCard({
   children,
   onPress,
   className,
+  style,
   ...props
 }: ViewProps & { children: React.ReactNode; onPress?: () => void }) {
   return (
@@ -34,9 +46,19 @@ export function PressableCard({
       onPress={onPress}
       activeOpacity={0.7}
       className={cn(
-        "rounded-xl border border-slate-200 bg-card p-4 shadow-sm",
+        "rounded-2xl border border-slate-200/80 bg-white p-4",
         className
       )}
+      style={[
+        {
+          shadowColor: "#0f172a",
+          shadowOpacity: 0.05,
+          shadowOffset: { width: 0, height: 2 },
+          shadowRadius: 8,
+          elevation: 1,
+        },
+        style,
+      ]}
       {...props}
     >
       {children}

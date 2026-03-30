@@ -953,7 +953,7 @@ export function DashboardScreen({ navigation }: Props) {
 
   const navigateCustomerStack = useCallback(
     (screen: CustomerRoute) => {
-      (navigation.getParent() as any)?.navigate("CustomersTab", { screen });
+      (navigation as any).navigate("CustomersTab", { screen });
     },
     [navigation],
   );
@@ -1029,7 +1029,12 @@ export function DashboardScreen({ navigation }: Props) {
           </TouchableOpacity>
 
           {/* Business menu modal */}
-          <Modal visible={businessMenuOpen} transparent animationType="fade">
+          <Modal
+            visible={businessMenuOpen}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setBusinessMenuOpen(false)}
+          >
             <Pressable
               className="flex-1 bg-black/50 justify-end"
               onPress={() => setBusinessMenuOpen(false)}
@@ -1654,7 +1659,12 @@ export function DashboardScreen({ navigation }: Props) {
           </View>
 
           {/* Period filter modal */}
-          <Modal visible={periodModalOpen} transparent animationType="fade">
+          <Modal
+            visible={periodModalOpen}
+            transparent
+            animationType="fade"
+            onRequestClose={closePeriodModal}
+          >
             <Pressable
               className="flex-1 bg-black/50 justify-end"
               onPress={closePeriodModal}
@@ -1995,7 +2005,12 @@ export function DashboardScreen({ navigation }: Props) {
       </ScrollView>
 
       {/* Add transaction popup */}
-      <Modal visible={quickActionPopupOpen} transparent animationType="fade">
+      <Modal
+        visible={quickActionPopupOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setQuickActionPopupOpen(false)}
+      >
         <Pressable
           className="flex-1 bg-black/50 justify-end"
           onPress={() => setQuickActionPopupOpen(false)}
@@ -2119,7 +2134,12 @@ export function DashboardScreen({ navigation }: Props) {
       </Modal>
 
       {/* Expiry detail modal */}
-      <Modal visible={!!expirySelected} transparent animationType="fade">
+      <Modal
+        visible={!!expirySelected}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setExpirySelected(null)}
+      >
         <Pressable
           className="flex-1 bg-black/50 justify-center p-4"
           onPress={() => setExpirySelected(null)}

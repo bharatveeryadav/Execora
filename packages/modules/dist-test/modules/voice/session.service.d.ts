@@ -1,10 +1,11 @@
+import { Prisma } from '@prisma/client';
 declare class VoiceSessionService {
     /**
      * Create new conversation session
      */
     createSession(metadata?: any): Promise<{
-        id: string;
         tenantId: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         status: import(".prisma/client").$Enums.SessionStatus;
@@ -13,22 +14,22 @@ declare class VoiceSessionService {
         priority: import(".prisma/client").$Enums.ConversationPriority;
         sessionKey: string | null;
         queuePosition: number | null;
-        contextStack: import("@prisma/client/runtime/library").JsonValue;
+        contextStack: Prisma.JsonValue;
         version: number;
         sessionStart: Date;
         lastActivity: Date;
         expectedResumeTime: Date | null;
         turnCount: number;
-        customerSnapshot: import("@prisma/client/runtime/library").JsonValue | null;
-        deviceInfo: import("@prisma/client/runtime/library").JsonValue | null;
+        customerSnapshot: Prisma.JsonValue | null;
+        deviceInfo: Prisma.JsonValue | null;
         channel: string;
     }>;
     /**
      * End conversation session
      */
     endSession(sessionId: string, duration?: number): Promise<{
-        id: string;
         tenantId: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         status: import(".prisma/client").$Enums.SessionStatus;
@@ -37,14 +38,14 @@ declare class VoiceSessionService {
         priority: import(".prisma/client").$Enums.ConversationPriority;
         sessionKey: string | null;
         queuePosition: number | null;
-        contextStack: import("@prisma/client/runtime/library").JsonValue;
+        contextStack: Prisma.JsonValue;
         version: number;
         sessionStart: Date;
         lastActivity: Date;
         expectedResumeTime: Date | null;
         turnCount: number;
-        customerSnapshot: import("@prisma/client/runtime/library").JsonValue | null;
-        deviceInfo: import("@prisma/client/runtime/library").JsonValue | null;
+        customerSnapshot: Prisma.JsonValue | null;
+        deviceInfo: Prisma.JsonValue | null;
         channel: string;
     }>;
     /**
@@ -55,26 +56,26 @@ declare class VoiceSessionService {
         duration?: number;
         mimeType?: string;
     }): Promise<{
-        id: string;
         tenantId: string;
-        metadata: import("@prisma/client/runtime/library").JsonValue;
+        id: string;
+        metadata: Prisma.JsonValue;
         createdAt: Date;
         customerId: string | null;
         expiresAt: Date | null;
+        retentionDays: number;
         sessionId: string | null;
         recordingUrl: string;
         recordingFormat: string;
         durationSeconds: number | null;
         fileSizeBytes: bigint | null;
         transcript: string | null;
-        transcriptConfidence: import("@prisma/client/runtime/library").Decimal | null;
+        transcriptConfidence: Prisma.Decimal | null;
         detectedLanguage: string | null;
         intentAtTime: string | null;
-        entitiesAtTime: import("@prisma/client/runtime/library").JsonValue | null;
+        entitiesAtTime: Prisma.JsonValue | null;
         bucketName: string;
         objectKey: string;
         etag: string | null;
-        retentionDays: number;
         isDeleted: boolean;
         conversationTurnId: string | null;
         triggeredBy: string | null;
@@ -87,26 +88,26 @@ declare class VoiceSessionService {
      * Get recordings for a session
      */
     getSessionRecordings(sessionId: string): Promise<{
-        id: string;
         tenantId: string;
-        metadata: import("@prisma/client/runtime/library").JsonValue;
+        id: string;
+        metadata: Prisma.JsonValue;
         createdAt: Date;
         customerId: string | null;
         expiresAt: Date | null;
+        retentionDays: number;
         sessionId: string | null;
         recordingUrl: string;
         recordingFormat: string;
         durationSeconds: number | null;
         fileSizeBytes: bigint | null;
         transcript: string | null;
-        transcriptConfidence: import("@prisma/client/runtime/library").Decimal | null;
+        transcriptConfidence: Prisma.Decimal | null;
         detectedLanguage: string | null;
         intentAtTime: string | null;
-        entitiesAtTime: import("@prisma/client/runtime/library").JsonValue | null;
+        entitiesAtTime: Prisma.JsonValue | null;
         bucketName: string;
         objectKey: string;
         etag: string | null;
-        retentionDays: number;
         isDeleted: boolean;
         conversationTurnId: string | null;
         triggeredBy: string | null;
@@ -122,8 +123,8 @@ declare class VoiceSessionService {
             objectKey: string;
         }[];
     } & {
-        id: string;
         tenantId: string;
+        id: string;
         createdAt: Date;
         updatedAt: Date;
         status: import(".prisma/client").$Enums.SessionStatus;
@@ -132,14 +133,14 @@ declare class VoiceSessionService {
         priority: import(".prisma/client").$Enums.ConversationPriority;
         sessionKey: string | null;
         queuePosition: number | null;
-        contextStack: import("@prisma/client/runtime/library").JsonValue;
+        contextStack: Prisma.JsonValue;
         version: number;
         sessionStart: Date;
         lastActivity: Date;
         expectedResumeTime: Date | null;
         turnCount: number;
-        customerSnapshot: import("@prisma/client/runtime/library").JsonValue | null;
-        deviceInfo: import("@prisma/client/runtime/library").JsonValue | null;
+        customerSnapshot: Prisma.JsonValue | null;
+        deviceInfo: Prisma.JsonValue | null;
         channel: string;
     })[]>;
     /**

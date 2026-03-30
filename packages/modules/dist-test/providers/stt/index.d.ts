@@ -1,4 +1,5 @@
 import { LiveTranscriptionSession } from '../types';
+import type { LiveTranscriptionOptions } from '../types';
 /**
  * STT service — provider-agnostic facade.
  *
@@ -25,7 +26,7 @@ declare class STTService {
      * Open a live transcription session (streaming audio → partial+final transcripts).
      * Falls back to any adapter that supports live transcription when the primary doesn't.
      */
-    createLiveTranscription(onTranscript: (text: string, isFinal: boolean) => void, onError: (error: Error) => void): Promise<LiveTranscriptionSession>;
+    createLiveTranscription(onTranscript: (text: string, isFinal: boolean) => void, onError: (error: Error) => void, options?: LiveTranscriptionOptions): Promise<LiveTranscriptionSession>;
     /**
      * Transcribe a complete audio buffer (batch mode).
      * Automatically retried once on transient errors.

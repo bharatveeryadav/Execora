@@ -1,0 +1,1 @@
+{"version":3,"file":"useOffline.d.ts","sourceRoot":"","sources":["../../src/hooks/useOffline.ts"],"names":[],"mappings":"AAcA,wBAAgB,gBAAgB,IAAI;IAAE,SAAS,EAAE,OAAO,CAAA;CAAE,CAWzD;AAED,wBAAgB,cAAc,CAAC,UAAU,EAAE,OAAO,GAAG;IACnD,YAAY,EAAE,MAAM,CAAC;IACrB,SAAS,EAAE,OAAO,CAAC;CACpB,CAsDA"}

@@ -50,7 +50,7 @@ const fixtures_1 = require("./helpers/fixtures");
     const restores = [];
     try {
         const mockCustomer = (0, fixtures_1.makeCustomer)({ invoices: [{ id: 'inv-1' }], reminders: [] });
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'findUnique', async () => mockCustomer));
+        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'findFirst', async () => mockCustomer));
         const result = await customer_service_1.customerService.getCustomerById('cust-test-001');
         strict_1.default.ok(result !== null);
         strict_1.default.equal(result.id, 'cust-test-001');
@@ -63,7 +63,7 @@ const fixtures_1 = require("./helpers/fixtures");
 (0, node_test_1.default)('getCustomerById: returns null when not found', async () => {
     const restores = [];
     try {
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'findUnique', async () => null));
+        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'findFirst', async () => null));
         const result = await customer_service_1.customerService.getCustomerById('nonexistent');
         strict_1.default.equal(result, null);
     }

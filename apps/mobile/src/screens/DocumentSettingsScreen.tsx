@@ -19,7 +19,12 @@ import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { SIZES } from "../lib/constants";
-import { storage, DOC_SETTINGS_KEY, INV_TEMPLATE_KEY, BIZ_STORAGE_KEY } from "../lib/storage";
+import {
+  storage,
+  DOC_SETTINGS_KEY,
+  INV_TEMPLATE_KEY,
+  BIZ_STORAGE_KEY,
+} from "../lib/storage";
 import {
   TEMPLATES,
   InvoicePreviewThumbnail,
@@ -155,7 +160,9 @@ function SettingRow({
       <View className="flex-row items-center justify-between">
         <View className="flex-1 mr-3">
           <View className="flex-row items-center gap-2">
-            <Text className="text-base font-medium text-slate-800">{label}</Text>
+            <Text className="text-base font-medium text-slate-800">
+              {label}
+            </Text>
             {pro && (
               <View className="bg-red-100 px-1.5 py-0.5 rounded">
                 <Text className="text-[10px] font-bold text-red-600">PRO</Text>
@@ -169,7 +176,9 @@ function SettingRow({
         {right ?? (
           <View className="flex-row items-center gap-2">
             {value && <Text className="text-sm text-slate-600">{value}</Text>}
-            {onPress && <Ionicons name="chevron-forward" size={20} color="#94a3b8" />}
+            {onPress && (
+              <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+            )}
           </View>
         )}
       </View>
@@ -185,7 +194,10 @@ function SectionTitle({ title }: { title: string }) {
   );
 }
 
-type Props = NativeStackScreenProps<import("../navigation").MoreStackParams, "DocumentSettings">;
+type Props = NativeStackScreenProps<
+  import("../navigation").MoreStackParams,
+  "DocumentSettings"
+>;
 
 export function DocumentSettingsScreen({ navigation }: Props) {
   const [settings, save] = useDocumentSettings();
@@ -211,7 +223,10 @@ export function DocumentSettingsScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
-      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView
+        className="flex-1 px-4"
+        contentContainerStyle={{ paddingBottom: 100 }}
+      >
         {/* Document Templates — Invoice, Purchase, Quotation */}
         <TouchableOpacity
           onPress={() => (navigation as any).navigate("DocumentTemplates")}
@@ -226,15 +241,22 @@ export function DocumentSettingsScreen({ navigation }: Props) {
               height={120}
             />
             <View className="flex-1 min-w-0">
-              <Text className="font-semibold text-slate-800">Document Templates</Text>
+              <Text className="font-semibold text-slate-800">
+                Document Templates
+              </Text>
               <Text className="text-sm text-slate-500 mt-0.5">
                 Invoice, Purchase, Quotation — 7 ready templates
               </Text>
               <Text
                 className="text-sm font-medium mt-1"
-                style={{ color: TEMPLATES.find((t) => t.id === invoiceTemplate)?.color ?? "#16a34a" }}
+                style={{
+                  color:
+                    TEMPLATES.find((t) => t.id === invoiceTemplate)?.color ??
+                    "#16a34a",
+                }}
               >
-                {TEMPLATES.find((t) => t.id === invoiceTemplate)?.label ?? "Classic"}
+                {TEMPLATES.find((t) => t.id === invoiceTemplate)?.label ??
+                  "Classic"}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color="#94a3b8" />
@@ -245,10 +267,16 @@ export function DocumentSettingsScreen({ navigation }: Props) {
         <SectionTitle title="Preferences" />
         <View className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <TouchableOpacity
-            onPress={() => (navigation as any).navigate("ComingSoon", { title: "Show / Hide Details" })}
+            onPress={() =>
+              (navigation as any).navigate("ComingSoon", {
+                title: "Show / Hide Details",
+              })
+            }
             className="px-4 py-4 border-b border-slate-100"
           >
-            <Text className="font-medium text-slate-800">Show / Hide Details</Text>
+            <Text className="font-medium text-slate-800">
+              Show / Hide Details
+            </Text>
             <Text className="text-sm text-slate-500 mt-0.5">
               Turn invoice elements on or off to match your business needs
             </Text>
@@ -257,7 +285,11 @@ export function DocumentSettingsScreen({ navigation }: Props) {
             </View>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => (navigation as any).navigate("ComingSoon", { title: "Export Settings" })}
+            onPress={() =>
+              (navigation as any).navigate("ComingSoon", {
+                title: "Export Settings",
+              })
+            }
             className="px-4 py-4 border-b border-slate-100"
           >
             <Text className="font-medium text-slate-800">Export Settings</Text>
@@ -273,7 +305,9 @@ export function DocumentSettingsScreen({ navigation }: Props) {
             className="px-4 py-4 border-b border-slate-100"
           >
             <View className="flex-row items-center gap-2">
-              <Text className="font-medium text-slate-800">Price Decimal Format</Text>
+              <Text className="font-medium text-slate-800">
+                Price Decimal Format
+              </Text>
               <View className="bg-red-100 px-1.5 py-0.5 rounded">
                 <Text className="text-[10px] font-bold text-red-600">PRO</Text>
               </View>
@@ -287,7 +321,11 @@ export function DocumentSettingsScreen({ navigation }: Props) {
             </View>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => (navigation as any).navigate("ComingSoon", { title: "Prefix & Suffix" })}
+            onPress={() =>
+              (navigation as any).navigate("ComingSoon", {
+                title: "Prefix & Suffix",
+              })
+            }
             className="px-4 py-4"
           >
             <Text className="font-medium text-slate-800">Prefix & Suffix</Text>
@@ -319,12 +357,15 @@ export function DocumentSettingsScreen({ navigation }: Props) {
                   className="w-10 h-10 rounded-full border-2"
                   style={{
                     backgroundColor: c,
-                    borderColor: settings.themeColor === c ? "#0f172a" : "transparent",
+                    borderColor:
+                      settings.themeColor === c ? "#0f172a" : "transparent",
                   }}
                 />
               ))}
             </View>
-            <Text className="text-xs text-slate-500 mt-2">{settings.themeColor}</Text>
+            <Text className="text-xs text-slate-500 mt-2">
+              {settings.themeColor}
+            </Text>
           </View>
           <TouchableOpacity
             onPress={() => setShowLanguageModal(true)}
@@ -338,7 +379,8 @@ export function DocumentSettingsScreen({ navigation }: Props) {
             </View>
             <View className="flex-row items-center gap-2">
               <Text className="text-slate-600">
-                {LANGUAGES.find((l) => l.id === settings.language)?.label ?? "English"}
+                {LANGUAGES.find((l) => l.id === settings.language)?.label ??
+                  "English"}
               </Text>
               <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
             </View>
@@ -357,7 +399,9 @@ export function DocumentSettingsScreen({ navigation }: Props) {
               This size will be applied to all documents
             </Text>
             <View className="absolute right-4 top-4 flex-row items-center gap-2">
-              <Text className="text-slate-600 capitalize">{settings.fontSize}</Text>
+              <Text className="text-slate-600 capitalize">
+                {settings.fontSize}
+              </Text>
               <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
             </View>
           </TouchableOpacity>
@@ -371,7 +415,8 @@ export function DocumentSettingsScreen({ navigation }: Props) {
             </Text>
             <View className="absolute right-4 top-4 flex-row items-center gap-2">
               <Text className="text-slate-600">
-                {FONT_STYLES.find((f) => f.id === settings.fontStyle)?.label ?? "Default"}
+                {FONT_STYLES.find((f) => f.id === settings.fontStyle)?.label ??
+                  "Default"}
               </Text>
               <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
             </View>
@@ -386,13 +431,17 @@ export function DocumentSettingsScreen({ navigation }: Props) {
             className="px-4 py-4 border-b border-slate-100 flex-row items-center justify-between"
           >
             <View>
-              <Text className="font-medium text-slate-800">PDF Orientation</Text>
+              <Text className="font-medium text-slate-800">
+                PDF Orientation
+              </Text>
               <Text className="text-sm text-slate-500 mt-0.5">
                 Select portrait or landscape layout
               </Text>
             </View>
             <View className="flex-row items-center gap-2">
-              <Text className="text-slate-600 capitalize">{settings.pdfOrientation}</Text>
+              <Text className="text-slate-600 capitalize">
+                {settings.pdfOrientation}
+              </Text>
               <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
             </View>
           </TouchableOpacity>
@@ -400,13 +449,19 @@ export function DocumentSettingsScreen({ navigation }: Props) {
             label="Margins"
             description="Adjust document's top, bottom, left, and right spacing"
             pro
-            onPress={() => (navigation as any).navigate("ComingSoon", { title: "Margins" })}
+            onPress={() =>
+              (navigation as any).navigate("ComingSoon", { title: "Margins" })
+            }
           />
           <SettingRow
             label="Custom Headers"
             description="Create and save custom header layouts"
             pro
-            onPress={() => (navigation as any).navigate("ComingSoon", { title: "Custom Headers" })}
+            onPress={() =>
+              (navigation as any).navigate("ComingSoon", {
+                title: "Custom Headers",
+              })
+            }
           />
         </View>
 
@@ -417,19 +472,29 @@ export function DocumentSettingsScreen({ navigation }: Props) {
             label="Header Settings"
             description="Add header image and set repeat preference"
             pro
-            onPress={() => (navigation as any).navigate("ComingSoon", { title: "Header Settings" })}
+            onPress={() =>
+              (navigation as any).navigate("ComingSoon", {
+                title: "Header Settings",
+              })
+            }
           />
           <SettingRow
             label="Footer Settings"
             description="Add footer image or message"
             pro
-            onPress={() => (navigation as any).navigate("ComingSoon", { title: "Footer Settings" })}
+            onPress={() =>
+              (navigation as any).navigate("ComingSoon", {
+                title: "Footer Settings",
+              })
+            }
           />
           <SettingRow
             label="Watermark"
             description="Add watermark to document"
             pro
-            onPress={() => (navigation as any).navigate("ComingSoon", { title: "Watermark" })}
+            onPress={() =>
+              (navigation as any).navigate("ComingSoon", { title: "Watermark" })
+            }
           />
         </View>
       </ScrollView>
@@ -458,10 +523,23 @@ export function DocumentSettingsScreen({ navigation }: Props) {
       </View>
 
       {/* Language Modal */}
-      <Modal visible={showLanguageModal} transparent animationType="fade">
-        <Pressable className="flex-1 bg-black/40 justify-center items-center" onPress={() => setShowLanguageModal(false)}>
-          <Pressable className="bg-white rounded-2xl p-6 w-[90%] max-w-sm" onPress={(e) => e.stopPropagation()}>
-            <Text className="text-lg font-bold text-slate-800 mb-4">Language</Text>
+      <Modal
+        visible={showLanguageModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLanguageModal(false)}
+      >
+        <Pressable
+          className="flex-1 bg-black/40 justify-center items-center"
+          onPress={() => setShowLanguageModal(false)}
+        >
+          <Pressable
+            className="bg-white rounded-2xl p-6 w-[90%] max-w-sm"
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text className="text-lg font-bold text-slate-800 mb-4">
+              Language
+            </Text>
             {LANGUAGES.map((l) => (
               <TouchableOpacity
                 key={l.id}
@@ -480,10 +558,23 @@ export function DocumentSettingsScreen({ navigation }: Props) {
       </Modal>
 
       {/* Font Size Modal */}
-      <Modal visible={showFontSizeModal} transparent animationType="fade">
-        <Pressable className="flex-1 bg-black/40 justify-center items-center" onPress={() => setShowFontSizeModal(false)}>
-          <Pressable className="bg-white rounded-2xl p-6 w-[90%] max-w-sm" onPress={(e) => e.stopPropagation()}>
-            <Text className="text-lg font-bold text-slate-800 mb-4">Font Size</Text>
+      <Modal
+        visible={showFontSizeModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowFontSizeModal(false)}
+      >
+        <Pressable
+          className="flex-1 bg-black/40 justify-center items-center"
+          onPress={() => setShowFontSizeModal(false)}
+        >
+          <Pressable
+            className="bg-white rounded-2xl p-6 w-[90%] max-w-sm"
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text className="text-lg font-bold text-slate-800 mb-4">
+              Font Size
+            </Text>
             {FONT_SIZES.map((f) => (
               <TouchableOpacity
                 key={f.id}
@@ -502,10 +593,23 @@ export function DocumentSettingsScreen({ navigation }: Props) {
       </Modal>
 
       {/* Font Style Modal */}
-      <Modal visible={showFontStyleModal} transparent animationType="fade">
-        <Pressable className="flex-1 bg-black/40 justify-center items-center" onPress={() => setShowFontStyleModal(false)}>
-          <Pressable className="bg-white rounded-2xl p-6 w-[90%] max-w-sm" onPress={(e) => e.stopPropagation()}>
-            <Text className="text-lg font-bold text-slate-800 mb-4">Font Style</Text>
+      <Modal
+        visible={showFontStyleModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowFontStyleModal(false)}
+      >
+        <Pressable
+          className="flex-1 bg-black/40 justify-center items-center"
+          onPress={() => setShowFontStyleModal(false)}
+        >
+          <Pressable
+            className="bg-white rounded-2xl p-6 w-[90%] max-w-sm"
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text className="text-lg font-bold text-slate-800 mb-4">
+              Font Style
+            </Text>
             {FONT_STYLES.map((f) => (
               <TouchableOpacity
                 key={f.id}
@@ -524,10 +628,23 @@ export function DocumentSettingsScreen({ navigation }: Props) {
       </Modal>
 
       {/* PDF Orientation Modal */}
-      <Modal visible={showOrientationModal} transparent animationType="fade">
-        <Pressable className="flex-1 bg-black/40 justify-center items-center" onPress={() => setShowOrientationModal(false)}>
-          <Pressable className="bg-white rounded-2xl p-6 w-[90%] max-w-sm" onPress={(e) => e.stopPropagation()}>
-            <Text className="text-lg font-bold text-slate-800 mb-4">PDF Orientation</Text>
+      <Modal
+        visible={showOrientationModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowOrientationModal(false)}
+      >
+        <Pressable
+          className="flex-1 bg-black/40 justify-center items-center"
+          onPress={() => setShowOrientationModal(false)}
+        >
+          <Pressable
+            className="bg-white rounded-2xl p-6 w-[90%] max-w-sm"
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text className="text-lg font-bold text-slate-800 mb-4">
+              PDF Orientation
+            </Text>
             {PDF_ORIENTATIONS.map((o) => (
               <TouchableOpacity
                 key={o.id}
@@ -546,10 +663,23 @@ export function DocumentSettingsScreen({ navigation }: Props) {
       </Modal>
 
       {/* Price Decimals Modal */}
-      <Modal visible={showDecimalsModal} transparent animationType="fade">
-        <Pressable className="flex-1 bg-black/40 justify-center items-center" onPress={() => setShowDecimalsModal(false)}>
-          <Pressable className="bg-white rounded-2xl p-6 w-[90%] max-w-sm" onPress={(e) => e.stopPropagation()}>
-            <Text className="text-lg font-bold text-slate-800 mb-4">Price Decimal Format</Text>
+      <Modal
+        visible={showDecimalsModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDecimalsModal(false)}
+      >
+        <Pressable
+          className="flex-1 bg-black/40 justify-center items-center"
+          onPress={() => setShowDecimalsModal(false)}
+        >
+          <Pressable
+            className="bg-white rounded-2xl p-6 w-[90%] max-w-sm"
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text className="text-lg font-bold text-slate-800 mb-4">
+              Price Decimal Format
+            </Text>
             {DECIMAL_OPTIONS.map((n) => (
               <TouchableOpacity
                 key={n}

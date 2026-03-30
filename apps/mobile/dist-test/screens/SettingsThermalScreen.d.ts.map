@@ -1,0 +1,1 @@
+{"version":3,"file":"SettingsThermalScreen.d.ts","sourceRoot":"","sources":["../../src/screens/SettingsThermalScreen.tsx"],"names":[],"mappings":"AAAA;;GAEG;AACH,OAAO,KAA8B,MAAM,OAAO,CAAC;AAWnD,OAAO,KAAK,EAAE,sBAAsB,EAAE,MAAM,gCAAgC,CAAC;AAW7E,KAAK,KAAK,GAAG,sBAAsB,CAAC,OAAO,eAAe,EAAE,eAAe,EAAE,iBAAiB,CAAC,CAAC;AAEhG,wBAAgB,qBAAqB,CAAC,EAAE,UAAU,EAAE,EAAE,KAAK,qBAqI1D"}

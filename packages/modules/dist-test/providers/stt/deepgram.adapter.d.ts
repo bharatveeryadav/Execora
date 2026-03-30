@@ -1,4 +1,4 @@
-import { STTAdapter, LiveTranscriptionSession, ProviderCapabilities } from '../types';
+import { STTAdapter, LiveTranscriptionSession, LiveTranscriptionOptions, ProviderCapabilities } from '../types';
 /**
  * Deepgram STT adapter.
  * Wraps Deepgram's event-based live connection into the unified
@@ -10,7 +10,7 @@ export declare class DeepgramAdapter implements STTAdapter {
     private client;
     constructor();
     isAvailable(): boolean;
-    createLiveTranscription(onTranscript: (text: string, isFinal: boolean) => void, onError: (error: Error) => void): Promise<LiveTranscriptionSession>;
+    createLiveTranscription(onTranscript: (text: string, isFinal: boolean) => void, onError: (error: Error) => void, options?: LiveTranscriptionOptions): Promise<LiveTranscriptionSession>;
     transcribeAudio(audioBuffer: Buffer, mimeType?: string): Promise<string>;
 }
 export declare const deepgramAdapter: DeepgramAdapter;

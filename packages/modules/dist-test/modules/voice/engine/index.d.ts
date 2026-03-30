@@ -1,4 +1,4 @@
-import { type IntentExtraction, type ExecutionResult } from '@execora/types';
+import { type IntentExtraction, type ExecutionResult } from "@execora/types";
 declare class BusinessEngine {
     execute(intent: IntentExtraction, conversationId?: string): Promise<ExecutionResult>;
 }

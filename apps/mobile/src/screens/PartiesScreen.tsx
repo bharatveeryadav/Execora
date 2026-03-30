@@ -2,7 +2,7 @@
  * PartiesScreen — Customers + Vendors tabs (matches web Parties.tsx).
  * Modern UI/UX: TYPO scale, 44pt touch targets (iOS HIG), 8px spacing grid.
  */
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -19,7 +19,10 @@ import {
   Platform,
 } from "react-native";
 import { showAlert } from "../lib/alerts";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import * as FileSystem from "expo-file-system";
@@ -38,6 +41,8 @@ import { useResponsive } from "../hooks/useResponsive";
 import { inr, type Customer } from "@execora/shared";
 import { EmptyState } from "../components/ui/EmptyState";
 import { ErrorCard } from "../components/ui/ErrorCard";
+import { Skeleton } from "../components/ui/Skeleton";
+import { ScreenInner } from "../components/ui/ScreenLayout";
 import { FilterBar } from "../components/composites/FilterBar";
 import { TabBar, type TabItem } from "../components/composites/TabBar";
 import { TYPO } from "../lib/typography";
@@ -58,7 +63,13 @@ type Props = NativeStackScreenProps<CustomersStackParams, "CustomerList">;
 
 export function PartiesScreen({ navigation }: Props) {
   const qc = useQueryClient();
-  const { contentPad, contentWidth } = useResponsive();
+  const { width, contentPad, contentWidth } = useResponsive();
+  const insets = useSafeAreaInsets();
+  const fabBottom = Math.max(insets.bottom + 16, 20);
+  const fabRight = Math.max(
+    contentPad,
+    (width - contentWidth) / 2 + contentPad,
+  );
   useWsInvalidation(["customers", "summary"]);
 
   const [tab, setTab] = useState<Tab>("customers");
@@ -115,7 +126,12 @@ export function PartiesScreen({ navigation }: Props) {
     staleTime: 30_000,
   });
 
-  const { data: supplierData } = useQuery({
+  const {
+    data: supplierData,
+    isFetching: isVendorsFetching,
+    isError: isVendorsError,
+    refetch: refetchVendors,
+  } = useQuery({
     queryKey: ["suppliers", vendorSearch],
     queryFn: () =>
       supplierApi.list({ q: vendorSearch || undefined, limit: 200 }),
@@ -227,6 +243,10 @@ export function PartiesScreen({ navigation }: Props) {
     [customerFilterOptions, filter],
   );
 
+  const isCustomersInitialLoading = isFetching && !custData;
+  const isVendorsInitialLoading =
+    tab === "vendors" && isVendorsFetching && !supplierData;
+
   // ── Mutations ──────────────────────────────────────────────────────────
 
   const createMutation = useMutation({
@@ -242,7 +262,7 @@ export function PartiesScreen({ navigation }: Props) {
     onError: () => showAlert("Error", "Failed to add customer"),
   });
 
-  function openAdd() {
+  const openAdd = useCallback(() => {
     setNewName("");
     setNewPhone("");
     setNewEmail("");
@@ -253,7 +273,7 @@ export function PartiesScreen({ navigation }: Props) {
     setNewCreditLimit("");
     setNewTags([]);
     setAddOpen(true);
-  }
+  }, []);
 
   function handleAdd() {
     if (!newName.trim()) return;
@@ -280,11 +300,15 @@ export function PartiesScreen({ navigation }: Props) {
 
   function getTabNav() {
     try {
-      return (navigation.getParent as any)?.();
+      return navigation.getParent() as any;
     } catch {
       return undefined;
     }
   }
+
+  const openAddVendor = useCallback(() => {
+    setAddVendorOpen(true);
+  }, []);
 
   function navigateToImport(type: "customers" | "vendors") {
     setMenuOpen(false);
@@ -381,104 +405,113 @@ export function PartiesScreen({ navigation }: Props) {
 
   // ── Render customer row ─────────────────────────────────────────────────
 
-  const renderCustomerRow = (c: Customer & { ageDays?: number }) => {
-    const balance = parseFloat(String(c.balance));
-    const hasOutstanding = balance > 0;
-    const ageDays = (c as any).ageDays ?? 0;
-    const hitSlop = { top: 12, bottom: 12, left: 12, right: 12 };
-    return (
-      <Pressable
-        key={c.id}
-        className="flex-row items-center gap-3 px-4 py-3.5 border-b border-slate-100 bg-white"
-        onPress={() => navigation.navigate("CustomerDetail", { id: c.id })}
-        style={({ pressed }) => ({
-          backgroundColor: pressed ? "#f8fafc" : "#fff",
-        })}
-      >
-        <View
-          className={`w-12 h-12 rounded-full items-center justify-center ${hasOutstanding ? "bg-red-50" : "bg-green-50"}`}
+  const renderCustomerRow = useCallback(
+    (c: Customer & { ageDays?: number }) => {
+      const balance = parseFloat(String(c.balance));
+      const hasOutstanding = balance > 0;
+      const ageDays = (c as any).ageDays ?? 0;
+      const hitSlop = { top: 12, bottom: 12, left: 12, right: 12 };
+      return (
+        <Pressable
+          key={c.id}
+          className="flex-row items-center gap-3 px-4 py-3.5 border-b border-slate-100 bg-white"
+          accessibilityRole="button"
+          accessibilityLabel={`Open ${c.name} details`}
+          onPress={() => navigation.navigate("CustomerDetail", { id: c.id })}
+          style={({ pressed }) => ({
+            backgroundColor: pressed ? "#f8fafc" : "#fff",
+          })}
         >
-          <Text
-            className={`font-bold text-base ${hasOutstanding ? "text-red-600" : "text-green-600"}`}
+          <View
+            className={`w-12 h-12 rounded-full items-center justify-center ${hasOutstanding ? "bg-red-50" : "bg-green-50"}`}
           >
-            {c.name?.charAt(0)?.toUpperCase() ?? "?"}
-          </Text>
-        </View>
-        <View className="flex-1 min-w-0">
-          <View className="flex-row items-center gap-2 min-w-0">
             <Text
-              className={`${TYPO.labelBold} flex-1 min-w-0`}
-              numberOfLines={1}
+              className={`font-bold text-base ${hasOutstanding ? "text-red-600" : "text-green-600"}`}
             >
-              {c.name}
+              {c.name?.charAt(0)?.toUpperCase() ?? "?"}
             </Text>
-            {((c as any).tags ?? []).includes("VIP") && (
-              <View className="bg-amber-100 px-2 py-0.5 rounded-full">
-                <Text className="text-[10px] font-semibold text-amber-700">
-                  VIP
+          </View>
+          <View className="flex-1 min-w-0">
+            <View className="flex-row items-center gap-2 min-w-0">
+              <Text
+                className={`${TYPO.labelBold} flex-1 min-w-0`}
+                numberOfLines={1}
+              >
+                {c.name}
+              </Text>
+              {((c as any).tags ?? []).includes("VIP") && (
+                <View className="bg-amber-100 px-2 py-0.5 rounded-full">
+                  <Text className="text-[10px] font-semibold text-amber-700">
+                    VIP
+                  </Text>
+                </View>
+              )}
+              {((c as any).tags ?? []).includes("Blacklist") && (
+                <Text className="text-xs">⛔</Text>
+              )}
+            </View>
+            <Text className={`${TYPO.caption} min-w-0`} numberOfLines={1}>
+              {filter === "aging"
+                ? ageDays === 0
+                  ? "Today"
+                  : `${ageDays}d overdue`
+                : (c.phone ?? "No phone")}
+              {filter === "aging" && c.phone ? ` · ${c.phone}` : ""}
+            </Text>
+          </View>
+          <View className="items-end min-w-[4rem]">
+            {hasOutstanding ? (
+              <Text className="text-sm font-bold tabular-nums text-red-600">
+                ₹{inr(balance)}
+              </Text>
+            ) : (
+              <View className="flex-row items-center gap-1 bg-green-50 px-2.5 py-1 rounded-full">
+                <Ionicons name="checkmark-circle" size={12} color="#16a34a" />
+                <Text className="text-[11px] font-medium text-green-700">
+                  Clear
                 </Text>
               </View>
             )}
-            {((c as any).tags ?? []).includes("Blacklist") && (
-              <Text className="text-xs">⛔</Text>
+          </View>
+          <View className="flex-row gap-1">
+            {c.phone && (
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  Linking.openURL(
+                    `https://wa.me/91${c.phone!.replace(/\D/g, "")}`,
+                  );
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Send WhatsApp message to ${c.name}`}
+                hitSlop={hitSlop}
+                className="w-10 h-10 rounded-full bg-green-50 items-center justify-center"
+                style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+              >
+                <Ionicons name="logo-whatsapp" size={18} color="#16a34a" />
+              </Pressable>
+            )}
+            {c.phone && (
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  Linking.openURL(`tel:${c.phone}`);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Call ${c.name}`}
+                hitSlop={hitSlop}
+                className="w-10 h-10 rounded-full bg-slate-100 items-center justify-center"
+                style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+              >
+                <Ionicons name="call" size={16} color="#475569" />
+              </Pressable>
             )}
           </View>
-          <Text className={`${TYPO.caption} min-w-0`} numberOfLines={1}>
-            {filter === "aging"
-              ? ageDays === 0
-                ? "Today"
-                : `${ageDays}d overdue`
-              : (c.phone ?? "No phone")}
-            {filter === "aging" && c.phone ? ` · ${c.phone}` : ""}
-          </Text>
-        </View>
-        <View className="items-end min-w-[4rem]">
-          {hasOutstanding ? (
-            <Text className="text-sm font-bold tabular-nums text-red-600">
-              ₹{inr(balance)}
-            </Text>
-          ) : (
-            <View className="flex-row items-center gap-1 bg-green-50 px-2.5 py-1 rounded-full">
-              <Ionicons name="checkmark-circle" size={12} color="#16a34a" />
-              <Text className="text-[11px] font-medium text-green-700">
-                Clear
-              </Text>
-            </View>
-          )}
-        </View>
-        <View className="flex-row gap-1">
-          {c.phone && (
-            <Pressable
-              onPress={(e) => {
-                e.stopPropagation();
-                Linking.openURL(
-                  `https://wa.me/91${c.phone!.replace(/\D/g, "")}`,
-                );
-              }}
-              hitSlop={hitSlop}
-              className="w-10 h-10 rounded-full bg-green-50 items-center justify-center"
-              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-            >
-              <Ionicons name="logo-whatsapp" size={18} color="#16a34a" />
-            </Pressable>
-          )}
-          {c.phone && (
-            <Pressable
-              onPress={(e) => {
-                e.stopPropagation();
-                Linking.openURL(`tel:${c.phone}`);
-              }}
-              hitSlop={hitSlop}
-              className="w-10 h-10 rounded-full bg-slate-100 items-center justify-center"
-              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-            >
-              <Ionicons name="call" size={16} color="#475569" />
-            </Pressable>
-          )}
-        </View>
-      </Pressable>
-    );
-  };
+        </Pressable>
+      );
+    },
+    [filter, navigation],
+  );
 
   // ── Main render ─────────────────────────────────────────────────────────
 
@@ -489,9 +522,7 @@ export function PartiesScreen({ navigation }: Props) {
         className="pt-4 pb-3 border-b border-slate-200/80 bg-white"
         style={{ paddingHorizontal: contentPad }}
       >
-        <View
-          style={{ width: "100%", maxWidth: contentWidth, alignSelf: "center" }}
-        >
+        <ScreenInner>
           <View className="flex-row items-center justify-between mb-4">
             <Text className={TYPO.pageTitle}>Parties</Text>
             <View className="flex-row items-center gap-2">
@@ -499,6 +530,8 @@ export function PartiesScreen({ navigation }: Props) {
                 <Pressable
                   onPress={() => navigation.navigate("Overdue")}
                   className="flex-row items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-4 py-2.5 min-h-[44]"
+                  accessibilityRole="button"
+                  accessibilityLabel="Open udhaar list"
                   style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
                 >
                   <Ionicons name="alert-circle" size={16} color="#dc2626" />
@@ -508,6 +541,8 @@ export function PartiesScreen({ navigation }: Props) {
               <Pressable
                 onPress={() => setMenuOpen(true)}
                 className="w-11 h-11 rounded-full bg-slate-100 items-center justify-center"
+                accessibilityRole="button"
+                accessibilityLabel="Open parties menu"
                 style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
@@ -527,7 +562,7 @@ export function PartiesScreen({ navigation }: Props) {
             variant="pills"
             className="rounded-2xl bg-slate-100 p-1"
           />
-        </View>
+        </ScreenInner>
       </View>
 
       {tab === "customers" && (
@@ -537,13 +572,7 @@ export function PartiesScreen({ navigation }: Props) {
             className="py-3 bg-white border-b border-slate-100"
             style={{ paddingHorizontal: contentPad }}
           >
-            <View
-              style={{
-                width: "100%",
-                maxWidth: contentWidth,
-                alignSelf: "center",
-              }}
-            >
+            <ScreenInner>
               <View className="flex-row items-center rounded-2xl bg-slate-100 px-4 min-h-[48]">
                 <Ionicons
                   name="search"
@@ -555,6 +584,7 @@ export function PartiesScreen({ navigation }: Props) {
                   value={search}
                   onChangeText={setSearch}
                   placeholder="Search by name or phone…"
+                  accessibilityLabel="Search customers"
                   placeholderTextColor="#94a3b8"
                   className="flex-1 text-base text-slate-800 py-0"
                 />
@@ -562,7 +592,7 @@ export function PartiesScreen({ navigation }: Props) {
                   <ActivityIndicator size="small" color="#e67e22" />
                 )}
               </View>
-            </View>
+            </ScreenInner>
           </View>
 
           <ScrollView
@@ -580,7 +610,7 @@ export function PartiesScreen({ navigation }: Props) {
               />
             }
           >
-            <View style={{ width: "100%", maxWidth: contentWidth }}>
+            <ScreenInner>
               {/* Summary cards — visual hierarchy */}
               <View className="flex-row gap-3 mb-4">
                 <View className="flex-1 rounded-2xl bg-white border border-slate-200/80 p-4 items-center shadow-sm">
@@ -676,7 +706,14 @@ export function PartiesScreen({ navigation }: Props) {
               {/* Customer list */}
               {filter !== "aging" && (
                 <View className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
-                  {isError ? (
+                  {isCustomersInitialLoading ? (
+                    <View className="px-4 py-4 gap-3">
+                      <Skeleton className="h-14 w-full" />
+                      <Skeleton className="h-14 w-full" />
+                      <Skeleton className="h-14 w-full" />
+                      <Skeleton className="h-14 w-full" />
+                    </View>
+                  ) : isError ? (
                     <View className="py-8 px-4">
                       <ErrorCard
                         message="Failed to load customers"
@@ -704,14 +741,20 @@ export function PartiesScreen({ navigation }: Props) {
                   )}
                 </View>
               )}
-            </View>
+            </ScreenInner>
           </ScrollView>
 
           {/* FAB — 56pt for prominence (Material Design) */}
           <Pressable
             onPress={openAdd}
-            className="absolute bottom-6 right-4 w-14 h-14 rounded-full bg-primary items-center justify-center shadow-lg"
-            style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
+            className="absolute w-14 h-14 rounded-full bg-primary items-center justify-center shadow-lg"
+            accessibilityRole="button"
+            accessibilityLabel="Add customer"
+            style={({ pressed }) => ({
+              bottom: fabBottom,
+              right: fabRight,
+              opacity: pressed ? 0.9 : 1,
+            })}
           >
             <Ionicons name="add" size={28} color="#fff" />
           </Pressable>
@@ -727,8 +770,15 @@ export function PartiesScreen({ navigation }: Props) {
               paddingBottom: 100,
               alignItems: "center",
             }}
+            refreshControl={
+              <RefreshControl
+                refreshing={isVendorsFetching}
+                onRefresh={refetchVendors}
+                tintColor="#e67e22"
+              />
+            }
           >
-            <View style={{ width: "100%", maxWidth: contentWidth }}>
+            <ScreenInner>
               {/* Collect & Pay */}
               <View className="rounded-2xl border border-slate-200/80 bg-white p-4 mb-4 shadow-sm">
                 <Text className={TYPO.sectionTitle}>Collect & Pay</Text>
@@ -765,7 +815,6 @@ export function PartiesScreen({ navigation }: Props) {
                     getTabNav()?.navigate("MoreTab", { screen: "Purchases" })
                   }
                   className="flex-row items-center gap-2 border border-slate-200 rounded-xl px-4 py-3 min-h-[44] bg-white"
-                  style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
                 >
                   <Ionicons name="cube" size={20} color="#64748b" />
                   <Text className={TYPO.body}>View Purchases</Text>
@@ -794,14 +843,31 @@ export function PartiesScreen({ navigation }: Props) {
                   value={vendorSearch}
                   onChangeText={setVendorSearch}
                   placeholder="Search vendors…"
+                  accessibilityLabel="Search vendors"
                   placeholderTextColor="#94a3b8"
                   className="flex-1 text-base text-slate-800 py-0"
                 />
+                {isVendorsFetching && (
+                  <ActivityIndicator size="small" color="#e67e22" />
+                )}
               </View>
 
               {/* Vendor list */}
               <View className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
-                {suppliers.length === 0 ? (
+                {isVendorsInitialLoading ? (
+                  <View className="px-4 py-4 gap-3">
+                    <Skeleton className="h-14 w-full" />
+                    <Skeleton className="h-14 w-full" />
+                    <Skeleton className="h-14 w-full" />
+                  </View>
+                ) : isVendorsError ? (
+                  <View className="py-8 px-4">
+                    <ErrorCard
+                      message="Failed to load vendors"
+                      onRetry={() => refetchVendors()}
+                    />
+                  </View>
+                ) : suppliers.length === 0 ? (
                   <View className="py-14 items-center">
                     <EmptyState
                       iconName={
@@ -816,7 +882,7 @@ export function PartiesScreen({ navigation }: Props) {
                           : "Add your first vendor"
                       }
                       actionLabel="Add Vendor"
-                      onAction={() => setAddVendorOpen(true)}
+                      onAction={openAddVendor}
                     />
                   </View>
                 ) : (
@@ -854,20 +920,31 @@ export function PartiesScreen({ navigation }: Props) {
                   ))
                 )}
               </View>
-            </View>
-
-            {/* Add Vendor FAB */}
-            <Pressable
-              onPress={() => setAddVendorOpen(true)}
-              className="absolute bottom-6 right-4 w-14 h-14 rounded-full bg-primary items-center justify-center shadow-lg"
-              style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
-            >
-              <Ionicons name="add" size={28} color="#fff" />
-            </Pressable>
+            </ScreenInner>
           </ScrollView>
 
+          {/* Add Vendor FAB */}
+          <Pressable
+            onPress={openAddVendor}
+            className="absolute w-14 h-14 rounded-full bg-primary items-center justify-center shadow-lg"
+            accessibilityRole="button"
+            accessibilityLabel="Add vendor"
+            style={({ pressed }) => ({
+              bottom: fabBottom,
+              right: fabRight,
+              opacity: pressed ? 0.9 : 1,
+            })}
+          >
+            <Ionicons name="add" size={28} color="#fff" />
+          </Pressable>
+
           {/* Add Vendor Modal */}
-          <Modal visible={addVendorOpen} transparent animationType="slide">
+          <Modal
+            visible={addVendorOpen}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setAddVendorOpen(false)}
+          >
             <KeyboardAvoidingView
               behavior={Platform.OS === "ios" ? "padding" : "height"}
               className="flex-1 justify-end"
@@ -958,7 +1035,12 @@ export function PartiesScreen({ navigation }: Props) {
       )}
 
       {/* Menu Modal — bottom sheet */}
-      <Modal visible={menuOpen} transparent animationType="fade">
+      <Modal
+        visible={menuOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuOpen(false)}
+      >
         <View className="flex-1 justify-end">
           <Pressable
             className="absolute inset-0 bg-black/50"
@@ -1032,7 +1114,12 @@ export function PartiesScreen({ navigation }: Props) {
       </Modal>
 
       {/* Add Customer Modal — KeyboardAvoidingView per React Native docs */}
-      <Modal visible={addOpen} transparent animationType="slide">
+      <Modal
+        visible={addOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setAddOpen(false)}
+      >
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           className="flex-1 justify-end"

@@ -3,6 +3,14 @@
 > **Purpose**: Canonical coding standards for the Execora React Native app (`apps/mobile`).  
 > Every pattern here is verified against the actual codebase. Follow these rules consistently.
 
+## Copilot Skill Entry
+
+For chat-invocable UI/UX execution, use the workspace skill at:
+
+- `.github/skills/execora-mobile-ui-ux/SKILL.md`
+
+This doc remains the engineering reference, while the skill file provides agent workflow instructions.
+
 ---
 
 ## 1. Stack at a Glance

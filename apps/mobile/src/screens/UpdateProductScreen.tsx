@@ -54,7 +54,10 @@ function num(v: string | number | undefined | null): number {
   return isFinite(n) ? n : 0;
 }
 
-type Props = NativeStackScreenProps<import("../navigation").ItemsStackParams, "UpdateProduct">;
+type Props = NativeStackScreenProps<
+  import("../navigation").ItemsStackParams,
+  "UpdateProduct"
+>;
 
 export function UpdateProductScreen({ navigation, route }: Props) {
   const qc = useQueryClient();
@@ -85,7 +88,9 @@ export function UpdateProductScreen({ navigation, route }: Props) {
   });
 
   const fetchedProduct = data?.product as Record<string, unknown> | undefined;
-  const product = (fetchedProduct ?? passedProduct) as Record<string, unknown> | undefined;
+  const product = (fetchedProduct ?? passedProduct) as
+    | Record<string, unknown>
+    | undefined;
 
   useEffect(() => {
     if (product) {
@@ -125,13 +130,20 @@ export function UpdateProductScreen({ navigation, route }: Props) {
   const uploadImageMutation = useMutation({
     mutationFn: async (uri: string) => {
       const formData = new FormData();
-      formData.append("file", { uri, type: "image/jpeg", name: "image.jpg" } as any);
+      formData.append("file", {
+        uri,
+        type: "image/jpeg",
+        name: "image.jpg",
+      } as any);
       const token = tokenStorage.getToken();
-      const res = await fetch(`${getApiBaseUrl()}/api/v1/products/${id}/image`, {
-        method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData,
-      });
+      const res = await fetch(
+        `${getApiBaseUrl()}/api/v1/products/${id}/image`,
+        {
+          method: "POST",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          body: formData,
+        },
+      );
       if (!res.ok) throw new Error("Upload failed");
       return res.json();
     },
@@ -168,7 +180,10 @@ export function UpdateProductScreen({ navigation, route }: Props) {
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      showAlert("Permission needed", "Allow access to photos to add product image.");
+      showAlert(
+        "Permission needed",
+        "Allow access to photos to add product image.",
+      );
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -187,7 +202,10 @@ export function UpdateProductScreen({ navigation, route }: Props) {
       <SafeAreaView className="flex-1 bg-slate-50">
         <View className="flex-1 items-center justify-center px-6">
           <Text className="text-slate-600">No product selected</Text>
-          <TouchableOpacity onPress={() => navigation.goBack()} className="mt-4 bg-primary px-6 py-2 rounded-xl">
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            className="mt-4 bg-primary px-6 py-2 rounded-xl"
+          >
             <Text className="text-white font-semibold">Back</Text>
           </TouchableOpacity>
         </View>
@@ -200,7 +218,10 @@ export function UpdateProductScreen({ navigation, route }: Props) {
       <SafeAreaView className="flex-1 bg-slate-50">
         <View className="flex-1 items-center justify-center px-6">
           <Text className="text-slate-600">Product not found</Text>
-          <TouchableOpacity onPress={() => navigation.goBack()} className="mt-4 bg-primary px-6 py-2 rounded-xl">
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            className="mt-4 bg-primary px-6 py-2 rounded-xl"
+          >
             <Text className="text-white font-semibold">Back</Text>
           </TouchableOpacity>
         </View>
@@ -219,13 +240,18 @@ export function UpdateProductScreen({ navigation, route }: Props) {
     );
   }
 
-  const displayUnit = (unit === "kg" || unit === "KGS" ? "KGS" : unit).toUpperCase();
+  const displayUnit = (
+    unit === "kg" || unit === "KGS" ? "KGS" : unit
+  ).toUpperCase();
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-slate-200 bg-white">
-        <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 -ml-2">
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          className="p-2 -ml-2"
+        >
           <Ionicons name="arrow-back" size={24} color="#0f172a" />
         </TouchableOpacity>
         <Text className="text-lg font-bold text-slate-800">Update Product</Text>
@@ -241,7 +267,11 @@ export function UpdateProductScreen({ navigation, route }: Props) {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1"
       >
-        <ScrollView className="flex-1" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           {/* Add Custom Fields banner */}
           <TouchableOpacity
             onPress={() => showAlert("Custom Fields", "Coming soon")}
@@ -250,8 +280,12 @@ export function UpdateProductScreen({ navigation, route }: Props) {
             <View className="flex-row items-center gap-2">
               <Ionicons name="add-circle-outline" size={20} color="#0284c7" />
               <View>
-                <Text className="text-sm font-bold text-slate-800">Add Custom Fields</Text>
-                <Text className="text-xs text-slate-600">Personalize to perfectly suit your style.</Text>
+                <Text className="text-sm font-bold text-slate-800">
+                  Add Custom Fields
+                </Text>
+                <Text className="text-xs text-slate-600">
+                  Personalize to perfectly suit your style.
+                </Text>
               </View>
             </View>
             <Ionicons name="headset-outline" size={22} color="#64748b" />
@@ -259,7 +293,9 @@ export function UpdateProductScreen({ navigation, route }: Props) {
 
           {/* Product Details */}
           <View className="mx-4 mt-4 rounded-2xl bg-white border border-slate-200 overflow-hidden">
-            <Text className="text-base font-bold text-slate-800 px-4 pt-4 pb-3">Product Details</Text>
+            <Text className="text-base font-bold text-slate-800 px-4 pt-4 pb-3">
+              Product Details
+            </Text>
 
             {/* Type: Product / Service */}
             <View className="px-4 py-3 border-t border-slate-100 flex-row items-center gap-6">
@@ -267,29 +303,48 @@ export function UpdateProductScreen({ navigation, route }: Props) {
                 onPress={() => setType("product")}
                 className="flex-row items-center gap-2"
               >
-                <View className={`w-5 h-5 rounded-full border-2 items-center justify-center ${type === "product" ? "border-primary bg-primary" : "border-slate-300"}`}>
-                  {type === "product" && <View className="w-2 h-2 rounded-full bg-white" />}
+                <View
+                  className={`w-5 h-5 rounded-full border-2 items-center justify-center ${type === "product" ? "border-primary bg-primary" : "border-slate-300"}`}
+                >
+                  {type === "product" && (
+                    <View className="w-2 h-2 rounded-full bg-white" />
+                  )}
                 </View>
-                <Text className="text-sm font-medium text-slate-800">Product</Text>
+                <Text className="text-sm font-medium text-slate-800">
+                  Product
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setType("service")}
                 className="flex-row items-center gap-2"
               >
-                <View className={`w-5 h-5 rounded-full border-2 items-center justify-center ${type === "service" ? "border-primary bg-primary" : "border-slate-300"}`}>
-                  {type === "service" && <View className="w-2 h-2 rounded-full bg-white" />}
+                <View
+                  className={`w-5 h-5 rounded-full border-2 items-center justify-center ${type === "service" ? "border-primary bg-primary" : "border-slate-300"}`}
+                >
+                  {type === "service" && (
+                    <View className="w-2 h-2 rounded-full bg-white" />
+                  )}
                 </View>
-                <Text className="text-sm font-medium text-slate-800">Service</Text>
+                <Text className="text-sm font-medium text-slate-800">
+                  Service
+                </Text>
               </TouchableOpacity>
             </View>
 
             {/* Product Name */}
-            <FormField label="Product Name*" value={name} onChangeText={setName} placeholder="Enter name" />
+            <FormField
+              label="Product Name*"
+              value={name}
+              onChangeText={setName}
+              placeholder="Enter name"
+            />
 
             {/* Selling Price */}
             <View className="px-4 py-3 border-t border-slate-100">
               <Text className="text-xs text-slate-500 mb-1">Selling price</Text>
-              <Text className="text-[10px] text-slate-400 mb-1">Inclusive of taxes</Text>
+              <Text className="text-[10px] text-slate-400 mb-1">
+                Inclusive of taxes
+              </Text>
               <TextInput
                 value={price}
                 onChangeText={setPrice}
@@ -313,14 +368,20 @@ export function UpdateProductScreen({ navigation, route }: Props) {
               />
               <TouchableOpacity className="flex-row items-center gap-1 mt-2">
                 <Ionicons name="add" size={14} color="#2563eb" />
-                <Text className="text-sm text-blue-600">Enter GSTIN to add/change Tax</Text>
+                <Text className="text-sm text-blue-600">
+                  Enter GSTIN to add/change Tax
+                </Text>
               </TouchableOpacity>
             </View>
 
             {/* Purchase Price */}
             <View className="px-4 py-3 border-t border-slate-100">
-              <Text className="text-xs text-slate-500 mb-1">Purchase Price</Text>
-              <Text className="text-[10px] text-slate-400 mb-1">Inclusive of taxes</Text>
+              <Text className="text-xs text-slate-500 mb-1">
+                Purchase Price
+              </Text>
+              <Text className="text-[10px] text-slate-400 mb-1">
+                Inclusive of taxes
+              </Text>
               <TextInput
                 value={cost}
                 onChangeText={setCost}
@@ -336,8 +397,12 @@ export function UpdateProductScreen({ navigation, route }: Props) {
           <View className="mx-4 mt-4 rounded-2xl bg-white border border-slate-200 overflow-hidden">
             <View className="px-4 pt-4 pb-2 flex-row items-center justify-between">
               <Text className="text-base font-bold text-slate-800">Units</Text>
-              <TouchableOpacity onPress={() => showAlert("Add Alternative Unit", "Coming soon")}>
-                <Text className="text-sm font-semibold text-blue-600">Add Alternative Unit</Text>
+              <TouchableOpacity
+                onPress={() => showAlert("Add Alternative Unit", "Coming soon")}
+              >
+                <Text className="text-sm font-semibold text-blue-600">
+                  Add Alternative Unit
+                </Text>
               </TouchableOpacity>
             </View>
             <TouchableOpacity
@@ -346,7 +411,9 @@ export function UpdateProductScreen({ navigation, route }: Props) {
             >
               <Text className="text-sm text-slate-500">Select Unit</Text>
               <View className="flex-row items-center gap-2">
-                <Text className="text-base font-medium text-slate-800">{displayUnit}</Text>
+                <Text className="text-base font-medium text-slate-800">
+                  {displayUnit}
+                </Text>
                 <Ionicons name="chevron-down" size={20} color="#64748b" />
               </View>
             </TouchableOpacity>
@@ -358,17 +425,37 @@ export function UpdateProductScreen({ navigation, route }: Props) {
             className="mx-4 mt-4 rounded-2xl bg-white border border-slate-200 overflow-hidden"
           >
             <View className="px-4 py-4 flex-row items-center justify-between">
-              <Text className="text-base font-bold text-slate-800">Optional Fields</Text>
-              <Ionicons name={optionalExpanded ? "chevron-up" : "chevron-down"} size={22} color="#64748b" />
+              <Text className="text-base font-bold text-slate-800">
+                Optional Fields
+              </Text>
+              <Ionicons
+                name={optionalExpanded ? "chevron-up" : "chevron-down"}
+                size={22}
+                color="#64748b"
+              />
             </View>
-            <Text className="px-4 pb-3 text-xs text-slate-500">Description, Barcode, Category, Product Images</Text>
+            <Text className="px-4 pb-3 text-xs text-slate-500">
+              Description, Barcode, Category, Product Images
+            </Text>
 
             {optionalExpanded && (
               <View className="border-t border-slate-100">
-                <FormField label="HSN Code" value={hsnCode} onChangeText={setHsnCode} placeholder="Select HSN Code" />
-                <FormField label="Category" value={category} onChangeText={setCategory} placeholder="Select Category" />
+                <FormField
+                  label="HSN Code"
+                  value={hsnCode}
+                  onChangeText={setHsnCode}
+                  placeholder="Select HSN Code"
+                />
+                <FormField
+                  label="Category"
+                  value={category}
+                  onChangeText={setCategory}
+                  placeholder="Select Category"
+                />
                 <View className="px-4 py-3 border-t border-slate-100">
-                  <Text className="text-xs text-slate-500 mb-1">Description</Text>
+                  <Text className="text-xs text-slate-500 mb-1">
+                    Description
+                  </Text>
                   <TextInput
                     value={description}
                     onChangeText={setDescription}
@@ -393,7 +480,11 @@ export function UpdateProductScreen({ navigation, route }: Props) {
                       onPress={() => setShowBarcodeScanner(true)}
                       className="p-2.5 rounded-lg bg-slate-100"
                     >
-                      <Ionicons name="barcode-outline" size={24} color="#64748b" />
+                      <Ionicons
+                        name="barcode-outline"
+                        size={24}
+                        color="#64748b"
+                      />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -403,15 +494,34 @@ export function UpdateProductScreen({ navigation, route }: Props) {
                 >
                   <Text className="text-sm text-slate-500">Product Images</Text>
                   <View className="flex-row items-center gap-2">
-                    <Text className="text-sm text-slate-600">Add Product Images</Text>
-                    <Ionicons name="chevron-forward" size={18} color="#64748b" />
+                    <Text className="text-sm text-slate-600">
+                      Add Product Images
+                    </Text>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={18}
+                      color="#64748b"
+                    />
                   </View>
                 </TouchableOpacity>
                 <View className="px-4 py-3 border-t border-slate-100 flex-row items-center justify-between">
-                  <Text className="text-sm text-slate-700">Show in online store</Text>
-                  <Switch value={isFeatured} onValueChange={setIsFeatured} trackColor={{ false: "#cbd5e1", true: "#e67e22" }} thumbColor="#fff" />
+                  <Text className="text-sm text-slate-700">
+                    Show in online store
+                  </Text>
+                  <Switch
+                    value={isFeatured}
+                    onValueChange={setIsFeatured}
+                    trackColor={{ false: "#cbd5e1", true: "#e67e22" }}
+                    thumbColor="#fff"
+                  />
                 </View>
-                <FormField label="Low Stock Alert at" value={minStock} onChangeText={setMinStock} placeholder="0" keyboardType="number-pad" />
+                <FormField
+                  label="Low Stock Alert at"
+                  value={minStock}
+                  onChangeText={setMinStock}
+                  placeholder="0"
+                  keyboardType="number-pad"
+                />
               </View>
             )}
           </TouchableOpacity>
@@ -425,15 +535,25 @@ export function UpdateProductScreen({ navigation, route }: Props) {
             {updateMutation.isPending ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Text className="text-white font-bold text-base">Update Product</Text>
+              <Text className="text-white font-bold text-base">
+                Update Product
+              </Text>
             )}
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
 
       {/* Unit picker modal */}
-      <Modal visible={showUnitPicker} transparent animationType="slide">
-        <Pressable className="flex-1 bg-black/50 justify-end" onPress={() => setShowUnitPicker(false)}>
+      <Modal
+        visible={showUnitPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowUnitPicker(false)}
+      >
+        <Pressable
+          className="flex-1 bg-black/50 justify-end"
+          onPress={() => setShowUnitPicker(false)}
+        >
           <View className="bg-white rounded-t-3xl max-h-[60%]">
             <View className="w-10 h-1 rounded-full bg-slate-200 self-center mt-3 mb-4" />
             <Text className="text-lg font-bold px-5 mb-3">Select unit</Text>
@@ -448,7 +568,9 @@ export function UpdateProductScreen({ navigation, route }: Props) {
                   className="py-3.5 border-b border-slate-100 flex-row items-center justify-between"
                 >
                   <Text className="text-base text-slate-800">{u}</Text>
-                  {unit === u && <Ionicons name="checkmark" size={20} color="#e67e22" />}
+                  {unit === u && (
+                    <Ionicons name="checkmark" size={20} color="#e67e22" />
+                  )}
                 </Pressable>
               ))}
             </ScrollView>

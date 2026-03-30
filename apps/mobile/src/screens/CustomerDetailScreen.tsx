@@ -17,6 +17,7 @@ import {
   Switch,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { customerApi, reminderApi, customerExtApi } from "../lib/api";
@@ -231,9 +232,11 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
         <View className="px-4 pt-3 pb-0 flex-row items-center">
           <TouchableOpacity
             onPress={() => navigation.goBack()}
-            className="mr-2 p-1"
+            className="mr-3"
+            style={{ padding: 10, marginLeft: -4 }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text className="text-2xl text-slate-600">←</Text>
+            <Ionicons name="chevron-back" size={24} color="#475569" />
           </TouchableOpacity>
           {/* Avatar */}
           <View
@@ -638,7 +641,12 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
       </ScrollView>
 
       {/* ── Edit Customer Modal ── */}
-      <Modal visible={editOpen} transparent animationType="slide">
+      <Modal
+        visible={editOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setEditOpen(false)}
+      >
         <View className="flex-1 bg-black/50 justify-end">
           <View
             className="bg-white rounded-t-3xl px-5 pt-5 pb-10"
@@ -856,7 +864,12 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
       </Modal>
 
       {/* ── Set Reminder Modal ── */}
-      <Modal visible={reminderOpen} transparent animationType="slide">
+      <Modal
+        visible={reminderOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setReminderOpen(false)}
+      >
         <View className="flex-1 bg-black/50 justify-end">
           <View className="bg-white rounded-t-3xl px-5 pt-5 pb-10">
             <Text className="text-lg font-bold text-slate-800 mb-4">
@@ -924,7 +937,12 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
       </Modal>
 
       {/* ── Notification Preferences Modal ── */}
-      <Modal visible={prefsOpen} transparent animationType="slide">
+      <Modal
+        visible={prefsOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPrefsOpen(false)}
+      >
         <View className="flex-1 bg-black/50 justify-end">
           <View className="bg-white rounded-t-3xl px-5 pt-5 pb-10">
             <Text className="text-lg font-bold text-slate-800 mb-4">

@@ -9,4 +9,8 @@ export declare function executeCancelInvoice(entities: Record<string, any>, conv
 export declare function executeShowPendingInvoice(_entities: Record<string, any>, conversationId?: string): Promise<ExecutionResult>;
 export declare function executeToggleGst(entities: Record<string, any>, conversationId?: string): Promise<ExecutionResult>;
 export declare function executeProvideEmail(entities: Record<string, any>, conversationId?: string): Promise<ExecutionResult>;
+export declare function executeAddDiscount(entities: Record<string, any>, conversationId?: string): Promise<ExecutionResult>;
+export declare function executeSetSupplyType(entities: Record<string, any>, conversationId?: string): Promise<ExecutionResult>;
+export declare function executeSetPriceTier(entities: Record<string, any>): Promise<ExecutionResult>;
+export declare function executeRecordMixedPayment(entities: Record<string, any>, conversationId?: string): Promise<ExecutionResult>;
 //# sourceMappingURL=invoice.handler.d.ts.map

@@ -61,9 +61,13 @@ type MeUser = {
 };
 
 const LABEL = "text-sm font-medium text-slate-600";
-const INPUT = "border border-slate-200 rounded-xl px-4 py-3.5 text-base text-slate-800";
+const INPUT =
+  "border border-slate-200 rounded-xl px-4 py-3.5 text-base text-slate-800";
 
-type Props = NativeStackScreenProps<import("../navigation").MoreStackParams, "CompanyProfile">;
+type Props = NativeStackScreenProps<
+  import("../navigation").MoreStackParams,
+  "CompanyProfile"
+>;
 
 export function CompanyProfileScreen({ navigation }: Props) {
   const qc = useQueryClient();
@@ -115,7 +119,8 @@ export function CompanyProfileScreen({ navigation }: Props) {
         try {
           const bytes = new Uint8Array(arrayBuffer);
           let binary = "";
-          for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+          for (let i = 0; i < bytes.length; i++)
+            binary += String.fromCharCode(bytes[i]);
           const base64 = btoa(binary);
           if (!cancelled) setLogoDataUrl(`data:image/jpeg;base64,${base64}`);
         } catch {
@@ -123,7 +128,9 @@ export function CompanyProfileScreen({ navigation }: Props) {
         }
       })
       .catch(() => {});
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [logoObjectKey]);
 
   useEffect(() => {
@@ -134,7 +141,9 @@ export function CompanyProfileScreen({ navigation }: Props) {
       setGstin(tenant.gstin ?? "");
       setPhone(String(settings.phone ?? ""));
       setEmail(String(settings.email ?? ""));
-      setBillingAddress(String(settings.billingAddress ?? settings.address ?? ""));
+      setBillingAddress(
+        String(settings.billingAddress ?? settings.address ?? ""),
+      );
       setShippingAddress(String(settings.shippingAddress ?? ""));
       setBusinessType(String(settings.businessType ?? ""));
       setPan(String(settings.pan ?? ""));
@@ -151,7 +160,10 @@ export function CompanyProfileScreen({ navigation }: Props) {
   const pickLogo = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      showAlert("Permission needed", "Allow access to photos to upload your logo.");
+      showAlert(
+        "Permission needed",
+        "Allow access to photos to upload your logo.",
+      );
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -164,7 +176,10 @@ export function CompanyProfileScreen({ navigation }: Props) {
     const { uri, mimeType } = result.assets[0];
     setLogoUploading(true);
     try {
-      const { logoObjectKey: key } = await authExtApi.uploadLogo(uri, mimeType ?? "image/jpeg");
+      const { logoObjectKey: key } = await authExtApi.uploadLogo(
+        uri,
+        mimeType ?? "image/jpeg",
+      );
       setLogoObjectKey(key);
       void qc.invalidateQueries({ queryKey: ["auth", "me"] });
       showAlert("", "Logo uploaded successfully");
@@ -264,7 +279,11 @@ export function CompanyProfileScreen({ navigation }: Props) {
               className="w-24 h-24 rounded-2xl border-2 border-slate-200 bg-slate-50 items-center justify-center overflow-hidden"
             >
               {logoDataUrl ? (
-                <Image source={{ uri: logoDataUrl }} className="w-full h-full" resizeMode="cover" />
+                <Image
+                  source={{ uri: logoDataUrl }}
+                  className="w-full h-full"
+                  resizeMode="cover"
+                />
               ) : logoUploading ? (
                 <ActivityIndicator size="large" color="#e67e22" />
               ) : (
@@ -273,7 +292,9 @@ export function CompanyProfileScreen({ navigation }: Props) {
                 </View>
               )}
             </TouchableOpacity>
-            <Text className="text-sm font-medium text-slate-500 mt-2">Upload company logo</Text>
+            <Text className="text-sm font-medium text-slate-500 mt-2">
+              Upload company logo
+            </Text>
           </View>
 
           {/* Business / Company name */}
@@ -299,7 +320,12 @@ export function CompanyProfileScreen({ navigation }: Props) {
           {/* GST toggle */}
           <View className="flex-row items-center justify-between mb-2">
             <Text className={LABEL}>GST Registered</Text>
-            <Switch value={gstEnabled} onValueChange={setGstEnabled} trackColor={{ false: "#cbd5e1", true: "#e67e22" }} thumbColor="#fff" />
+            <Switch
+              value={gstEnabled}
+              onValueChange={setGstEnabled}
+              trackColor={{ false: "#cbd5e1", true: "#e67e22" }}
+              thumbColor="#fff"
+            />
           </View>
           {gstEnabled && (
             <>
@@ -344,11 +370,17 @@ export function CompanyProfileScreen({ navigation }: Props) {
           <View className="flex-row items-center justify-between mb-2">
             <Text className={LABEL}>Billing Address</Text>
             <View className="flex-row gap-2">
-              <TouchableOpacity onPress={shareAddress} className="flex-row items-center gap-1">
+              <TouchableOpacity
+                onPress={shareAddress}
+                className="flex-row items-center gap-1"
+              >
                 <Ionicons name="share-outline" size={16} color="#64748b" />
                 <Text className={TYPO.micro}>Share</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={copyToShipping} className="flex-row items-center gap-1">
+              <TouchableOpacity
+                onPress={copyToShipping}
+                className="flex-row items-center gap-1"
+              >
                 <Ionicons name="copy-outline" size={16} color="#64748b" />
                 <Text className={TYPO.micro}>Copy to Shipping</Text>
               </TouchableOpacity>
@@ -419,22 +451,46 @@ export function CompanyProfileScreen({ navigation }: Props) {
             onPress={() => setBusinessTypeModalOpen(true)}
             className={`${INPUT} mb-4 flex-row items-center justify-between`}
           >
-            <Text className={businessType ? "text-base font-medium text-slate-800" : "text-slate-400"}>
+            <Text
+              className={
+                businessType
+                  ? "text-base font-medium text-slate-800"
+                  : "text-slate-400"
+              }
+            >
               {businessType || "Select business type"}
             </Text>
             <Ionicons name="chevron-down" size={20} color="#94a3b8" />
           </TouchableOpacity>
 
-          <Modal visible={businessTypeModalOpen} transparent animationType="slide">
-            <Pressable className="flex-1 bg-black/50 justify-end" onPress={() => setBusinessTypeModalOpen(false)}>
-              <Pressable onPress={(e) => e.stopPropagation()} className="bg-white rounded-t-2xl max-h-[70%]">
+          <Modal
+            visible={businessTypeModalOpen}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setBusinessTypeModalOpen(false)}
+          >
+            <Pressable
+              className="flex-1 bg-black/50 justify-end"
+              onPress={() => setBusinessTypeModalOpen(false)}
+            >
+              <Pressable
+                onPress={(e) => e.stopPropagation()}
+                className="bg-white rounded-t-2xl max-h-[70%]"
+              >
                 <View className="flex-row items-center justify-between px-4 py-3 border-b border-slate-100">
-                  <Text className="text-lg font-semibold text-slate-800">Business Type</Text>
-                  <TouchableOpacity onPress={() => setBusinessTypeModalOpen(false)}>
+                  <Text className="text-lg font-semibold text-slate-800">
+                    Business Type
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => setBusinessTypeModalOpen(false)}
+                  >
                     <Ionicons name="close" size={24} color="#64748b" />
                   </TouchableOpacity>
                 </View>
-                <ScrollView className="max-h-80" keyboardShouldPersistTaps="handled">
+                <ScrollView
+                  className="max-h-80"
+                  keyboardShouldPersistTaps="handled"
+                >
                   {BUSINESS_TYPES.map((t) => (
                     <TouchableOpacity
                       key={t}
@@ -444,9 +500,15 @@ export function CompanyProfileScreen({ navigation }: Props) {
                       }}
                       className="flex-row items-center justify-between px-4 py-3.5 border-b border-slate-50"
                     >
-                      <Text className="text-base font-medium text-slate-800">{t}</Text>
+                      <Text className="text-base font-medium text-slate-800">
+                        {t}
+                      </Text>
                       {businessType === t && (
-                        <Ionicons name="checkmark-circle" size={22} color="#e67e22" />
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={22}
+                          color="#e67e22"
+                        />
                       )}
                     </TouchableOpacity>
                   ))}
@@ -460,7 +522,11 @@ export function CompanyProfileScreen({ navigation }: Props) {
             onPress={() => setShowOptional(!showOptional)}
             className="flex-row items-center gap-2 mb-4"
           >
-            <Ionicons name={showOptional ? "chevron-down" : "chevron-forward"} size={18} color="#64748b" />
+            <Ionicons
+              name={showOptional ? "chevron-down" : "chevron-forward"}
+              size={18}
+              color="#64748b"
+            />
             <Text className={LABEL}>Optional fields</Text>
           </TouchableOpacity>
           {showOptional && (

@@ -11,9 +11,10 @@ class CustomerService {
      * Get total pending amount (sum of all customer balances > 0)
      */
     async getTotalPendingAmount() {
+        const { tenantId } = infrastructure_3.tenantContext.get();
         const result = await infrastructure_1.prisma.customer.aggregate({
             _sum: { balance: true },
-            where: { balance: { gt: 0 } },
+            where: { tenantId, balance: { gt: 0 } },
         });
         return parseFloat(result._sum.balance?.toString() || '0');
     }
@@ -21,8 +22,10 @@ class CustomerService {
      * Get all customers with non-zero (pending) balance
      */
     async getAllCustomersWithPendingBalance() {
+        const { tenantId } = infrastructure_3.tenantContext.get();
         const customers = await infrastructure_1.prisma.customer.findMany({
             where: {
+                tenantId,
                 balance: {
                     gt: 0,
                 },
@@ -42,6 +45,55 @@ class CustomerService {
             balance: parseFloat(c.balance.toString()),
             landmark: c.landmark === null ? undefined : c.landmark,
             phone: c.phone === null ? undefined : c.phone,
+        }));
+    }
+    /**
+     * List all customers sorted by balance descending (used for the customers page browse/list view).
+     * Unlike searchCustomer, this never filters by score — it just pages through all records.
+     */
+    async listAllCustomers(limit = 200) {
+        const { tenantId } = infrastructure_3.tenantContext.get();
+        const customers = await infrastructure_1.prisma.customer.findMany({
+            where: { tenantId },
+            orderBy: { balance: 'desc' },
+            take: limit,
+            select: {
+                id: true,
+                name: true,
+                phone: true,
+                email: true,
+                nickname: true,
+                landmark: true,
+                balance: true,
+                tags: true,
+                notes: true,
+                gstin: true,
+                creditLimit: true,
+                addressLine1: true,
+                addressLine2: true,
+                city: true,
+                state: true,
+                pincode: true,
+            },
+        });
+        return customers.map((c) => ({
+            id: c.id,
+            name: c.name,
+            phone: c.phone,
+            email: c.email,
+            nickname: Array.isArray(c.nickname) ? (c.nickname[0] ?? null) : c.nickname,
+            landmark: c.landmark,
+            balance: parseFloat(c.balance.toString()),
+            matchScore: 1.0,
+            tags: c.tags,
+            notes: c.notes,
+            gstin: c.gstin,
+            creditLimit: c.creditLimit ? parseFloat(c.creditLimit.toString()) : null,
+            addressLine1: c.addressLine1 ?? undefined,
+            addressLine2: c.addressLine2 ?? undefined,
+            city: c.city ?? undefined,
+            state: c.state ?? undefined,
+            pincode: c.pincode ?? undefined,
         }));
     }
     conversationCache = new Map();
@@ -113,8 +165,9 @@ class CustomerService {
         if (cached) {
             return cached;
         }
-        const customer = await infrastructure_1.prisma.customer.findUnique({
-            where: { id: context.activeCustomerId },
+        const { tenantId } = infrastructure_3.tenantContext.get();
+        const customer = await infrastructure_1.prisma.customer.findFirst({
+            where: { id: context.activeCustomerId, tenantId },
             select: {
                 id: true,
                 name: true,
@@ -199,8 +252,28 @@ class CustomerService {
             .replace(/\s+/g, ' ')
             .trim();
         const stopWords = new Set([
-            'ka', 'ki', 'ke', 'ko', 'se', 'me', 'main', 'hai', 'ho', 'wala', 'wali', 'waale',
-            'customer', 'cust', 'bhai', 'ji', 'mr', 'mrs', 'ms', 'the', 'a', 'an',
+            'ka',
+            'ki',
+            'ke',
+            'ko',
+            'se',
+            'me',
+            'main',
+            'hai',
+            'ho',
+            'wala',
+            'wali',
+            'waale',
+            'customer',
+            'cust',
+            'bhai',
+            'ji',
+            'mr',
+            'mrs',
+            'ms',
+            'the',
+            'a',
+            'an',
         ]);
         const tokens = normalized
             .split(' ')
@@ -246,9 +319,7 @@ class CustomerService {
         // Fetch all in parallel
         const customers = await Promise.all(customerIds.map((id) => this.getCustomerById(id)));
         // Update cache with results
-        const searchResults = customers
-            .filter(Boolean)
-            .map((c) => ({
+        const searchResults = customers.filter(Boolean).map((c) => ({
             id: c.id,
             name: c.name,
             phone: c.phone,
@@ -307,10 +378,7 @@ class CustomerService {
             // Fetch related customers (same landmark or recent invoices)
             const relatedCustomers = await infrastructure_1.prisma.customer.findMany({
                 where: {
-                    OR: [
-                        { landmark: { equals: customer?.landmark || '' } },
-                        { phone: { not: null } },
-                    ],
+                    OR: [{ landmark: { equals: customer?.landmark || '' } }, { phone: { not: null } }],
                 },
                 take: 10,
                 select: {
@@ -701,7 +769,10 @@ class CustomerService {
             let matchedTokens = 0;
             let landmarkTokenHits = 0;
             for (const token of tokens) {
-                if (name.includes(token) || nickname.includes(token) || landmark.includes(token) || phone.includes(token)) {
+                if (name.includes(token) ||
+                    nickname.includes(token) ||
+                    landmark.includes(token) ||
+                    phone.includes(token)) {
                     matchedTokens += 1;
                     if (landmark.includes(token)) {
                         landmarkTokenHits += 1;
@@ -870,6 +941,15 @@ class CustomerService {
                 nickname: Array.isArray(c.nickname) ? (c.nickname[0] ?? null) : c.nickname,
                 landmark: c.landmark,
                 balance: parseFloat(c.balance.toString()),
+                tags: c.tags,
+                notes: c.notes,
+                gstin: c.gstin,
+                creditLimit: c.creditLimit ? parseFloat(c.creditLimit.toString()) : null,
+                addressLine1: c.addressLine1 ?? undefined,
+                addressLine2: c.addressLine2 ?? undefined,
+                city: c.city ?? undefined,
+                state: c.state ?? undefined,
+                pincode: c.pincode ?? undefined,
                 matchScore: this.calculateMatchScore(searchLower, {
                     id: c.id,
                     name: c.name,
@@ -895,8 +975,9 @@ class CustomerService {
      * Get customer by ID
      */
     async getCustomerById(id) {
-        return await infrastructure_1.prisma.customer.findUnique({
-            where: { id },
+        const { tenantId } = infrastructure_3.tenantContext.get();
+        return await infrastructure_1.prisma.customer.findFirst({
+            where: { id, tenantId },
             include: {
                 invoices: {
                     orderBy: { createdAt: 'desc' },
@@ -1112,6 +1193,68 @@ class CustomerService {
                 },
             };
         }
+    }
+    // ---------------------------------------------------------------------------
+    // Profile update (REST PATCH endpoint)
+    // ---------------------------------------------------------------------------
+    /**
+     * Full profile update — name, phone, email, nickname, landmark, creditLimit, tags.
+     * Called from PATCH /api/v1/customers/:id
+     */
+    async updateProfile(id, data) {
+        const updateData = {};
+        if (data.name !== undefined)
+            updateData.name = data.name.trim();
+        if (data.phone !== undefined)
+            updateData.phone = data.phone || null;
+        if (data.email !== undefined)
+            updateData.email = data.email || null;
+        if (data.nickname !== undefined)
+            updateData.nickname = data.nickname ? [data.nickname] : [];
+        if (data.landmark !== undefined)
+            updateData.landmark = data.landmark || null;
+        if (data.tags !== undefined)
+            updateData.tags = data.tags;
+        if (data.creditLimit !== undefined)
+            updateData.creditLimit = new library_1.Decimal(data.creditLimit);
+        if (data.notes !== undefined)
+            updateData.notes = data.notes || null;
+        if (Object.keys(updateData).length === 0)
+            throw new Error('No fields to update');
+        const updated = await infrastructure_1.prisma.customer.update({
+            where: { id },
+            data: updateData,
+        });
+        this.balanceCache.delete(id);
+        infrastructure_2.logger.info({ customerId: id, fields: Object.keys(updateData) }, 'Customer profile updated');
+        return updated;
+    }
+    // ---------------------------------------------------------------------------
+    // Communication preferences
+    // ---------------------------------------------------------------------------
+    async getCommPrefs(customerId) {
+        return infrastructure_1.prisma.customerCommunicationPrefs.findUnique({
+            where: { customerId },
+        });
+    }
+    async upsertCommPrefs(customerId, data) {
+        const customer = await infrastructure_1.prisma.customer.findUnique({
+            where: { id: customerId },
+            select: { tenantId: true },
+        });
+        if (!customer)
+            throw new Error('Customer not found');
+        const upserted = await infrastructure_1.prisma.customerCommunicationPrefs.upsert({
+            where: { customerId },
+            create: {
+                tenantId: customer.tenantId,
+                customerId,
+                ...data,
+            },
+            update: data,
+        });
+        infrastructure_2.logger.info({ customerId, fields: Object.keys(data) }, 'CommPrefs upserted');
+        return upserted;
     }
 }
 exports.customerService = new CustomerService();

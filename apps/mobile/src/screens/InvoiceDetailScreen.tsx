@@ -473,7 +473,12 @@ export function InvoiceDetailScreen({ navigation, route }: Props) {
       </View>
 
       {/* ── Cancel confirmation modal ── */}
-      <Modal visible={confirmCancel} transparent animationType="fade">
+      <Modal
+        visible={confirmCancel}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConfirmCancel(false)}
+      >
         <View className="flex-1 bg-black/50 items-center justify-center px-6">
           <View className="bg-white rounded-3xl p-6 w-full">
             <Text className="text-lg font-bold text-slate-800 mb-2">
@@ -512,7 +517,12 @@ export function InvoiceDetailScreen({ navigation, route }: Props) {
       </Modal>
 
       {/* ── Edit invoice modal ── */}
-      <Modal visible={editOpen} transparent animationType="slide">
+      <Modal
+        visible={editOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setEditOpen(false)}
+      >
         <View className="flex-1 bg-black/50 justify-end">
           <View
             className="bg-white rounded-t-3xl px-5 pt-5 pb-8"
@@ -604,7 +614,12 @@ export function InvoiceDetailScreen({ navigation, route }: Props) {
       </Modal>
 
       {/* ── Convert proforma modal ── */}
-      <Modal visible={convertOpen} transparent animationType="slide">
+      <Modal
+        visible={convertOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setConvertOpen(false)}
+      >
         <View className="flex-1 bg-black/50 justify-end">
           <View className="bg-white rounded-t-3xl px-5 pt-5 pb-8">
             <Text className="text-lg font-bold text-slate-800 mb-1">

@@ -36,8 +36,9 @@ function makePayment(overrides = {}) {
     try {
         const mockPayment = makePayment({ method: 'cash', status: 'completed' });
         const txProxy = {
-            payment: { create: async () => mockPayment },
-            customer: { update: async () => (0, fixtures_1.makeCustomer)() },
+            payment: { create: async () => mockPayment, update: async () => mockPayment },
+            invoice: { findMany: async () => [], update: async () => ({}) },
+            customer: { update: async () => (0, fixtures_1.makeCustomer)(), findUnique: async () => (0, fixtures_1.makeCustomer)() },
         };
         restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma, '$transaction', (0, fixtures_1.makePrismaTransaction)(txProxy)));
         const result = await ledger_service_1.ledgerService.recordPayment('cust-001', 200, 'cash');
@@ -70,8 +71,9 @@ function makePayment(overrides = {}) {
         try {
             const mockPayment = makePayment({ method: mode === 'other' ? 'bank' : mode });
             const txProxy = {
-                payment: { create: async () => mockPayment },
-                customer: { update: async () => (0, fixtures_1.makeCustomer)() },
+                payment: { create: async () => mockPayment, update: async () => mockPayment },
+                invoice: { findMany: async () => [], update: async () => ({}) },
+                customer: { update: async () => (0, fixtures_1.makeCustomer)(), findUnique: async () => (0, fixtures_1.makeCustomer)() },
             };
             restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma, '$transaction', (0, fixtures_1.makePrismaTransaction)(txProxy)));
             const result = await ledger_service_1.ledgerService.recordPayment('cust-001', 100, mode);

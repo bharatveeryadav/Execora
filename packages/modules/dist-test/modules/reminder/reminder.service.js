@@ -12,8 +12,16 @@ const infrastructure_6 = require("@execora/infrastructure");
 class ReminderService {
     normalizeSpokenNumbers(input) {
         const devanagariDigits = {
-            '०': '0', '१': '1', '२': '2', '३': '3', '४': '4',
-            '५': '5', '६': '6', '७': '7', '८': '8', '९': '9',
+            '०': '0',
+            '१': '1',
+            '२': '2',
+            '३': '3',
+            '४': '4',
+            '५': '5',
+            '६': '6',
+            '७': '7',
+            '८': '8',
+            '९': '9',
         };
         let text = input.replace(/[०-९]/g, (ch) => devanagariDigits[ch] ?? ch);
         const numberWords = [
@@ -43,7 +51,7 @@ class ReminderService {
         const minute = withColon && m[2] ? Number(m[2]) : 0;
         // withColon: meridiem is m[3] (group after "HH:MM")
         // withMarker: meridiem is m[2] (group after the hour digit)
-        const meridiem = (withColon ? (m[3] || '') : (m[2] || '')).toLowerCase();
+        const meridiem = (withColon ? m[3] || '' : m[2] || '').toLowerCase();
         if (Number.isNaN(hour) || Number.isNaN(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
             return null;
         }
@@ -91,6 +99,12 @@ class ReminderService {
     }
     parseSchedule(dateTimeStr) {
         const now = new Date();
+        // ── ISO datetime strings bypass natural-language parsing ──────────────────
+        if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(dateTimeStr.trim())) {
+            const d = new Date(dateTimeStr);
+            if (!isNaN(d.getTime()))
+                return { scheduledTime: d };
+        }
         const lowerStr = this.normalizeSpokenNumbers(dateTimeStr.toLowerCase().trim());
         // हर/each/every N minutes
         const everyMinutes = lowerStr.match(/(?:har|each|every)\s*(?:ek\s*)?(\d+)\s*(?:minute|min|minutes|mins|minutee|minit)/);
@@ -242,8 +256,14 @@ class ReminderService {
             });
             if (!customer)
                 throw new Error('Customer not found');
-            if (!customer.phone)
-                throw new Error('Customer phone number not found');
+            // Build available channels based on customer contact info
+            const availableChannels = [];
+            if (customer.phone)
+                availableChannels.push('whatsapp');
+            if (customer.email)
+                availableChannels.push('email');
+            // If no contact info yet, schedule with both — contact will be added later
+            const channels = availableChannels.length > 0 ? availableChannels : ['whatsapp', 'email'];
             const { scheduledTime, recurringPattern } = this.parseSchedule(dateTimeStr);
             const message = customMessage ||
                 `Namaste ${customer.name} ji,\n\n₹${amount} payment pending hai. Kripya payment kar dein. 🙏\n\nDhanyavad`;
@@ -256,7 +276,7 @@ class ReminderService {
                     scheduledTime,
                     recurringPattern: recurringPattern,
                     customMessage: message,
-                    channels: ['whatsapp', 'email'],
+                    channels: channels,
                     status: 'pending',
                     notes: amount.toString(),
                 },
@@ -269,16 +289,18 @@ class ReminderService {
                     reminderId: reminder.id,
                     customerId: customer.id,
                     customerName: customer.name,
-                    phone: customer.phone,
+                    phone: customer.phone || '',
                     amount,
                     message,
                 }, scheduledTime);
             }
             catch (queueError) {
-                await infrastructure_1.prisma.reminder.update({
+                await infrastructure_1.prisma.reminder
+                    .update({
                     where: { id: reminder.id },
                     data: { status: 'failed' },
-                }).catch((updateErr) => {
+                })
+                    .catch((updateErr) => {
                     infrastructure_2.logger.error({ updateErr, reminderId: reminder.id }, 'Failed to mark reminder as failed after queue error');
                 });
                 throw queueError;
@@ -347,6 +369,7 @@ class ReminderService {
     async getPendingReminders(customerId) {
         return await infrastructure_1.prisma.reminder.findMany({
             where: {
+                tenantId: infrastructure_4.tenantContext.get().tenantId,
                 status: 'pending',
                 ...(customerId && { customerId }),
             },
@@ -363,7 +386,7 @@ class ReminderService {
      */
     async getCustomerReminders(customerId, limit = 10) {
         return await infrastructure_1.prisma.reminder.findMany({
-            where: { customerId },
+            where: { tenantId: infrastructure_4.tenantContext.get().tenantId, customerId },
             orderBy: { createdAt: 'desc' },
             take: limit,
             include: {
@@ -391,6 +414,7 @@ class ReminderService {
     async getDueReminders() {
         return await infrastructure_1.prisma.reminder.findMany({
             where: {
+                tenantId: infrastructure_4.tenantContext.get().tenantId,
                 status: 'pending',
                 scheduledTime: { lte: new Date() },
             },
@@ -399,6 +423,35 @@ class ReminderService {
     }
     async scheduleNextOccurrence(reminderId) {
         return (0, infrastructure_5.scheduleNextReminderOccurrence)(reminderId);
+    }
+    /**
+     * Bulk-schedule reminders for multiple customers (e.g. all with overdue balance).
+     * daysOffset: how many days from now to schedule (default 0 = today 6pm IST).
+     */
+    async bulkScheduleReminders(data) {
+        const { customerIds, message, daysOffset = 0 } = data;
+        // Schedule time: today (+ daysOffset) at 18:00 IST
+        const tz = infrastructure_6.config.timezone ?? 'Asia/Kolkata';
+        const base = new Date();
+        base.setDate(base.getDate() + daysOffset);
+        base.setHours(0, 0, 0, 0);
+        const scheduledTime = (0, date_fns_tz_1.fromZonedTime)(new Date(base.getFullYear(), base.getMonth(), base.getDate(), 18, 0, 0), tz);
+        // Fetch customers to get their current balance
+        const customers = await infrastructure_1.prisma.customer.findMany({
+            where: { id: { in: customerIds }, balance: { gt: 0 } },
+            select: { id: true, balance: true },
+        });
+        const results = await Promise.allSettled(customers.map((c) => this.scheduleReminder(c.id, parseFloat(c.balance.toString()), scheduledTime.toISOString(), message)));
+        const succeeded = results.filter((r) => r.status === 'fulfilled');
+        const failed = results.filter((r) => r.status === 'rejected');
+        if (failed.length > 0) {
+            infrastructure_2.logger.warn({ failed: failed.length, succeeded: succeeded.length }, 'Some bulk reminders failed to schedule');
+        }
+        const reminders = succeeded
+            .filter((r) => r.status === 'fulfilled')
+            .map((r) => r.value);
+        infrastructure_2.logger.info({ count: reminders.length, daysOffset }, 'Bulk reminders scheduled');
+        return reminders;
     }
 }
 exports.reminderService = new ReminderService();

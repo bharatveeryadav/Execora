@@ -1,0 +1,1 @@
+{"version":3,"file":"CompanyProfileScreen.d.ts","sourceRoot":"","sources":["../../src/screens/CompanyProfileScreen.tsx"],"names":[],"mappings":"AAAA;;;GAGG;AACH,OAAO,KAA8B,MAAM,OAAO,CAAC;AAmBnD,OAAO,KAAK,EAAE,sBAAsB,EAAE,MAAM,gCAAgC,CAAC;AA0C7E,KAAK,KAAK,GAAG,sBAAsB,CAAC,OAAO,eAAe,EAAE,eAAe,EAAE,gBAAgB,CAAC,CAAC;AAE/F,wBAAgB,oBAAoB,CAAC,EAAE,UAAU,EAAE,EAAE,KAAK,qBAibzD"}

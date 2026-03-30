@@ -69,7 +69,7 @@ class STTService {
      * Open a live transcription session (streaming audio → partial+final transcripts).
      * Falls back to any adapter that supports live transcription when the primary doesn't.
      */
-    async createLiveTranscription(onTranscript, onError) {
+    async createLiveTranscription(onTranscript, onError, options) {
         // Find an adapter that supports live transcription
         const adapter = this.adapterFor('supportsLiveTranscription');
         if (!adapter) {
@@ -77,7 +77,7 @@ class STTService {
         }
         // Live sessions are long-lived — we don't wrap in withProvider here because
         // the latency is unbounded. Errors during the session are propagated via onError.
-        return adapter.createLiveTranscription(onTranscript, onError);
+        return adapter.createLiveTranscription(onTranscript, onError, options);
     }
     /**
      * Transcribe a complete audio buffer (batch mode).

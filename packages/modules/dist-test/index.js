@@ -22,6 +22,11 @@ __exportStar(require("./modules/ledger/ledger.service"), exports);
 __exportStar(require("./modules/product/product.service"), exports);
 __exportStar(require("./modules/reminder/reminder.service"), exports);
 __exportStar(require("./modules/gst/gst.service"), exports);
+__exportStar(require("./modules/gst/gstr1.service"), exports);
+// Monitoring
+__exportStar(require("./modules/monitoring/monitoring.service"), exports);
+// Sprint 2 — AI Differentiators
+__exportStar(require("./modules/ai/ai.service"), exports);
 // Voice engine
 __exportStar(require("./modules/voice/conversation"), exports);
 __exportStar(require("./modules/voice/engine"), exports);

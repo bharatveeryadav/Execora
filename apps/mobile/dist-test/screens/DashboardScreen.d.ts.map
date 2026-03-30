@@ -1,0 +1,1 @@
+{"version":3,"file":"DashboardScreen.d.ts","sourceRoot":"","sources":["../../src/screens/DashboardScreen.tsx"],"names":[],"mappings":"AAAA;;;GAGG;AACH,OAAO,KAMN,MAAM,OAAO,CAAC;AAkBf,OAAO,KAAK,EAAE,oBAAoB,EAAE,MAAM,+BAA+B,CAAC;AAqd1E,KAAK,KAAK,GAAG,oBAAoB,CAC/B,OAAO,eAAe,EAAE,aAAa,EACrC,WAAW,CACZ,CAAC;AAMF,wBAAgB,eAAe,CAAC,EAAE,UAAU,EAAE,EAAE,KAAK,qBAspDpD"}

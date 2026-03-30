@@ -13,10 +13,10 @@ type Variant = "primary" | "outline" | "ghost" | "danger";
 type Size = "sm" | "md" | "lg";
 
 const variantContainerStyles: Record<Variant, string> = {
-  primary: "bg-primary border-0",
-  outline: "bg-transparent border-2 border-slate-300",
-  ghost: "bg-transparent border-0",
-  danger: "bg-red-600 border-0",
+  primary: "bg-primary border border-primary/90",
+  outline: "bg-white border border-slate-300",
+  ghost: "bg-slate-100/70 border border-slate-200",
+  danger: "bg-red-600 border border-red-700/60",
 };
 
 const variantTextStyles: Record<Variant, string> = {
@@ -90,7 +90,7 @@ export function Button({
       activeOpacity={0.7}
       style={sizeStyles[size]}
       className={cn(
-        "rounded-lg border items-center justify-center flex-row",
+        "rounded-xl items-center justify-center flex-row",
         variantContainerStyles[variant],
         isDisabled && "opacity-50",
         className,

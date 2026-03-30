@@ -47,13 +47,25 @@ export interface LiveTranscriptionSession {
     finish(): void;
 }
 /**
+ * Options passed when opening a live transcription session.
+ * Lets the frontend signal to the backend what audio format it will stream.
+ */
+export interface LiveTranscriptionOptions {
+    /** Raw audio encoding — 'linear16' = Int16 PCM, 'webm' = WebM container */
+    encoding?: 'linear16' | 'webm' | 'ogg';
+    /** Sample rate in Hz (required when encoding is 'linear16') */
+    sampleRate?: number;
+    /** Number of audio channels (default 1 = mono) */
+    channels?: number;
+}
+/**
  * Adapter interface all STT providers must implement.
  */
 export interface STTAdapter {
     readonly name: string;
     readonly capabilities: ProviderCapabilities;
     isAvailable(): boolean;
-    createLiveTranscription(onTranscript: (text: string, isFinal: boolean) => void, onError: (error: Error) => void): Promise<LiveTranscriptionSession>;
+    createLiveTranscription(onTranscript: (text: string, isFinal: boolean) => void, onError: (error: Error) => void, options?: LiveTranscriptionOptions): Promise<LiveTranscriptionSession>;
     transcribeAudio(buffer: Buffer, mimeType: string): Promise<string>;
 }
 /**

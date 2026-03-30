@@ -1,0 +1,1 @@
+{"version":3,"file":"ProductDetailScreen.d.ts","sourceRoot":"","sources":["../../src/screens/ProductDetailScreen.tsx"],"names":[],"mappings":"AAAA;;;GAGG;AACH,OAAO,KAAsC,MAAM,OAAO,CAAC;AAW3D,OAAO,KAAK,EAAE,sBAAsB,EAAE,MAAM,gCAAgC,CAAC;AA6B7E,KAAK,KAAK,GAAG,sBAAsB,CAAC,OAAO,eAAe,EAAE,gBAAgB,EAAE,eAAe,CAAC,CAAC;AAE/F,wBAAgB,mBAAmB,CAAC,EAAE,UAAU,EAAE,KAAK,EAAE,EAAE,KAAK,qBA6O/D"}

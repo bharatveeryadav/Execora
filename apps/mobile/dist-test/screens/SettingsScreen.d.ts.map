@@ -1,0 +1,1 @@
+{"version":3,"file":"SettingsScreen.d.ts","sourceRoot":"","sources":["../../src/screens/SettingsScreen.tsx"],"names":[],"mappings":"AAAA;;GAEG;AACH,OAAO,KAAK,MAAM,OAAO,CAAC;AAG1B,OAAO,KAAK,EAAE,sBAAsB,EAAE,MAAM,gCAAgC,CAAC;AAK7E,KAAK,KAAK,GAAG,sBAAsB,CAAC,OAAO,eAAe,EAAE,eAAe,EAAE,UAAU,CAAC,CAAC;AAEzF,wBAAgB,cAAc,CAAC,EAAE,UAAU,EAAE,EAAE,KAAK,qBA8DnD"}

@@ -69,7 +69,9 @@ const queryClient = new QueryClient({
   },
 });
 
-const NAV_STATE_KEY = "execora_nav_state";
+// Versioned key: bump when navigator wiring changes to avoid restoring stale route trees.
+const NAV_STATE_KEY = "execora_nav_state_v2";
+const LEGACY_NAV_STATE_KEY = "execora_nav_state";
 
 function hasRoute(state: unknown, target: string): boolean {
   if (!state || typeof state !== "object") return false;
@@ -199,8 +201,14 @@ function AppContentInner() {
   useEffect(() => {
     if (!isLoggedIn) {
       storage.delete(NAV_STATE_KEY);
+      storage.delete(LEGACY_NAV_STATE_KEY);
     }
   }, [isLoggedIn]);
+
+  useEffect(() => {
+    // Clean up legacy nav snapshots so old tab wiring cannot be restored.
+    storage.delete(LEGACY_NAV_STATE_KEY);
+  }, []);
 
   return (
     <>

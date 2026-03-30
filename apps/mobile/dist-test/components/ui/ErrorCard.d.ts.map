@@ -1,0 +1,1 @@
+{"version":3,"file":"ErrorCard.d.ts","sourceRoot":"","sources":["../../../src/components/ui/ErrorCard.tsx"],"names":[],"mappings":"AAAA;;GAEG;AACH,OAAO,KAAK,MAAM,OAAO,CAAC;AAK1B,MAAM,WAAW,cAAc;IAC7B,OAAO,CAAC,EAAE,MAAM,CAAC;IACjB,OAAO,CAAC,EAAE,MAAM,IAAI,CAAC;IACrB,SAAS,CAAC,EAAE,MAAM,CAAC;CACpB;AAED,wBAAgB,SAAS,CAAC,EACxB,OAAgC,EAChC,OAAO,EACP,SAAS,GACV,EAAE,cAAc,qBAuBhB"}

@@ -64,64 +64,77 @@ export function OverdueScreen({ navigation }: Props) {
     setRefreshing(false);
   }, [refetch]);
 
-  const openWhatsApp = useCallback((phone: string, name: string, balance: number) => {
-    const msg = encodeURIComponent(
-      `Hello ${name}, aapka ${inr(balance)} pending hai. Please settle karein. Thank you!`,
-    );
-    Linking.openURL(`https://wa.me/${phone.replace(/\D/g, "")}?text=${msg}`);
-  }, []);
+  const openWhatsApp = useCallback(
+    (phone: string, name: string, balance: number) => {
+      const msg = encodeURIComponent(
+        `Hello ${name}, aapka ${inr(balance)} pending hai. Please settle karein. Thank you!`,
+      );
+      Linking.openURL(`https://wa.me/${phone.replace(/\D/g, "")}?text=${msg}`);
+    },
+    [],
+  );
 
-  const openCustomer = useCallback((id: string) => {
-    (navigation.getParent() as any)?.navigate("CustomersTab", {
-      screen: "CustomerDetail",
-      params: { id },
-    });
-  }, [navigation]);
+  const openCustomer = useCallback(
+    (id: string) => {
+      (navigation.getParent() as any)?.navigate("CustomersTab", {
+        screen: "CustomerDetail",
+        params: { id },
+      });
+    },
+    [navigation],
+  );
 
   const keyExtractor = useCallback((item: OverdueCustomer) => item.id, []);
 
-  const renderItem = useCallback(({ item }: { item: OverdueCustomer }) => (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => openCustomer(item.id)}
-      activeOpacity={0.75}
-    >
-      <View style={styles.cardLeft}>
-        <Text
-          style={styles.customerName}
-          numberOfLines={1}
-          ellipsizeMode="tail"
-        >
-          {item.name}
-        </Text>
-        {item.landmark ? (
-          <Text style={styles.landmark} numberOfLines={1} ellipsizeMode="tail">
-            {item.landmark}
-          </Text>
-        ) : null}
-        {item.phone ? (
-          <Text style={styles.phone} numberOfLines={1} ellipsizeMode="tail">
-            {item.phone}
-          </Text>
-        ) : null}
-      </View>
-
-      <View style={styles.cardRight}>
-        <Text style={styles.balance}>{inr(Math.abs(item.balance))}</Text>
-        {item.phone ? (
-          <TouchableOpacity
-            style={styles.waBtn}
-            onPress={() =>
-              openWhatsApp(item.phone!, item.name, Math.abs(item.balance))
-            }
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+  const renderItem = useCallback(
+    ({ item }: { item: OverdueCustomer }) => (
+      <TouchableOpacity
+        style={styles.card}
+        onPress={() => openCustomer(item.id)}
+        activeOpacity={0.75}
+      >
+        <View style={styles.cardLeft}>
+          <Text
+            style={styles.customerName}
+            numberOfLines={1}
+            ellipsizeMode="tail"
           >
-            <Text style={styles.waBtnText}>WhatsApp</Text>
-          </TouchableOpacity>
-        ) : null}
-      </View>
-    </TouchableOpacity>
-  ), [openCustomer, openWhatsApp]);
+            {item.name}
+          </Text>
+          {item.landmark ? (
+            <Text
+              style={styles.landmark}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {item.landmark}
+            </Text>
+          ) : null}
+          {item.phone ? (
+            <Text style={styles.phone} numberOfLines={1} ellipsizeMode="tail">
+              {item.phone}
+            </Text>
+          ) : null}
+        </View>
+
+        <View style={styles.cardRight}>
+          <Text style={styles.balance}>{inr(Math.abs(item.balance))}</Text>
+          {item.phone ? (
+            <TouchableOpacity
+              style={styles.waBtn}
+              onPress={() =>
+                openWhatsApp(item.phone!, item.name, Math.abs(item.balance))
+              }
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={styles.waBtnText}>WhatsApp</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      </TouchableOpacity>
+    ),
+    [openCustomer, openWhatsApp],
+  );
 
   return (
     <SafeAreaView style={styles.container}>

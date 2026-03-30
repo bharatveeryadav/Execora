@@ -338,7 +338,12 @@ export function ItemsScreen({ navigation }: Props) {
   );
 
   const insets = useSafeAreaInsets();
-  const { contentPad, contentWidth } = useResponsive();
+  const { width, contentPad, contentWidth } = useResponsive();
+  const fabBottom = Math.max(insets.bottom + 16, 20);
+  const fabRight = Math.max(
+    contentPad,
+    (width - contentWidth) / 2 + contentPad,
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
@@ -1025,8 +1030,8 @@ export function ItemsScreen({ navigation }: Props) {
         activeOpacity={0.85}
         style={{
           position: "absolute",
-          bottom: Math.max(insets.bottom, 12),
-          right: 16,
+          bottom: fabBottom,
+          right: fabRight,
           flexDirection: "row",
           alignItems: "center",
           gap: 6,

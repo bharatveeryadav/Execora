@@ -170,25 +170,25 @@ function AuthNavigator({ onLogin }: { onLogin: () => void }) {
 function BillingNavigator() {
   return (
     <ErrorBoundary>
-    <BillingStack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: "#fff" },
-        headerShadowVisible: true,
-        headerTintColor: "#0f172a",
-        headerTitleStyle: { fontWeight: "700" },
-      }}
-    >
-      <BillingStack.Screen
-        name="BillingForm"
-        component={BillingScreen}
-        options={{ title: "New Invoice" }}
-      />
-      <BillingStack.Screen
-        name="InvoiceDetail"
-        component={InvoiceDetailScreen}
-        options={{ headerShown: false }}
-      />
-    </BillingStack.Navigator>
+      <BillingStack.Navigator
+        screenOptions={{
+          headerStyle: { backgroundColor: "#fff" },
+          headerShadowVisible: true,
+          headerTintColor: "#0f172a",
+          headerTitleStyle: { fontWeight: "700" },
+        }}
+      >
+        <BillingStack.Screen
+          name="BillingForm"
+          component={BillingScreen}
+          options={{ title: "New Invoice" }}
+        />
+        <BillingStack.Screen
+          name="InvoiceDetail"
+          component={InvoiceDetailScreen}
+          options={{ headerShown: false }}
+        />
+      </BillingStack.Navigator>
     </ErrorBoundary>
   );
 }
@@ -198,70 +198,78 @@ function BillingNavigator() {
 function InvoicesNavigator() {
   return (
     <ErrorBoundary>
-    <InvoicesStack.Navigator
-      screenOptions={{
-        headerShown: false,
-        headerStyle: { backgroundColor: "#fff" },
-        headerShadowVisible: true,
-        headerTintColor: "#0f172a",
-        headerTitleStyle: { fontWeight: "700" },
-      }}
-    >
-      <InvoicesStack.Screen name="InvoiceList" component={InvoiceListScreen} />
-      <InvoicesStack.Screen
-        name="InvoiceDetail"
-        component={InvoiceDetailScreen}
-      />
-      <InvoicesStack.Screen
-        name="BillsMenu"
-        component={BillsMenuScreen}
-        options={{ headerShown: true, title: "More", headerBackTitle: "Bills" }}
-      />
-      <InvoicesStack.Screen
-        name="Expenses"
-        component={ExpensesScreen}
-        options={{ headerShown: true, title: "Expenses" }}
-      />
-      <InvoicesStack.Screen
-        name="Reports"
-        component={ReportsScreen}
-        options={{ headerShown: true, title: "Reports" }}
-      />
-      <InvoicesStack.Screen
-        name="Purchases"
-        component={PurchasesScreen}
-        options={{ headerShown: true, title: "Purchases" }}
-      />
-      <InvoicesStack.Screen
-        name="EInvoicing"
-        component={ComingSoonScreen}
-        initialParams={{ title: "E-Invoicing / IRN" }}
-        options={{ headerShown: true, title: "E-Way Bills" }}
-      />
-      <InvoicesStack.Screen
-        name="Payment"
-        component={PaymentScreen}
-        options={{ headerShown: true, title: "Payments" }}
-      />
-      <InvoicesStack.Screen
-        name="CreditNotes"
-        component={CreditNotesScreen}
-        options={{ headerShown: true, title: "Credit Notes" }}
-      />
-      <InvoicesStack.Screen
-        name="ComingSoon"
-        component={ComingSoonScreen}
-        options={({ route }) => ({
-          headerShown: true,
-          title: (route.params as { title?: string })?.title ?? "Coming Soon",
-        })}
-      />
-      <InvoicesStack.Screen
-        name="Overdue"
-        component={OverdueScreen}
-        options={{ headerShown: true, title: "Overdue / Udhaar" }}
-      />
-    </InvoicesStack.Navigator>
+      <InvoicesStack.Navigator
+        initialRouteName="InvoiceList"
+        screenOptions={{
+          headerShown: false,
+          headerStyle: { backgroundColor: "#fff" },
+          headerShadowVisible: true,
+          headerTintColor: "#0f172a",
+          headerTitleStyle: { fontWeight: "700" },
+        }}
+      >
+        <InvoicesStack.Screen
+          name="InvoiceList"
+          component={InvoiceListScreen}
+        />
+        <InvoicesStack.Screen
+          name="InvoiceDetail"
+          component={InvoiceDetailScreen}
+        />
+        <InvoicesStack.Screen
+          name="BillsMenu"
+          component={BillsMenuScreen}
+          options={{
+            headerShown: true,
+            title: "More",
+            headerBackTitle: "Bills",
+          }}
+        />
+        <InvoicesStack.Screen
+          name="Expenses"
+          component={ExpensesScreen}
+          options={{ headerShown: true, title: "Expenses" }}
+        />
+        <InvoicesStack.Screen
+          name="Reports"
+          component={ReportsScreen}
+          options={{ headerShown: true, title: "Reports" }}
+        />
+        <InvoicesStack.Screen
+          name="Purchases"
+          component={PurchasesScreen}
+          options={{ headerShown: true, title: "Purchases" }}
+        />
+        <InvoicesStack.Screen
+          name="EInvoicing"
+          component={ComingSoonScreen}
+          initialParams={{ title: "E-Invoicing / IRN" }}
+          options={{ headerShown: true, title: "E-Way Bills" }}
+        />
+        <InvoicesStack.Screen
+          name="Payment"
+          component={PaymentScreen}
+          options={{ headerShown: true, title: "Payments" }}
+        />
+        <InvoicesStack.Screen
+          name="CreditNotes"
+          component={CreditNotesScreen}
+          options={{ headerShown: true, title: "Credit Notes" }}
+        />
+        <InvoicesStack.Screen
+          name="ComingSoon"
+          component={ComingSoonScreen}
+          options={({ route }) => ({
+            headerShown: true,
+            title: (route.params as { title?: string })?.title ?? "Coming Soon",
+          })}
+        />
+        <InvoicesStack.Screen
+          name="Overdue"
+          component={OverdueScreen}
+          options={{ headerShown: true, title: "Overdue / Udhaar" }}
+        />
+      </InvoicesStack.Navigator>
     </ErrorBoundary>
   );
 }
@@ -271,23 +279,24 @@ function InvoicesNavigator() {
 function CustomersNavigator() {
   return (
     <ErrorBoundary>
-    <CustomersStack.Navigator
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <CustomersStack.Screen name="CustomerList" component={PartiesScreen} />
-      <CustomersStack.Screen
-        name="CustomerDetail"
-        component={CustomerDetailScreen}
-      />
-      <CustomersStack.Screen name="Payment" component={PaymentScreen} />
-      <CustomersStack.Screen
-        name="Overdue"
-        component={OverdueScreen}
-        options={{ headerShown: true, title: "Overdue / Udhaar" }}
-      />
-    </CustomersStack.Navigator>
+      <CustomersStack.Navigator
+        initialRouteName="CustomerList"
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
+        <CustomersStack.Screen name="CustomerList" component={PartiesScreen} />
+        <CustomersStack.Screen
+          name="CustomerDetail"
+          component={CustomerDetailScreen}
+        />
+        <CustomersStack.Screen name="Payment" component={PaymentScreen} />
+        <CustomersStack.Screen
+          name="Overdue"
+          component={OverdueScreen}
+          options={{ headerShown: true, title: "Overdue / Udhaar" }}
+        />
+      </CustomersStack.Navigator>
     </ErrorBoundary>
   );
 }
@@ -297,20 +306,30 @@ function CustomersNavigator() {
 function ItemsNavigator() {
   return (
     <ErrorBoundary>
-    <ItemsStack.Navigator
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <ItemsStack.Screen name="ItemsList" component={ItemsScreen} />
-      <ItemsStack.Screen name="ProductDetail" component={ProductDetailScreen} />
-      <ItemsStack.Screen name="UpdateProduct" component={UpdateProductScreen} />
-      <ItemsStack.Screen
-        name="ItemsMenu"
-        component={ItemsMenuScreen}
-        options={{ headerShown: true, title: "More", headerBackTitle: "Items" }}
-      />
-    </ItemsStack.Navigator>
+      <ItemsStack.Navigator
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
+        <ItemsStack.Screen name="ItemsList" component={ItemsScreen} />
+        <ItemsStack.Screen
+          name="ProductDetail"
+          component={ProductDetailScreen}
+        />
+        <ItemsStack.Screen
+          name="UpdateProduct"
+          component={UpdateProductScreen}
+        />
+        <ItemsStack.Screen
+          name="ItemsMenu"
+          component={ItemsMenuScreen}
+          options={{
+            headerShown: true,
+            title: "More",
+            headerBackTitle: "Items",
+          }}
+        />
+      </ItemsStack.Navigator>
     </ErrorBoundary>
   );
 }
@@ -320,219 +339,220 @@ function ItemsNavigator() {
 function MoreNavigator() {
   return (
     <ErrorBoundary>
-    <MoreStack.Navigator
-      screenOptions={{
-        headerStyle: { backgroundColor: "#fff" },
-        headerShadowVisible: true,
-        headerTintColor: "#0f172a",
-        headerTitleStyle: { fontWeight: "700" },
-      }}
-    >
-      <MoreStack.Screen
-        name="More"
-        component={MoreScreen}
-        options={{ headerShown: false }}
-      />
-      <MoreStack.Screen
-        name="Billing"
-        component={BillingNavigator}
-        options={{ headerShown: false }}
-      />
-      <MoreStack.Screen
-        name="Items"
-        component={ItemsNavigator}
-        options={{ headerShown: false }}
-      />
-      <MoreStack.Screen
-        name="CompanyProfile"
-        component={CompanyProfileScreen}
-        options={{ headerShown: false }}
-      />
-      <MoreStack.Screen
-        name="SettingsThermal"
-        component={SettingsThermalScreen}
-        options={{ headerShown: false }}
-      />
-      <MoreStack.Screen
-        name="Reports"
-        component={ReportsScreen}
-        options={{ title: "Reports" }}
-      />
-      <MoreStack.Screen
-        name="DayBook"
-        component={DayBookScreen}
-        options={{ title: "Day Book" }}
-      />
-      <MoreStack.Screen
-        name="CashBook"
-        component={CashBookScreen}
-        options={{ title: "Cash Book" }}
-      />
-      <MoreStack.Screen
-        name="Expenses"
-        component={ExpensesScreen}
-        options={{ title: "Expenses" }}
-      />
-      <MoreStack.Screen
-        name="Recurring"
-        component={RecurringScreen}
-        options={{ title: "Recurring" }}
-      />
-      <MoreStack.Screen
-        name="Purchases"
-        component={PurchasesScreen}
-        options={{ title: "Purchases" }}
-      />
-      <MoreStack.Screen
-        name="Monitoring"
-        component={MonitoringScreen}
-        options={{ title: "Store Monitor" }}
-      />
-      <MoreStack.Screen
-        name="Expiry"
-        component={ExpiryScreen}
-        options={{ title: "Product Expiry" }}
-      />
-      <MoreStack.Screen
-        name="BalanceSheet"
-        component={BalanceSheetScreen}
-        options={{ title: "Balance / P&L" }}
-      />
-      <MoreStack.Screen
-        name="BankRecon"
-        component={BankReconScreen}
-        options={{ title: "Bank Reconciliation" }}
-      />
-      <MoreStack.Screen
-        name="Gstr"
-        component={GstrScreen}
-        options={{ title: "GSTR Reports" }}
-      />
-      <MoreStack.Screen
-        name="CreditNotes"
-        component={CreditNotesScreen}
-        options={{ title: "Credit Notes" }}
-      />
-      <MoreStack.Screen
-        name="PurchaseOrders"
-        component={PurchaseOrdersScreen}
-        options={{ title: "Purchase Orders" }}
-      />
-      <MoreStack.Screen
-        name="SalesOrders"
-        component={ComingSoonScreen}
-        initialParams={{ title: "Sales Orders" }}
-        options={{ title: "Sales Orders" }}
-      />
-      <MoreStack.Screen
-        name="PurchasePaymentOut"
-        component={ComingSoonScreen}
-        initialParams={{ title: "Purchase Payment Out" }}
-        options={{ title: "Purchase Payment Out" }}
-      />
-      <MoreStack.Screen
-        name="PurchaseReturn"
-        component={ComingSoonScreen}
-        initialParams={{ title: "Purchase Return" }}
-        options={{ title: "Purchase Return" }}
-      />
-      <MoreStack.Screen
-        name="Import"
-        component={ImportScreen}
-        options={({ route }) => {
-          const p = (route.params as { type?: string }) ?? {};
-          return {
-            title: p.type === "vendors" ? "Import Vendors" : "Import Customers",
-          };
+      <MoreStack.Navigator
+        screenOptions={{
+          headerStyle: { backgroundColor: "#fff" },
+          headerShadowVisible: true,
+          headerTintColor: "#0f172a",
+          headerTitleStyle: { fontWeight: "700" },
         }}
-      />
-      <MoreStack.Screen
-        name="EInvoicing"
-        component={ComingSoonScreen}
-        initialParams={{ title: "E-Invoicing / IRN" }}
-        options={{ title: "E-Invoicing" }}
-      />
-      <MoreStack.Screen
-        name="IndirectIncome"
-        component={IndirectIncomeScreen}
-        options={{ title: "Indirect Income" }}
-      />
-      <MoreStack.Screen
-        name="DebitOrders"
-        component={ComingSoonScreen}
-        initialParams={{ title: "Debit Orders" }}
-        options={{ title: "Debit Orders" }}
-      />
-      <MoreStack.Screen
-        name="DeliveryChallans"
-        component={ComingSoonScreen}
-        initialParams={{ title: "Delivery Challans" }}
-        options={{ title: "Delivery Challans" }}
-      />
-      <MoreStack.Screen
-        name="PackagingLists"
-        component={ComingSoonScreen}
-        initialParams={{ title: "Packaging Lists" }}
-        options={{ title: "Packaging Lists" }}
-      />
-      <MoreStack.Screen
-        name="Journals"
-        component={ComingSoonScreen}
-        initialParams={{ title: "Journals" }}
-        options={{ title: "Journals" }}
-      />
-      <MoreStack.Screen
-        name="OnlineStore"
-        component={ComingSoonScreen}
-        initialParams={{ title: "Online Store" }}
-        options={{ title: "Online Store" }}
-      />
-      <MoreStack.Screen
-        name="Addons"
-        component={ComingSoonScreen}
-        initialParams={{ title: "Addons" }}
-        options={{ title: "Addons" }}
-      />
-      <MoreStack.Screen
-        name="MyDrive"
-        component={ComingSoonScreen}
-        initialParams={{ title: "My Drive" }}
-        options={{ title: "My Drive" }}
-      />
-      <MoreStack.Screen
-        name="Tutorial"
-        component={ComingSoonScreen}
-        initialParams={{ title: "Tutorial" }}
-        options={{ title: "Tutorial" }}
-      />
-      <MoreStack.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{ title: "Settings" }}
-      />
-      <MoreStack.Screen
-        name="DocumentSettings"
-        component={DocumentSettingsScreen}
-        options={{ title: "Document Settings" }}
-      />
-      <MoreStack.Screen
-        name="DocumentTemplates"
-        component={DocumentTemplatesScreen}
-        options={{ title: "Document Templates" }}
-      />
-      <MoreStack.Screen
-        name="ComingSoon"
-        component={ComingSoonScreen}
-        options={({ route }) => ({
-          title: (route.params as { title?: string })?.title ?? "Coming Soon",
-        })}
-      />
-      <MoreStack.Screen
-        name="Feedback"
-        component={FeedbackScreen}
-        options={{ title: "Feedback" }}
-      />
-    </MoreStack.Navigator>
+      >
+        <MoreStack.Screen
+          name="More"
+          component={MoreScreen}
+          options={{ headerShown: false }}
+        />
+        <MoreStack.Screen
+          name="Billing"
+          component={BillingNavigator}
+          options={{ headerShown: false }}
+        />
+        <MoreStack.Screen
+          name="Items"
+          component={ItemsNavigator}
+          options={{ headerShown: false }}
+        />
+        <MoreStack.Screen
+          name="CompanyProfile"
+          component={CompanyProfileScreen}
+          options={{ headerShown: false }}
+        />
+        <MoreStack.Screen
+          name="SettingsThermal"
+          component={SettingsThermalScreen}
+          options={{ headerShown: false }}
+        />
+        <MoreStack.Screen
+          name="Reports"
+          component={ReportsScreen}
+          options={{ title: "Reports" }}
+        />
+        <MoreStack.Screen
+          name="DayBook"
+          component={DayBookScreen}
+          options={{ title: "Day Book" }}
+        />
+        <MoreStack.Screen
+          name="CashBook"
+          component={CashBookScreen}
+          options={{ title: "Cash Book" }}
+        />
+        <MoreStack.Screen
+          name="Expenses"
+          component={ExpensesScreen}
+          options={{ title: "Expenses" }}
+        />
+        <MoreStack.Screen
+          name="Recurring"
+          component={RecurringScreen}
+          options={{ title: "Recurring" }}
+        />
+        <MoreStack.Screen
+          name="Purchases"
+          component={PurchasesScreen}
+          options={{ title: "Purchases" }}
+        />
+        <MoreStack.Screen
+          name="Monitoring"
+          component={MonitoringScreen}
+          options={{ title: "Store Monitor" }}
+        />
+        <MoreStack.Screen
+          name="Expiry"
+          component={ExpiryScreen}
+          options={{ title: "Product Expiry" }}
+        />
+        <MoreStack.Screen
+          name="BalanceSheet"
+          component={BalanceSheetScreen}
+          options={{ title: "Balance / P&L" }}
+        />
+        <MoreStack.Screen
+          name="BankRecon"
+          component={BankReconScreen}
+          options={{ title: "Bank Reconciliation" }}
+        />
+        <MoreStack.Screen
+          name="Gstr"
+          component={GstrScreen}
+          options={{ title: "GSTR Reports" }}
+        />
+        <MoreStack.Screen
+          name="CreditNotes"
+          component={CreditNotesScreen}
+          options={{ title: "Credit Notes" }}
+        />
+        <MoreStack.Screen
+          name="PurchaseOrders"
+          component={PurchaseOrdersScreen}
+          options={{ title: "Purchase Orders" }}
+        />
+        <MoreStack.Screen
+          name="SalesOrders"
+          component={ComingSoonScreen}
+          initialParams={{ title: "Sales Orders" }}
+          options={{ title: "Sales Orders" }}
+        />
+        <MoreStack.Screen
+          name="PurchasePaymentOut"
+          component={ComingSoonScreen}
+          initialParams={{ title: "Purchase Payment Out" }}
+          options={{ title: "Purchase Payment Out" }}
+        />
+        <MoreStack.Screen
+          name="PurchaseReturn"
+          component={ComingSoonScreen}
+          initialParams={{ title: "Purchase Return" }}
+          options={{ title: "Purchase Return" }}
+        />
+        <MoreStack.Screen
+          name="Import"
+          component={ImportScreen}
+          options={({ route }) => {
+            const p = (route.params as { type?: string }) ?? {};
+            return {
+              title:
+                p.type === "vendors" ? "Import Vendors" : "Import Customers",
+            };
+          }}
+        />
+        <MoreStack.Screen
+          name="EInvoicing"
+          component={ComingSoonScreen}
+          initialParams={{ title: "E-Invoicing / IRN" }}
+          options={{ title: "E-Invoicing" }}
+        />
+        <MoreStack.Screen
+          name="IndirectIncome"
+          component={IndirectIncomeScreen}
+          options={{ title: "Indirect Income" }}
+        />
+        <MoreStack.Screen
+          name="DebitOrders"
+          component={ComingSoonScreen}
+          initialParams={{ title: "Debit Orders" }}
+          options={{ title: "Debit Orders" }}
+        />
+        <MoreStack.Screen
+          name="DeliveryChallans"
+          component={ComingSoonScreen}
+          initialParams={{ title: "Delivery Challans" }}
+          options={{ title: "Delivery Challans" }}
+        />
+        <MoreStack.Screen
+          name="PackagingLists"
+          component={ComingSoonScreen}
+          initialParams={{ title: "Packaging Lists" }}
+          options={{ title: "Packaging Lists" }}
+        />
+        <MoreStack.Screen
+          name="Journals"
+          component={ComingSoonScreen}
+          initialParams={{ title: "Journals" }}
+          options={{ title: "Journals" }}
+        />
+        <MoreStack.Screen
+          name="OnlineStore"
+          component={ComingSoonScreen}
+          initialParams={{ title: "Online Store" }}
+          options={{ title: "Online Store" }}
+        />
+        <MoreStack.Screen
+          name="Addons"
+          component={ComingSoonScreen}
+          initialParams={{ title: "Addons" }}
+          options={{ title: "Addons" }}
+        />
+        <MoreStack.Screen
+          name="MyDrive"
+          component={ComingSoonScreen}
+          initialParams={{ title: "My Drive" }}
+          options={{ title: "My Drive" }}
+        />
+        <MoreStack.Screen
+          name="Tutorial"
+          component={ComingSoonScreen}
+          initialParams={{ title: "Tutorial" }}
+          options={{ title: "Tutorial" }}
+        />
+        <MoreStack.Screen
+          name="Settings"
+          component={SettingsScreen}
+          options={{ title: "Settings" }}
+        />
+        <MoreStack.Screen
+          name="DocumentSettings"
+          component={DocumentSettingsScreen}
+          options={{ title: "Document Settings" }}
+        />
+        <MoreStack.Screen
+          name="DocumentTemplates"
+          component={DocumentTemplatesScreen}
+          options={{ title: "Document Templates" }}
+        />
+        <MoreStack.Screen
+          name="ComingSoon"
+          component={ComingSoonScreen}
+          options={({ route }) => ({
+            title: (route.params as { title?: string })?.title ?? "Coming Soon",
+          })}
+        />
+        <MoreStack.Screen
+          name="Feedback"
+          component={FeedbackScreen}
+          options={{ title: "Feedback" }}
+        />
+      </MoreStack.Navigator>
     </ErrorBoundary>
   );
 }
@@ -611,15 +631,23 @@ function MainTabs() {
         ),
       })}
     >
-      <Tab.Screen
-        name="Dashboard"
-        options={{ tabBarLabel: "Home" }}
-      >
-        {(props) => <ErrorBoundary><DashboardScreen {...props} /></ErrorBoundary>}
+      <Tab.Screen name="Dashboard" options={{ tabBarLabel: "Home" }}>
+        {(props) => (
+          <ErrorBoundary>
+            <DashboardScreen {...props} />
+          </ErrorBoundary>
+        )}
       </Tab.Screen>
       <Tab.Screen
         name="InvoicesTab"
         component={InvoicesNavigator}
+        listeners={({ navigation }) => ({
+          tabPress: () => {
+            (navigation as any).navigate("InvoicesTab", {
+              screen: "InvoiceList",
+            });
+          },
+        })}
         options={{ tabBarLabel: "Bills" }}
       />
       <Tab.Screen
@@ -630,6 +658,13 @@ function MainTabs() {
       <Tab.Screen
         name="CustomersTab"
         component={CustomersNavigator}
+        listeners={({ navigation }) => ({
+          tabPress: () => {
+            (navigation as any).navigate("CustomersTab", {
+              screen: "CustomerList",
+            });
+          },
+        })}
         options={{ tabBarLabel: "Parties" }}
       />
       <Tab.Screen

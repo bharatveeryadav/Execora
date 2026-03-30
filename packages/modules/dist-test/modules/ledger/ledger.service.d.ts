@@ -3,8 +3,9 @@ declare class LedgerService {
     /**
      * Record a payment received from customer (reduces their balance).
      */
-    recordPayment(customerId: string, amount: number, paymentMode: 'cash' | 'upi' | 'card' | 'other', notes?: string): Promise<{
+    recordPayment(customerId: string, amount: number, paymentMode: 'cash' | 'upi' | 'card' | 'other', notes?: string, reference?: string, receivedAt?: Date): Promise<{
         customer: {
+            tenantId: string;
             balance: Decimal;
             creditLimit: Decimal;
             totalPurchases: Decimal;
@@ -19,7 +20,6 @@ declare class LedgerService {
             monetaryScore: Decimal;
             overallScore: Decimal | null;
             id: string;
-            tenantId: string;
             name: string;
             phone: string | null;
             alternatePhone: string[];
@@ -57,8 +57,8 @@ declare class LedgerService {
             deletedAt: Date | null;
         };
     } & {
-        id: string;
         tenantId: string;
+        id: string;
         notes: string | null;
         createdBy: string | null;
         createdAt: Date;
@@ -72,10 +72,36 @@ declare class LedgerService {
         receivedAt: Date;
     }>;
     /**
+     * Record a split (mixed) payment — e.g. ₹500 cash + ₹300 UPI.
+     * Each split is recorded as a separate Payment row but settled together in one atomic transaction.
+     */
+    recordMixedPayment(customerId: string, splits: Array<{
+        amount: number;
+        method: 'cash' | 'upi' | 'card' | 'other';
+    }>, notes?: string, reference?: string, receivedAt?: Date): Promise<{
+        payments: {
+            tenantId: string;
+            id: string;
+            notes: string | null;
+            createdBy: string | null;
+            createdAt: Date;
+            status: import(".prisma/client").$Enums.PaymentStatus;
+            customerId: string;
+            invoiceId: string | null;
+            amount: Decimal;
+            paymentNo: string;
+            method: import(".prisma/client").$Enums.PaymentMethod;
+            reference: string | null;
+            receivedAt: Date;
+        }[];
+        totalAmount: number;
+    }>;
+    /**
      * Manually add a debit to a customer account (they owe more).
      * No Payment record — just adjust the balance directly.
      */
     addCredit(customerId: string, amount: number, description: string): Promise<{} & {
+        tenantId: string;
         balance: Decimal;
         creditLimit: Decimal;
         totalPurchases: Decimal;
@@ -90,7 +116,6 @@ declare class LedgerService {
         monetaryScore: Decimal;
         overallScore: Decimal | null;
         id: string;
-        tenantId: string;
         name: string;
         phone: string | null;
         alternatePhone: string[];
@@ -131,6 +156,7 @@ declare class LedgerService {
      * Set opening balance for a customer.
      */
     setOpeningBalance(customerId: string, amount: number): Promise<{
+        tenantId: string;
         balance: Decimal;
         creditLimit: Decimal;
         totalPurchases: Decimal;
@@ -145,7 +171,6 @@ declare class LedgerService {
         monetaryScore: Decimal;
         overallScore: Decimal | null;
         id: string;
-        tenantId: string;
         name: string;
         phone: string | null;
         alternatePhone: string[];
@@ -191,8 +216,8 @@ declare class LedgerService {
             phone: string | null;
         };
     } & {
-        id: string;
         tenantId: string;
+        id: string;
         notes: string | null;
         createdBy: string | null;
         createdAt: Date;
@@ -217,6 +242,15 @@ declare class LedgerService {
         entryCount: number;
     }>;
     /**
+     * Reverse a payment applied to an invoice (owner/admin only).
+     * Decrements invoice.paidAmount, increments customer.balance.
+     */
+    reversePayment(invoiceId: string, amount: number): Promise<{
+        ok: boolean;
+        newPaid: number;
+        newStatus: string;
+    }>;
+    /**
      * Get most recent payments across all customers.
      */
     getRecentTransactions(limit?: number): Promise<({
@@ -225,8 +259,8 @@ declare class LedgerService {
             phone: string | null;
         };
     } & {
-        id: string;
         tenantId: string;
+        id: string;
         notes: string | null;
         createdBy: string | null;
         createdAt: Date;

@@ -1,0 +1,1 @@
+{"version":3,"file":"thermalSettings.d.ts","sourceRoot":"","sources":["../../src/lib/thermalSettings.ts"],"names":[],"mappings":"AAOA,MAAM,MAAM,aAAa,GAAG;IAC1B,KAAK,EAAE,EAAE,GAAG,EAAE,CAAC;IACf,MAAM,EAAE,MAAM,CAAC;IACf,MAAM,EAAE,MAAM,CAAC;CAChB,CAAC;AAQF,wBAAgB,gBAAgB,IAAI,aAAa,CAahD;AAED,wBAAgB,gBAAgB,CAAC,MAAM,EAAE,aAAa,GAAG,IAAI,CAE5D"}

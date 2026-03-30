@@ -45,6 +45,11 @@ declare class CustomerService {
         landmark?: string;
         phone?: string;
     }>>;
+    /**
+     * List all customers sorted by balance descending (used for the customers page browse/list view).
+     * Unlike searchCustomer, this never filters by score — it just pages through all records.
+     */
+    listAllCustomers(limit?: number): Promise<CustomerSearchResult[]>;
     private conversationCache;
     private balanceCache;
     private cacheTimeout;
@@ -96,8 +101,9 @@ declare class CustomerService {
      */
     getMultipleCustomersWithContext(customerIds: string[], conversationId: string): Promise<(({
         invoices: {
-            id: string;
             tenantId: string;
+            id: string;
+            tags: string[];
             notes: string | null;
             createdBy: string | null;
             createdAt: Date;
@@ -117,6 +123,8 @@ declare class CustomerService {
             igst: Decimal;
             cess: Decimal;
             placeOfSupply: string | null;
+            buyerGstin: string | null;
+            recipientAddress: string | null;
             reverseCharge: boolean;
             ewayBillNo: string | null;
             ewayBillGeneratedAt: Date | null;
@@ -133,8 +141,8 @@ declare class CustomerService {
             pdfUrl: string | null;
         }[];
         reminders: {
-            id: string;
             tenantId: string;
+            id: string;
             notes: string | null;
             createdBy: string | null;
             createdAt: Date;
@@ -162,6 +170,7 @@ declare class CustomerService {
             lastError: string | null;
         }[];
     } & {
+        tenantId: string;
         balance: Decimal;
         creditLimit: Decimal;
         totalPurchases: Decimal;
@@ -176,7 +185,6 @@ declare class CustomerService {
         monetaryScore: Decimal;
         overallScore: Decimal | null;
         id: string;
-        tenantId: string;
         name: string;
         phone: string | null;
         alternatePhone: string[];
@@ -246,6 +254,7 @@ declare class CustomerService {
     updateCustomerInstant(customerId: string, updates: CustomerUpdateData, conversationId: string): Promise<{
         success: boolean;
         customer: {
+            tenantId: string;
             balance: Decimal;
             creditLimit: Decimal;
             totalPurchases: Decimal;
@@ -260,7 +269,6 @@ declare class CustomerService {
             monetaryScore: Decimal;
             overallScore: Decimal | null;
             id: string;
-            tenantId: string;
             name: string;
             phone: string | null;
             alternatePhone: string[];
@@ -334,8 +342,9 @@ declare class CustomerService {
      */
     confirmCustomerSelection(customerId: string, conversationId: string, updateFields?: CustomerUpdateData): Promise<{
         invoices: {
-            id: string;
             tenantId: string;
+            id: string;
+            tags: string[];
             notes: string | null;
             createdBy: string | null;
             createdAt: Date;
@@ -355,6 +364,8 @@ declare class CustomerService {
             igst: Decimal;
             cess: Decimal;
             placeOfSupply: string | null;
+            buyerGstin: string | null;
+            recipientAddress: string | null;
             reverseCharge: boolean;
             ewayBillNo: string | null;
             ewayBillGeneratedAt: Date | null;
@@ -371,8 +382,8 @@ declare class CustomerService {
             pdfUrl: string | null;
         }[];
         reminders: {
-            id: string;
             tenantId: string;
+            id: string;
             notes: string | null;
             createdBy: string | null;
             createdAt: Date;
@@ -400,6 +411,7 @@ declare class CustomerService {
             lastError: string | null;
         }[];
     } & {
+        tenantId: string;
         balance: Decimal;
         creditLimit: Decimal;
         totalPurchases: Decimal;
@@ -414,7 +426,6 @@ declare class CustomerService {
         monetaryScore: Decimal;
         overallScore: Decimal | null;
         id: string;
-        tenantId: string;
         name: string;
         phone: string | null;
         alternatePhone: string[];
@@ -464,8 +475,9 @@ declare class CustomerService {
      */
     getCustomerById(id: string): Promise<({
         invoices: {
-            id: string;
             tenantId: string;
+            id: string;
+            tags: string[];
             notes: string | null;
             createdBy: string | null;
             createdAt: Date;
@@ -485,6 +497,8 @@ declare class CustomerService {
             igst: Decimal;
             cess: Decimal;
             placeOfSupply: string | null;
+            buyerGstin: string | null;
+            recipientAddress: string | null;
             reverseCharge: boolean;
             ewayBillNo: string | null;
             ewayBillGeneratedAt: Date | null;
@@ -501,8 +515,8 @@ declare class CustomerService {
             pdfUrl: string | null;
         }[];
         reminders: {
-            id: string;
             tenantId: string;
+            id: string;
             notes: string | null;
             createdBy: string | null;
             createdAt: Date;
@@ -530,6 +544,7 @@ declare class CustomerService {
             lastError: string | null;
         }[];
     } & {
+        tenantId: string;
         balance: Decimal;
         creditLimit: Decimal;
         totalPurchases: Decimal;
@@ -544,7 +559,6 @@ declare class CustomerService {
         monetaryScore: Decimal;
         overallScore: Decimal | null;
         id: string;
-        tenantId: string;
         name: string;
         phone: string | null;
         alternatePhone: string[];
@@ -591,6 +605,7 @@ declare class CustomerService {
         landmark?: string;
         notes?: string;
     }): Promise<{
+        tenantId: string;
         balance: Decimal;
         creditLimit: Decimal;
         totalPurchases: Decimal;
@@ -605,7 +620,6 @@ declare class CustomerService {
         monetaryScore: Decimal;
         overallScore: Decimal | null;
         id: string;
-        tenantId: string;
         name: string;
         phone: string | null;
         alternatePhone: string[];
@@ -646,6 +660,7 @@ declare class CustomerService {
      * Update customer balance
      */
     updateBalance(customerId: string, amount: number): Promise<{
+        tenantId: string;
         balance: Decimal;
         creditLimit: Decimal;
         totalPurchases: Decimal;
@@ -660,7 +675,6 @@ declare class CustomerService {
         monetaryScore: Decimal;
         overallScore: Decimal | null;
         id: string;
-        tenantId: string;
         name: string;
         phone: string | null;
         alternatePhone: string[];
@@ -728,6 +742,142 @@ declare class CustomerService {
             invoiceItems: number;
             customer: number;
         };
+    }>;
+    /**
+     * Full profile update — name, phone, email, nickname, landmark, creditLimit, tags.
+     * Called from PATCH /api/v1/customers/:id
+     */
+    updateProfile(id: string, data: {
+        name?: string;
+        phone?: string;
+        email?: string;
+        nickname?: string;
+        landmark?: string;
+        creditLimit?: number;
+        tags?: string[];
+        notes?: string;
+    }): Promise<{
+        tenantId: string;
+        balance: Decimal;
+        creditLimit: Decimal;
+        totalPurchases: Decimal;
+        totalPayments: Decimal;
+        lastPaymentAmount: Decimal | null;
+        averagePaymentDays: number | null;
+        loyaltyPoints: number;
+        visitCount: number;
+        averageBasketSize: Decimal | null;
+        frequencyScore: Decimal;
+        recencyScore: Decimal;
+        monetaryScore: Decimal;
+        overallScore: Decimal | null;
+        id: string;
+        name: string;
+        phone: string | null;
+        alternatePhone: string[];
+        email: string | null;
+        honorific: string | null;
+        localName: string | null;
+        nickname: string[];
+        addressLine1: string | null;
+        addressLine2: string | null;
+        landmark: string | null;
+        area: string | null;
+        city: string | null;
+        district: string | null;
+        state: string | null;
+        pincode: string | null;
+        gstin: string | null;
+        pan: string | null;
+        businessType: string | null;
+        lastPaymentDate: Date | null;
+        loyaltyTier: string;
+        firstVisit: Date | null;
+        lastVisit: Date | null;
+        preferredPaymentMethod: import(".prisma/client").$Enums.PaymentMethod[];
+        preferredTimeOfDay: Date | null;
+        preferredDays: string[];
+        tags: string[];
+        notes: string | null;
+        metadata: import("@prisma/client/runtime/library").JsonValue;
+        voiceFingerprint: string | null;
+        commonPhrases: string[];
+        createdBy: string | null;
+        updatedBy: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
+    }>;
+    getCommPrefs(customerId: string): Promise<{
+        tenantId: string;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        customerId: string;
+        whatsappEnabled: boolean;
+        whatsappNumber: string | null;
+        whatsappOptInTime: Date | null;
+        whatsappOptInIp: string | null;
+        emailEnabled: boolean;
+        emailAddress: string | null;
+        emailVerified: boolean;
+        emailVerifiedAt: Date | null;
+        smsEnabled: boolean;
+        smsNumber: string | null;
+        preferredLanguage: string;
+        preferredTime: Date | null;
+        quietHours: import("@prisma/client/runtime/library").JsonValue;
+        maxPerWeek: number;
+        maxPerMonth: number;
+        messagesSentThisWeek: number;
+        messagesSentThisMonth: number;
+        lastMessageAt: Date | null;
+        consentGiven: boolean;
+        consentDate: Date | null;
+        consentSource: string | null;
+        consentIp: string | null;
+        optedOut: boolean;
+        optedOutAt: Date | null;
+        optOutReason: string | null;
+    } | null>;
+    upsertCommPrefs(customerId: string, data: {
+        whatsappEnabled?: boolean;
+        whatsappNumber?: string;
+        emailEnabled?: boolean;
+        emailAddress?: string;
+        smsEnabled?: boolean;
+        preferredLanguage?: string;
+    }): Promise<{
+        tenantId: string;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        customerId: string;
+        whatsappEnabled: boolean;
+        whatsappNumber: string | null;
+        whatsappOptInTime: Date | null;
+        whatsappOptInIp: string | null;
+        emailEnabled: boolean;
+        emailAddress: string | null;
+        emailVerified: boolean;
+        emailVerifiedAt: Date | null;
+        smsEnabled: boolean;
+        smsNumber: string | null;
+        preferredLanguage: string;
+        preferredTime: Date | null;
+        quietHours: import("@prisma/client/runtime/library").JsonValue;
+        maxPerWeek: number;
+        maxPerMonth: number;
+        messagesSentThisWeek: number;
+        messagesSentThisMonth: number;
+        lastMessageAt: Date | null;
+        consentGiven: boolean;
+        consentDate: Date | null;
+        consentSource: string | null;
+        consentIp: string | null;
+        optedOut: boolean;
+        optedOutAt: Date | null;
+        optOutReason: string | null;
     }>;
 }
 export declare const customerService: CustomerService;

@@ -35,7 +35,7 @@ class ElevenLabsSTTAdapter {
     isAvailable() {
         return !!this.apiKey;
     }
-    async createLiveTranscription(onTranscript, onError) {
+    async createLiveTranscription(onTranscript, onError, _options) {
         if (!this.apiKey)
             throw new Error('ElevenLabs API key not configured');
         const url = new URL('wss://api.elevenlabs.io/v1/speech-to-text/realtime');
@@ -120,7 +120,7 @@ class ElevenLabsSTTAdapter {
                     infrastructure_2.logger.warn('Timeout waiting for final transcript, closing ElevenLabs STT connection');
                     if (ws.readyState !== ws_1.default.CLOSED)
                         ws.close();
-                }, 3000);
+                }, 5000);
             },
         };
     }
