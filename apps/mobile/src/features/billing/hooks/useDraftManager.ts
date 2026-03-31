@@ -8,10 +8,10 @@
  *   const { draftRestoredRef, discardDraft } = useDraftManager({ ... });
  */
 
-import { useEffect, useRef, useCallback } from 'react';
-import type { PaymentMode, BillingItem } from '@execora/shared';
-import { storage } from '../../../lib/storage';
-import { INVOICE_DRAFT_KEY } from '../lib/storageKeys';
+import { useEffect, useRef, useCallback } from "react";
+import type { PaymentMode, BillingItem } from "@execora/shared";
+import { storage } from "../../../lib/storage";
+import { INVOICE_DRAFT_KEY } from "../lib/storageKeys";
 
 // Draft expires after 24 hours
 const DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
@@ -137,15 +137,15 @@ export function useDraftManager(
         ...(d.customerName
           ? {
               selectedCustomer: {
-                id: String(d.customerId ?? ''),
-                tenantId: '',
+                id: String(d.customerId ?? ""),
+                tenantId: "",
                 name: String(d.customerName),
                 phone: d.customerPhone ? String(d.customerPhone) : undefined,
                 balance: 0,
                 totalPurchases: 0,
                 totalPayments: 0,
-                createdAt: '',
-                updatedAt: '',
+                createdAt: "",
+                updatedAt: "",
               },
             }
           : {}),

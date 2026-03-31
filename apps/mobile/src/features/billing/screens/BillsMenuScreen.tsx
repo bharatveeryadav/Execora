@@ -136,7 +136,12 @@ const QUICK_LINKS: {
   screen: keyof InvoicesStackParams;
   params?: Record<string, unknown>;
 }[] = [
-  { id: "reports", icon: "bar-chart-outline", label: "Reports", screen: "Reports" },
+  {
+    id: "reports",
+    icon: "bar-chart-outline",
+    label: "Reports",
+    screen: "Reports",
+  },
   {
     id: "aging",
     icon: "time-outline",
@@ -144,7 +149,12 @@ const QUICK_LINKS: {
     screen: "ComingSoon",
     params: { title: "Aging Report" },
   },
-  { id: "overdue", icon: "alert-circle-outline", label: "Overdue", screen: "Overdue" },
+  {
+    id: "overdue",
+    icon: "alert-circle-outline",
+    label: "Overdue",
+    screen: "Overdue",
+  },
 ];
 
 export function BillsMenuScreen({ navigation }: Props) {
@@ -178,7 +188,6 @@ export function BillsMenuScreen({ navigation }: Props) {
         }}
       >
         <View style={{ width: "100%", maxWidth: contentWidth }}>
-
           {/* ── Document Type Shortcuts ───────────────────────────────────── */}
           <Text className={TYPO.sectionTitle + " mb-3"}>Create New</Text>
           <View className="flex-row flex-wrap gap-2 mb-6">
@@ -258,7 +267,6 @@ export function BillsMenuScreen({ navigation }: Props) {
               </Pressable>
             ))}
           </View>
-
         </View>
       </ScrollView>
     </SafeAreaView>

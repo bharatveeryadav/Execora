@@ -79,8 +79,17 @@ export function ItemsSection({
             item={item}
             catalog={catalog}
             isFirst={idx === 0}
+            priceTierIdx={priceTierIdx}
+            priceTiers={priceTiers}
             getEffectivePrice={getEffectivePrice}
-            onUpdate={(patch) => onUpdateItem(item.id, patch)}
+            onUpdate={(patch) => {
+              // Handle tier-switch signal from expanded row
+              if ((patch as any)._priceTier !== undefined) {
+                onPriceTierChange((patch as any)._priceTier as number);
+              } else {
+                onUpdateItem(item.id, patch);
+              }
+            }}
             onRemove={() => onRemoveItem(item.id)}
           />
         ))}

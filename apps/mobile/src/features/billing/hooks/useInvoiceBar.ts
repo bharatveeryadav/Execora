@@ -12,20 +12,20 @@
  *   - saveInvoiceBar()
  */
 
-import { useState, useMemo, useCallback } from 'react';
-import type { Product } from '@execora/shared';
-import { storage } from '../../../lib/storage';
-import { INVOICE_BAR_KEY, PRICE_TIER_KEY } from '../lib/storageKeys';
+import { useState, useMemo, useCallback } from "react";
+import type { Product } from "@execora/shared";
+import { storage } from "../../../lib/storage";
+import { INVOICE_BAR_KEY, PRICE_TIER_KEY } from "../lib/storageKeys";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type DocumentTitle = 'invoice' | 'billOfSupply';
+export type DocumentTitle = "invoice" | "billOfSupply";
 
 export type DiscountOnType =
-  | 'unit_price'
-  | 'price_with_tax'
-  | 'net_amount'
-  | 'total_amount';
+  | "unit_price"
+  | "price_with_tax"
+  | "net_amount"
+  | "total_amount";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -46,7 +46,7 @@ export function persistInvoiceBar(data: Record<string, unknown>): void {
 
 export function useInvoiceBar() {
   const [invoicePrefix, setInvoicePrefix] = useState(
-    () => (readInvoiceBar().invoicePrefix as string) ?? 'INV-',
+    () => (readInvoiceBar().invoicePrefix as string) ?? "INV-",
   );
 
   const [documentDate, setDocumentDate] = useState(() => {
@@ -54,41 +54,41 @@ export function useInvoiceBar() {
     return (readInvoiceBar().documentDate as string) ?? today;
   });
 
-  const [dueDateDays, setDueDateDays] = useState<number | 'custom'>(() => {
+  const [dueDateDays, setDueDateDays] = useState<number | "custom">(() => {
     const v = readInvoiceBar().dueDateDays;
-    return v === 'custom' || (typeof v === 'number' && [15, 30, 60].includes(v))
-      ? (v as number | 'custom')
+    return v === "custom" || (typeof v === "number" && [15, 30, 60].includes(v))
+      ? (v as number | "custom")
       : 15;
   });
 
-  const [customDueDays, setCustomDueDays] = useState(
-    () => String((readInvoiceBar().customDueDays as number) ?? 45),
+  const [customDueDays, setCustomDueDays] = useState(() =>
+    String((readInvoiceBar().customDueDays as number) ?? 45),
   );
 
   const [documentTitle, setDocumentTitle] = useState<DocumentTitle>(() => {
     const v = readInvoiceBar().documentTitle as string;
-    return v === 'billOfSupply' ? 'billOfSupply' : 'invoice';
+    return v === "billOfSupply" ? "billOfSupply" : "invoice";
   });
 
   const [discountOnType, setDiscountOnType] = useState<DiscountOnType>(() => {
     const v = readInvoiceBar().discountOnType as string;
-    return (['unit_price', 'price_with_tax', 'net_amount', 'total_amount'] as const).includes(
-      v as DiscountOnType,
-    )
+    return (
+      ["unit_price", "price_with_tax", "net_amount", "total_amount"] as const
+    ).includes(v as DiscountOnType)
       ? (v as DiscountOnType)
-      : 'net_amount';
+      : "net_amount";
   });
 
   // ── Price tier (Retail / Wholesale / Dealer) ──────────────────────────────
   const [priceTierIdx, setPriceTierIdx] = useState<number | null>(() => {
-    const v = parseInt(storage.getString(PRICE_TIER_KEY) ?? '-1', 10);
+    const v = parseInt(storage.getString(PRICE_TIER_KEY) ?? "-1", 10);
     return v >= 0 ? v : null;
   });
 
   const PRICE_TIERS = [
-    { name: 'Retail', key: 0 },
-    { name: 'Wholesale', key: 1 },
-    { name: 'Dealer', key: 2 },
+    { name: "Retail", key: 0 },
+    { name: "Wholesale", key: 1 },
+    { name: "Dealer", key: 2 },
   ] as const;
 
   const getEffectivePrice = useCallback(
@@ -115,8 +115,8 @@ export function useInvoiceBar() {
   const computedDueDate = useMemo(() => {
     const base = new Date(documentDate);
     const days =
-      dueDateDays === 'custom' ? parseInt(customDueDays, 10) || 0 : dueDateDays;
-    if (days <= 0) return '';
+      dueDateDays === "custom" ? parseInt(customDueDays, 10) || 0 : dueDateDays;
+    if (days <= 0) return "";
     base.setDate(base.getDate() + days);
     return base.toISOString().slice(0, 10);
   }, [documentDate, dueDateDays, customDueDays]);
@@ -131,7 +131,14 @@ export function useInvoiceBar() {
       documentTitle,
       discountOnType,
     });
-  }, [invoicePrefix, documentDate, dueDateDays, customDueDays, documentTitle, discountOnType]);
+  }, [
+    invoicePrefix,
+    documentDate,
+    dueDateDays,
+    customDueDays,
+    documentTitle,
+    discountOnType,
+  ]);
 
   return {
     // State

@@ -18,10 +18,19 @@ import { productApi } from "../../../lib/api";
 import { BarcodeScanner } from "../../../components/common/BarcodeScanner";
 import { showError } from "../../../shared/lib/alerts";
 
+interface PriceTier {
+  key: number;
+  name: string;
+}
+
 export interface MobileItemRowProps {
   item: BillingItem;
   catalog: Product[];
   isFirst: boolean;
+  /** Global price tier index (null = Retail) */
+  priceTierIdx: number | null;
+  /** Full tier list so the row can render quick-select chips */
+  priceTiers: PriceTier[];
   getEffectivePrice: (
     p: Product & {
       wholesalePrice?: number | string | null;
@@ -37,6 +46,8 @@ export function MobileItemRow({
   item,
   catalog,
   isFirst,
+  priceTierIdx,
+  priceTiers,
   getEffectivePrice,
   onUpdate,
   onRemove,
@@ -103,9 +114,13 @@ export function MobileItemRow({
   const keyExtractorSuggestion = useCallback((p: Product) => p.id, []);
 
   const renderSuggestion = useCallback(
-    ({ item: p }: { item: Product }) => {
+    ({ item: p }: { item: Product & { hsnCode?: string; wholesalePrice?: number | string | null; priceTier2?: number | string | null; priceTier3?: number | string | null } }) => {
       const outOfStock = Number(p.stock) <= 0;
       const lowStock = !outOfStock && Number(p.stock) < 5;
+      const activeTierName =
+        priceTierIdx !== null && priceTierIdx > 0
+          ? (priceTiers[priceTierIdx]?.name ?? "Retail")
+          : null;
       return (
         <TouchableOpacity
           onPress={() => handleSelect(p)}
@@ -121,12 +136,20 @@ export function MobileItemRow({
             <Text
               className={`text-[11px] ${outOfStock ? "text-red-500" : lowStock ? "text-orange-500" : "text-slate-400"}`}
             >
-              {p.unit} · {outOfStock ? "Out" : `Stock: ${p.stock}`}
+              {p.unit}
+              {p.hsnCode ? ` · HSN ${p.hsnCode}` : ""}
+              {" · "}
+              {outOfStock ? "Out of stock" : `Stock: ${p.stock}`}
             </Text>
           </View>
-          <Text className="text-sm font-bold text-primary shrink-0 ml-2">
-            ₹{getEffectivePrice(p).toLocaleString("en-IN")}
-          </Text>
+          <View className="items-end shrink-0 ml-2">
+            <Text className="text-sm font-bold text-primary">
+              ₹{getEffectivePrice(p).toLocaleString("en-IN")}
+            </Text>
+            {activeTierName ? (
+              <Text className="text-[10px] text-slate-400">{activeTierName}</Text>
+            ) : null}
+          </View>
         </TouchableOpacity>
       );
     },
@@ -251,6 +274,44 @@ export function MobileItemRow({
               </View>
             </View>
           </View>
+          {/* Price tier quick-select inside expanded edit */}
+          {priceTiers.length > 1 && (
+            <View className="flex-row items-center gap-1.5 mb-2">
+              <Text className="text-[10px] text-slate-400 mr-0.5">Tier:</Text>
+              {priceTiers.map((tier, idx) => (
+                <TouchableOpacity
+                  key={tier.key}
+                  onPress={() => {
+                    // Re-apply effective price for the currently-selected product
+                    // The actual tier state lives in BillingScreen/useInvoiceBar;
+                    // onUpdate communicates the rate change upward.
+                    const newRate = String(
+                      idx === 0
+                        ? parseFloat(item.rate || "0")
+                        : parseFloat(item.rate || "0"),
+                    );
+                    // Fire onUpdate with a marker so the parent knows which tier was picked.
+                    // Parent should call onPriceTierChange(idx) and recompute.
+                    onUpdate({ _priceTier: idx } as any);
+                  }}
+                  className={`rounded-full border px-2 py-0.5 ${
+                    priceTierIdx === idx
+                      ? "border-primary bg-primary"
+                      : "border-slate-300 bg-white"
+                  }`}
+                >
+                  <Text
+                    className={`text-[11px] font-medium ${
+                      priceTierIdx === idx ? "text-white" : "text-slate-600"
+                    }`}
+                  >
+                    {tier.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
           <View className="flex-row items-center justify-between">
             <TouchableOpacity onPress={onRemove} className="py-1">
               <Text className="text-red-500 text-xs font-medium">Remove</Text>
@@ -277,10 +338,11 @@ export function MobileItemRow({
             >
               {item.name}
             </Text>
-            <Text className="text-[11px] text-slate-500">
+            <Text className="text-[11px] text-slate-500" numberOfLines={1}>
               {item.qty} {item.unit} × ₹
               {parseFloat(item.rate || "0").toLocaleString("en-IN")}
               {item.discount ? ` (−${item.discount}%)` : ""}
+              {item.hsnCode ? ` · ${item.hsnCode}` : ""}
             </Text>
           </View>
           <Text className="text-sm font-bold text-primary shrink-0 w-16 text-right">

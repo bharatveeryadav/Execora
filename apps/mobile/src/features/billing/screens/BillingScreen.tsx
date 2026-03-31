@@ -98,6 +98,7 @@ import {
   type PreviewData,
   type TemplateId,
 } from "../components/InvoiceTemplatePreview";
+import { InvoiceHeaderBar } from "../components/InvoiceHeaderBar";
 
 // ── ID counters ───────────────────────────────────────────────────────────────
 // _id is used only to assign unique IDs to restored draft items.
@@ -147,7 +148,7 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   pos_sale: 'Quick Sale',
 };
 
-export function BillingScreen({ navigation, route }: BillingProps) {
+export function BillingScreen({ navigation, route }: InvoiceProps) {
   const qc = useQueryClient();
   const { isOffline } = useOffline();
   const { contentPad, contentWidth } = useResponsive();
@@ -1094,58 +1095,17 @@ export function BillingScreen({ navigation, route }: BillingProps) {
                 )}
               </TouchableOpacity>
 
-              {/* ── Invoice Bar (Indian standard — tap to edit) ───────────── */}
-              <TouchableOpacity
-                onPress={handleInvoiceBarEdit}
-                activeOpacity={0.7}
-                className="flex-row items-center rounded-xl border-2 border-slate-200 bg-white px-4 py-3 mb-3"
-              >
-                <View className="flex-1">
-                  <View className="flex-row flex-wrap gap-x-4 gap-y-1">
-                    <View>
-                      <Text className="text-[10px] font-semibold text-slate-500 uppercase">
-                        {documentTitle === "billOfSupply"
-                          ? "Bill of Supply"
-                          : "Invoice"}{" "}
-                        #
-                      </Text>
-                      <Text className="text-sm font-bold text-slate-800">
-                        {invoicePrefix}DRAFT
-                      </Text>
-                    </View>
-                    <View>
-                      <Text className="text-[10px] font-semibold text-slate-500 uppercase">
-                        Doc Date
-                      </Text>
-                      <Text className="text-sm font-medium text-slate-800">
-                        {new Date(documentDate).toLocaleDateString("en-IN", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                        })}
-                      </Text>
-                    </View>
-                    <View>
-                      <Text className="text-[10px] font-semibold text-slate-500 uppercase">
-                        Due
-                      </Text>
-                      <Text className="text-sm font-medium text-slate-800">
-                        {computedDueDate
-                          ? new Date(computedDueDate).toLocaleDateString(
-                              "en-IN",
-                              {
-                                day: "2-digit",
-                                month: "short",
-                                year: "numeric",
-                              },
-                            )
-                          : "—"}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-                <Ionicons name="pencil" size={18} color="#94a3b8" />
-              </TouchableOpacity>
+              {/* ── Invoice Header Bar ────────────────────────────────── */}
+              <View className="mb-3">
+                <InvoiceHeaderBar
+                  prefix={invoicePrefix}
+                  counter="DRAFT"
+                  documentType={documentType as any}
+                  documentDate={documentDate}
+                  dueDate={computedDueDate}
+                  onEdit={handleInvoiceBarEdit}
+                />
+              </View>
 
               {/* ── Customer ─────────────────────────────────────────────── */}
               <CustomerSection
