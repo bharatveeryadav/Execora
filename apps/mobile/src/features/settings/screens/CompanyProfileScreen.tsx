@@ -423,9 +423,72 @@ export function CompanyProfileScreen({ navigation }: Props) {
     setBankName(String(settings.bankName ?? ""));
     setBankAccountNo(String(settings.bankAccountNo ?? ""));
     setBankIfsc(String(settings.bankIfsc ?? ""));
+    setLogoObjectKey((settings.logoObjectKey as string) ?? null);
     setGstError(null);
     setGstStateHint(null);
     setGstPanHint(null);
+  };
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (e) => {
+      if (!hasUnsavedChanges || updateProfile.isPending) {
+        return;
+      }
+
+      e.preventDefault();
+      Alert.alert(
+        "Discard changes?",
+        "You have unsaved company profile changes. Leave without saving?",
+        [
+          { text: "Stay", style: "cancel" },
+          {
+            text: "Discard",
+            style: "destructive",
+            onPress: () => navigation.dispatch(e.data.action),
+          },
+        ],
+      );
+    });
+
+    return unsubscribe;
+  }, [hasUnsavedChanges, navigation, updateProfile.isPending]);
+
+  const handleBackPress = () => {
+    if (!hasUnsavedChanges || updateProfile.isPending) {
+      navigation.goBack();
+      return;
+    }
+
+    Alert.alert(
+      "Discard changes?",
+      "You have unsaved company profile changes. Leave without saving?",
+      [
+        { text: "Stay", style: "cancel" },
+        {
+          text: "Discard",
+          style: "destructive",
+          onPress: () => navigation.goBack(),
+        },
+      ],
+    );
+  };
+
+  const handleRemoveLogo = () => {
+    Alert.alert(
+      "Remove logo?",
+      "This clears the current company logo. Save the profile to apply the removal.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: () => {
+            setLogoObjectKey(null);
+            setLogoDataUrl(null);
+          },
+        },
+      ],
+    );
   };
 
   const handleSave = () => {
@@ -522,7 +585,7 @@ export function CompanyProfileScreen({ navigation }: Props) {
         className="flex-1"
       >
         <View className="px-4 py-3 border-b border-slate-100 flex-row items-center justify-between">
-          <TouchableOpacity onPress={() => navigation.goBack()}>
+          <TouchableOpacity onPress={handleBackPress}>
             <Ionicons name="arrow-back" size={24} color="#0f172a" />
           </TouchableOpacity>
           <Text className={TYPO.sectionTitle}>Company Details</Text>
@@ -592,8 +655,33 @@ export function CompanyProfileScreen({ navigation }: Props) {
               )}
             </TouchableOpacity>
             <Text className="text-sm font-medium text-slate-500 mt-2">
-              Upload company logo
+              {logoObjectKey ? "Tap logo to replace" : "Upload company logo"}
             </Text>
+            <View className="flex-row items-center gap-3 mt-3">
+              <Pressable
+                onPress={logoUploading ? undefined : pickLogo}
+                className="px-3 py-2 rounded-lg bg-slate-100"
+              >
+                <Text className="text-xs font-semibold text-slate-700">
+                  {logoObjectKey ? "Replace" : "Upload"}
+                </Text>
+              </Pressable>
+              {logoObjectKey && (
+                <Pressable
+                  onPress={handleRemoveLogo}
+                  className="px-3 py-2 rounded-lg bg-red-50 border border-red-200"
+                >
+                  <Text className="text-xs font-semibold text-red-700">
+                    Remove
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+            {hasUnsavedChanges && logoObjectKey !== loadedProfileState.logoObjectKey ? (
+              <Text className="text-xs text-amber-700 mt-2">
+                Save to apply logo changes.
+              </Text>
+            ) : null}
           </View>
 
           {/* Business / Company name */}
