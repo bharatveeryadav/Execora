@@ -734,7 +734,7 @@ export function useExpenses(params: { from?: string; to?: string; category?: str
 export function useCreateExpense() {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: (data: { category: string; amount: number; note?: string; vendor?: string; date?: string }) =>
+		mutationFn: (data: { category: string; amount: number; note?: string; supplier?: string; date?: string }) =>
 			expenseApi.create(data),
 		onSuccess: () => qc.invalidateQueries({ queryKey: EXP_KEY }),
 	});
@@ -763,7 +763,7 @@ export function useIncomes(params: { from?: string; to?: string; category?: stri
 export function useCreateIncome() {
 	const qc = useQueryClient();
 	return useMutation({
-		mutationFn: (data: { category: string; amount: number; note?: string; vendor?: string; date?: string }) =>
+		mutationFn: (data: { category: string; amount: number; note?: string; supplier?: string; date?: string }) =>
 			expenseApi.create({ ...data, type: 'income' }),
 		onSuccess: () => {
 			qc.invalidateQueries({ queryKey: INC_KEY });
@@ -871,7 +871,7 @@ export function useCreatePurchase() {
 			category: string;
 			amount: number;
 			itemName: string;
-			vendor?: string;
+			supplier?: string;
 			quantity?: number;
 			unit?: string;
 			ratePerUnit?: number;

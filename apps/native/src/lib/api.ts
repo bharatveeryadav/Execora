@@ -119,7 +119,7 @@ export interface Payment {
 
 export interface Expense {
   id: string; category: string; amount: number;
-  vendor?: string; note?: string; date: string; createdAt: string;
+  supplier?: string; note?: string; date: string; createdAt: string;
 }
 
 export interface DayBookEntry {
@@ -249,7 +249,7 @@ export const expenseApi = {
     if (params?.category) qs.set('category', params.category);
     return request<{ expenses: Expense[]; total: number }>(`/api/v1/expenses?${qs}`);
   },
-  create: (data: { category: string; amount: number; vendor?: string; note?: string; date: string }) =>
+  create: (data: { category: string; amount: number; supplier?: string; note?: string; date: string }) =>
     request<{ expense: Expense }>('/api/v1/expenses', { method: 'POST', body: JSON.stringify(data) }),
   delete: (id: string) => request<void>(`/api/v1/expenses/${id}`, { method: 'DELETE' }),
 };

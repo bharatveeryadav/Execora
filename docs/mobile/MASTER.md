@@ -211,7 +211,7 @@ Verified against `apps/mobile/src/screens/` — 40 files.
 | 23 | MonitoringScreen | `screens/MonitoringScreen.tsx` | S14 | KPIs, hourly chart, employee risk, cash recon, camera |
 | 24 | SettingsScreen | `screens/SettingsScreen.tsx` | S13 | Profile display, theme toggle, logout |
 | 25 | ComingSoonScreen | `screens/ComingSoonScreen.tsx` | S23 | Reusable placeholder; title + emoji params |
-| 26 | ImportScreen | `screens/ImportScreen.tsx` | S23 | CSV import (customers/vendors) |
+| 26 | ImportScreen | `screens/ImportScreen.tsx` | S23 | CSV import (customers/suppliers) |
 | 27 | FeedbackScreen | `screens/FeedbackScreen.tsx` | S23 | NPS 0–10 → POST /api/v1/feedback |
 | 28 | PubInvoiceScreen | `screens/PubInvoiceScreen.tsx` | S16 | Public portal, no auth, UPI Pay Now, PDF download |
 | 29 | SettingsThermalScreen | `screens/SettingsThermalScreen.tsx` | S17 | Thermal printer width, header, footer config |

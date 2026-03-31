@@ -191,7 +191,7 @@ export const useTypedNavigation = () => {
    - Estimate: 8 hours
 
 2. **Extract AddCustomerModal**
-   - Duplicated: PartiesScreen (customers + vendors as same form)
+   - Duplicated: PartiesScreen (customers + suppliers as same form)
    - Create: components/composites/AddCustomerForm.tsx
    - Estimate: 6 hours
 

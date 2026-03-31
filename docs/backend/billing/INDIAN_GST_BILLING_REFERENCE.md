@@ -206,7 +206,7 @@ Increases an already-issued tax invoice. Scenarios: additional charges discovere
 
 ### 2.8 Self-Invoice (RCM Invoice)
 
-When a registered person purchases from an unregistered supplier and RCM applies, the registered buyer must issue a self-invoice. Contains all regular tax invoice fields but supplier details are the unregistered vendor's details, and the tax is paid by the buyer.
+When a registered person purchases from an unregistered supplier and RCM applies, the registered buyer must issue a self-invoice. Contains all regular tax invoice fields but supplier details are the unregistered supplier's details, and the tax is paid by the buyer.
 
 ### 2.9 Export Invoice
 

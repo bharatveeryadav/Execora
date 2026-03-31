@@ -1204,7 +1204,7 @@ Mitigation: Migrate to managed PostgreSQL (Supabase, RDS, or Neon) with automati
 Description: ConversationSession data (multi-turn voice drafts) lives in Redis with a 4-hour TTL. If Redis goes down, all active voice sessions lose their context. An owner mid-billing has their draft disappear.
 Mitigation: Enable Redis AOF (Append-Only File) persistence. Add a fallback to PostgreSQL for session data (write to `ConversationSession` table on every turn, read from Redis first). This is 1 day of work.
 
-**Risk 4 — LLM Vendor Lock-in on OpenAI (MEDIUM)**
+**Risk 4 — LLM Provider Lock-in on OpenAI (MEDIUM)**
 Description: The intent extraction and response generation both use OpenAI GPT-4. An OpenAI outage or price increase directly impacts product functionality. The STT providers (Deepgram) add a second single point of failure.
 Mitigation: Abstract the LLM provider behind an interface (already partially done in `packages/modules/src/providers/llm/`). Add Anthropic Claude as a fallback for intent extraction. Browser Web Speech API as a free STT fallback is already built. Test fallback path monthly.
 

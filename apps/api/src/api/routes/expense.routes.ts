@@ -58,7 +58,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 						category: { type: 'string', minLength: 1 },
 						amount: { type: 'number', minimum: 0.01 },
 						note: { type: 'string' },
-						vendor: { type: 'string' },
+						supplier: { type: 'string' },
 						date: { type: 'string' },
 						type: { type: 'string', enum: ['expense', 'income'] },
 					},
@@ -68,12 +68,12 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 		},
 		async (
 			request: FastifyRequest<{
-				Body: { category: string; amount: number; note?: string; vendor?: string; date?: string; type?: 'expense' | 'income' };
+				Body: { category: string; amount: number; note?: string; supplier?: string; date?: string; type?: 'expense' | 'income' };
 			}>,
 			reply
 		) => {
 			const tenantId = request.user!.tenantId;
-			const { category, amount, note, vendor, date, type: entryType } = request.body;
+			const { category, amount, note, supplier, date, type: entryType } = request.body;
 			const expense = await prisma.expense.create({
 				data: {
 					tenantId,
@@ -81,7 +81,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 					category,
 					amount: new Decimal(amount),
 					note: note || null,
-					vendor: vendor || null,
+					supplier: supplier || null,
 					date: date ? new Date(date) : new Date(),
 				},
 			});
@@ -164,7 +164,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 						category: { type: 'string', minLength: 1 },
 						amount: { type: 'number', minimum: 0.01 },
 						itemName: { type: 'string', minLength: 1 },
-						vendor: { type: 'string' },
+						supplier: { type: 'string' },
 						quantity: { type: 'number', minimum: 0 },
 						unit: { type: 'string' },
 						ratePerUnit: { type: 'number', minimum: 0 },
@@ -183,7 +183,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 					category: string;
 					amount: number;
 					itemName: string;
-					vendor?: string;
+					supplier?: string;
 					quantity?: number;
 					unit?: string;
 					ratePerUnit?: number;
@@ -196,7 +196,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 			reply
 		) => {
 			const tenantId = request.user!.tenantId;
-			const { category, amount, itemName, vendor, quantity, unit, ratePerUnit, note, batchNo, expiryDate, date } = request.body;
+			const { category, amount, itemName, supplier, quantity, unit, ratePerUnit, note, batchNo, expiryDate, date } = request.body;
 			const purchase = await prisma.expense.create({
 				data: {
 					tenantId,
@@ -204,7 +204,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 					category,
 					amount: new Decimal(amount),
 					itemName: itemName || null,
-					vendor: vendor || null,
+					supplier: supplier || null,
 					quantity: quantity != null ? new Decimal(quantity) : null,
 					unit: unit || null,
 					ratePerUnit: ratePerUnit != null ? new Decimal(ratePerUnit) : null,
@@ -270,7 +270,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 						type: 'in' as const,
 						amount: parseFloat(String(e.amount)),
 						category: `Income: ${e.category}`,
-						note: e.note || e.vendor || '',
+						note: e.note || e.supplier || '',
 						date: new Date(e.date).toISOString().slice(0, 10),
 						createdAt: e.createdAt.getTime(),
 					})),
@@ -283,7 +283,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 					type: 'out' as const,
 					amount: parseFloat(String(e.amount)),
 					category: e.type === 'purchase' ? `Purchase: ${e.category}` : e.category,
-					note: e.note || e.vendor || e.itemName || '',
+					note: e.note || e.supplier || e.itemName || '',
 					date: new Date(e.date).toISOString().slice(0, 10),
 					createdAt: e.createdAt.getTime(),
 				}));

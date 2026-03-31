@@ -59,7 +59,7 @@ Payments
   └─ Bank Reconciliation→ /bank-reconciliation ⚠️ partial
 Parties
   ├─ Customers          → /parties          ✅ built
-  └─ Vendors            → /parties          (reuses parties)
+  └─ Suppliers            → /parties          (reuses parties)
 Insights                → /                 (reuses dashboard)
 Reports                 → /reports          ⚠️ partial
 Online Store            → /online-store     🔲 ComingSoon
@@ -218,19 +218,19 @@ Auto-generates `CN/2025-26/SEQ` numbering per FY per tenant.
 
 ## 4. CUSTOMER & PARTY PAGES
 
-### `/parties` — Customers/Vendors List ✅ Built (95%)
+### `/parties` — Customers/Suppliers List ✅ Built (95%)
 
 **What works:** List, create, search, export CSV/PDF. Tags. Credit limit. Balance.
 
 **What's missing:**
 - ⚠️ Bulk CSV import button shows UI but backend endpoint missing
-- ⚠️ Vendor tab shows same customers list (Supplier model exists in schema but no separate vendor CRUD)
+- ⚠️ Supplier tab shows same customers list (Supplier model exists in schema but no separate supplier CRUD)
 
 **Requirements:**
 ```
 [ ] POST /api/v1/customers/bulk — batch create from CSV
-[ ] POST /api/v1/suppliers/bulk — batch create vendors from CSV
-[ ] Separate Vendor tab to use Supplier model (not Customer)
+[ ] POST /api/v1/suppliers/bulk — batch create suppliers from CSV
+[ ] Separate Supplier tab to use Supplier model (not Customer)
     - Supplier model already in schema with name, phone, gstin, paymentTerms, creditLimit, balance
 ```
 
@@ -289,9 +289,9 @@ All tabs fully working: overview, invoices, ledger, reminders, edit, delete.
 
 ## 6. PURCHASE & EXPENSE PAGES
 
-### `/purchases` — Purchases from Vendors ✅ Built (100%)
+### `/purchases` — Purchases from Suppliers ✅ Built (100%)
 
-All working: record purchase, OCR bill scan, batch/expiry on purchase, vendor name, date, category.
+All working: record purchase, OCR bill scan, batch/expiry on purchase, supplier name, date, category.
 
 ---
 
@@ -847,7 +847,7 @@ model Order {
 
 | # | Task | Page | Est. | Impact |
 |---|------|------|------|--------|
-| 4 | Purchase Orders (routes + UI) | /purchase-orders | 2d | Vendor management |
+| 4 | Purchase Orders (routes + UI) | /purchase-orders | 2d | Supplier management |
 | 5 | Debit Orders | /debit-orders | 1d | Mirrors credit notes for suppliers |
 | 6 | Recurring billing backend (DB + BullMQ) | /recurring | 2d | Auto-billing subscription customers |
 

@@ -59,8 +59,8 @@ export function IndirectIncomeScreen() {
           {item.note && (
             <Text className="text-sm text-slate-500">{item.note}</Text>
           )}
-          {item.vendor && (
-            <Text className="text-xs text-slate-400">{item.vendor}</Text>
+          {item.supplier && (
+            <Text className="text-xs text-slate-400">{item.supplier}</Text>
           )}
         </View>
         <Text className="font-bold text-emerald-600">

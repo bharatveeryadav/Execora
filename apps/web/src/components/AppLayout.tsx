@@ -115,7 +115,7 @@ const SIDEBAR_NAV_GROUPS: (NavItem | NavGroup)[] = [
     icon: Users,
     items: [
       { label: "Customers", path: "/parties", icon: Users },
-      { label: "Vendors", path: "/parties", icon: Users },
+      { label: "Suppliers", path: "/parties", icon: Users },
     ],
   },
   { label: "Insights", path: "/", icon: PieChart },

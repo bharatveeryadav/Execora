@@ -1,5 +1,5 @@
 /**
- * ImportScreen — CSV import for Customers and Vendors (mobile-friendly).
+ * ImportScreen — CSV import for Customers and Suppliers (mobile-friendly).
  * Flow: Choose type → Download template / Pick file → Preview → Import.
  * Uses expo-document-picker, expo-file-system, expo-sharing per Expo docs.
  */
@@ -22,7 +22,7 @@ import * as Sharing from "expo-sharing";
 import { useQueryClient } from "@tanstack/react-query";
 import { customerExtApi, supplierApi } from "../../../lib/api";
 
-type EntityType = "customers" | "vendors";
+type EntityType = "customers" | "suppliers";
 type Step = 1 | 2 | 3 | 4;
 
 interface ImportConfig {
@@ -42,12 +42,12 @@ const CONFIGS: Record<EntityType, ImportConfig> = {
       ["Suresh Kirana", "9123456780", "", "Mumbai", "", "0"],
     ],
   },
-  vendors: {
-    type: "vendors",
-    label: "Vendors",
+  suppliers: {
+    type: "suppliers",
+    label: "Suppliers",
     columns: ["Name", "Company Name", "Phone", "Email", "Address", "GSTIN"],
     example: [
-      ["Ramesh", "Ramesh Traders Pvt Ltd", "9876543210", "ramesh@vendor.com", "Delhi", "07AAAAA0000A1Z5"],
+      ["Ramesh", "Ramesh Traders Pvt Ltd", "9876543210", "ramesh@supplier.com", "Delhi", "07AAAAA0000A1Z5"],
       ["Suresh", "Suresh Wholesale", "9123456780", "", "Mumbai", ""],
     ],
   },
@@ -91,7 +91,7 @@ export function ImportScreen({ navigation, route }: Props) {
   const qc = useQueryClient();
   const typeParam = route.params?.type;
   const initialType: EntityType =
-    typeParam === "customers" || typeParam === "vendors" ? typeParam : "customers";
+    typeParam === "customers" || typeParam === "suppliers" ? typeParam : "customers";
 
   const [step, setStep] = useState<Step>(1);
   const [entityType, setEntityType] = useState<EntityType>(initialType);
@@ -239,7 +239,7 @@ export function ImportScreen({ navigation, route }: Props) {
           <View className="gap-4">
             <Text className="text-sm font-semibold text-slate-700">What do you want to import?</Text>
             <View className="flex-row gap-2">
-              {(["customers", "vendors"] as EntityType[]).map((t) => (
+              {(["customers", "suppliers"] as EntityType[]).map((t) => (
                 <TouchableOpacity
                   key={t}
                   onPress={() => setEntityType(t)}

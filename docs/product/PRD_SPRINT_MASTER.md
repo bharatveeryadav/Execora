@@ -212,7 +212,7 @@
 | Walk-in billing | ✅ | S9 |
 | UPI QR on invoice | ✅ | S9 |
 | Desktop sidebar | ✅ | Recent |
-| Parties (Customers + Vendors) | ✅ | Recent |
+| Parties (Customers + Suppliers) | ✅ | Recent |
 | Bottom nav (mobile) | ✅ | S10 |
 | UPDATE_STOCK voice | ✅ | S11 |
 | GSTIN checksum validation | ✅ | S11 |

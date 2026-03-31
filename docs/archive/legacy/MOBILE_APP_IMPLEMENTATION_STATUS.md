@@ -86,7 +86,7 @@ This document tracks what has been **actually implemented** in `apps/mobile/` (R
 - Receipt flow, navigation from CustomerDetail
 
 ### Sprint 9 — Expenses ✅
-- ExpensesScreen: list, period filters (week/month), delete on long-press, **Add Expense** (BottomSheet: category, amount, vendor, note, date)
+- ExpensesScreen: list, period filters (week/month), delete on long-press, **Add Expense** (BottomSheet: category, amount, supplier, note, date)
 - expenseApi (list, create, remove, summary)
 
 ### Sprint 10 — Day Book + Cash Book ✅
@@ -102,7 +102,7 @@ This document tracks what has been **actually implemented** in `apps/mobile/` (R
 ### Sprint 12 — Overdue, Recurring, Purchases ✅
 - OverdueScreen: outstanding customers, aging
 - RecurringScreen: placeholder
-- PurchasesScreen: list, period filters, **Add Purchase** (BottomSheet: category, itemName, amount, vendor, quantity, note, date), delete on long-press
+- PurchasesScreen: list, period filters, **Add Purchase** (BottomSheet: category, itemName, amount, supplier, quantity, note, date), delete on long-press
 
 ### Sprint 13 — More Screen + Settings ✅
 - MoreScreen: 16-item grid (Payment, Reports, Day Book, Cash Book, Expenses, Recurring, Purchases, Overdue, Monitor, Settings, Import, GST, Balance, Aging, Alerts, Help)

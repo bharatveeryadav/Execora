@@ -210,7 +210,7 @@ export default function DayBook() {
         date: (exp.date ?? exp.createdAt ?? "") as string,
         label: exp.category,
         sublabel:
-          [exp.vendor, exp.note].filter(Boolean).join(" · ") || undefined,
+          [exp.supplier, exp.note].filter(Boolean).join(" · ") || undefined,
         amount: Number(exp.amount),
         sign: "debit",
       });

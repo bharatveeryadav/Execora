@@ -27,7 +27,7 @@ import { formatCurrency, type Customer } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import Customers, { type CustomersRef } from "./Customers";
 
-type Tab = "customers" | "vendors";
+type Tab = "customers" | "suppliers";
 
 function exportCustomersCsv(customers: Customer[]) {
   const header = [
@@ -131,11 +131,11 @@ const Parties = () => {
     toast({ title: "Opened print dialog for PDF" });
   };
 
-  const handleAddVendor = () => {
-    toast({ title: "Add Vendor", description: "Coming soon" });
+  const handleAddSupplier = () => {
+    toast({ title: "Add Supplier", description: "Coming soon" });
   };
-  const handleImportVendors = () => {
-    toast({ title: "Import Vendors", description: "Coming soon" });
+  const handleImportSuppliers = () => {
+    toast({ title: "Import Suppliers", description: "Coming soon" });
   };
 
   return (
@@ -175,7 +175,7 @@ const Parties = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-            {tab === "vendors" && (
+            {tab === "suppliers" && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-9 w-9">
@@ -183,9 +183,9 @@ const Parties = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem onClick={handleImportVendors} className="gap-2">
+                  <DropdownMenuItem onClick={handleImportSuppliers} className="gap-2">
                     <Upload className="h-4 w-4" />
-                    Import Vendors
+                    Import Suppliers
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -208,15 +208,15 @@ const Parties = () => {
             </button>
             <button
               type="button"
-              onClick={() => setTab("vendors")}
+              onClick={() => setTab("suppliers")}
               className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-colors ${
-                tab === "vendors"
+                tab === "suppliers"
                   ? "bg-card text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
               <Truck className="h-4 w-4" />
-              Vendors
+              Suppliers
             </button>
           </div>
         </div>
@@ -227,7 +227,7 @@ const Parties = () => {
         {tab === "customers" && (
           <Customers ref={customersRef} embedded />
         )}
-        {tab === "vendors" && (
+        {tab === "suppliers" && (
           <div className="mx-auto max-w-3xl space-y-4 p-4 md:p-6">
             {/* Collect and Pay — compact */}
             <div className="rounded-lg border bg-card p-2.5">
@@ -280,18 +280,18 @@ const Parties = () => {
               </Button>
             </div>
 
-            {/* Placeholder for vendor list */}
+            {/* Placeholder for supplier list */}
             <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed bg-muted/30 py-16 text-center">
               <Truck className="h-12 w-12 text-muted-foreground/40" />
               <p className="text-sm font-medium text-muted-foreground">
-                Vendor list coming soon
+                Supplier list coming soon
               </p>
               <p className="max-w-xs text-xs text-muted-foreground">
-                Add vendors to track purchases, payments, and credits.
+                Add suppliers to track purchases, payments, and credits.
               </p>
-              <Button size="sm" onClick={handleAddVendor} className="gap-1.5">
+              <Button size="sm" onClick={handleAddSupplier} className="gap-1.5">
                 <Plus className="h-4 w-4" />
-                Add Vendor
+                Add Supplier
               </Button>
             </div>
           </div>
@@ -308,11 +308,11 @@ const Parties = () => {
         </button>
       )}
 
-      {tab === "vendors" && (
+      {tab === "suppliers" && (
         <button
-          onClick={handleAddVendor}
+          onClick={handleAddSupplier}
           className="fixed bottom-20 right-4 z-[60] flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95 md:bottom-6 md:right-6"
-          aria-label="Add Vendor"
+          aria-label="Add Supplier"
         >
           <Plus className="h-5 w-5" />
         </button>

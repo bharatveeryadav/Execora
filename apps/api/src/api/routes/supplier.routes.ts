@@ -1,5 +1,5 @@
 /**
- * Supplier routes — list and create vendors for Purchase Orders.
+ * Supplier routes — list and create suppliers for Purchase Orders.
  *
  * GET  /api/v1/suppliers         — list (optional ?q= search)
  * POST /api/v1/suppliers         — create

@@ -14,7 +14,7 @@
 |------|------|--------|-------|
 | Home | `/` | ✅ | Dashboard with KPIs, health score, AI feed, quick actions |
 | New Bill | modal | ✅ | Opens InvoiceCreation (voice + form) |
-| Parties | `/parties` | ✅ | Customers + Vendors tabs |
+| Parties | `/parties` | ✅ | Customers + Suppliers tabs |
 | Items | `/inventory` | ✅ | Products + stock |
 | Bills | `/invoices` | ✅ | Invoice list |
 | Classic Bill | `/billing` | ✅ | Form-based billing |

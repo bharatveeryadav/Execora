@@ -250,7 +250,7 @@ export default function Purchases() {
           category,
           amount: total,
           itemName: itemName.trim(),
-          vendor: supplier.trim() || undefined,
+          supplier: supplier.trim() || undefined,
           quantity: q,
           unit,
           ratePerUnit: r,
@@ -285,7 +285,7 @@ export default function Purchases() {
     return purchases.filter(
       (p) =>
         (p.itemName ?? "").toLowerCase().includes(q) ||
-        (p.vendor ?? "").toLowerCase().includes(q) ||
+        (p.supplier ?? "").toLowerCase().includes(q) ||
         p.category.toLowerCase().includes(q),
     );
   }, [purchases, search]);
@@ -295,8 +295,8 @@ export default function Purchases() {
   const topSupplier = useMemo(() => {
     const totals: Record<string, number> = {};
     for (const p of monthPurchases) {
-      if (p.vendor)
-        totals[p.vendor] = (totals[p.vendor] ?? 0) + Number(p.amount);
+      if (p.supplier)
+        totals[p.supplier] = (totals[p.supplier] ?? 0) + Number(p.amount);
     }
     const sorted = Object.entries(totals).sort((a, b) => b[1] - a[1]);
     return sorted[0]?.[0] ?? "—";
@@ -438,11 +438,11 @@ export default function Purchases() {
                               {qty != null && rate != null
                                 ? `${qty} ${p.unit ?? ""} × ${fmt(rate)}`
                                 : fmt(total)}
-                              {p.vendor && (
+                              {p.supplier && (
                                 <>
                                   {" "}
                                   ·{" "}
-                                  <span className="text-info">{p.vendor}</span>
+                                  <span className="text-info">{p.supplier}</span>
                                 </>
                               )}
                             </p>
@@ -587,7 +587,7 @@ export default function Purchases() {
             <div className="space-y-1">
               <Label>Supplier</Label>
               <Input
-                placeholder="Supplier / vendor name"
+                placeholder="Supplier / supplier name"
                 value={supplier}
                 onChange={(e) => setSupplier(e.target.value)}
               />

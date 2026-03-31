@@ -1014,7 +1014,7 @@ export interface Expense {
   category: string;
   amount: number;
   note?: string;
-  vendor?: string;
+  supplier?: string;
   itemName?: string;
   quantity?: number;
   unit?: string;
@@ -1053,7 +1053,7 @@ export const expenseApi = {
     category: string;
     amount: number;
     note?: string;
-    vendor?: string;
+    supplier?: string;
     date?: string;
     type?: "expense" | "income";
   }) =>
@@ -1197,7 +1197,7 @@ export const purchaseApi = {
     category: string;
     amount: number;
     itemName: string;
-    vendor?: string;
+    supplier?: string;
     quantity?: number;
     unit?: string;
     ratePerUnit?: number;

@@ -218,7 +218,7 @@ const Invoices = () => {
     return purchases.filter(
       (p: Expense) =>
         (p.itemName ?? "").toLowerCase().includes(q) ||
-        (p.vendor ?? "").toLowerCase().includes(q) ||
+        (p.supplier ?? "").toLowerCase().includes(q) ||
         (p.category ?? "").toLowerCase().includes(q)
     );
   }, [purchases, search, docTypeTab]);
@@ -555,7 +555,7 @@ const Invoices = () => {
                         {p.itemName ?? p.category}
                       </p>
                       <p className="truncate text-xs text-muted-foreground">
-                        {p.vendor ?? "—"} · {formatDate(p.date ?? p.createdAt)}
+                        {p.supplier ?? "—"} · {formatDate(p.date ?? p.createdAt)}
                       </p>
                     </div>
                     <p className="shrink-0 text-sm font-bold text-destructive">

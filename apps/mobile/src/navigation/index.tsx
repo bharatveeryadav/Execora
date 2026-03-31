@@ -115,7 +115,7 @@ export type MoreStackParams = {
   SalesOrders: { title?: string };
   PurchasePaymentOut: { title?: string };
   PurchaseReturn: { title?: string };
-  Import: { title?: string; type?: "customers" | "vendors" };
+  Import: { title?: string; type?: "customers" | "suppliers" };
   EInvoicing: { title?: string };
   IndirectIncome: undefined;
   DebitOrders: { title?: string };
@@ -148,9 +148,9 @@ export type InvoicesStackParams = {
 };
 
 export type PartiesStackParams = {
-  Parties: { initialTab?: "customers" | "vendors" } | undefined;
+  Parties: { initialTab?: "customers" | "suppliers" } | undefined;
   PartiesCustomersPage: undefined;
-  PartiesVendorsPage: undefined;
+  PartiesSuppliersPage: undefined;
   PartyDetail: { id: string };
   Payment: { customerId?: string };
   Overdue: undefined;
@@ -306,9 +306,9 @@ function PartiesNavigator() {
           initialParams={{ initialTab: "customers" }}
         />
         <PartiesStack.Screen
-          name="PartiesVendorsPage"
+          name="PartiesSuppliersPage"
           component={PartiesScreen}
-          initialParams={{ initialTab: "vendors" }}
+          initialParams={{ initialTab: "suppliers" }}
         />
         <PartiesStack.Screen
           name="PartyDetail"
@@ -486,7 +486,7 @@ function MoreNavigator() {
             const p = (route.params as { type?: string }) ?? {};
             return {
               title:
-                p.type === "vendors" ? "Import Vendors" : "Import Customers",
+                p.type === "suppliers" ? "Import Suppliers" : "Import Customers",
             };
           }}
         />

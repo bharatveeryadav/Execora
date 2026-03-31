@@ -63,7 +63,7 @@ export default function IndirectIncome() {
 	const [category, setCategory] = useState<IncomeCategory>('Misc Income');
 	const [amount, setAmount] = useState('');
 	const [note, setNote] = useState('');
-	const [vendor, setVendor] = useState('');
+	const [supplier, setSupplier] = useState('');
 	const [date, setDate] = useState(today());
 
 	const { data: incData } = useIncomes(tabDateRange(filterTab));
@@ -84,13 +84,13 @@ export default function IndirectIncome() {
 				category,
 				amount: amt,
 				note: note.trim(),
-				vendor: vendor.trim() || undefined,
+				supplier: supplier.trim() || undefined,
 				date,
 			});
 			toast({ title: 'Income added', description: `${category} · ${fmt(amt)}` });
 			setAmount('');
 			setNote('');
-			setVendor('');
+			setSupplier('');
 			setDate(today());
 			setOpen(false);
 		} catch {
@@ -114,7 +114,7 @@ export default function IndirectIncome() {
 			(e) =>
 				e.category.toLowerCase().includes(q) ||
 				(e.note ?? '').toLowerCase().includes(q) ||
-				(e.vendor ?? '').toLowerCase().includes(q)
+				(e.supplier ?? '').toLowerCase().includes(q)
 		);
 	}, [incomes, search]);
 
@@ -254,9 +254,9 @@ export default function IndirectIncome() {
 										<p className="font-semibold text-green-600">{fmt(Number(exp.amount))}</p>
 										<p className="text-xs text-muted-foreground">{exp.category}</p>
 									</div>
-									{(exp.note || exp.vendor) && (
+									{(exp.note || exp.supplier) && (
 										<p className="truncate text-xs text-muted-foreground">
-											{[exp.vendor, exp.note].filter(Boolean).join(' · ')}
+											{[exp.supplier, exp.note].filter(Boolean).join(' · ')}
 										</p>
 									)}
 									<p className="text-[10px] text-muted-foreground">{exp.date?.slice(0, 10)}</p>
@@ -308,8 +308,8 @@ export default function IndirectIncome() {
 						<div className="space-y-1.5">
 							<Label>Source / From</Label>
 							<Input
-								value={vendor}
-								onChange={(e) => setVendor(e.target.value)}
+								value={supplier}
+								onChange={(e) => setSupplier(e.target.value)}
 								placeholder="Bank, tenant, client…"
 							/>
 						</div>

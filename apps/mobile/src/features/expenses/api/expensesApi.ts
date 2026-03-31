@@ -36,7 +36,7 @@ export const expenseApi = {
         category: string;
         amount: string | number;
         note?: string;
-        vendor?: string;
+        supplier?: string;
         date: string;
       }>;
       total: number;
@@ -47,7 +47,7 @@ export const expenseApi = {
     category: string;
     amount: number;
     note?: string;
-    vendor?: string;
+    supplier?: string;
     date?: string;
     type?: "expense" | "income";
   }) =>
@@ -114,7 +114,7 @@ export const purchaseApi = {
         category: string;
         amount: string | number;
         note?: string;
-        vendor?: string;
+        supplier?: string;
         date: string;
       }>;
       total: number;
@@ -125,7 +125,7 @@ export const purchaseApi = {
     category: string;
     amount: number;
     itemName: string;
-    vendor?: string;
+    supplier?: string;
     quantity?: number;
     unit?: string;
     ratePerUnit?: number;

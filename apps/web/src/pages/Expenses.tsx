@@ -77,7 +77,7 @@ export default function Expenses() {
 	const [category, setCategory] = useState<ExpenseCategory>('Miscellaneous');
 	const [amount, setAmount] = useState('');
 	const [note, setNote] = useState('');
-	const [vendor, setVendor] = useState('');
+	const [supplier, setSupplier] = useState('');
 	const [date, setDate] = useState(today());
 
 	// API hooks
@@ -99,13 +99,13 @@ export default function Expenses() {
 				category,
 				amount: amt,
 				note: note.trim(),
-				vendor: vendor.trim() || undefined,
+				supplier: supplier.trim() || undefined,
 				date,
 			});
 			toast({ title: 'Expense added', description: `${category} · ${fmt(amt)}` });
 			setAmount('');
 			setNote('');
-			setVendor('');
+			setSupplier('');
 			setDate(today());
 			setOpen(false);
 		} catch {
@@ -129,7 +129,7 @@ export default function Expenses() {
 			(e) =>
 				e.category.toLowerCase().includes(q) ||
 				(e.note ?? '').toLowerCase().includes(q) ||
-				(e.vendor ?? '').toLowerCase().includes(q)
+				(e.supplier ?? '').toLowerCase().includes(q)
 		);
 	}, [expenses, search]);
 
@@ -249,7 +249,7 @@ export default function Expenses() {
 					))}
 				</div>
 				<Input
-					placeholder="Search category, vendor, note…"
+					placeholder="Search category, supplier, note…"
 					value={search}
 					onChange={(e) => setSearch(e.target.value)}
 					className="bg-card"
@@ -282,9 +282,9 @@ export default function Expenses() {
 										<p className="font-semibold">{fmt(Number(exp.amount))}</p>
 										<p className="text-xs text-muted-foreground">{exp.category}</p>
 									</div>
-									{(exp.note || exp.vendor) && (
+									{(exp.note || exp.supplier) && (
 										<p className="truncate text-xs text-muted-foreground">
-											{[exp.vendor, exp.note].filter(Boolean).join(' · ')}
+											{[exp.supplier, exp.note].filter(Boolean).join(' · ')}
 										</p>
 									)}
 									<p className="text-[10px] text-muted-foreground">{exp.date?.slice(0, 10)}</p>
@@ -335,10 +335,10 @@ export default function Expenses() {
 							/>
 						</div>
 						<div className="space-y-1.5">
-							<Label>Vendor / Paid To</Label>
+							<Label>Supplier / Paid To</Label>
 							<Input
-								value={vendor}
-								onChange={(e) => setVendor(e.target.value)}
+								value={supplier}
+								onChange={(e) => setSupplier(e.target.value)}
 								placeholder="Ramesh Hardware, Landlord Jim…"
 							/>
 						</div>

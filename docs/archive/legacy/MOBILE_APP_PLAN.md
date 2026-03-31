@@ -858,7 +858,7 @@ Keyboard.addListener('keyboardWillHide', () => {
 ┌─────────────────────────────────┐
 │ Parties              [🔍] [⊕]  │
 │─────────────────────────────────│
-│ [Customers]  [Vendors]          │
+│ [Customers]  [Suppliers]          │
 │─────────────────────────────────│
 │ 📊 Total Receivable: ₹24,500   │
 │─────────────────────────────────│

@@ -324,7 +324,7 @@ export function InvoiceListScreen({ navigation }: Props) {
     return purchases.filter(
       (p: any) =>
         (p.itemName ?? "").toLowerCase().includes(q) ||
-        (p.vendor ?? "").toLowerCase().includes(q) ||
+        (p.supplier ?? "").toLowerCase().includes(q) ||
         (p.category ?? "").toLowerCase().includes(q),
     );
   }, [purchases, search, docTypeTab]);
@@ -610,7 +610,7 @@ export function InvoiceListScreen({ navigation }: Props) {
             {p.itemName ?? p.category}
           </Text>
           <Text className={TYPO.caption} numberOfLines={1} ellipsizeMode="tail">
-            {p.vendor ?? "—"} · {formatDate(p.date ?? p.createdAt ?? "")}
+            {p.supplier ?? "—"} · {formatDate(p.date ?? p.createdAt ?? "")}
           </Text>
         </View>
         <Text

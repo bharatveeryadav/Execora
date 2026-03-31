@@ -64,7 +64,7 @@ apps/native/
 │   │   │   ├── index.tsx         ← Product list
 │   │   │   └── [id].tsx          ← Product detail/edit
 │   │   ├── parties/
-│   │   │   ├── index.tsx         ← Customers + Vendors tabs
+│   │   │   ├── index.tsx         ← Customers + Suppliers tabs
 │   │   │   └── [id].tsx          ← Customer detail
 │   │   └── more.tsx              ← More grid (16 shortcuts)
 │   ├── payment.tsx               ← Record payment
@@ -157,7 +157,7 @@ apps/native/
 | Home | house | `/(app)/` | KPI, quick actions, recent |
 | Bills | document-text | `/(app)/invoices` | Invoice list |
 | **+ New** | plus (FAB) | `/(app)/billing` | Large pill button in center |
-| Parties | people | `/(app)/parties` | Customers + vendors |
+| Parties | people | `/(app)/parties` | Customers + suppliers |
 | More | grid | `/(app)/more` | All other screens as grid |
 
 ---
@@ -690,7 +690,7 @@ Every REST mutation in the backend calls `broadcaster.send(tenantId, event, payl
 
 ---
 
-### SPRINT 7 — Parties (Customers + Vendors) (2 days)
+### SPRINT 7 — Parties (Customers + Suppliers) (2 days)
 
 #### Day 1 — Parties List
 
@@ -699,11 +699,11 @@ Every REST mutation in the backend calls `broadcaster.send(tenantId, event, payl
 | Section | Detail |
 |---------|--------|
 | Header | "Parties" + search + add |
-| Tabs | Customers · Vendors |
-| Summary bar | Total receivable (customers) / total payable (vendors) |
+| Tabs | Customers · Suppliers |
+| Summary bar | Total receivable (customers) / total payable (suppliers) |
 | Customer list | Card: avatar (initials) + name + phone + outstanding balance + aging badge |
 | Aging badges | 🔴 30+ days · 🟡 7–30 days · ⚪ fresh |
-| FAB | Add Customer / Add Vendor |
+| FAB | Add Customer / Add Supplier |
 | Search | Live filter on name/phone |
 
 #### Day 2 — Customer Detail
@@ -765,10 +765,10 @@ Every REST mutation in the backend calls `broadcaster.send(tenantId, event, payl
 | Header | "Expenses" + add button |
 | This Month KPI | Total + entry count + top category (3 cards) |
 | Period tabs | All · This Week · This Month (chips) |
-| Search | Filter by category/vendor/note |
+| Search | Filter by category/supplier/note |
 | Category bar chart | Top 5 categories as horizontal bars |
-| Expense list | Grouped by date: emoji + category + amount + vendor/note + delete swipe |
-| Add expense sheet | Category (10 options), amount, vendor, note, date |
+| Expense list | Grouped by date: emoji + category + amount + supplier/note + delete swipe |
+| Add expense sheet | Category (10 options), amount, supplier, note, date |
 | Delete | Swipe-left or long-press → confirm |
 
 **Categories:** Stock Purchase · Rent · Salary · Electricity · Transport · Repairs · Marketing · Packaging · Bank Charges · Miscellaneous
@@ -870,8 +870,8 @@ Every REST mutation in the backend calls `broadcaster.send(tenantId, event, payl
 | Header | "Purchases" + scan bill button |
 | This Month total | KPI strip |
 | Period tabs | All · This Week · This Month |
-| Purchase list | Category emoji + item + qty + unit + rate + vendor |
-| Add purchase sheet | Category · item name · qty · unit · rate · vendor · date |
+| Purchase list | Category emoji + item + qty + unit + rate + supplier |
+| Add purchase sheet | Category · item name · qty · unit · rate · supplier · date |
 | Bill scan (OCR) | Camera → send to `/api/v1/ocr/bill` → auto-fill add form |
 | Delete | Swipe left |
 
@@ -1459,7 +1459,7 @@ All Coming Soon screens share one `ComingSoon` component: icon + title + "Notify
 | 4 | `/billing` — Classic Billing | S5 | ✅ |
 | 5 | `/invoices` — Invoice list | S4 | ✅ |
 | 6 | `/invoices/:id` — Invoice detail | S4 | ✅ |
-| 7 | `/parties` — Customers + Vendors | S7 | ✅ |
+| 7 | `/parties` — Customers + Suppliers | S7 | ✅ |
 | 8 | `/customers/:id` — Customer detail | S7 | ✅ |
 | 9 | `/inventory` — Product list | S6 | ✅ |
 | 10 | `/payment` — Record payment | S8 | ✅ |

@@ -40,7 +40,7 @@ async function executeDraft(draft: { id: string; type: string; data: unknown; te
 					category: data.category ?? 'Purchases',
 					amount: new Decimal(data.amount ?? 0),
 					itemName: data.itemName ?? null,
-					vendor: data.vendor ?? null,
+					supplier: data.supplier ?? null,
 					quantity: data.quantity != null ? new Decimal(data.quantity) : null,
 					unit: data.unit ?? null,
 					ratePerUnit: data.ratePerUnit != null ? new Decimal(data.ratePerUnit) : null,

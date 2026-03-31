@@ -5,11 +5,7 @@
  *
  * Call `bootApi()` once — inside App.tsx before QueryClientProvider renders.
  */
-import {
-  initApiClient,
-  authApi,
-  apiFetch,
-} from "@execora/shared";
+import { initApiClient, authApi, apiFetch } from "@execora/shared";
 import { tokenStorage } from "./storage";
 
 export { invoiceApi, invoiceExtApi } from "../features/billing/api/invoiceApi";

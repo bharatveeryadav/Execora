@@ -47,7 +47,7 @@ export function PurchasesScreen() {
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [itemName, setItemName] = useState("");
   const [amount, setAmount] = useState("");
-  const [vendor, setVendor] = useState("");
+  const [supplier, setSupplier] = useState("");
   const [quantity, setQuantity] = useState("");
   const [note, setNote] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
@@ -77,7 +77,7 @@ export function PurchasesScreen() {
       category: string;
       amount: number;
       itemName: string;
-      vendor?: string;
+      supplier?: string;
       quantity?: number;
       note?: string;
       date?: string;
@@ -87,7 +87,7 @@ export function PurchasesScreen() {
       qc.invalidateQueries({ queryKey: ["cashbook"] });
       setItemName("");
       setAmount("");
-      setVendor("");
+      setSupplier("");
       setQuantity("");
       setNote("");
       setDate(new Date().toISOString().slice(0, 10));
@@ -118,7 +118,7 @@ export function PurchasesScreen() {
         category,
         amount: amt,
         itemName: itemName.trim(),
-        vendor: vendor.trim() || undefined,
+        supplier: supplier.trim() || undefined,
         quantity: quantity.trim() ? parseFloat(quantity) : undefined,
         note: note.trim() || undefined,
         date,
@@ -127,7 +127,7 @@ export function PurchasesScreen() {
         onError: (err: Error) => showAlert("Error", err?.message ?? "Failed to add purchase"),
       }
     );
-  }, [amount, category, createMutation, date, itemName, note, quantity, vendor]);
+  }, [amount, category, createMutation, date, itemName, note, quantity, supplier]);
 
   const handleDelete = useCallback((id: string, item: string, amountVal: number) => {
     showAlert("Delete purchase", `Delete ${item} for ${formatCurrency(amountVal)}?`, [
@@ -156,7 +156,7 @@ export function PurchasesScreen() {
       >
         <View>
           <Text className="font-semibold text-slate-800">{item.category}</Text>
-          {item.vendor && <Text className="text-sm text-slate-500">{item.vendor}</Text>}
+          {item.supplier && <Text className="text-sm text-slate-500">{item.supplier}</Text>}
         </View>
         <Text className="font-bold text-slate-800">{formatCurrency(Number(item.amount))}</Text>
       </TouchableOpacity>
@@ -282,9 +282,9 @@ export function PurchasesScreen() {
         />
 
         <Input
-          label="Vendor (optional)"
-          value={vendor}
-          onChangeText={setVendor}
+          label="Supplier (optional)"
+          value={supplier}
+          onChangeText={setSupplier}
           placeholder="Supplier name"
         />
 

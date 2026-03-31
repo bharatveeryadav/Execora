@@ -283,7 +283,7 @@ const ocrWorker = new Worker<OcrJobData>(
 				// ── 3a. OCR: extract purchase bill ─────────────────────────────────
 				const prompt = `You are an OCR system for an Indian store management app. Analyze this purchase bill/invoice image and extract all items. Return ONLY valid JSON (no markdown):
 {
-  "vendor": "vendor name or null",
+  "supplier": "supplier name or null",
   "invoiceNo": "invoice number or null",
   "date": "YYYY-MM-DD or null",
   "subtotal": number_or_null,
@@ -315,7 +315,7 @@ Extract ALL line items visible. Use Indian currency (INR). Omit unclear fields.`
 
 				const rawText = resp.choices[0]?.message?.content ?? '{}';
 				let parsed: {
-					vendor?: string;
+					supplier?: string;
 					invoiceNo?: string;
 					date?: string;
 					subtotal?: number;
@@ -348,7 +348,7 @@ Extract ALL line items visible. Use Indian currency (INR). Omit unclear fields.`
 						tax: new Decimal(tax),
 						total: new Decimal(total),
 						status: 'received',
-						notes: parsed.vendor ? `OCR import from ${parsed.vendor}` : 'OCR import',
+						notes: parsed.supplier ? `OCR import from ${parsed.supplier}` : 'OCR import',
 					},
 				});
 

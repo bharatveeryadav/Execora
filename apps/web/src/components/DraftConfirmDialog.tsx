@@ -113,10 +113,10 @@ function PurchaseFields({
         />
       </div>
       <div>
-        <Label>Vendor / Supplier</Label>
+        <Label>Supplier</Label>
         <Input
-          value={String(data.vendor ?? "")}
-          onChange={(e) => set("vendor", e.target.value)}
+          value={String(data.supplier ?? "")}
+          onChange={(e) => set("supplier", e.target.value)}
           placeholder="Optional"
         />
       </div>

@@ -53,7 +53,7 @@ export function ExpensesScreen() {
   const [addOpen, setAddOpen] = useState(false);
   const [category, setCategory] = useState(CATEGORIES[0]);
   const [amount, setAmount] = useState("");
-  const [vendor, setVendor] = useState("");
+  const [supplier, setSupplier] = useState("");
   const [note, setNote] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   useWsInvalidation(["expenses", "cashbook"]);
@@ -78,13 +78,13 @@ export function ExpensesScreen() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (payload: { category: string; amount: number; vendor?: string; note?: string; date?: string }) =>
+    mutationFn: (payload: { category: string; amount: number; supplier?: string; note?: string; date?: string }) =>
       expenseApi.create(payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["expenses"] });
       qc.invalidateQueries({ queryKey: ["cashbook"] });
       setAmount("");
-      setVendor("");
+      setSupplier("");
       setNote("");
       setDate(new Date().toISOString().slice(0, 10));
       setAddOpen(false);
@@ -109,7 +109,7 @@ export function ExpensesScreen() {
       {
         category,
         amount: amt,
-        vendor: vendor.trim() || undefined,
+        supplier: supplier.trim() || undefined,
         note: note.trim() || undefined,
         date,
       },
@@ -117,7 +117,7 @@ export function ExpensesScreen() {
         onError: (err: Error) => showAlert("Error", err?.message ?? "Failed to add expense"),
       }
     );
-  }, [amount, category, createMutation, date, note, vendor]);
+  }, [amount, category, createMutation, date, note, supplier]);
 
   const handleDelete = useCallback((id: string, categoryName: string, amountVal: number) => {
     showAlert("Delete expense", `Delete ${categoryName} for ${formatCurrency(amountVal)}?`, [
@@ -146,8 +146,8 @@ export function ExpensesScreen() {
       >
         <View>
           <Text className="font-semibold text-slate-800">{item.category}</Text>
-          {item.vendor && (
-            <Text className="text-sm text-slate-500">{item.vendor}</Text>
+          {item.supplier && (
+            <Text className="text-sm text-slate-500">{item.supplier}</Text>
           )}
         </View>
         <Text className="font-bold text-red-600">{formatCurrency(Number(item.amount))}</Text>
@@ -269,10 +269,10 @@ export function ExpensesScreen() {
         />
 
         <Input
-          label="Vendor (optional)"
-          value={vendor}
-          onChangeText={setVendor}
-          placeholder="Vendor name"
+          label="Supplier (optional)"
+          value={supplier}
+          onChangeText={setSupplier}
+          placeholder="Supplier name"
         />
 
         <Input

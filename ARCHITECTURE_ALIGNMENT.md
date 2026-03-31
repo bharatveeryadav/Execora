@@ -151,7 +151,7 @@ features/
 │   └── index.ts
 │
 ├── crm/
-│   └── parties/         (Customers, Vendors)
+│   └── parties/         (Customers, Suppliers)
 │
 ├── admin/
 │   ├── users/
@@ -174,7 +174,7 @@ routes/
 ├── admin.routes.ts              (users, roles, permissions)
 ├── auth.routes.ts               (login, signup, JWT)
 ├── customer.routes.ts           (parties/customers CRUD)
-├── supplier.routes.ts           (vendors/suppliers CRUD)
+├── supplier.routes.ts           (suppliers/suppliers CRUD)
 ├── product.routes.ts            (inventory CRUD)
 ├── invoice.routes.ts            (sales invoice CRUD)
 ├── credit-note.routes.ts        (credit notes)

@@ -41,7 +41,7 @@ import { ScreenInner } from "../../../components/ui/ScreenLayout";
 import { FilterBar } from "../../../components/composites/FilterBar";
 import { TabBar, type TabItem } from "../../../components/composites/TabBar";
 import { TYPO } from "../../../lib/typography";
-import type { PartiesStackParams } from "../../../navigation";
+import type { CustomersStackParams } from "../../../navigation";
 
 const MIN_TOUCH = 44;
 
@@ -54,11 +54,8 @@ const PARTY_TABS: TabItem[] = [
   { id: "suppliers", label: "Suppliers", icon: "cube" },
 ];
 
-type PartiesRouteName =
-  | "Parties"
-  | "PartiesCustomersPage"
-  | "PartiesSuppliersPage";
-type Props = NativeStackScreenProps<PartiesStackParams, PartiesRouteName>;
+type CustomerRouteName = "CustomerList" | "CustomersPage" | "SuppliersPage";
+type Props = NativeStackScreenProps<CustomersStackParams, CustomerRouteName>;
 
 export function PartiesScreen({ navigation, route }: Props) {
   const qc = useQueryClient();
@@ -73,7 +70,7 @@ export function PartiesScreen({ navigation, route }: Props) {
 
   const initialTab: Tab =
     route.params?.initialTab ??
-    (route.name === "PartiesSuppliersPage" ? "suppliers" : "customers");
+    (route.name === "SuppliersPage" ? "suppliers" : "customers");
   const [tab, setTab] = useState<Tab>(initialTab);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterTab>("all");
@@ -261,7 +258,8 @@ export function PartiesScreen({ navigation, route }: Props) {
       qc.invalidateQueries({ queryKey: ["customers"] });
       setAddOpen(false);
       const customer = res?.customer;
-      if (customer?.id) navigation.navigate("PartyDetail", { id: customer.id });
+      if (customer?.id)
+        navigation.navigate("CustomerDetail", { id: customer.id });
       showAlert("", `${newName} added`);
     },
     onError: () => showAlert("Error", "Failed to add customer"),
@@ -422,7 +420,7 @@ export function PartiesScreen({ navigation, route }: Props) {
           className="flex-row items-center gap-3 px-4 py-3.5 border-b border-slate-100 bg-white"
           accessibilityRole="button"
           accessibilityLabel={`Open ${c.name} details`}
-          onPress={() => navigation.navigate("PartyDetail", { id: c.id })}
+          onPress={() => navigation.navigate("CustomerDetail", { id: c.id })}
           style={({ pressed }) => ({
             backgroundColor: pressed ? "#f8fafc" : "#fff",
           })}

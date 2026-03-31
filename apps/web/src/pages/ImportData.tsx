@@ -106,7 +106,7 @@ const IMPORT_CONFIGS: Record<EntityType, ImportConfig> = {
       "Category",
       "Amount",
       "GST Amount",
-      "Vendor",
+      "Supplier",
     ],
     example: [
       ["2024-01-10", "Shop Rent", "Rent", "15000", "0", "Landlord"],
@@ -293,7 +293,7 @@ export default function ImportData() {
             category: d["Category"] || "Other",
             amount: parseFloat(d["Amount"]) || 0,
             note: d["Description"] || undefined,
-            vendor: d["Vendor"] || undefined,
+            supplier: d["Supplier"] || undefined,
             date: d["Date"] || undefined,
           });
         }),

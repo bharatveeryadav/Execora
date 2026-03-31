@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { customerApi } from ".." // customerApi from feature;
+import { customerApi } from ".."; // customerApi from feature;
 import { useWsInvalidation } from "../../../hooks/useWsInvalidation";
 import { useResponsive } from "../../../hooks/useResponsive";
 import { inr, type Customer } from "@execora/shared";
@@ -37,7 +37,10 @@ export function CustomersScreen() {
 
   const customers: Customer[] = data?.customers ?? [];
   const keyExtractor = useCallback((c: Customer) => c.id, []);
-  const goToOverdue = useCallback(() => navigation.navigate("Overdue"), [navigation]);
+  const goToOverdue = useCallback(
+    () => navigation.navigate("Overdue"),
+    [navigation],
+  );
 
   const renderCustomerItem = useCallback(
     ({ item: c }: { item: Customer }) => (
@@ -84,9 +87,18 @@ export function CustomersScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background">
       {/* Header — matches web list headers */}
-      <View style={{ paddingHorizontal: contentPad, paddingTop: contentPad, paddingBottom: 12 }} className="border-b border-slate-200 bg-card">
+      <View
+        style={{
+          paddingHorizontal: contentPad,
+          paddingTop: contentPad,
+          paddingBottom: 12,
+        }}
+        className="border-b border-slate-200 bg-card"
+      >
         <View className="flex-row items-center justify-between mb-3">
-          <Text className="text-xl font-bold tracking-tight text-slate-800">Parties</Text>
+          <Text className="text-xl font-bold tracking-tight text-slate-800">
+            Parties
+          </Text>
           <TouchableOpacity
             onPress={goToOverdue}
             activeOpacity={0.7}
@@ -96,7 +108,12 @@ export function CustomersScreen() {
           </TouchableOpacity>
         </View>
         <View className="flex-row items-center border border-slate-200 rounded-xl bg-slate-50 px-3">
-          <Ionicons name="search" size={18} color="#94a3b8" style={{ marginRight: 8 }} />
+          <Ionicons
+            name="search"
+            size={18}
+            color="#94a3b8"
+            style={{ marginRight: 8 }}
+          />
           <TextInput
             value={search}
             onChangeText={(t) => {
@@ -125,7 +142,9 @@ export function CustomersScreen() {
         ItemSeparatorComponent={() => <View className="h-2" />}
         ListEmptyComponent={
           isError ? (
-            <View style={{ paddingVertical: 64, paddingHorizontal: contentPad }}>
+            <View
+              style={{ paddingVertical: 64, paddingHorizontal: contentPad }}
+            >
               <ErrorCard
                 message="Failed to load customers"
                 onRetry={() => refetch()}
@@ -135,7 +154,11 @@ export function CustomersScreen() {
             <EmptyState
               iconName={search ? "search-outline" : "people-outline"}
               title={search ? "No customers found" : "No customers yet"}
-              description={search ? "Try a different search term" : "Add your first customer to get started"}
+              description={
+                search
+                  ? "Try a different search term"
+                  : "Add your first customer to get started"
+              }
             />
           )
         }
