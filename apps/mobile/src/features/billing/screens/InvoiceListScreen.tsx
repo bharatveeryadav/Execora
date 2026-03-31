@@ -13,6 +13,7 @@ import {
   InteractionManager,
   Modal,
   Platform,
+  StyleSheet,
 } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -136,6 +137,45 @@ const STATUS_STYLES: Record<
   },
 };
 
+const styles = StyleSheet.create({
+  surfaceShadow: Platform.select({
+    ios: {
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.06,
+      shadowRadius: 18,
+    },
+    android: {
+      elevation: 2,
+    },
+    default: {},
+  }),
+  cardShadow: Platform.select({
+    ios: {
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.05,
+      shadowRadius: 10,
+    },
+    android: {
+      elevation: 1,
+    },
+    default: {},
+  }),
+  fabShadow: Platform.select({
+    ios: {
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+    },
+    android: {
+      elevation: 8,
+    },
+    default: {},
+  }),
+});
+
 // Web: getDateRange
 function getDateRange(
   filter: DateFilter,
@@ -240,6 +280,7 @@ export function InvoiceListScreen({ navigation, route }: Props) {
   const { width, contentPad, contentWidth, isSmall } = useResponsive();
   const insets = useSafeAreaInsets();
   const stackSearchControls = contentWidth < 380;
+  const stackSummaryCards = contentWidth < 460;
   const [docTypeTab, setDocTypeTab] = useState<DocTypeTab>("sales");
   const [statusTab, setStatusTab] = useState<StatusTab>(
     () => (route.params?.initialStatusFilter as StatusTab) ?? "All",
@@ -386,6 +427,60 @@ export function InvoiceListScreen({ navigation, route }: Props) {
       .length,
   };
 
+  const headerSubtitle =
+    docTypeTab === "purchase"
+      ? "Track supplier purchases and cash outflow"
+      : docTypeTab === "quotation"
+        ? "Review estimates and convert faster"
+        : "Track invoices, payments, and follow-ups";
+
+  const summaryCards = useMemo(() => {
+    if (docTypeTab === "purchase") {
+      return [
+        {
+          id: "purchases",
+          label: "Purchases",
+          value: String(filteredPurchases.length),
+          tone: COLORS.secondary,
+          icon: "cube-outline" as const,
+        },
+        {
+          id: "spent",
+          label: "Total Spent",
+          value: `₹${inr(purchasesTotal)}`,
+          tone: COLORS.warning,
+          icon: "wallet-outline" as const,
+        },
+      ];
+    }
+
+    return [
+      {
+        id: "count",
+        label: docTypeTab === "quotation" ? "Quotes" : "Bills",
+        value: String(filteredInvoices.length),
+        tone: COLORS.primary,
+        icon: docTypeTab === "quotation"
+          ? ("document-text-outline" as const)
+          : ("receipt-outline" as const),
+      },
+      {
+        id: "value",
+        label: "Total Value",
+        value: `₹${inr(totalValue)}`,
+        tone: COLORS.success,
+        icon: "cash-outline" as const,
+      },
+      {
+        id: "pending",
+        label: "Pending",
+        value: `₹${inr(pendingAmount)}`,
+        tone: COLORS.warning,
+        icon: "time-outline" as const,
+      },
+    ];
+  }, [docTypeTab, filteredInvoices.length, filteredPurchases.length, pendingAmount, purchasesTotal, totalValue]);
+
   const showInvoiceList = docTypeTab === "sales" || docTypeTab === "quotation";
   const isInvoicesInitialLoading = showInvoiceList && isFetching && !invData;
   const isPurchasesInitialLoading =
@@ -462,6 +557,38 @@ export function InvoiceListScreen({ navigation, route }: Props) {
     [dateFilter, dateFilterLabel],
   );
 
+  const activeSummaryChips = useMemo(() => {
+    const chips: Array<{
+      id: string;
+      label: string;
+      icon: keyof typeof Ionicons.glyphMap;
+    }> = [
+      {
+        id: "date",
+        label: dateFilterLabel,
+        icon: "calendar-outline" as const,
+      },
+    ];
+
+    if (showInvoiceList && statusTab !== "All") {
+      chips.push({
+        id: "status",
+        label: statusTab,
+        icon: "funnel-outline" as const,
+      });
+    }
+
+    if (search.trim()) {
+      chips.push({
+        id: "search",
+        label: `Search: ${search.trim()}`,
+        icon: "search-outline" as const,
+      });
+    }
+
+    return chips;
+  }, [dateFilterLabel, search, showInvoiceList, statusTab]);
+
   const statusTabItems = useMemo(
     (): TabItem[] =>
       STATUS_TABS.map((tab) => {
@@ -480,6 +607,13 @@ export function InvoiceListScreen({ navigation, route }: Props) {
       const invAny = inv as any;
       const status = invAny.status ?? "draft";
       const s = STATUS_STYLES[status] ?? STATUS_STYLES.draft;
+      const invoiceNumber =
+        invAny.invoiceNo ?? inv.id.slice(-8).toUpperCase();
+      const invoiceDate = formatDate(invAny.invoiceDate ?? inv.createdAt);
+      const dueDate = invAny.dueDate ? formatDate(invAny.dueDate) : "No due date";
+      const total = parseFloat(String(inv.total ?? 0));
+      const paidAmount = parseFloat(String(invAny.paidAmount ?? 0));
+      const balance = Math.max(total - paidAmount, 0);
       const amtColor =
         status === "paid"
           ? COLORS.success
@@ -494,90 +628,156 @@ export function InvoiceListScreen({ navigation, route }: Props) {
               navigation?.navigate?.("InvoiceDetail", { id: inv.id });
             });
           }}
-          className="flex-row items-center gap-2 px-4 py-3.5 border-b border-slate-100 bg-white min-w-0"
+          className="rounded-2xl border border-slate-200 bg-white px-4 py-4 min-w-0"
           style={({ pressed }) => ({
-            backgroundColor: pressed ? "#f8fafc" : "#fff",
-            minHeight: MIN_TOUCH + 8,
+            backgroundColor: pressed ? COLORS.slate[50] : COLORS.text.inverted,
+            minHeight: 88,
+            opacity: pressed ? 0.96 : 1,
+            ...styles.cardShadow,
           })}
         >
-          <View
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 10,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: s.bgColor,
-            }}
-          >
-            <Ionicons
-              name={
-                status === "paid"
-                  ? "checkmark-circle"
-                  : status === "cancelled"
-                    ? "close-circle"
-                    : "document-outline"
-              }
-              size={18}
-              color={s.iconColor}
-            />
-          </View>
-          <View className="flex-1 min-w-0 shrink">
-            <Text
-              className={`${TYPO.labelBold} min-w-0`}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {invAny.invoiceNo ?? inv.id.slice(-8).toUpperCase()}
-            </Text>
-            <Text
-              className={`${TYPO.caption} min-w-0`}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {invAny.customer?.name ?? "Unknown"} · {formatDate(inv.createdAt)}
-            </Text>
-          </View>
-          <View
-            style={{
-              borderRadius: 9999,
-              paddingHorizontal: 8,
-              paddingVertical: 4,
-              backgroundColor: s.bgColor,
-              flexShrink: 0,
-            }}
-          >
-            <Text
+          <View className="flex-row items-start gap-3">
+            <View
               style={{
-                fontSize: SIZES.FONT.xs,
-                fontWeight: "600",
-                color: s.textColor,
-                textTransform: "capitalize",
+                width: 42,
+                height: 42,
+                borderRadius: 14,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: s.bgColor,
               }}
-              numberOfLines={1}
             >
-              {status}
-            </Text>
+              <Ionicons
+                name={
+                  status === "paid"
+                    ? "checkmark-circle"
+                    : status === "cancelled"
+                      ? "close-circle"
+                      : "document-outline"
+                }
+                size={20}
+                color={s.iconColor}
+              />
+            </View>
+            <View className="flex-1 min-w-0">
+              <View className="flex-row items-start justify-between gap-3">
+                <View className="flex-1 min-w-0">
+                  <Text className="text-[11px] font-semibold uppercase tracking-[1px] text-slate-500">
+                    Invoice
+                  </Text>
+                  <Text className={`${TYPO.labelBold} min-w-0 mt-1`} numberOfLines={1} ellipsizeMode="tail">
+                    {invoiceNumber}
+                  </Text>
+                  <Text
+                    className={`${TYPO.caption} mt-1 min-w-0`}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {invAny.customer?.name ?? "Unknown customer"}
+                  </Text>
+                </View>
+                <View className="items-end shrink-0">
+                  <Text className="text-[11px] font-semibold uppercase tracking-[1px] text-slate-500">
+                    Amount
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: SIZES.FONT.lg,
+                      fontWeight: "700",
+                      color: amtColor,
+                      textDecorationLine:
+                        status === "cancelled" ? "line-through" : undefined,
+                    }}
+                    numberOfLines={1}
+                  >
+                    ₹{inr(inv.total)}
+                  </Text>
+                  <Text className="text-[11px] text-slate-500 mt-1" numberOfLines={1}>
+                    {status === "paid"
+                      ? "Collected"
+                      : status === "cancelled"
+                        ? "Cancelled"
+                        : `Pending ₹${inr(balance)}`}
+                  </Text>
+                </View>
+              </View>
+
+              <View className="flex-row flex-wrap gap-2 mt-3">
+                <View className="flex-row items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5">
+                  <Ionicons name="calendar-outline" size={13} color={COLORS.slate[500]} />
+                  <Text className="text-[11px] font-medium text-slate-600">
+                    {invoiceDate}
+                  </Text>
+                </View>
+                <View className="flex-row items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5">
+                  <Ionicons name="time-outline" size={13} color={COLORS.slate[500]} />
+                  <Text className="text-[11px] font-medium text-slate-600">
+                    {dueDate}
+                  </Text>
+                </View>
+              </View>
+
+              <View className="mt-3 rounded-2xl bg-slate-50 px-3 py-3">
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-1 min-w-0">
+                    <Text className="text-[10px] font-semibold uppercase tracking-[1px] text-slate-500">
+                      Status
+                    </Text>
+                    <View
+                      style={{
+                        alignSelf: "flex-start",
+                        borderRadius: SIZES.RADIUS.full,
+                        paddingHorizontal: 10,
+                        paddingVertical: 5,
+                        backgroundColor: s.bgColor,
+                        marginTop: 6,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: SIZES.FONT.xs,
+                          fontWeight: "700",
+                          color: s.textColor,
+                          textTransform: "capitalize",
+                        }}
+                        numberOfLines={1}
+                      >
+                        {status}
+                      </Text>
+                    </View>
+                  </View>
+                  <View className="flex-1 min-w-0 items-center">
+                    <Text className="text-[10px] font-semibold uppercase tracking-[1px] text-slate-500">
+                      Paid
+                    </Text>
+                    <Text className="text-sm font-bold text-green-600 mt-2" numberOfLines={1}>
+                      ₹{inr(paidAmount)}
+                    </Text>
+                  </View>
+                  <View className="flex-1 min-w-0 items-end">
+                    <Text className="text-[10px] font-semibold uppercase tracking-[1px] text-slate-500">
+                      Balance
+                    </Text>
+                    <Text className="text-sm font-bold text-amber-600 mt-2" numberOfLines={1}>
+                      ₹{inr(balance)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <View className="flex-row items-center justify-end mt-3 gap-1">
+                <Text className="text-[11px] font-medium text-slate-500">
+                  Open invoice
+                </Text>
+                <Ionicons
+                  name="chevron-forward"
+                  size={16}
+                  color={COLORS.slate[400]}
+                  style={{ flexShrink: 0 }}
+                />
+              </View>
+            </View>
           </View>
-          <Text
-            style={{
-              fontSize: SIZES.FONT.base,
-              fontWeight: "700",
-              color: amtColor,
-              textDecorationLine:
-                status === "cancelled" ? "line-through" : undefined,
-              flexShrink: 0,
-            }}
-            numberOfLines={1}
-          >
-            ₹{inr(inv.total)}
-          </Text>
-          <Ionicons
-            name="chevron-forward"
-            size={16}
-            color="#94a3b8"
-            style={{ flexShrink: 0 }}
-          />
         </Pressable>
       );
     },
@@ -596,34 +796,52 @@ export function InvoiceListScreen({ navigation, route }: Props) {
             } catch (_) {}
           });
         }}
-        className="flex-row items-center gap-2 px-4 py-3.5 border-b border-slate-100 bg-white min-w-0"
+        className="rounded-2xl border border-slate-200 bg-white px-4 py-4 min-w-0"
         style={({ pressed }) => ({
-          backgroundColor: pressed ? "#f8fafc" : "#fff",
-          minHeight: MIN_TOUCH + 8,
+          backgroundColor: pressed ? COLORS.slate[50] : COLORS.text.inverted,
+          minHeight: 88,
+          opacity: pressed ? 0.96 : 1,
+          ...styles.cardShadow,
         })}
       >
-        <View className="w-10 h-10 rounded-xl bg-amber-100 items-center justify-center shrink-0">
-          <Ionicons name="cube-outline" size={18} color="#d97706" />
+        <View className="flex-row items-start gap-3">
+          <View className="w-11 h-11 rounded-2xl bg-amber-100 items-center justify-center shrink-0">
+            <Ionicons name="cube-outline" size={20} color="#d97706" />
+          </View>
+          <View className="flex-1 min-w-0">
+            <View className="flex-row items-start justify-between gap-3">
+              <View className="flex-1 min-w-0 shrink">
+                <Text
+                  className={TYPO.labelBold}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {p.itemName ?? p.category}
+                </Text>
+                <Text className={`${TYPO.caption} mt-1`} numberOfLines={1} ellipsizeMode="tail">
+                  {p.supplier ?? "Unknown supplier"} · {formatDate(p.date ?? p.createdAt ?? "")}
+                </Text>
+                {!!p.category && (
+                  <Text className="text-[11px] text-slate-500 mt-2" numberOfLines={1}>
+                    Category: {p.category}
+                  </Text>
+                )}
+              </View>
+              <View className="items-end shrink-0">
+                <Text
+                  className="text-base font-bold text-red-600"
+                  numberOfLines={1}
+                >
+                  ₹{inr(parseFloat(String(p.amount)))}
+                </Text>
+                <Text className="text-[11px] text-slate-500 mt-1">Open purchase log</Text>
+              </View>
+            </View>
+            <View className="flex-row items-center justify-end mt-3">
+              <Ionicons name="chevron-forward" size={16} color={COLORS.slate[400]} />
+            </View>
+          </View>
         </View>
-        <View className="flex-1 min-w-0 shrink">
-          <Text
-            className={TYPO.labelBold}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-          >
-            {p.itemName ?? p.category}
-          </Text>
-          <Text className={TYPO.caption} numberOfLines={1} ellipsizeMode="tail">
-            {p.supplier ?? "—"} · {formatDate(p.date ?? p.createdAt ?? "")}
-          </Text>
-        </View>
-        <Text
-          className="text-sm font-bold text-red-600 shrink-0"
-          numberOfLines={1}
-        >
-          ₹{inr(parseFloat(String(p.amount)))}
-        </Text>
-        <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
       </Pressable>
     ),
     [navigation],
@@ -677,18 +895,56 @@ export function InvoiceListScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={["top", "bottom"]}>
-      {/* Header — matches web */}
       <View
         style={{
           paddingHorizontal: contentPad,
           paddingTop: 12,
-          paddingBottom: 12,
+          paddingBottom: 8,
         }}
-        className=""
       >
-        <ScreenInner className="rounded-xl border border-slate-200/80 bg-white px-3 pt-3 pb-2">
-          {/* Doc type tabs — web: Sales | Purchase | Quotation */}
-          <View className="flex-row items-center min-w-0">
+        <ScreenInner className="rounded-[24px] border border-slate-200/80 bg-white px-4 pt-4 pb-4" style={styles.surfaceShadow}>
+          <View className="flex-row items-start justify-between gap-3">
+            <View className="flex-1 min-w-0">
+              <View className="flex-row items-center gap-2">
+                <Text className="text-2xl font-bold text-slate-900">Bills</Text>
+                <View className="rounded-full bg-primary/10 px-2.5 py-1">
+                  <Text className="text-[11px] font-bold text-primary">
+                    {docTypeTab === "quotation" ? "Quotes" : docTypeTab === "purchase" ? "Purchases" : "Sales"}
+                  </Text>
+                </View>
+              </View>
+              <Text className="text-sm text-slate-500 mt-1">{headerSubtitle}</Text>
+              <View className="flex-row flex-wrap gap-2 mt-3">
+                {activeSummaryChips.map((chip) => (
+                  <View
+                    key={chip.id}
+                    className="flex-row items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5"
+                  >
+                    <Ionicons name={chip.icon} size={14} color={COLORS.slate[500]} />
+                    <Text className="text-xs font-medium text-slate-600">{chip.label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+            <Pressable
+              onPress={handleBillsMenu}
+              accessibilityRole="button"
+              accessibilityLabel="Open bills menu"
+              style={({ pressed }) => ({
+                width: 44,
+                height: 44,
+                borderRadius: SIZES.RADIUS.full,
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: pressed ? 0.8 : 1,
+                backgroundColor: pressed ? COLORS.slate[200] : COLORS.slate[100],
+              })}
+            >
+              <Ionicons name="ellipsis-horizontal" size={18} color={COLORS.slate[600]} />
+            </Pressable>
+          </View>
+
+          <View className="mt-4 rounded-2xl bg-slate-100 p-1 flex-row items-center min-w-0">
             {[
               { id: "sales" as DocTypeTab, label: "Sales" },
               { id: "purchase" as DocTypeTab, label: "Purchase" },
@@ -697,29 +953,27 @@ export function InvoiceListScreen({ navigation, route }: Props) {
               <Pressable
                 key={id}
                 onPress={() => requestAnimationFrame(() => setDocTypeTab(id))}
+                accessibilityRole="button"
+                accessibilityLabel={`Show ${label.toLowerCase()} bills`}
                 style={({ pressed }) => ({
-                  opacity: pressed && docTypeTab !== id ? 0.7 : 1,
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                  marginRight: 4,
-                  borderRadius: 8,
-                  backgroundColor: docTypeTab === id ? "#fff" : "transparent",
+                  flex: 1,
+                  opacity: pressed && docTypeTab !== id ? 0.8 : 1,
+                  minHeight: SIZES.TOUCH_MIN,
+                  borderRadius: SIZES.RADIUS.xl,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor:
+                    docTypeTab === id ? COLORS.text.inverted : "transparent",
                   borderWidth: docTypeTab === id ? 1 : 0,
-                  borderColor: "#e2e8f0",
-                  ...(docTypeTab === id && {
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.06,
-                    shadowRadius: 2,
-                    elevation: 1,
-                  }),
+                  borderColor: COLORS.border.light,
                 })}
               >
                 <Text
                   style={{
                     fontSize: SIZES.FONT.sm,
                     fontWeight: docTypeTab === id ? "600" : "500",
-                    color: docTypeTab === id ? "#0f172a" : "#94a3b8",
+                    color:
+                      docTypeTab === id ? COLORS.text.primary : COLORS.text.tertiary,
                   }}
                   numberOfLines={1}
                 >
@@ -727,24 +981,8 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                 </Text>
               </Pressable>
             ))}
-            <View style={{ flex: 1 }} />
-            <Pressable
-              onPress={handleBillsMenu}
-              style={({ pressed }) => ({
-                width: 34,
-                height: 34,
-                borderRadius: 999,
-                alignItems: "center",
-                justifyContent: "center",
-                opacity: pressed ? 0.7 : 1,
-                backgroundColor: pressed ? "#e2e8f0" : "#f1f5f9",
-              })}
-            >
-              <Ionicons name="ellipsis-horizontal" size={18} color="#475569" />
-            </Pressable>
           </View>
 
-          {/* Status tabs — web: underline style, only for Sales/Quotation */}
           {showInvoiceList && (
             <TabBar
               tabs={statusTabItems}
@@ -753,24 +991,23 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                 requestAnimationFrame(() => setStatusTab(tab as StatusTab))
               }
               scrollable
-              className="mt-0"
+              className="mt-4"
             />
           )}
 
-          {/* Compact controls container: search/date + totals */}
-          <View className="mt-2 rounded-lg border border-slate-200 bg-slate-50/50 p-1.5 min-w-0">
+          <View className="mt-4 rounded-[20px] border border-slate-200 bg-slate-50 p-2 min-w-0">
             <View
-              className="rounded-lg border border-slate-200 bg-white min-w-0"
+              className="rounded-2xl border border-slate-200 bg-white min-w-0"
               style={{
                 flexDirection: stackSearchControls ? "column" : "row",
                 alignItems: stackSearchControls ? undefined : "center",
               }}
             >
-              <View className="flex-1 flex-row items-center rounded-lg px-2.5 min-h-[34] min-w-0">
+              <View className="flex-1 flex-row items-center rounded-2xl px-3 min-h-[48] min-w-0">
                 <Ionicons
                   name="search"
                   size={16}
-                  color="#64748b"
+                  color={COLORS.slate[500]}
                   style={{ marginRight: 8 }}
                 />
                 <TextInput
@@ -778,8 +1015,8 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                   onChangeText={setSearch}
                   placeholder={placeholder}
                   accessibilityLabel="Search bills"
-                  placeholderTextColor="#94a3b8"
-                  className="flex-1 min-w-0 text-sm text-slate-800 py-1.5"
+                  placeholderTextColor={COLORS.slate[400]}
+                  className="flex-1 min-w-0 text-sm text-slate-800 py-3"
                 />
                 {!!search.trim() && (
                   <Pressable
@@ -787,9 +1024,9 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                     accessibilityRole="button"
                     accessibilityLabel="Clear search"
                     style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-                    className="w-7 h-7 rounded-full bg-slate-100 items-center justify-center"
+                    className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center"
                   >
-                    <Ionicons name="close" size={14} color="#64748b" />
+                    <Ionicons name="close" size={14} color={COLORS.slate[500]} />
                   </Pressable>
                 )}
                 {isFetching && showInvoiceList && (
@@ -817,46 +1054,54 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                 isOpen={dateFilterModalOpen}
                 onOpenChange={setDateFilterModalOpen}
                 maxVisible={5}
-                className={stackSearchControls ? "mt-1.5" : "ml-1"}
+                className={stackSearchControls ? "mt-2 mb-0" : "ml-1 mb-0"}
               />
             )}
 
-            {showInvoiceList && filteredInvoices.length > 0 && (
-              <View className="mt-1.5 rounded-lg border border-slate-200 bg-white p-2 min-w-0 flex-row">
-                <View className="flex-1 min-w-0">
-                  <Text className={TYPO.sectionTitle}>Total</Text>
-                  <Text
-                    className="text-sm font-bold text-slate-800 mt-0.5"
-                    numberOfLines={1}
-                  >
-                    ₹{inr(totalValue)}
-                  </Text>
-                </View>
+            <View
+              className="mt-2"
+              style={{
+                flexDirection: stackSummaryCards ? "column" : "row",
+                gap: SIZES.SPACING.sm,
+              }}
+            >
+              {summaryCards.map((card) => (
                 <View
-                  className="flex-1 min-w-0"
+                  key={card.id}
+                  className="rounded-2xl border border-slate-200 bg-white px-3 py-3 min-w-0"
                   style={{
-                    borderLeftWidth: 1,
-                    borderColor: "#e2e8f0",
-                    paddingLeft: 10,
+                    flex: stackSummaryCards ? undefined : 1,
+                    ...styles.cardShadow,
                   }}
                 >
-                  <Text className={TYPO.sectionTitle}>Pending</Text>
-                  <Text
-                    className="text-sm font-bold text-amber-600 mt-0.5"
-                    numberOfLines={1}
-                  >
-                    ₹{inr(pendingAmount)}
+                  <View className="flex-row items-center justify-between">
+                    <Text className={TYPO.sectionTitle}>{card.label}</Text>
+                    <View
+                      style={{
+                        width: 30,
+                        height: 30,
+                        borderRadius: 999,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: `${card.tone}1A`,
+                      }}
+                    >
+                      <Ionicons name={card.icon} size={15} color={card.tone} />
+                    </View>
+                  </View>
+                  <Text className="text-lg font-bold text-slate-900 mt-2" numberOfLines={1}>
+                    {card.value}
                   </Text>
                 </View>
-              </View>
-            )}
+              ))}
+            </View>
 
             {showInvoiceList && (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={{ gap: 8, paddingRight: 2 }}
-                className="mt-2"
+                className="mt-3"
               >
                 {QUICK_LINK_ITEMS.map((item) => (
                   <Pressable
@@ -864,18 +1109,18 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                     onPress={item.onPress}
                     accessibilityRole="button"
                     accessibilityLabel={`Open ${item.label}`}
-                    className="flex-row items-center justify-center rounded-xl border border-slate-200 px-3 py-2 bg-white min-h-[40]"
+                    className="rounded-2xl border border-slate-200 px-3 py-3 bg-white min-h-[52]"
                     style={({ pressed }) => ({
                       opacity: pressed ? 0.7 : 1,
-                      backgroundColor: pressed ? "#f8fafc" : "#fff",
-                      gap: 6,
+                      backgroundColor: pressed ? COLORS.slate[50] : COLORS.text.inverted,
+                      minWidth: 108,
+                      ...styles.cardShadow,
                     })}
                   >
-                    <Ionicons name={item.icon} size={14} color="#64748b" />
-                    <Text
-                      className="text-xs font-medium text-slate-600"
-                      numberOfLines={1}
-                    >
+                    <View className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center self-center">
+                      <Ionicons name={item.icon} size={15} color={COLORS.slate[600]} />
+                    </View>
+                    <Text className="text-xs font-semibold text-slate-700 mt-2 text-center" numberOfLines={1}>
                       {item.label}
                     </Text>
                   </Pressable>
@@ -898,21 +1143,21 @@ export function InvoiceListScreen({ navigation, route }: Props) {
         <ScreenInner style={{ flex: 1 }} className="min-w-0">
           {docTypeTab === "purchase" ? (
             isPurchaseError ? (
-              <View className="rounded-xl border border-slate-200 bg-white py-8 px-4">
+              <View className="rounded-[24px] border border-slate-200 bg-white py-8 px-4" style={styles.surfaceShadow}>
                 <ErrorCard
                   message="Failed to load purchases"
                   onRetry={() => refetchPurchases()}
                 />
               </View>
             ) : isPurchasesInitialLoading ? (
-              <View className="rounded-xl border border-slate-200 bg-white p-4 gap-3">
+              <View className="rounded-[24px] border border-slate-200 bg-white p-4 gap-3" style={styles.surfaceShadow}>
                 <Skeleton className="h-14 w-full" />
                 <Skeleton className="h-14 w-full" />
                 <Skeleton className="h-14 w-full" />
                 <Skeleton className="h-14 w-full" />
               </View>
             ) : filteredPurchases.length === 0 ? (
-              <View className="rounded-xl border border-slate-200 bg-white py-16">
+              <View className="rounded-[24px] border border-slate-200 bg-white py-16" style={styles.surfaceShadow}>
                 <EmptyState
                   iconName="cube-outline"
                   title={search ? "No purchases match" : "No purchases yet"}
@@ -939,11 +1184,14 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                 />
               </View>
             ) : (
-              <View className="flex-1 rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <View className="flex-1">
                 <FlashList
                   data={filteredPurchases}
                   keyExtractor={(p) => p.id}
                   renderItem={renderPurchaseRow}
+                  contentContainerStyle={{ paddingBottom: 96 }}
+                  ItemSeparatorComponent={() => <View style={{ height: SIZES.SPACING.sm }} />}
+                  showsVerticalScrollIndicator={false}
                   refreshControl={
                     <RefreshControl
                       refreshing={purchasesLoading}
@@ -951,20 +1199,19 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                       tintColor={COLORS.primary}
                     />
                   }
-                  ListFooterComponent={<View className="h-4" />}
                   style={{ flex: 1 }}
                 />
               </View>
             )
           ) : isError ? (
-            <View className="rounded-xl border border-slate-200 bg-white py-8 px-4">
+            <View className="rounded-[24px] border border-slate-200 bg-white py-8 px-4" style={styles.surfaceShadow}>
               <ErrorCard
                 message="Failed to load invoices"
                 onRetry={() => refetch()}
               />
             </View>
           ) : isInvoicesInitialLoading ? (
-            <View className="rounded-xl border border-slate-200 bg-white p-4 gap-3">
+            <View className="rounded-[24px] border border-slate-200 bg-white p-4 gap-3" style={styles.surfaceShadow}>
               <Skeleton className="h-14 w-full" />
               <Skeleton className="h-14 w-full" />
               <Skeleton className="h-14 w-full" />
@@ -972,7 +1219,7 @@ export function InvoiceListScreen({ navigation, route }: Props) {
               <Skeleton className="h-14 w-full" />
             </View>
           ) : filteredInvoices.length === 0 ? (
-            <View className="rounded-xl border border-slate-200 bg-white py-16">
+            <View className="rounded-[24px] border border-slate-200 bg-white py-16" style={styles.surfaceShadow}>
               <EmptyState
                 iconName="receipt-outline"
                 title={
@@ -996,11 +1243,14 @@ export function InvoiceListScreen({ navigation, route }: Props) {
               />
             </View>
           ) : (
-            <View className="flex-1 rounded-xl border border-slate-200 bg-white overflow-hidden">
+            <View className="flex-1">
               <FlashList
                 data={filteredInvoices}
                 keyExtractor={(inv) => inv.id}
                 renderItem={renderInvoiceRow}
+                contentContainerStyle={{ paddingBottom: 96 }}
+                ItemSeparatorComponent={() => <View style={{ height: SIZES.SPACING.sm }} />}
+                showsVerticalScrollIndicator={false}
                 refreshControl={
                   <RefreshControl
                     refreshing={isFetching}
@@ -1008,7 +1258,6 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                     tintColor={COLORS.primary}
                   />
                 }
-                ListFooterComponent={<View className="h-24" />}
                 style={{ flex: 1 }}
               />
             </View>
@@ -1029,11 +1278,7 @@ export function InvoiceListScreen({ navigation, route }: Props) {
           bottom: fabBottom,
           right: fabRight,
           opacity: pressed ? 0.9 : 1,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.2,
-          shadowRadius: 8,
-          elevation: 8,
+          ...styles.fabShadow,
         })}
       >
         <Ionicons name="add" size={28} color="#fff" />
