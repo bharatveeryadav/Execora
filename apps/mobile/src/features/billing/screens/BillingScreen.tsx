@@ -360,9 +360,8 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
       "INV-",
   );
   const invoiceSuffix = documentSettingsRef.current.invoiceSuffix ?? "";
-  const nextInvoiceNumber = Math.max(
-    1,
-    Math.floor(documentSettingsRef.current.nextInvoiceNumber ?? 1),
+  const [nextInvoiceNumber, setNextInvoiceNumber] = useState(() =>
+    Math.max(1, Math.floor(documentSettingsRef.current.nextInvoiceNumber ?? 1)),
   );
   const draftInvoiceCounter =
     `${String(nextInvoiceNumber).padStart(4, "0")}${invoiceSuffix}`;
@@ -835,6 +834,29 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
       void qc.invalidateQueries({ queryKey: ["invoices"] });
       void qc.invalidateQueries({ queryKey: ["customers"] });
       storage.delete(INVOICE_DRAFT_KEY);
+      setNextInvoiceNumber((prev) => {
+        const next = Math.max(1, prev + 1);
+        try {
+          const raw = storage.getString(DOC_SETTINGS_KEY);
+          const parsed = raw
+            ? (JSON.parse(raw) as Record<string, unknown>)
+            : {};
+          storage.set(
+            DOC_SETTINGS_KEY,
+            JSON.stringify({
+              ...parsed,
+              nextInvoiceNumber: next,
+            }),
+          );
+        } catch {
+          // no-op: counter still updates in memory for current session
+        }
+        documentSettingsRef.current = {
+          ...documentSettingsRef.current,
+          nextInvoiceNumber: next,
+        };
+        return next;
+      });
       const fromOffline = data.invoice.id.startsWith("offline-");
       setSavedInvoice({
         id: data.invoice.id,
