@@ -8,6 +8,7 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
+  TextInput,
   Switch,
   Alert,
   Modal,
@@ -320,22 +321,46 @@ export function DocumentSettingsScreen({ navigation }: Props) {
               <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
             </View>
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() =>
-              (navigation as any).navigate("ComingSoon", {
-                title: "Prefix & Suffix",
-              })
-            }
-            className="px-4 py-4"
-          >
+          <View className="px-4 py-4">
             <Text className="font-medium text-slate-800">Prefix & Suffix</Text>
             <Text className="text-sm text-slate-500 mt-0.5">
-              Add prefixes and suffixes to manage document numbering
+              Customize document numbering (e.g. INV-0001, Q-2026-001)
             </Text>
-            <View className="absolute right-4 top-4">
-              <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+            <View className="flex-row gap-3 mt-3">
+              <View className="flex-1">
+                <Text className="text-xs font-semibold text-slate-500 mb-1">Prefix</Text>
+                <TextInput
+                  value={settings.invoicePrefix}
+                  onChangeText={(v) => save({ invoicePrefix: v })}
+                  placeholder="INV-"
+                  autoCapitalize="characters"
+                  maxLength={10}
+                  className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 bg-slate-50"
+                  accessibilityLabel="Invoice prefix"
+                />
+              </View>
+              <View className="flex-1">
+                <Text className="text-xs font-semibold text-slate-500 mb-1">Suffix</Text>
+                <TextInput
+                  value={settings.invoiceSuffix}
+                  onChangeText={(v) => save({ invoiceSuffix: v })}
+                  placeholder="none"
+                  autoCapitalize="characters"
+                  maxLength={10}
+                  className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 bg-slate-50"
+                  accessibilityLabel="Invoice suffix"
+                />
+              </View>
             </View>
-          </TouchableOpacity>
+            <View className="mt-2 bg-slate-100 rounded-lg px-3 py-2">
+              <Text className="text-xs text-slate-500">
+                Preview:{" "}
+                <Text className="font-semibold text-slate-700">
+                  {settings.invoicePrefix || ""}0001{settings.invoiceSuffix || ""}
+                </Text>
+              </Text>
+            </View>
+          </View>
         </View>
 
         {/* APPEARANCE */}
