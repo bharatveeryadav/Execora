@@ -64,6 +64,9 @@ type MeUser = {
 const LABEL = "text-sm font-medium text-slate-600";
 const INPUT =
   "border border-slate-200 rounded-xl px-4 py-3.5 text-base text-slate-800";
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+const IFSC_REGEX = /^[A-Z]{4}0[A-Z0-9]{6}$/;
 
 const GST_STATE_CODES: Record<string, string> = {
   "01": "Jammu and Kashmir",
@@ -105,6 +108,18 @@ const GST_STATE_CODES: Record<string, string> = {
   "38": "Ladakh",
 };
 
+function isValidWebsite(value: string): boolean {
+  const v = value.trim();
+  if (!v) return true;
+  try {
+    const url = v.startsWith("http://") || v.startsWith("https://") ? v : `https://${v}`;
+    const parsed = new URL(url);
+    return !!parsed.hostname && parsed.hostname.includes(".");
+  } catch {
+    return false;
+  }
+}
+
 type Props = NativeStackScreenProps<
   import("../../../navigation").MoreStackParams,
   "CompanyProfile"
@@ -145,6 +160,68 @@ export function CompanyProfileScreen({ navigation }: Props) {
   const [gstPanHint, setGstPanHint] = useState<string | null>(null);
   const [businessTypeModalOpen, setBusinessTypeModalOpen] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
+
+  const normalizedGstin = gstin.trim().toUpperCase();
+  const phoneDigits = phone.replace(/\D/g, "").trim();
+  const altContactDigits = altContact.replace(/\D/g, "").trim();
+  const emailTrimmed = email.trim();
+  const panUpper = pan.trim().toUpperCase();
+  const bankIfscUpper = bankIfsc.trim().toUpperCase();
+  const websiteTrimmed = website.trim();
+  const normalizedWebsite =
+    websiteTrimmed &&
+    !(websiteTrimmed.startsWith("http://") || websiteTrimmed.startsWith("https://"))
+      ? `https://${websiteTrimmed}`
+      : websiteTrimmed;
+
+  const companyNameError = companyName.trim() ? null : "Business name is required";
+  const billingAddressError = billingAddress.trim()
+    ? null
+    : "Billing address is required";
+  const businessPhoneError =
+    phone.trim() && phoneDigits.length !== 10
+      ? "Enter a valid 10-digit business phone"
+      : null;
+  const altContactError =
+    altContact.trim() && altContactDigits.length !== 10
+      ? "Alternate contact must be a 10-digit number"
+      : null;
+  const emailError =
+    emailTrimmed && !EMAIL_REGEX.test(emailTrimmed)
+      ? "Enter a valid business email"
+      : null;
+  const panError =
+    panUpper && !PAN_REGEX.test(panUpper) ? "PAN format should be ABCDE1234F" : null;
+  const ifscError =
+    bankIfscUpper && !IFSC_REGEX.test(bankIfscUpper)
+      ? "IFSC format should be like SBIN0001234"
+      : null;
+  const bankAccountError =
+    bankAccountNo.trim() && !/^\d{6,18}$/.test(bankAccountNo.trim())
+      ? "Account number should be 6-18 digits"
+      : null;
+  const websiteError =
+    websiteTrimmed && !isValidWebsite(websiteTrimmed)
+      ? "Enter a valid website URL"
+      : null;
+  const gstValidationError = gstEnabled
+    ? normalizedGstin
+      ? getGstinValidationError(normalizedGstin)
+      : "GSTIN is required when GST is enabled"
+    : null;
+  const effectiveGstError = gstError ?? gstValidationError;
+  const saveBlockedReason =
+    companyNameError ||
+    billingAddressError ||
+    effectiveGstError ||
+    businessPhoneError ||
+    altContactError ||
+    emailError ||
+    panError ||
+    ifscError ||
+    bankAccountError ||
+    websiteError;
+  const hasValidationErrors = Boolean(saveBlockedReason);
 
   useEffect(() => {
     if (!logoObjectKey) {
@@ -243,10 +320,16 @@ export function CompanyProfileScreen({ navigation }: Props) {
     },
     onError: (e: Error) => showAlert("Error", e.message ?? "Failed to save"),
   });
+  const isSaveDisabled = updateProfile.isPending || hasValidationErrors;
 
   const handleSave = () => {
+    if (saveBlockedReason) {
+      showAlert("Please fix details", saveBlockedReason);
+      return;
+    }
+
     if (gstEnabled) {
-      const normalized = gstin.trim().toUpperCase();
+      const normalized = normalizedGstin;
       const err = getGstinValidationError(normalized);
       if (err) {
         setGstError(err);
@@ -262,21 +345,21 @@ export function CompanyProfileScreen({ navigation }: Props) {
         name: companyName || undefined,
         legalName: companyName || undefined,
         tradeName: tradeName || undefined,
-        gstin: gstEnabled ? gstin || undefined : undefined,
+        gstin: gstEnabled ? normalizedGstin || undefined : undefined,
         settings: {
-          phone: phone || undefined,
-          email: email || undefined,
+          phone: phoneDigits || undefined,
+          email: emailTrimmed || undefined,
           billingAddress: billingAddress || undefined,
           shippingAddress: shippingAddress || undefined,
           address: billingAddress || undefined,
           businessType: businessType || undefined,
-          pan: pan || undefined,
-          altContact: altContact || undefined,
-          website: website || undefined,
+          pan: panUpper || undefined,
+          altContact: altContactDigits || undefined,
+          website: normalizedWebsite || undefined,
           bankAccountHolder: bankAccountHolder || undefined,
           bankName: bankName || undefined,
           bankAccountNo: bankAccountNo || undefined,
-          bankIfsc: bankIfsc || undefined,
+          bankIfsc: bankIfscUpper || undefined,
         },
       },
     });
@@ -339,13 +422,17 @@ export function CompanyProfileScreen({ navigation }: Props) {
           <Text className={TYPO.sectionTitle}>Company Details</Text>
           <TouchableOpacity
             onPress={handleSave}
-            disabled={updateProfile.isPending}
-            className="bg-primary px-4 py-2 rounded-lg"
+            disabled={isSaveDisabled}
+            className={`px-4 py-2 rounded-lg ${
+              isSaveDisabled ? "bg-slate-300" : "bg-primary"
+            }`}
           >
             {updateProfile.isPending ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Text className="font-semibold text-white">Save</Text>
+              <Text className={`font-semibold ${isSaveDisabled ? "text-slate-500" : "text-white"}`}>
+                Save
+              </Text>
             )}
           </TouchableOpacity>
         </View>
@@ -387,9 +474,14 @@ export function CompanyProfileScreen({ navigation }: Props) {
             value={companyName}
             onChangeText={setCompanyName}
             placeholder="Enter business name"
-            className={`${INPUT} mb-4`}
+            className={`${INPUT} ${companyNameError ? "border-red-400" : ""} mb-1`}
             placeholderTextColor="#94a3b8"
           />
+          {companyNameError ? (
+            <Text className="text-xs text-red-600 mb-3">{companyNameError}</Text>
+          ) : (
+            <View className="mb-4" />
+          )}
 
           {/* Trade or Brand name */}
           <Text className={`${LABEL} mb-2`}>Trade / Brand Name</Text>
@@ -436,8 +528,8 @@ export function CompanyProfileScreen({ navigation }: Props) {
                   <Text className={TYPO.micro}>Fetch</Text>
                 </TouchableOpacity>
               </View>
-              {gstError ? (
-                <Text className="text-xs text-red-600 -mt-2 mb-4">{gstError}</Text>
+              {effectiveGstError ? (
+                <Text className="text-xs text-red-600 -mt-2 mb-4">{effectiveGstError}</Text>
               ) : gstStateHint && gstPanHint ? (
                 <Text className="text-xs text-emerald-700 -mt-2 mb-4">
                   State: {gstStateHint} | PAN: {gstPanHint}
@@ -452,19 +544,29 @@ export function CompanyProfileScreen({ navigation }: Props) {
             value={phone}
             onChangeText={setPhone}
             placeholder="Phone number"
-            className={`${INPUT} mb-4`}
+            className={`${INPUT} ${businessPhoneError ? "border-red-400" : ""} mb-1`}
             placeholderTextColor="#94a3b8"
             keyboardType="phone-pad"
           />
+          {businessPhoneError ? (
+            <Text className="text-xs text-red-600 mb-3">{businessPhoneError}</Text>
+          ) : (
+            <View className="mb-4" />
+          )}
           <Text className={`${LABEL} mb-2`}>Business Email</Text>
           <TextInput
             value={email}
             onChangeText={setEmail}
             placeholder="Email"
-            className={`${INPUT} mb-4`}
+            className={`${INPUT} ${emailError ? "border-red-400" : ""} mb-1`}
             placeholderTextColor="#94a3b8"
             keyboardType="email-address"
           />
+          {emailError ? (
+            <Text className="text-xs text-red-600 mb-3">{emailError}</Text>
+          ) : (
+            <View className="mb-4" />
+          )}
 
           {/* Billing Address */}
           <View className="flex-row items-center justify-between mb-2">
@@ -490,11 +592,16 @@ export function CompanyProfileScreen({ navigation }: Props) {
             value={billingAddress}
             onChangeText={setBillingAddress}
             placeholder="Full billing address"
-            className={`${INPUT} mb-4`}
+            className={`${INPUT} ${billingAddressError ? "border-red-400" : ""} mb-1`}
             placeholderTextColor="#94a3b8"
             multiline
             numberOfLines={3}
           />
+          {billingAddressError ? (
+            <Text className="text-xs text-red-600 mb-3">{billingAddressError}</Text>
+          ) : (
+            <View className="mb-4" />
+          )}
 
           {/* Shipping Address */}
           <Text className={`${LABEL} mb-2`}>Shipping Address</Text>
@@ -530,20 +637,30 @@ export function CompanyProfileScreen({ navigation }: Props) {
             value={bankAccountNo}
             onChangeText={setBankAccountNo}
             placeholder="Bank account number"
-            className={`${INPUT} mb-4`}
+            className={`${INPUT} ${bankAccountError ? "border-red-400" : ""} mb-1`}
             placeholderTextColor="#94a3b8"
             keyboardType="numeric"
           />
+          {bankAccountError ? (
+            <Text className="text-xs text-red-600 mb-3">{bankAccountError}</Text>
+          ) : (
+            <View className="mb-4" />
+          )}
           <Text className={`${LABEL} mb-2`}>IFSC (Branch)</Text>
           <TextInput
             value={bankIfsc}
             onChangeText={(t) => setBankIfsc(t.toUpperCase())}
             placeholder="e.g. SBIN0001234"
-            className={`${INPUT} mb-4`}
+            className={`${INPUT} ${ifscError ? "border-red-400" : ""} mb-1`}
             placeholderTextColor="#94a3b8"
             autoCapitalize="characters"
             maxLength={11}
           />
+          {ifscError ? (
+            <Text className="text-xs text-red-600 mb-3">{ifscError}</Text>
+          ) : (
+            <View className="mb-4" />
+          )}
 
           {/* Business Type */}
           <Text className={`${LABEL} mb-2`}>Business Type</Text>
@@ -634,30 +751,45 @@ export function CompanyProfileScreen({ navigation }: Props) {
               <Text className={`${LABEL} mb-2`}>PAN</Text>
               <TextInput
                 value={pan}
-                onChangeText={setPan}
+                onChangeText={(v) => setPan(v.toUpperCase())}
                 placeholder="10-char PAN"
-                className={`${INPUT} mb-4`}
+                className={`${INPUT} ${panError ? "border-red-400" : ""} mb-1`}
                 placeholderTextColor="#94a3b8"
                 maxLength={10}
               />
+              {panError ? (
+                <Text className="text-xs text-red-600 mb-3">{panError}</Text>
+              ) : (
+                <View className="mb-4" />
+              )}
               <Text className={`${LABEL} mb-2`}>Alternate Contact</Text>
               <TextInput
                 value={altContact}
                 onChangeText={setAltContact}
                 placeholder="Alternate phone"
-                className={`${INPUT} mb-4`}
+                className={`${INPUT} ${altContactError ? "border-red-400" : ""} mb-1`}
                 placeholderTextColor="#94a3b8"
                 keyboardType="phone-pad"
               />
+              {altContactError ? (
+                <Text className="text-xs text-red-600 mb-3">{altContactError}</Text>
+              ) : (
+                <View className="mb-4" />
+              )}
               <Text className={`${LABEL} mb-2`}>Website</Text>
               <TextInput
                 value={website}
                 onChangeText={setWebsite}
                 placeholder="https://..."
-                className={`${INPUT} mb-4`}
+                className={`${INPUT} ${websiteError ? "border-red-400" : ""} mb-1`}
                 placeholderTextColor="#94a3b8"
                 keyboardType="url"
               />
+              {websiteError ? (
+                <Text className="text-xs text-red-600 mb-3">{websiteError}</Text>
+              ) : (
+                <View className="mb-4" />
+              )}
             </>
           )}
         </ScrollView>
