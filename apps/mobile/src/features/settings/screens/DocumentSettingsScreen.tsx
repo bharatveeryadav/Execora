@@ -11,6 +11,7 @@ import {
   TextInput,
   Switch,
   Alert,
+  Share,
   Modal,
   Pressable,
 } from "react-native";
@@ -227,6 +228,42 @@ export function DocumentSettingsScreen({ navigation }: Props) {
     showAlert("Saved", "Document settings updated.");
   };
 
+  const handleExportSettings = useCallback(async () => {
+    try {
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        template: invoiceTemplate,
+        settings,
+      };
+      await Share.share({
+        title: "Execora Document Settings",
+        message: JSON.stringify(payload, null, 2),
+      });
+    } catch {
+      showAlert("Export failed", "Could not export document settings.");
+    }
+  }, [invoiceTemplate, settings]);
+
+  const handleResetDefaults = useCallback(() => {
+    Alert.alert(
+      "Reset document settings?",
+      "This will restore defaults for template preferences and billing defaults.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Reset",
+          style: "destructive",
+          onPress: () => {
+            storage.set(DOC_SETTINGS_KEY, JSON.stringify(DEFAULT_SETTINGS));
+            setHasChanges(false);
+            save(DEFAULT_SETTINGS);
+            showAlert("Reset complete", "Document settings restored to defaults.");
+          },
+        },
+      ],
+    );
+  }, [save]);
+
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
       <ScrollView
@@ -376,16 +413,12 @@ export function DocumentSettingsScreen({ navigation }: Props) {
             />
           </View>
           <TouchableOpacity
-            onPress={() =>
-              (navigation as any).navigate("ComingSoon", {
-                title: "Export Settings",
-              })
-            }
+            onPress={handleExportSettings}
             className="px-4 py-4 border-b border-slate-100"
           >
             <Text className="font-medium text-slate-800">Export Settings</Text>
             <Text className="text-sm text-slate-500 mt-0.5">
-              Configure export related preferences
+              Share your current document settings as JSON
             </Text>
             <View className="absolute right-4 top-4">
               <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
@@ -461,6 +494,12 @@ export function DocumentSettingsScreen({ navigation }: Props) {
                 </Text>
               </Text>
             </View>
+            <TouchableOpacity
+              onPress={handleResetDefaults}
+              className="mt-3 px-3 py-2 rounded-lg border border-red-200 bg-red-50"
+            >
+              <Text className="text-xs font-semibold text-red-700">Reset to defaults</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
