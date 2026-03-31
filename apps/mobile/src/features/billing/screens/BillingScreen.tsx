@@ -2,7 +2,7 @@
  * BillingScreen — React Native port of ClassicBilling.tsx
  *
  * Key differences from web:
- *  • View / Text / TextInput instead of div / span / input
+ *  • View / Text / InputField instead of div / span / input
  *  • Switch from react-native (not shadcn)
  *  • FlatList for product suggestions (virtualized, performant on Android)
  *  • KeyboardAvoidingView so sticky footer stays above soft keyboard
@@ -21,8 +21,6 @@ import React, {
 import {
   View,
   Text,
-  TextInput,
-  TouchableOpacity,
   ScrollView,
   FlatList,
   Switch,
@@ -34,6 +32,23 @@ import {
   Alert,
   Image,
 } from "react-native";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionHeader,
+  AccordionItem,
+  AccordionTitleText,
+  AccordionTrigger,
+  Button,
+  ButtonText,
+  Card,
+  FormControl,
+  FormControlLabel,
+  FormControlLabelText,
+  Input,
+  InputField,
+  Spinner,
+} from "@gluestack-ui/themed";
 import { showAlert } from "../../../shared/lib/alerts";
 import {
   SafeAreaView,
@@ -553,12 +568,13 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
     (navigation as any).setOptions({
       title: screenTitle,
       headerRight: () => (
-        <TouchableOpacity
+        <Button
           onPress={() =>
             (navigation as any).getParent()?.navigate("DocumentSettings")
           }
-          className="p-2 -m-2"
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          variant="link"
+          action="secondary"
+          style={{ width: 44, height: 44, paddingHorizontal: 0 }}
           accessibilityLabel="Document Settings"
         >
           {logoDataUrl ? (
@@ -570,7 +586,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
           ) : (
             <Ionicons name="document-text-outline" size={24} color="#0f172a" />
           )}
-        </TouchableOpacity>
+        </Button>
       ),
     });
   }, [navigation, logoDataUrl, screenTitle]);
@@ -1051,115 +1067,151 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                   <Text className="text-amber-700 text-xs font-semibold flex-1">
                     ↺ Draft restored from last session
                   </Text>
-                  <TouchableOpacity onPress={discardDraft} className="ml-3">
-                    <Text className="text-amber-600 text-xs font-bold underline">
+                  <Button
+                    onPress={discardDraft}
+                    variant="link"
+                    action="primary"
+                    className="ml-3"
+                    style={{ minHeight: 28, paddingHorizontal: 0 }}
+                  >
+                    <ButtonText className="text-amber-600 text-xs font-bold underline">
                       Discard
-                    </Text>
-                  </TouchableOpacity>
+                    </ButtonText>
+                  </Button>
                 </View>
               )}
 
               {/* ── Billing setup (collapsible) ───────────────────────────── */}
-              <TouchableOpacity
-                onPress={() => toggleBillingSetup(!billingSetupExpanded)}
-                activeOpacity={0.7}
-                className="rounded-xl border border-slate-200 bg-white overflow-hidden mb-2"
+              <Accordion
+                type="single"
+                isCollapsible
+                value={billingSetupExpanded ? ["billing-setup"] : []}
+                onValueChange={(value) =>
+                  toggleBillingSetup(value.includes("billing-setup"))
+                }
+                className="mb-2"
               >
-                <View className="flex-row items-center justify-between px-3 py-2.5">
-                  <View className="flex-row items-center gap-1.5">
-                    <Ionicons
-                      name="settings-outline"
-                      size={14}
-                      color="#64748b"
-                    />
-                    <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      Billing setup
-                    </Text>
-                  </View>
-                  <Text
-                    className="text-[11px] text-slate-500 truncate max-w-[45%]"
-                    numberOfLines={1}
-                  >
-                    {shopName || supplierGstin
-                      ? `${shopName}${supplierGstin ? ` · ${supplierGstin}` : ""}`
-                      : "Configure in Settings"}
-                  </Text>
-                  <Ionicons
-                    name={billingSetupExpanded ? "chevron-up" : "chevron-down"}
-                    size={16}
-                    color="#94a3b8"
-                  />
-                </View>
-                {billingSetupExpanded && (
-                  <View className="border-t border-slate-100 px-3 py-3 gap-3">
-                    <View className="flex-row items-center justify-between">
-                      <Text className="text-sm text-slate-800">
-                        Composition scheme
-                      </Text>
-                      <Switch
-                        value={compositionScheme}
-                        onValueChange={handleCompositionSchemeChange}
-                        trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
-                        thumbColor={compositionScheme ? "#e67e22" : "#f4f4f5"}
-                      />
+                <AccordionItem
+                  value="billing-setup"
+                  className="rounded-xl border border-slate-200 bg-white overflow-hidden"
+                >
+                  <AccordionHeader>
+                    <AccordionTrigger className="px-3 py-2.5">
+                      {({ isExpanded }: { isExpanded?: boolean }) => (
+                        <View className="flex-row items-center justify-between w-full">
+                          <View className="flex-row items-center gap-1.5">
+                            <Ionicons
+                              name="settings-outline"
+                              size={14}
+                              color="#64748b"
+                            />
+                            <AccordionTitleText className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                              Billing setup
+                            </AccordionTitleText>
+                          </View>
+                          <Text
+                            className="text-[11px] text-slate-500 truncate max-w-[45%]"
+                            numberOfLines={1}
+                          >
+                            {shopName || supplierGstin
+                              ? `${shopName}${supplierGstin ? ` · ${supplierGstin}` : ""}`
+                              : "Configure in Settings"}
+                          </Text>
+                          <Ionicons
+                            name={isExpanded ? "chevron-up" : "chevron-down"}
+                            size={16}
+                            color="#94a3b8"
+                          />
+                        </View>
+                      )}
+                    </AccordionTrigger>
+                  </AccordionHeader>
+                  <AccordionContent className="border-t border-slate-100 px-3 py-3">
+                    <View className="gap-3">
+                      <View className="flex-row items-center justify-between">
+                        <Text className="text-sm text-slate-800">
+                          Composition scheme
+                        </Text>
+                        <Switch
+                          value={compositionScheme}
+                          onValueChange={handleCompositionSchemeChange}
+                          trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
+                          thumbColor={compositionScheme ? "#e67e22" : "#f4f4f5"}
+                        />
+                      </View>
+                      <View className="flex-row items-center justify-between">
+                        <Text className="text-sm text-slate-800">
+                          Round off total
+                        </Text>
+                        <Switch
+                          value={roundOffEnabled}
+                          onValueChange={handleRoundOffChange}
+                          trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
+                          thumbColor={roundOffEnabled ? "#e67e22" : "#f4f4f5"}
+                        />
+                      </View>
+                      <Pressable
+                        onPress={handleNavigateSettings}
+                        className="flex-row items-center gap-2 py-2"
+                        accessibilityRole="button"
+                        accessibilityLabel="Open billing settings"
+                      >
+                        <Ionicons
+                          name="settings-outline"
+                          size={16}
+                          color="#e67e22"
+                        />
+                        <Text className="text-sm font-medium text-primary">
+                          Billing settings (GSTIN, address, bank…)
+                        </Text>
+                      </Pressable>
                     </View>
-                    <View className="flex-row items-center justify-between">
-                      <Text className="text-sm text-slate-800">
-                        Round off total
-                      </Text>
-                      <Switch
-                        value={roundOffEnabled}
-                        onValueChange={handleRoundOffChange}
-                        trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
-                        thumbColor={roundOffEnabled ? "#e67e22" : "#f4f4f5"}
-                      />
-                    </View>
-                    <TouchableOpacity
-                      onPress={handleNavigateSettings}
-                      className="flex-row items-center gap-2 py-2"
-                    >
-                      <Ionicons
-                        name="settings-outline"
-                        size={16}
-                        color="#e67e22"
-                      />
-                      <Text className="text-sm font-medium text-primary">
-                        Billing settings (GSTIN, address, bank…)
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </TouchableOpacity>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
 
               {/* ── Invoice Style (collapsible) ───────────────────────────── */}
-              <TouchableOpacity
-                onPress={() => toggleInvoiceStyle(!invoiceStyleExpanded)}
-                activeOpacity={0.7}
-                className="rounded-xl border border-slate-200 bg-white overflow-hidden mb-2"
+              <Accordion
+                type="single"
+                isCollapsible
+                value={invoiceStyleExpanded ? ["invoice-style"] : []}
+                onValueChange={(value) =>
+                  toggleInvoiceStyle(value.includes("invoice-style"))
+                }
+                className="mb-2"
               >
-                <View className="flex-row items-center justify-between px-3 py-2.5">
-                  <View className="flex-row items-center gap-1.5">
-                    <Ionicons
-                      name="document-text-outline"
-                      size={14}
-                      color="#64748b"
-                    />
-                    <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      My Store Invoice Style
-                    </Text>
-                  </View>
-                  <Text className="text-[11px] text-slate-500 truncate max-w-[45%]">
-                    {TEMPLATES.find((t) => t.id === invoiceTemplate)?.label ??
-                      "Classic"}
-                  </Text>
-                  <Ionicons
-                    name={invoiceStyleExpanded ? "chevron-up" : "chevron-down"}
-                    size={16}
-                    color="#94a3b8"
-                  />
-                </View>
-                {invoiceStyleExpanded && (
-                  <View className="border-t border-slate-100 px-3 py-3">
+                <AccordionItem
+                  value="invoice-style"
+                  className="rounded-xl border border-slate-200 bg-white overflow-hidden"
+                >
+                  <AccordionHeader>
+                    <AccordionTrigger className="px-3 py-2.5">
+                      {({ isExpanded }: { isExpanded?: boolean }) => (
+                        <View className="flex-row items-center justify-between w-full">
+                          <View className="flex-row items-center gap-1.5">
+                            <Ionicons
+                              name="document-text-outline"
+                              size={14}
+                              color="#64748b"
+                            />
+                            <AccordionTitleText className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                              My Store Invoice Style
+                            </AccordionTitleText>
+                          </View>
+                          <Text className="text-[11px] text-slate-500 truncate max-w-[45%]">
+                            {TEMPLATES.find((t) => t.id === invoiceTemplate)
+                              ?.label ?? "Classic"}
+                          </Text>
+                          <Ionicons
+                            name={isExpanded ? "chevron-up" : "chevron-down"}
+                            size={16}
+                            color="#94a3b8"
+                          />
+                        </View>
+                      )}
+                    </AccordionTrigger>
+                  </AccordionHeader>
+                  <AccordionContent className="border-t border-slate-100 px-3 py-3">
                     <Text className="text-[11px] text-slate-500 mb-2">
                       Tap to change — applies to all bills
                     </Text>
@@ -1179,12 +1231,12 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                         ))}
                       </View>
                     </ScrollView>
-                  </View>
-                )}
-              </TouchableOpacity>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
 
               {/* ── Invoice Header Bar ────────────────────────────────── */}
-              <View className="mb-3">
+              <Card className="mb-3 p-0 border border-slate-200 bg-white">
                 <InvoiceHeaderBar
                   prefix={invoicePrefix}
                   counter={draftInvoiceCounter}
@@ -1193,7 +1245,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                   dueDate={computedDueDate}
                   onEdit={handleInvoiceBarEdit}
                 />
-              </View>
+              </Card>
 
               {/* ── Customer ─────────────────────────────────────────────── */}
               <CustomerSection
@@ -1249,7 +1301,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
               />
 
               {/* ── GST ──────────────────────────────────────────────────── */}
-              <View className="flex-row items-center justify-between rounded-xl border border-slate-200 px-4 py-3 mb-2">
+              <Card className="mb-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
                 <View>
                   <Text className="text-sm font-semibold text-slate-800">
                     Include GST
@@ -1264,16 +1316,17 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                   trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
                   thumbColor={withGst ? "#e67e22" : "#f4f4f5"}
                 />
-              </View>
+              </Card>
 
               {/* ── Discount ─────────────────────────────────────────────── */}
-              <View className="flex-row gap-3 mb-2">
-                <View className="flex-1">
+              <Card className="mb-3 rounded-2xl border border-slate-200 bg-white p-4">
+                <View className="flex-row gap-3">
+                  <View className="flex-1">
                   <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                     Bill Disc %
                   </Text>
-                  <View className="flex-row items-center border border-slate-200 rounded-xl px-3 bg-white">
-                    <TextInput
+                  <Input className="flex-row items-center border border-slate-200 rounded-xl px-3 bg-white">
+                    <InputField
                       value={discountPct}
                       onChangeText={(v) => {
                         setDiscountPct(v);
@@ -1285,15 +1338,15 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                       className="flex-1 h-12 text-base text-slate-800"
                     />
                     <Text className="text-slate-400 text-sm">%</Text>
+                  </Input>
                   </View>
-                </View>
-                <View className="flex-1">
+                  <View className="flex-1">
                   <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                     Flat Disc ₹
                   </Text>
-                  <View className="flex-row items-center border border-slate-200 rounded-xl px-3 bg-white">
+                  <Input className="flex-row items-center border border-slate-200 rounded-xl px-3 bg-white">
                     <Text className="text-slate-400 text-sm mr-1">₹</Text>
-                    <TextInput
+                    <InputField
                       value={discountFlat}
                       onChangeText={(v) => {
                         setDiscountFlat(v);
@@ -1304,9 +1357,10 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                       placeholderTextColor="#94a3b8"
                       className="flex-1 h-12 text-base text-slate-800"
                     />
+                  </Input>
                   </View>
                 </View>
-              </View>
+              </Card>
 
               {/* ── Totals Card ───────────────────────────────────────────── */}
               {validItemCount > 0 && (
@@ -1391,10 +1445,20 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                   <>
                     <View className="flex-row gap-2 mb-2">
                       {PAY_MODES.map(({ id, label }) => (
-                        <TouchableOpacity
+                        <Button
                           key={id}
                           onPress={() => setPaymentMode(id)}
-                          className={`flex-1 items-center justify-center rounded-xl border-2 py-3 ${paymentMode === id ? "border-primary bg-primary/10" : "border-slate-200"}`}
+                          variant="outline"
+                          action="secondary"
+                          style={{
+                            flex: 1,
+                            borderRadius: 12,
+                            borderWidth: 2,
+                            borderColor: paymentMode === id ? "#e67e22" : "#e2e8f0",
+                            backgroundColor:
+                              paymentMode === id ? "rgba(230, 126, 34, 0.1)" : "#fff",
+                            minHeight: 56,
+                          }}
                         >
                           <Ionicons
                             name={PAY_MODE_ICONS[id]}
@@ -1406,14 +1470,14 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                           >
                             {label}
                           </Text>
-                        </TouchableOpacity>
+                        </Button>
                       ))}
                     </View>
                     {paymentMode !== "credit" && (
                       <View className="flex-row items-center gap-2">
-                        <View className="flex-row flex-1 items-center border border-slate-200 rounded-xl px-3 bg-white">
+                        <Input className="flex-row flex-1 items-center border border-slate-200 rounded-xl px-3 bg-white">
                           <Text className="text-slate-400 mr-1">₹</Text>
-                          <TextInput
+                          <InputField
                             value={paymentAmount}
                             onChangeText={setPaymentAmount}
                             keyboardType="decimal-pad"
@@ -1421,15 +1485,16 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                             placeholderTextColor="#94a3b8"
                             className="flex-1 h-12 text-base text-slate-800"
                           />
-                        </View>
-                        <TouchableOpacity
+                        </Input>
+                        <Button
                           onPress={() => setPaymentAmount(String(finalTotal))}
+                          variant="outline"
+                          action="secondary"
                           className="border border-slate-200 rounded-xl px-4 h-12 items-center justify-center"
+                          style={{ borderRadius: 12, minHeight: 48 }}
                         >
-                          <Text className="text-sm font-semibold text-slate-700">
-                            Full
-                          </Text>
-                        </TouchableOpacity>
+                          <ButtonText>Full</ButtonText>
+                        </Button>
                       </View>
                     )}
                     {paymentMode === "credit" && (
@@ -1483,22 +1548,34 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                       >
                         <View className="flex-row gap-1 mr-2">
                           {PAY_MODES.map(({ id }) => (
-                            <TouchableOpacity
+                            <Button
                               key={id}
                               onPress={() => updateSplit(sp.id, { mode: id })}
-                              className={`w-9 h-9 items-center justify-center rounded-lg border ${sp.mode === id ? "border-primary bg-primary/10" : "border-transparent"}`}
+                              variant="outline"
+                              action="secondary"
+                              style={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: 8,
+                                borderWidth: 1,
+                                borderColor: sp.mode === id ? "#e67e22" : "transparent",
+                                backgroundColor:
+                                  sp.mode === id ? "rgba(230, 126, 34, 0.1)" : "transparent",
+                                paddingHorizontal: 0,
+                                paddingVertical: 0,
+                              }}
                             >
                               <Ionicons
                                 name={PAY_MODE_ICONS[id]}
                                 size={22}
                                 color={sp.mode === id ? "#e67e22" : "#64748b"}
                               />
-                            </TouchableOpacity>
+                            </Button>
                           ))}
                         </View>
-                        <View className="flex-row flex-1 items-center border border-slate-200 rounded-xl px-2 bg-white">
+                        <Input className="flex-row flex-1 items-center border border-slate-200 rounded-xl px-2 bg-white">
                           <Text className="text-slate-400 text-xs mr-1">₹</Text>
-                          <TextInput
+                          <InputField
                             value={sp.amount}
                             onChangeText={(v) =>
                               updateSplit(sp.id, { amount: v })
@@ -1508,13 +1585,13 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                             placeholderTextColor="#94a3b8"
                             className="flex-1 h-10 text-sm text-slate-800"
                           />
-                        </View>
+                        </Input>
                         {idx === splits.length - 1 &&
                           finalTotal -
                             splitTotal +
                             (parseFloat(sp.amount) || 0) >
                             0.001 && (
-                            <TouchableOpacity
+                            <Button
                               onPress={() => {
                                 const rest =
                                   finalTotal -
@@ -1530,9 +1607,12 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                                   ),
                                 });
                               }}
+                              variant="outline"
+                              action="primary"
                               className="rounded-lg ml-2 px-2 py-1.5 bg-primary/10"
+                              style={{ minHeight: 36, borderRadius: 8 }}
                             >
-                              <Text className="text-xs font-semibold text-primary">
+                              <ButtonText className="text-xs font-semibold text-primary">
                                 Fill ₹
                                 {inr(
                                   finalTotal -
@@ -1544,19 +1624,23 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                                         0,
                                       ),
                                 )}
-                              </Text>
-                            </TouchableOpacity>
+                              </ButtonText>
+                            </Button>
                           )}
-                        <TouchableOpacity
+                        <Button
                           onPress={() => removeSplit(sp.id)}
-                          className="ml-2 w-9 h-9 items-center justify-center"
+                          variant="link"
+                          action="negative"
+                          className="ml-2 items-center justify-center"
+                          style={{ width: 44, height: 44, paddingHorizontal: 0 }}
+                          accessibilityLabel="Remove split payment row"
                         >
-                          <Text className="text-red-400 text-lg">×</Text>
-                        </TouchableOpacity>
+                          <ButtonText className="text-red-400 text-lg">×</ButtonText>
+                        </Button>
                       </View>
                     ))}
                     {splits.length < 4 && (
-                      <TouchableOpacity
+                      <Button
                         onPress={() => {
                           const usedModes = splits.map((s) => s.mode);
                           const next =
@@ -1568,54 +1652,71 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                           if (next !== "cash")
                             updateSplit(nextSplitId, { mode: next });
                         }}
-                        className="flex-row items-center px-3 py-3"
+                        variant="link"
+                        action="primary"
+                        className="flex-row items-start px-3 py-3"
+                        style={{ justifyContent: "flex-start", minHeight: 44 }}
                       >
-                        <Text className="text-primary text-sm font-semibold">
+                        <ButtonText className="text-primary text-sm font-semibold">
                           ＋ Add payment method
-                        </Text>
-                      </TouchableOpacity>
+                        </ButtonText>
+                      </Button>
                     )}
                   </View>
                 )}
               </View>
 
               {/* ── Notes + Due Date ──────────────────────────────────────── */}
-              <View className="mb-4">
-                <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                  📝 Notes / Due Date
-                </Text>
-                <TextInput
-                  value={notes}
-                  onChangeText={setNotes}
-                  placeholder="Special instructions, delivery address…"
-                  placeholderTextColor="#94a3b8"
-                  multiline
-                  numberOfLines={3}
-                  className="border border-slate-200 rounded-xl px-3 py-3 text-sm text-slate-800 bg-white min-h-[72px]"
-                  style={{ textAlignVertical: "top" }}
-                />
-                <View className="flex-row items-center border border-slate-200 rounded-xl px-3 py-2.5 mt-2 bg-white">
-                  <Text className="text-slate-500 mr-2 text-sm">
-                    📅 Due Date
-                  </Text>
-                  <TextInput
-                    value={dueDate}
-                    onChangeText={setDueDate}
-                    placeholder="DD/MM/YYYY or leave blank"
-                    placeholderTextColor="#94a3b8"
-                    keyboardType="numbers-and-punctuation"
-                    className="flex-1 text-sm text-slate-800 h-9"
-                  />
-                  {dueDate ? (
-                    <TouchableOpacity
-                      onPress={() => setDueDate("")}
-                      className="w-8 h-8 items-center justify-center"
-                    >
-                      <Text className="text-slate-400 text-lg">×</Text>
-                    </TouchableOpacity>
-                  ) : null}
-                </View>
-              </View>
+              <Card className="mb-4 rounded-2xl border border-slate-200 bg-white p-4">
+                <FormControl>
+                  <FormControlLabel className="mb-1.5">
+                    <FormControlLabelText className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      📝 Notes
+                    </FormControlLabelText>
+                  </FormControlLabel>
+                  <Input className="border border-slate-200 rounded-xl bg-white min-h-[84px] px-3 py-2">
+                    <InputField
+                      value={notes}
+                      onChangeText={setNotes}
+                      placeholder="Special instructions, delivery address…"
+                      placeholderTextColor="#94a3b8"
+                      multiline
+                      numberOfLines={3}
+                      className="text-sm text-slate-800"
+                      style={{ textAlignVertical: "top" }}
+                    />
+                  </Input>
+                </FormControl>
+                <FormControl className="mt-2">
+                  <FormControlLabel className="mb-1.5">
+                    <FormControlLabelText className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      📅 Due Date
+                    </FormControlLabelText>
+                  </FormControlLabel>
+                  <View className="flex-row items-center border border-slate-200 rounded-xl px-3 bg-white">
+                    <Input className="flex-1 border-0 p-0 bg-transparent">
+                      <InputField
+                        value={dueDate}
+                        onChangeText={setDueDate}
+                        placeholder="DD/MM/YYYY or leave blank"
+                        placeholderTextColor="#94a3b8"
+                        keyboardType="numbers-and-punctuation"
+                        className="text-sm text-slate-800 h-12"
+                      />
+                    </Input>
+                    {dueDate ? (
+                      <Pressable
+                        onPress={() => setDueDate("")}
+                        className="w-8 h-8 items-center justify-center"
+                        accessibilityRole="button"
+                        accessibilityLabel="Clear due date"
+                      >
+                        <Text className="text-slate-400 text-lg">×</Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                </FormControl>
+              </Card>
             </ScrollView>
           </View>
         </View>
@@ -1630,26 +1731,34 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
           zIndex: 50,
         }}
       >
-        <TouchableOpacity
+        <Button
           testID="create-invoice-fab"
           accessibilityLabel="Create Invoice"
           onPress={() => void handleSubmit()}
           disabled={validItemCount === 0 || isSubmitting}
-          className={`w-14 h-14 rounded-full items-center justify-center ${validItemCount > 0 && !isSubmitting ? "bg-primary" : "bg-slate-300"}`}
           style={{
+            width: 56,
+            height: 56,
+            borderRadius: 999,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor:
+              validItemCount > 0 && !isSubmitting ? "#e67e22" : "#cbd5e1",
             shadowColor: "#000",
             shadowOpacity: 0.2,
             shadowRadius: 6,
             shadowOffset: { width: 0, height: 3 },
             elevation: 6,
+            paddingHorizontal: 0,
+            paddingVertical: 0,
           }}
         >
           {isSubmitting ? (
-            <ActivityIndicator color="#fff" />
+            <Spinner color="$white" size="small" />
           ) : (
             <Ionicons name="add" size={26} color="#fff" />
           )}
-        </TouchableOpacity>
+        </Button>
       </View>
 
       {/* ── Preview Modal (with template switching) ────────────────────── */}
@@ -1668,12 +1777,15 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                 {TEMPLATES.find((t) => t.id === invoiceTemplate)?.label ??
                   "Classic"}
               </Text>
-              <TouchableOpacity
+              <Button
                 onPress={() => togglePreview(false)}
+                variant="link"
+                action="secondary"
                 className="p-2 -m-2"
+                style={{ minHeight: 36, paddingHorizontal: 0 }}
               >
                 <Ionicons name="close" size={24} color="#64748b" />
-              </TouchableOpacity>
+              </Button>
             </View>
             <ScrollView
               horizontal
@@ -1682,17 +1794,20 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
             >
               <View className="flex-row gap-2 px-4">
                 {TEMPLATES.map((t) => (
-                  <TouchableOpacity
+                  <Button
                     key={t.id}
                     onPress={() => handleTemplateChange(t.id)}
+                    variant="outline"
+                    action={invoiceTemplate === t.id ? "primary" : "secondary"}
                     className={`rounded-full border px-3 py-1.5 ${invoiceTemplate === t.id ? "border-primary bg-primary" : "border-slate-300"}`}
+                    style={{ minHeight: 34, borderRadius: 999 }}
                   >
-                    <Text
+                    <ButtonText
                       className={`text-xs font-medium ${invoiceTemplate === t.id ? "text-white" : "text-slate-600"}`}
                     >
                       {t.label}
-                    </Text>
-                  </TouchableOpacity>
+                    </ButtonText>
+                  </Button>
                 ))}
               </View>
             </ScrollView>
@@ -1807,72 +1922,84 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
             <Text className="text-xs font-semibold text-slate-500 uppercase mb-1">
               Invoice Prefix
             </Text>
-            <TextInput
-              value={invoicePrefix}
-              onChangeText={setInvoicePrefix}
-              placeholder="e.g. INV-, BOS-"
-              placeholderTextColor="#94a3b8"
-              maxLength={16}
-              className="border border-slate-200 rounded-xl px-3 h-12 text-base text-slate-800 mb-3"
-            />
+            <Input className="border border-slate-200 rounded-xl px-3 bg-white mb-3">
+              <InputField
+                value={invoicePrefix}
+                onChangeText={setInvoicePrefix}
+                placeholder="e.g. INV-, BOS-"
+                placeholderTextColor="#94a3b8"
+                maxLength={16}
+                className="h-12 text-base text-slate-800"
+              />
+            </Input>
             <Text className="text-xs font-semibold text-slate-500 uppercase mb-1">
               Document Date
             </Text>
-            <TextInput
-              value={documentDate}
-              onChangeText={setDocumentDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="#94a3b8"
-              className="border border-slate-200 rounded-xl px-3 h-12 text-base text-slate-800 mb-3"
-            />
+            <Input className="border border-slate-200 rounded-xl px-3 bg-white mb-3">
+              <InputField
+                value={documentDate}
+                onChangeText={setDocumentDate}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor="#94a3b8"
+                className="h-12 text-base text-slate-800"
+              />
+            </Input>
             <Text className="text-xs font-semibold text-slate-500 uppercase mb-2">
               Due Date (days)
             </Text>
             <View className="flex-row gap-2 mb-2">
               {DUE_DATE_PRESETS.map((d) => (
-                <TouchableOpacity
+                <Button
                   key={d}
                   onPress={() => setDueDateDays(d)}
+                  variant="outline"
+                  action={dueDateDays === d ? "primary" : "secondary"}
                   className={`flex-1 py-2.5 rounded-xl border items-center ${
                     dueDateDays === d
                       ? "border-primary bg-primary/10"
                       : "border-slate-200"
                   }`}
+                  style={{ minHeight: 40 }}
                 >
-                  <Text
+                  <ButtonText
                     className={`text-xs font-semibold ${
                       dueDateDays === d ? "text-primary" : "text-slate-600"
                     }`}
                   >
                     {d === 0 ? "No due" : `${d} days`}
-                  </Text>
-                </TouchableOpacity>
+                  </ButtonText>
+                </Button>
               ))}
-              <TouchableOpacity
+              <Button
                 onPress={() => setDueDateDays("custom")}
+                variant="outline"
+                action={dueDateDays === "custom" ? "primary" : "secondary"}
                 className={`flex-1 py-2.5 rounded-xl border items-center ${
                   dueDateDays === "custom"
                     ? "border-primary bg-primary/10"
                     : "border-slate-200"
                 }`}
+                style={{ minHeight: 40 }}
               >
-                <Text
+                <ButtonText
                   className={`text-xs font-semibold ${
                     dueDateDays === "custom" ? "text-primary" : "text-slate-600"
                   }`}
                 >
                   Custom
-                </Text>
-              </TouchableOpacity>
+                </ButtonText>
+              </Button>
             </View>
             {dueDateDays === "custom" && (
               <View className="flex-row items-center gap-2 mb-3">
-                <TextInput
-                  value={customDueDays}
-                  onChangeText={setCustomDueDays}
-                  keyboardType="number-pad"
-                  className="border border-slate-200 rounded-xl px-3 h-10 w-20 text-slate-800"
-                />
+                <Input className="border border-slate-200 rounded-xl px-2 bg-white w-20">
+                  <InputField
+                    value={customDueDays}
+                    onChangeText={setCustomDueDays}
+                    keyboardType="number-pad"
+                    className="h-10 text-slate-800"
+                  />
+                </Input>
                 <Text className="text-sm text-slate-500">days</Text>
               </View>
             )}
@@ -1880,9 +2007,12 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
               Document Title
             </Text>
             <View className="flex-row gap-4 mb-3">
-              <TouchableOpacity
+              <Button
                 onPress={() => setDocumentTitle("invoice")}
+                variant="link"
+                action="secondary"
                 className="flex-row items-center gap-2"
+                style={{ minHeight: 36, paddingHorizontal: 0 }}
               >
                 <View
                   className={`w-5 h-5 rounded-full border-2 ${
@@ -1891,11 +2021,14 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                       : "border-slate-300"
                   }`}
                 />
-                <Text className="text-sm text-slate-800">Invoice</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
+                <ButtonText className="text-sm text-slate-800">Invoice</ButtonText>
+              </Button>
+              <Button
                 onPress={() => setDocumentTitle("billOfSupply")}
+                variant="link"
+                action="secondary"
                 className="flex-row items-center gap-2"
+                style={{ minHeight: 36, paddingHorizontal: 0 }}
               >
                 <View
                   className={`w-5 h-5 rounded-full border-2 ${
@@ -1904,8 +2037,8 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                       : "border-slate-300"
                   }`}
                 />
-                <Text className="text-sm text-slate-800">Bill of Supply</Text>
-              </TouchableOpacity>
+                <ButtonText className="text-sm text-slate-800">Bill of Supply</ButtonText>
+              </Button>
             </View>
             <Text className="text-xs font-semibold text-slate-500 uppercase mb-1">
               Discount on (base)
@@ -1919,12 +2052,15 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                   { id: "total_amount" as const, label: "Total Amount" },
                 ] as const
               ).map(({ id, label }) => (
-                <TouchableOpacity
+                <Button
                   key={id}
                   onPress={() => setDiscountOnType(id)}
+                  variant="link"
+                  action="secondary"
                   className={`flex-row items-center px-3 py-3 border-b border-slate-100 last:border-0 ${
                     discountOnType === id ? "bg-primary/5" : ""
                   }`}
+                  style={{ justifyContent: "flex-start", minHeight: 44 }}
                 >
                   <View
                     className={`w-4 h-4 rounded border-2 mr-2 ${
@@ -1942,24 +2078,27 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                   >
                     {label}
                   </Text>
-                </TouchableOpacity>
+                </Button>
               ))}
             </View>
             <View className="flex-row gap-3">
-              <TouchableOpacity
+              <Button
                 onPress={() => toggleInvoiceBarEdit(false)}
+                variant="outline"
+                action="secondary"
                 className="flex-1 h-12 items-center justify-center border border-slate-200 rounded-xl"
+                style={{ borderRadius: 12 }}
               >
-                <Text className="text-sm font-semibold text-slate-600">
-                  Cancel
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
+                <ButtonText>Cancel</ButtonText>
+              </Button>
+              <Button
                 onPress={handleInvoiceBarSave}
+                action="primary"
                 className="flex-1 h-12 items-center justify-center bg-primary rounded-xl"
+                style={{ borderRadius: 12, backgroundColor: "#e67e22" }}
               >
-                <Text className="text-white font-bold text-sm">Save</Text>
-              </TouchableOpacity>
+                <ButtonText>Save</ButtonText>
+              </Button>
             </View>
           </ScrollView>
         </View>
@@ -2002,46 +2141,56 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
           <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
             Name *
           </Text>
-          <TextInput
-            value={newCustName}
-            onChangeText={setNewCustName}
-            placeholder="Customer name"
-            placeholderTextColor="#94a3b8"
-            autoFocus
-            className="border border-slate-200 rounded-xl px-3 h-12 text-base text-slate-800 mb-3"
-          />
+          <Input className="border border-slate-200 rounded-xl px-3 bg-white mb-3">
+            <InputField
+              value={newCustName}
+              onChangeText={setNewCustName}
+              placeholder="Customer name"
+              placeholderTextColor="#94a3b8"
+              autoFocus
+              className="h-12 text-base text-slate-800"
+            />
+          </Input>
           <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
             Phone (optional)
           </Text>
-          <TextInput
-            value={newCustPhone}
-            onChangeText={setNewCustPhone}
-            placeholder="10-digit mobile"
-            placeholderTextColor="#94a3b8"
-            keyboardType="phone-pad"
-            maxLength={15}
-            className="border border-slate-200 rounded-xl px-3 h-12 text-base text-slate-800 mb-4"
-          />
+          <Input className="border border-slate-200 rounded-xl px-3 bg-white mb-4">
+            <InputField
+              value={newCustPhone}
+              onChangeText={setNewCustPhone}
+              placeholder="10-digit mobile"
+              placeholderTextColor="#94a3b8"
+              keyboardType="phone-pad"
+              maxLength={15}
+              className="h-12 text-base text-slate-800"
+            />
+          </Input>
           <View className="flex-row gap-3">
-            <TouchableOpacity
+            <Button
               onPress={() => toggleNewCustModal(false)}
-              className="flex-1 h-12 items-center justify-center border border-slate-200 rounded-xl"
+              variant="outline"
+              action="secondary"
+              style={{ flex: 1, height: 48, borderRadius: 12 }}
             >
-              <Text className="text-sm font-semibold text-slate-600">
-                Cancel
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+              <ButtonText>Cancel</ButtonText>
+            </Button>
+            <Button
               onPress={() => void createCustomerInline.mutateAsync()}
               disabled={!newCustName.trim() || createCustomerInline.isPending}
-              className={`flex-1 h-12 items-center justify-center rounded-xl ${newCustName.trim() ? "bg-primary" : "bg-slate-300"}`}
+              action="primary"
+              style={{
+                flex: 1,
+                height: 48,
+                borderRadius: 12,
+                backgroundColor: newCustName.trim() ? "#e67e22" : "#cbd5e1",
+              }}
             >
               {createCustomerInline.isPending ? (
-                <ActivityIndicator color="#fff" />
+                <Spinner color="$white" size="small" />
               ) : (
-                <Text className="text-white font-bold text-sm">Save & Use</Text>
+                <ButtonText>Save & Use</ButtonText>
               )}
-            </TouchableOpacity>
+            </Button>
           </View>
         </View>
       </Modal>

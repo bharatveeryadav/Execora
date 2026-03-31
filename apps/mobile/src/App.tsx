@@ -45,6 +45,8 @@ import { storage } from "./lib/storage";
 import { SIZES } from "./lib/constants";
 import { MAX_FONT_SIZE_MULTIPLIER } from "./lib/typography";
 import { useModuleStore } from "./stores/moduleStore";
+import { GluestackUIProvider } from "@gluestack-ui/themed";
+import { config as gluestackConfig } from "@gluestack-ui/config";
 
 // Boot the API client once (token storage injected)
 bootApi();
@@ -321,12 +323,14 @@ const styles = StyleSheet.create({
 
 export default function App() {
   return (
-    <TypographyProvider>
-      <AppErrorBoundary>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      </AppErrorBoundary>
-    </TypographyProvider>
+    <GluestackUIProvider config={gluestackConfig}>
+      <TypographyProvider>
+        <AppErrorBoundary>
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </AppErrorBoundary>
+      </TypographyProvider>
+    </GluestackUIProvider>
   );
 }
