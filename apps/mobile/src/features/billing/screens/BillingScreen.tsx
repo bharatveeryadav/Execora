@@ -133,8 +133,10 @@ function readInvoiceBar(): Record<string, unknown> {
 function readDocumentSettings(): {
   invoicePrefix?: string;
   invoiceSuffix?: string;
+  nextInvoiceNumber?: number;
   defaultDueDays?: number;
   defaultNotes?: string;
+  termsAndConditions?: string;
 } {
   try {
     const raw = storage.getString(DOC_SETTINGS_KEY);
@@ -145,14 +147,31 @@ function readDocumentSettings(): {
         typeof parsed.invoicePrefix === "string" ? parsed.invoicePrefix : undefined,
       invoiceSuffix:
         typeof parsed.invoiceSuffix === "string" ? parsed.invoiceSuffix : undefined,
+      nextInvoiceNumber:
+        typeof parsed.nextInvoiceNumber === "number"
+          ? parsed.nextInvoiceNumber
+          : undefined,
       defaultDueDays:
         typeof parsed.defaultDueDays === "number" ? parsed.defaultDueDays : undefined,
       defaultNotes:
         typeof parsed.defaultNotes === "string" ? parsed.defaultNotes : undefined,
+      termsAndConditions:
+        typeof parsed.termsAndConditions === "string"
+          ? parsed.termsAndConditions
+          : undefined,
     };
   } catch {
     return {};
   }
+}
+
+function buildDefaultInvoiceNotes(settings: {
+  defaultNotes?: string;
+  termsAndConditions?: string;
+}) {
+  return [settings.defaultNotes?.trim(), settings.termsAndConditions?.trim()]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 function persistInvoiceBar(data: Record<string, unknown>) {
@@ -195,6 +214,9 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
     })(),
   );
   const documentSettingsRef = useRef(readDocumentSettings());
+  const defaultInvoiceNotes = buildDefaultInvoiceNotes(
+    documentSettingsRef.current,
+  );
   const {
     state: {
       items,
@@ -255,7 +277,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
     loadDraft,
   } = useInvoiceForm({
     roundOffEnabled: initialRoundOffRef.current,
-    notes: documentSettingsRef.current.defaultNotes ?? "",
+    notes: defaultInvoiceNotes,
   });
 
   // Success modal state (not part of form state)
@@ -338,6 +360,12 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
       "INV-",
   );
   const invoiceSuffix = documentSettingsRef.current.invoiceSuffix ?? "";
+  const nextInvoiceNumber = Math.max(
+    1,
+    Math.floor(documentSettingsRef.current.nextInvoiceNumber ?? 1),
+  );
+  const draftInvoiceCounter =
+    `${String(nextInvoiceNumber).padStart(4, "0")}${invoiceSuffix}`;
   const [documentDate, setDocumentDate] = useState(() => {
     const today = new Date().toISOString().slice(0, 10);
     return (readInvoiceBar().documentDate as string) ?? today;
@@ -854,16 +882,16 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
 
   const discardDraft = useCallback(() => {
     formReset();
-    setNotes(documentSettingsRef.current.defaultNotes ?? "");
+    setNotes(defaultInvoiceNotes);
     storage.delete(INVOICE_DRAFT_KEY);
-  }, [formReset, setNotes]);
+  }, [defaultInvoiceNotes, formReset, setNotes]);
 
   const resetForm = useCallback(() => {
     setSavedInvoice(null);
     formReset();
-    setNotes(documentSettingsRef.current.defaultNotes ?? "");
+    setNotes(defaultInvoiceNotes);
     storage.delete(INVOICE_DRAFT_KEY);
-  }, [formReset, setNotes]);
+  }, [defaultInvoiceNotes, formReset, setNotes]);
 
   const handlePrintReceipt = useCallback(async () => {
     if (!savedInvoice) return;
@@ -1137,7 +1165,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
               <View className="mb-3">
                 <InvoiceHeaderBar
                   prefix={invoicePrefix}
-                  counter={`DRAFT${invoiceSuffix}`}
+                  counter={draftInvoiceCounter}
                   documentType={documentType as any}
                   documentDate={documentDate}
                   dueDate={computedDueDate}
@@ -1682,7 +1710,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                 })()}
                 data={
                   {
-                    invoiceNo: `${invoicePrefix}DRAFT${invoiceSuffix}`,
+                    invoiceNo: `${invoicePrefix}${draftInvoiceCounter}`,
                     date: new Date(documentDate).toLocaleDateString("en-IN"),
                     shopName,
                     customerName: selectedCustomer?.name ?? "Walk-in Customer",

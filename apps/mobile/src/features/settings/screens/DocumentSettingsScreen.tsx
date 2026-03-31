@@ -63,8 +63,10 @@ export interface DocumentSettings {
   priceDecimals: number;
   invoicePrefix: string;
   invoiceSuffix: string;
+  nextInvoiceNumber: number;
   defaultDueDays: number;
   defaultNotes: string;
+  termsAndConditions: string;
   showItemHsn: boolean;
   showCustomerAddress: boolean;
   showPaymentMode: boolean;
@@ -79,8 +81,10 @@ const DEFAULT_SETTINGS: DocumentSettings = {
   priceDecimals: 2,
   invoicePrefix: "INV-",
   invoiceSuffix: "",
+  nextInvoiceNumber: 1,
   defaultDueDays: 15,
   defaultNotes: "Thank you for your business.",
+  termsAndConditions: "Goods once sold will not be taken back.",
   showItemHsn: true,
   showCustomerAddress: true,
   showPaymentMode: true,
@@ -449,6 +453,26 @@ export function DocumentSettingsScreen({ navigation }: Props) {
               className="border border-slate-200 rounded-xl px-3 py-3 text-sm text-slate-800 bg-slate-50 min-h-[92px]"
               accessibilityLabel="Default invoice notes"
             />
+            <Text className="text-xs font-semibold text-slate-500 mt-4 mb-1 uppercase tracking-wide">
+              Terms & Conditions
+            </Text>
+            <TextInput
+              value={settings.termsAndConditions}
+              onChangeText={(value) => {
+                save({ termsAndConditions: value });
+                setHasChanges(true);
+              }}
+              placeholder="Enter terms printed on invoice"
+              placeholderTextColor="#94a3b8"
+              multiline
+              textAlignVertical="top"
+              maxLength={500}
+              className="border border-slate-200 rounded-xl px-3 py-3 text-sm text-slate-800 bg-slate-50 min-h-[88px]"
+              accessibilityLabel="Invoice terms and conditions"
+            />
+            <Text className="text-[11px] text-slate-400 mt-1 text-right">
+              {settings.termsAndConditions.length}/500
+            </Text>
           </View>
           <TouchableOpacity
             onPress={handleExportSettings}
@@ -517,6 +541,25 @@ export function DocumentSettingsScreen({ navigation }: Props) {
                   accessibilityLabel="Invoice prefix"
                 />
               </View>
+              <View className="w-[120px]">
+                <Text className="text-xs font-semibold text-slate-500 mb-1">
+                  Next #
+                </Text>
+                <TextInput
+                  value={String(settings.nextInvoiceNumber)}
+                  onChangeText={(v) => {
+                    const digits = v.replace(/[^0-9]/g, "");
+                    const next = digits ? Math.max(1, parseInt(digits, 10)) : 1;
+                    save({ nextInvoiceNumber: next });
+                    setHasChanges(true);
+                  }}
+                  placeholder="1"
+                  keyboardType="number-pad"
+                  maxLength={9}
+                  className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 bg-slate-50"
+                  accessibilityLabel="Next invoice number"
+                />
+              </View>
               <View className="flex-1">
                 <Text className="text-xs font-semibold text-slate-500 mb-1">
                   Suffix
@@ -539,7 +582,11 @@ export function DocumentSettingsScreen({ navigation }: Props) {
               <Text className="text-xs text-slate-500">
                 Preview:{" "}
                 <Text className="font-semibold text-slate-700">
-                  {settings.invoicePrefix || ""}0001
+                  {settings.invoicePrefix || ""}
+                  {String(Math.max(1, settings.nextInvoiceNumber || 1)).padStart(
+                    4,
+                    "0",
+                  )}
                   {settings.invoiceSuffix || ""}
                 </Text>
               </Text>
