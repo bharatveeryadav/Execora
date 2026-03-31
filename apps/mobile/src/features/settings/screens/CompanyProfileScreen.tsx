@@ -25,6 +25,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
+import { getGstinValidationError } from "@execora/shared";
 import { authApi, authExtApi, getApiBaseUrl } from "../../../lib/api";
 import { tokenStorage } from "../../../lib/storage";
 import { TYPO } from "../../../lib/typography";
@@ -64,6 +65,46 @@ const LABEL = "text-sm font-medium text-slate-600";
 const INPUT =
   "border border-slate-200 rounded-xl px-4 py-3.5 text-base text-slate-800";
 
+const GST_STATE_CODES: Record<string, string> = {
+  "01": "Jammu and Kashmir",
+  "02": "Himachal Pradesh",
+  "03": "Punjab",
+  "04": "Chandigarh",
+  "05": "Uttarakhand",
+  "06": "Haryana",
+  "07": "Delhi",
+  "08": "Rajasthan",
+  "09": "Uttar Pradesh",
+  "10": "Bihar",
+  "11": "Sikkim",
+  "12": "Arunachal Pradesh",
+  "13": "Nagaland",
+  "14": "Manipur",
+  "15": "Mizoram",
+  "16": "Tripura",
+  "17": "Meghalaya",
+  "18": "Assam",
+  "19": "West Bengal",
+  "20": "Jharkhand",
+  "21": "Odisha",
+  "22": "Chhattisgarh",
+  "23": "Madhya Pradesh",
+  "24": "Gujarat",
+  "26": "Dadra and Nagar Haveli and Daman and Diu",
+  "27": "Maharashtra",
+  "28": "Andhra Pradesh",
+  "29": "Karnataka",
+  "30": "Goa",
+  "31": "Lakshadweep",
+  "32": "Kerala",
+  "33": "Tamil Nadu",
+  "34": "Puducherry",
+  "35": "Andaman and Nicobar Islands",
+  "36": "Telangana",
+  "37": "Andhra Pradesh (New)",
+  "38": "Ladakh",
+};
+
 type Props = NativeStackScreenProps<
   import("../../../navigation").MoreStackParams,
   "CompanyProfile"
@@ -99,6 +140,9 @@ export function CompanyProfileScreen({ navigation }: Props) {
   const [bankIfsc, setBankIfsc] = useState("");
   const [logoObjectKey, setLogoObjectKey] = useState<string | null>(null);
   const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
+  const [gstError, setGstError] = useState<string | null>(null);
+  const [gstStateHint, setGstStateHint] = useState<string | null>(null);
+  const [gstPanHint, setGstPanHint] = useState<string | null>(null);
   const [businessTypeModalOpen, setBusinessTypeModalOpen] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
 
@@ -201,6 +245,18 @@ export function CompanyProfileScreen({ navigation }: Props) {
   });
 
   const handleSave = () => {
+    if (gstEnabled) {
+      const normalized = gstin.trim().toUpperCase();
+      const err = getGstinValidationError(normalized);
+      if (err) {
+        setGstError(err);
+        showAlert("Invalid GSTIN", err);
+        return;
+      }
+      setGstin(normalized);
+      setGstError(null);
+    }
+
     updateProfile.mutate({
       tenant: {
         name: companyName || undefined,
@@ -227,6 +283,34 @@ export function CompanyProfileScreen({ navigation }: Props) {
   };
 
   const copyToShipping = () => setShippingAddress(billingAddress);
+  const handleFetchGstin = () => {
+    const normalized = gstin.trim().toUpperCase();
+    if (!normalized) {
+      setGstError("Enter GSTIN first");
+      setGstStateHint(null);
+      setGstPanHint(null);
+      return;
+    }
+
+    const err = getGstinValidationError(normalized);
+    if (err) {
+      setGstError(err);
+      setGstStateHint(null);
+      setGstPanHint(null);
+      return;
+    }
+
+    const stateCode = normalized.slice(0, 2);
+    const pan = normalized.slice(2, 12);
+    const stateName = GST_STATE_CODES[stateCode] ?? `State code ${stateCode}`;
+
+    setGstin(normalized);
+    setGstError(null);
+    setGstStateHint(stateName);
+    setGstPanHint(pan);
+    showAlert("GSTIN verified", `${stateName}\nPAN: ${pan}`);
+  };
+
   const shareAddress = () => {
     const text = billingAddress || companyName;
     if (text) Share.share({ message: text, title: "Business Address" });
@@ -333,16 +417,32 @@ export function CompanyProfileScreen({ navigation }: Props) {
               <View className="flex-row gap-2 mb-4">
                 <TextInput
                   value={gstin}
-                  onChangeText={setGstin}
+                  onChangeText={(value) => {
+                    setGstin(value.toUpperCase());
+                    setGstError(null);
+                    setGstStateHint(null);
+                    setGstPanHint(null);
+                  }}
                   placeholder="15-digit GSTIN"
-                  className={`flex-1 ${INPUT}`}
+                  className={`flex-1 ${INPUT} ${gstError ? "border-red-400" : ""}`}
                   placeholderTextColor="#94a3b8"
                   maxLength={15}
+                  autoCapitalize="characters"
                 />
-                <TouchableOpacity className="bg-slate-100 px-4 py-3 rounded-xl items-center justify-center">
+                <TouchableOpacity
+                  onPress={handleFetchGstin}
+                  className="bg-slate-100 px-4 py-3 rounded-xl items-center justify-center"
+                >
                   <Text className={TYPO.micro}>Fetch</Text>
                 </TouchableOpacity>
               </View>
+              {gstError ? (
+                <Text className="text-xs text-red-600 -mt-2 mb-4">{gstError}</Text>
+              ) : gstStateHint && gstPanHint ? (
+                <Text className="text-xs text-emerald-700 -mt-2 mb-4">
+                  State: {gstStateHint} | PAN: {gstPanHint}
+                </Text>
+              ) : null}
             </>
           )}
 
