@@ -57,6 +57,19 @@ export function MobileItemRow({
   const [debouncedQ, setDebouncedQ] = useState("");
   const [scanOpen, setScanOpen] = useState(false);
   const hasProduct = item.name.trim().length > 0;
+  const qtyNumber = Number.parseFloat(item.qty || "0") || 0;
+
+  const bumpQty = useCallback(
+    (delta: number) => {
+      const current = Number.parseFloat(item.qty || "0") || 0;
+      const next = Math.max(1, current + delta);
+      const normalized = Number.isInteger(next)
+        ? String(next)
+        : String(Number(next.toFixed(2)));
+      onUpdate({ qty: normalized });
+    },
+    [item.qty, onUpdate],
+  );
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(item.name.trim()), 80);
@@ -114,7 +127,16 @@ export function MobileItemRow({
   const keyExtractorSuggestion = useCallback((p: Product) => p.id, []);
 
   const renderSuggestion = useCallback(
-    ({ item: p }: { item: Product & { hsnCode?: string; wholesalePrice?: number | string | null; priceTier2?: number | string | null; priceTier3?: number | string | null } }) => {
+    ({
+      item: p,
+    }: {
+      item: Product & {
+        hsnCode?: string;
+        wholesalePrice?: number | string | null;
+        priceTier2?: number | string | null;
+        priceTier3?: number | string | null;
+      };
+    }) => {
       const outOfStock = Number(p.stock) <= 0;
       const lowStock = !outOfStock && Number(p.stock) < 5;
       const activeTierName =
@@ -147,7 +169,9 @@ export function MobileItemRow({
               ₹{getEffectivePrice(p).toLocaleString("en-IN")}
             </Text>
             {activeTierName ? (
-              <Text className="text-[10px] text-slate-400">{activeTierName}</Text>
+              <Text className="text-[10px] text-slate-400">
+                {activeTierName}
+              </Text>
             ) : null}
           </View>
         </TouchableOpacity>
@@ -325,37 +349,58 @@ export function MobileItemRow({
           </View>
         </>
       ) : (
-        /* Compact: single row — name | qty×rate | amount | actions */
-        <TouchableOpacity
-          onPress={() => setExpanded(true)}
-          activeOpacity={0.7}
-          className="flex-row items-center gap-2 py-1"
-        >
-          <View className="flex-1 min-w-0">
+        /* Compact: dense row with inline qty stepper */
+        <View className="flex-row items-center gap-1.5 py-0.5">
+          <TouchableOpacity
+            onPress={() => setExpanded(true)}
+            activeOpacity={0.7}
+            className="flex-1 min-w-0"
+          >
             <Text
               className="text-sm font-medium text-slate-800"
               numberOfLines={1}
             >
               {item.name}
             </Text>
-            <Text className="text-[11px] text-slate-500" numberOfLines={1}>
-              {item.qty} {item.unit} × ₹
+            <Text className="text-[10px] text-slate-500" numberOfLines={1}>
+              {item.unit} · ₹
               {parseFloat(item.rate || "0").toLocaleString("en-IN")}
-              {item.discount ? ` (−${item.discount}%)` : ""}
-              {item.hsnCode ? ` · ${item.hsnCode}` : ""}
+              {item.discount ? ` · ${item.discount}% off` : ""}
             </Text>
+          </TouchableOpacity>
+
+          <View className="flex-row items-center rounded-lg border border-slate-200 bg-slate-50 px-1 py-0.5">
+            <TouchableOpacity
+              onPress={() => bumpQty(-1)}
+              className="h-7 w-7 items-center justify-center"
+              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+            >
+              <Ionicons name="remove" size={14} color="#475569" />
+            </TouchableOpacity>
+            <Text className="min-w-[32px] text-center text-xs font-semibold text-slate-700">
+              {Number.isInteger(qtyNumber) ? qtyNumber : qtyNumber.toFixed(2)}
+            </Text>
+            <TouchableOpacity
+              onPress={() => bumpQty(1)}
+              className="h-7 w-7 items-center justify-center"
+              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+            >
+              <Ionicons name="add" size={14} color="#475569" />
+            </TouchableOpacity>
           </View>
-          <Text className="text-sm font-bold text-primary shrink-0 w-16 text-right">
+
+          <Text className="text-sm font-bold text-primary shrink-0 w-[78px] text-right">
             ₹{item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
           </Text>
+
           <TouchableOpacity
             onPress={onRemove}
-            className="w-8 h-8 items-center justify-center rounded-lg bg-red-50"
+            className="h-8 w-8 items-center justify-center rounded-lg bg-red-50"
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons name="trash-outline" size={16} color="#dc2626" />
+            <Ionicons name="trash-outline" size={15} color="#dc2626" />
           </TouchableOpacity>
-        </TouchableOpacity>
+        </View>
       )}
     </View>
   );

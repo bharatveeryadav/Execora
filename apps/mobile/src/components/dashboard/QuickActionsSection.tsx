@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, TouchableOpacity, Animated } from "react-native";
+import { View, Text, TouchableOpacity, Animated, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { TYPO } from "../../lib/typography";
 import { SIZES } from "../../lib/constants";
@@ -26,6 +26,7 @@ type Props = {
   actionPrimaryColor: string;
   onToggleExpand: () => void;
   onOpenAddTransaction: () => void;
+  onOpenLauncher: () => void;
   onQuickAction: (route: string, params?: Record<string, unknown>) => void;
 };
 
@@ -41,6 +42,7 @@ export function QuickActionsSection({
   actionPrimaryColor,
   onToggleExpand,
   onOpenAddTransaction,
+  onOpenLauncher,
   onQuickAction,
 }: Props) {
   return (
@@ -58,6 +60,32 @@ export function QuickActionsSection({
           Quick Actions
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Pressable
+            onPress={onOpenLauncher}
+            accessibilityRole="button"
+            accessibilityLabel="Open quick actions launcher"
+            accessibilityHint="Opens a slide-up sheet with grouped shortcuts"
+            className="items-center justify-center rounded-full border border-slate-200 bg-white"
+            style={{
+              minWidth: SIZES.TOUCH_MIN,
+              minHeight: SIZES.TOUCH_MIN,
+              paddingHorizontal: compactQuickActionsHeader ? 0 : 10,
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <Ionicons name="grid-outline" size={16} color="#475569" />
+              {!compactQuickActionsHeader && (
+                <Text
+                  style={{ fontSize: SIZES.FONT.sm }}
+                  maxFontSizeMultiplier={MAX_FONT_SIZE_MULTIPLIER}
+                  className="text-xs font-semibold text-slate-600"
+                  numberOfLines={1}
+                >
+                  Launcher
+                </Text>
+              )}
+            </View>
+          </Pressable>
           {canToggleQuickActions && (
             <TouchableOpacity
               onPress={onToggleExpand}

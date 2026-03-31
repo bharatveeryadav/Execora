@@ -104,8 +104,9 @@ const QUICK_ACTIONS: QuickActionItem[] = [
     label: "Pro forma",
     icon: "document-outline",
     primary: false,
-    route: "InvoicesTab",
+    route: "InvoiceForm",
     color: ACTION_COLORS.primary,
+    params: { documentType: "proforma" },
   },
   {
     label: "Purchase Order",
@@ -125,8 +126,9 @@ const QUICK_ACTIONS: QuickActionItem[] = [
     label: "Quotation",
     icon: "clipboard-outline",
     primary: false,
-    route: "InvoicesTab",
+    route: "InvoiceForm",
     color: ACTION_COLORS.primary,
+    params: { documentType: "quotation" },
   },
   {
     label: "Delivery Challan",
@@ -202,12 +204,14 @@ const ADD_TRANSACTION_GROUPS: Array<{
       {
         label: "Estimate / Quotation",
         icon: "clipboard-outline",
-        route: "InvoicesTab",
+        route: "InvoiceForm",
+        params: { documentType: "quotation" },
       },
       {
         label: "Proforma Invoice",
         icon: "document-outline",
-        route: "InvoicesTab",
+        route: "InvoiceForm",
+        params: { documentType: "proforma" },
       },
       { label: "Sales Order", icon: "reader-outline", route: "SalesOrders" },
     ],
@@ -271,6 +275,60 @@ const QUICK_ACTIONS_FOR_GRID = QUICK_ACTIONS.filter((action) => {
   }
   return true;
 });
+
+function isQuickActionItem(
+  item: QuickActionItem | undefined,
+): item is QuickActionItem {
+  return Boolean(item);
+}
+
+function findQuickAction(label: string): QuickActionItem | undefined {
+  return QUICK_ACTIONS.find((action) => action.label === label);
+}
+
+const QUICK_ACTION_SHEET_GROUPS: Array<{
+  label: string;
+  color: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  actions: QuickActionItem[];
+}> = [
+  {
+    label: "Billing",
+    color: ACTION_COLORS.primary,
+    icon: "flash-outline",
+    actions: [
+      "Quick Sale",
+      "New Invoice",
+      "Invoices",
+      "Pro forma",
+      "Quotation",
+    ]
+      .map(findQuickAction)
+      .filter(isQuickActionItem),
+  },
+  {
+    label: "Collections",
+    color: ACTION_COLORS.success,
+    icon: "wallet-outline",
+    actions: ["Payment", "Credit Note", "Parties"]
+      .map(findQuickAction)
+      .filter(isQuickActionItem),
+  },
+  {
+    label: "Operations",
+    color: ACTION_COLORS.secondary,
+    icon: "cube-outline",
+    actions: [
+      "Stock",
+      "Expenses",
+      "Purchase Order",
+      "Reports",
+      "Invoice Templates",
+    ]
+      .map(findQuickAction)
+      .filter(isQuickActionItem),
+  },
+];
 
 // Command sets by category (matches web AiAgentFeed)
 const COMMAND_SETS: Array<{
@@ -944,6 +1002,18 @@ export function DashboardScreen({ navigation }: Props) {
     (navigation as any).navigate("InvoicesTab");
   }, [navigation]);
 
+  const navigateBillingStack = useCallback(
+    (params?: Record<string, unknown>) => {
+      (navigation as any).navigate("MoreTab", {
+        screen: "Billing",
+        params: params
+          ? { screen: "InvoiceForm", params }
+          : { screen: "InvoiceForm" },
+      });
+    },
+    [navigation],
+  );
+
   const navigateTodayInvoices = useCallback(() => {
     (navigation as any).navigate("InvoicesTab", {
       screen: "InvoiceList",
@@ -979,7 +1049,7 @@ export function DashboardScreen({ navigation }: Props) {
     route: string,
     params?: Record<string, unknown>,
   ) => {
-    if (route === "InvoiceForm") return navigateMoreStack("Invoice");
+    if (route === "InvoiceForm") return navigateBillingStack(params);
     if (route === "InvoicesTab") return navigateInvoicesTab();
     if (route === "Reports") return navigateMoreStack("Reports");
     if (route === "DocumentTemplates")
@@ -1676,7 +1746,11 @@ export function DashboardScreen({ navigation }: Props) {
             >
               <View className="flex-row items-center justify-between mb-2">
                 <View className="flex-row items-center gap-1.5">
-                  <Ionicons name="trending-up-outline" size={13} color="#64748b" />
+                  <Ionicons
+                    name="trending-up-outline"
+                    size={13}
+                    color="#64748b"
+                  />
                   <Text className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                     Today's P&L
                   </Text>
@@ -1688,8 +1762,8 @@ export function DashboardScreen({ navigation }: Props) {
                       collectionRate >= 80
                         ? "#1a9248"
                         : collectionRate >= 50
-                        ? "#e6a319"
-                        : "#dc2626",
+                          ? "#e6a319"
+                          : "#dc2626",
                   }}
                 >
                   {collectionRate}% collected
@@ -1697,19 +1771,33 @@ export function DashboardScreen({ navigation }: Props) {
               </View>
 
               {/* Stacked bar: collected (green) + pending (amber) */}
-              <View
-                className="h-2 w-full rounded-full bg-slate-100 overflow-hidden mb-2"
-              >
+              <View className="h-2 w-full rounded-full bg-slate-100 overflow-hidden mb-2">
                 {(() => {
                   const total = dailySummary?.totalSales ?? 1;
-                  const paid = Math.min(dailySummary?.totalPayments ?? 0, total);
-                  const pending = Math.min(dailySummary?.pendingAmount ?? 0, total - paid);
+                  const paid = Math.min(
+                    dailySummary?.totalPayments ?? 0,
+                    total,
+                  );
+                  const pending = Math.min(
+                    dailySummary?.pendingAmount ?? 0,
+                    total - paid,
+                  );
                   const collectedPct = Math.round((paid / total) * 100);
                   const pendingPct = Math.round((pending / total) * 100);
                   return (
                     <View className="flex-row h-full w-full">
-                      <View style={{ width: `${collectedPct}%`, backgroundColor: "#22c55e" }} />
-                      <View style={{ width: `${pendingPct}%`, backgroundColor: "#f59e0b" }} />
+                      <View
+                        style={{
+                          width: `${collectedPct}%`,
+                          backgroundColor: "#22c55e",
+                        }}
+                      />
+                      <View
+                        style={{
+                          width: `${pendingPct}%`,
+                          backgroundColor: "#f59e0b",
+                        }}
+                      />
                     </View>
                   );
                 })()}
@@ -1981,6 +2069,7 @@ export function DashboardScreen({ navigation }: Props) {
             actionPrimaryColor={ACTION_COLORS.primary}
             onToggleExpand={() => setQuickActionsExpanded((v) => !v)}
             onOpenAddTransaction={() => setQuickActionPopupOpen(true)}
+            onOpenLauncher={() => setQuickActionPopupOpen(true)}
             onQuickAction={handleQuickAction}
           />
 
@@ -2094,7 +2183,7 @@ export function DashboardScreen({ navigation }: Props) {
       <Modal
         visible={quickActionPopupOpen}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setQuickActionPopupOpen(false)}
       >
         <Pressable
@@ -2114,9 +2203,9 @@ export function DashboardScreen({ navigation }: Props) {
             <View className="w-8 h-0.5 rounded-full bg-slate-200 self-center mb-2" />
             <View className="flex-row items-center justify-between mb-3">
               <View className="min-w-0 flex-1 pr-2">
-                <Text className={TYPO.sectionTitle}>Add Transaction</Text>
+                <Text className={TYPO.sectionTitle}>Quick Actions</Text>
                 <Text className={TYPO.caption} numberOfLines={1}>
-                  Quick create for sales, purchase, and expenses
+                  Launch billing, parties, stock, and document flows
                 </Text>
               </View>
               <TouchableOpacity onPress={() => setQuickActionPopupOpen(false)}>
@@ -2129,6 +2218,93 @@ export function DashboardScreen({ navigation }: Props) {
               contentContainerStyle={{ paddingBottom: 4 }}
               showsVerticalScrollIndicator={false}
             >
+              <View className="mb-3">
+                <Text className="mb-2 text-[11px] font-semibold uppercase tracking-[1px] text-slate-500">
+                  Quick Access
+                </Text>
+                {QUICK_ACTION_SHEET_GROUPS.map((group, groupIndex) => (
+                  <View
+                    key={group.label}
+                    style={{
+                      paddingTop: groupIndex === 0 ? 0 : 8,
+                      marginTop: groupIndex === 0 ? 0 : 10,
+                      marginBottom:
+                        groupIndex === QUICK_ACTION_SHEET_GROUPS.length - 1
+                          ? 0
+                          : 10,
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: "#e2e8f0",
+                      backgroundColor: "#f8fafc",
+                      paddingHorizontal: popupGroupPad,
+                      paddingBottom: compactAddPopup ? 8 : 12,
+                    }}
+                  >
+                    <View className="flex-row items-center gap-2 mb-2">
+                      <View
+                        className="h-6 w-6 rounded-full items-center justify-center"
+                        style={{ backgroundColor: `${group.color}22` }}
+                      >
+                        <Ionicons name={group.icon} size={14} color={group.color} />
+                      </View>
+                      <Text className={TYPO.labelBold}>{group.label}</Text>
+                      <View className="ml-auto rounded-full bg-white px-2 py-0.5 border border-slate-200">
+                        <Text className="text-[10px] font-semibold text-slate-500">
+                          {group.actions.length}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={{ gap: popupGridGap }}>
+                      {chunkItems(group.actions, popupColumns).map((row, rowIdx) => (
+                        <View
+                          key={`${group.label}-row-${rowIdx}`}
+                          style={{ flexDirection: "row", gap: popupGridGap }}
+                        >
+                          {row.map((item) => (
+                            <Pressable
+                              key={`quick-${group.label}-${item.label}`}
+                              onPress={() => {
+                                setQuickActionPopupOpen(false);
+                                handleQuickAction(item.route, item.params);
+                              }}
+                              className="items-center justify-center rounded-xl border border-slate-200 bg-white"
+                              style={{
+                                width: popupTileWidth,
+                                minHeight: compactAddPopup
+                                  ? SIZES.TOUCH_MIN + 14
+                                  : SIZES.TOUCH_MIN + 18,
+                                gap: 4,
+                                paddingVertical: compactAddPopup ? 6 : 8,
+                                paddingHorizontal: contentWidth < 360 ? 2 : 4,
+                              }}
+                              accessibilityRole="button"
+                              accessibilityLabel={item.label}
+                              accessibilityHint="Opens this workflow"
+                            >
+                              <Ionicons
+                                name={item.icon}
+                                size={compactAddPopup ? 16 : 18}
+                                color={item.primary ? ACTION_COLORS.primary : item.color}
+                              />
+                              <Text
+                                className={`${TYPO.micro} font-semibold text-center ${item.primary ? "text-primary" : "text-slate-600"}`}
+                                numberOfLines={2}
+                              >
+                                {item.label}
+                              </Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                ))}
+              </View>
+
+              <Text className="mb-2 text-[11px] font-semibold uppercase tracking-[1px] text-slate-500">
+                Add Transaction
+              </Text>
               {ADD_TRANSACTION_GROUPS.map((group, groupIndex) => (
                 <View
                   key={group.label}
