@@ -108,6 +108,48 @@ const GST_STATE_CODES: Record<string, string> = {
   "38": "Ladakh",
 };
 
+type ProfileComparableState = {
+  companyName: string;
+  tradeName: string;
+  gstEnabled: boolean;
+  gstin: string;
+  phone: string;
+  email: string;
+  billingAddress: string;
+  shippingAddress: string;
+  businessType: string;
+  pan: string;
+  altContact: string;
+  website: string;
+  bankAccountHolder: string;
+  bankName: string;
+  bankAccountNo: string;
+  bankIfsc: string;
+  logoObjectKey: string;
+};
+
+function normalizeComparableState(state: ProfileComparableState): ProfileComparableState {
+  return {
+    companyName: state.companyName.trim(),
+    tradeName: state.tradeName.trim(),
+    gstEnabled: state.gstEnabled,
+    gstin: state.gstin.trim().toUpperCase(),
+    phone: state.phone.replace(/\D/g, ""),
+    email: state.email.trim().toLowerCase(),
+    billingAddress: state.billingAddress.trim(),
+    shippingAddress: state.shippingAddress.trim(),
+    businessType: state.businessType.trim(),
+    pan: state.pan.trim().toUpperCase(),
+    altContact: state.altContact.replace(/\D/g, ""),
+    website: state.website.trim(),
+    bankAccountHolder: state.bankAccountHolder.trim(),
+    bankName: state.bankName.trim(),
+    bankAccountNo: state.bankAccountNo.trim(),
+    bankIfsc: state.bankIfsc.trim().toUpperCase(),
+    logoObjectKey: state.logoObjectKey.trim(),
+  };
+}
+
 function isValidWebsite(value: string): boolean {
   const v = value.trim();
   if (!v) return true;
@@ -135,6 +177,25 @@ export function CompanyProfileScreen({ navigation }: Props) {
   const user = (meData?.user ?? {}) as MeUser;
   const tenant = user?.tenant;
   const settings = (tenant?.settings ?? {}) as Record<string, string | boolean>;
+  const loadedProfileState = normalizeComparableState({
+    companyName: tenant?.legalName ?? tenant?.name ?? "",
+    tradeName: tenant?.tradeName ?? "",
+    gstEnabled: Boolean(tenant?.gstin),
+    gstin: tenant?.gstin ?? "",
+    phone: String(settings.phone ?? ""),
+    email: String(settings.email ?? ""),
+    billingAddress: String(settings.billingAddress ?? settings.address ?? ""),
+    shippingAddress: String(settings.shippingAddress ?? ""),
+    businessType: String(settings.businessType ?? ""),
+    pan: String(settings.pan ?? ""),
+    altContact: String(settings.altContact ?? ""),
+    website: String(settings.website ?? ""),
+    bankAccountHolder: String(settings.bankAccountHolder ?? ""),
+    bankName: String(settings.bankName ?? ""),
+    bankAccountNo: String(settings.bankAccountNo ?? ""),
+    bankIfsc: String(settings.bankIfsc ?? ""),
+    logoObjectKey: String(settings.logoObjectKey ?? ""),
+  });
 
   const [companyName, setCompanyName] = useState("");
   const [tradeName, setTradeName] = useState("");
@@ -222,6 +283,28 @@ export function CompanyProfileScreen({ navigation }: Props) {
     bankAccountError ||
     websiteError;
   const hasValidationErrors = Boolean(saveBlockedReason);
+  const hasUnsavedChanges =
+    JSON.stringify(
+      normalizeComparableState({
+        companyName,
+        tradeName,
+        gstEnabled,
+        gstin,
+        phone,
+        email,
+        billingAddress,
+        shippingAddress,
+        businessType,
+        pan,
+        altContact,
+        website,
+        bankAccountHolder,
+        bankName,
+        bankAccountNo,
+        bankIfsc,
+        logoObjectKey: logoObjectKey ?? "",
+      }),
+    ) !== JSON.stringify(loadedProfileState);
 
   useEffect(() => {
     if (!logoObjectKey) {
@@ -320,7 +403,30 @@ export function CompanyProfileScreen({ navigation }: Props) {
     },
     onError: (e: Error) => showAlert("Error", e.message ?? "Failed to save"),
   });
-  const isSaveDisabled = updateProfile.isPending || hasValidationErrors;
+  const isSaveDisabled =
+    updateProfile.isPending || hasValidationErrors || !hasUnsavedChanges;
+
+  const resetToLoadedValues = () => {
+    setCompanyName(tenant?.legalName ?? tenant?.name ?? "");
+    setTradeName(tenant?.tradeName ?? "");
+    setGstEnabled(Boolean(tenant?.gstin));
+    setGstin(tenant?.gstin ?? "");
+    setPhone(String(settings.phone ?? ""));
+    setEmail(String(settings.email ?? ""));
+    setBillingAddress(String(settings.billingAddress ?? settings.address ?? ""));
+    setShippingAddress(String(settings.shippingAddress ?? ""));
+    setBusinessType(String(settings.businessType ?? ""));
+    setPan(String(settings.pan ?? ""));
+    setAltContact(String(settings.altContact ?? ""));
+    setWebsite(String(settings.website ?? ""));
+    setBankAccountHolder(String(settings.bankAccountHolder ?? ""));
+    setBankName(String(settings.bankName ?? ""));
+    setBankAccountNo(String(settings.bankAccountNo ?? ""));
+    setBankIfsc(String(settings.bankIfsc ?? ""));
+    setGstError(null);
+    setGstStateHint(null);
+    setGstPanHint(null);
+  };
 
   const handleSave = () => {
     if (saveBlockedReason) {
@@ -420,21 +526,32 @@ export function CompanyProfileScreen({ navigation }: Props) {
             <Ionicons name="arrow-back" size={24} color="#0f172a" />
           </TouchableOpacity>
           <Text className={TYPO.sectionTitle}>Company Details</Text>
-          <TouchableOpacity
-            onPress={handleSave}
-            disabled={isSaveDisabled}
-            className={`px-4 py-2 rounded-lg ${
-              isSaveDisabled ? "bg-slate-300" : "bg-primary"
-            }`}
-          >
-            {updateProfile.isPending ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text className={`font-semibold ${isSaveDisabled ? "text-slate-500" : "text-white"}`}>
-                Save
-              </Text>
+          <View className="flex-row items-center gap-2">
+            {hasUnsavedChanges && (
+              <TouchableOpacity
+                onPress={resetToLoadedValues}
+                disabled={updateProfile.isPending}
+                className="px-3 py-2 rounded-lg bg-slate-100"
+              >
+                <Text className="font-semibold text-slate-700">Reset</Text>
+              </TouchableOpacity>
             )}
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleSave}
+              disabled={isSaveDisabled}
+              className={`px-4 py-2 rounded-lg ${
+                isSaveDisabled ? "bg-slate-300" : "bg-primary"
+              }`}
+            >
+              {updateProfile.isPending ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text className={`font-semibold ${isSaveDisabled ? "text-slate-500" : "text-white"}`}>
+                  Save
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
         <ScrollView
@@ -442,6 +559,17 @@ export function CompanyProfileScreen({ navigation }: Props) {
           contentContainerStyle={{ padding: 20, paddingBottom: 48 }}
           keyboardShouldPersistTaps="handled"
         >
+          {hasUnsavedChanges && (
+            <View className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+              <Text className="text-sm font-semibold text-amber-900">
+                Unsaved changes
+              </Text>
+              <Text className="text-xs text-amber-700 mt-0.5">
+                Review and save your business profile updates before leaving this screen.
+              </Text>
+            </View>
+          )}
+
           {/* Company logo — top middle */}
           <View className="items-center mb-6">
             <TouchableOpacity
