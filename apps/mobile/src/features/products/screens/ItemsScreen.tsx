@@ -35,6 +35,7 @@ import {
   Platform,
   Image,
   InteractionManager,
+  StyleSheet,
 } from "react-native";
 import { showAlert } from "../../../lib/alerts";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -53,6 +54,8 @@ import { useWsInvalidation } from "../../../hooks/useWsInvalidation";
 import { useResponsive } from "../../../hooks/useResponsive";
 import { productExtApi } from "../../../lib/api";
 import { QUERY_KEYS } from "../../../lib/queryKeys";
+import { COLORS, SIZES } from "../../../lib/constants";
+import { TYPO } from "../../../lib/typography";
 
 // ── Helper: parse numeric fields returned as string | number from API ─────────
 
@@ -88,6 +91,45 @@ const STATUS_STYLES: Record<
   },
 };
 
+const styles = StyleSheet.create({
+  surfaceShadow: Platform.select({
+    ios: {
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.06,
+      shadowRadius: 18,
+    },
+    android: {
+      elevation: 2,
+    },
+    default: {},
+  }),
+  cardShadow: Platform.select({
+    ios: {
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.05,
+      shadowRadius: 10,
+    },
+    android: {
+      elevation: 1,
+    },
+    default: {},
+  }),
+  fabShadow: Platform.select({
+    ios: {
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+    },
+    android: {
+      elevation: 6,
+    },
+    default: {},
+  }),
+});
+
 // ── Filter & sort types ────────────────────────────────────────────────────────
 
 type FilterMode = "all" | "low" | "out" | "favorites";
@@ -99,6 +141,8 @@ type SortMode =
   | "price"
   | "priceDesc"
   | "category";
+
+type DensityMode = "compact" | "comfortable";
 
 type Props = NativeStackScreenProps<
   import("../../../navigation").ItemsStackParams,
@@ -124,7 +168,16 @@ export function ItemsScreen({ navigation }: Props) {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showControls, setShowControls] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [densityMode, setDensityMode] = useState<DensityMode>(() =>
+    storage.getString("items-density-mode") === "comfortable"
+      ? "comfortable"
+      : "compact",
+  );
   const searchInputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    storage.set("items-density-mode", densityMode);
+  }, [densityMode]);
 
   const openSearch = useCallback(() => {
     setShowSearch(true);
@@ -234,7 +287,12 @@ export function ItemsScreen({ navigation }: Props) {
     return counts;
   }, [allProducts]);
 
-  const previewCategories = useMemo(() => categories.slice(0, 6), [categories]);
+  const { width, contentPad, contentWidth, isSmall } = useResponsive();
+
+  const previewCategories = useMemo(
+    () => categories.slice(0, isSmall ? 3 : 6),
+    [categories, isSmall],
+  );
 
   // Reset stale category filter when product set changes.
   useEffect(() => {
@@ -285,6 +343,18 @@ export function ItemsScreen({ navigation }: Props) {
   const favoritesCount = allProducts.filter(
     (p) => (p as Product & { isFeatured?: boolean }).isFeatured,
   ).length;
+  const totalUnits = useMemo(
+    () => allProducts.reduce((sum, product) => sum + num(product.stock), 0),
+    [allProducts],
+  );
+  const stockValue = useMemo(
+    () =>
+      allProducts.reduce(
+        (sum, product) => sum + num(product.stock) * num(product.price),
+        0,
+      ),
+    [allProducts],
+  );
 
   const imageIds = useMemo(
     () => [...new Set(filtered.map((p) => p.id))].slice(0, 50),
@@ -338,11 +408,44 @@ export function ItemsScreen({ navigation }: Props) {
   );
 
   const insets = useSafeAreaInsets();
-  const { width, contentPad, contentWidth } = useResponsive();
   const fabBottom = Math.max(insets.bottom + 16, 20);
   const fabRight = Math.max(
     contentPad,
     (width - contentWidth) / 2 + contentPad,
+  );
+
+  const summaryCards = useMemo(
+    () => [
+      {
+        id: "products",
+        label: "Products",
+        value: String(allProducts.length),
+        icon: "cube-outline" as const,
+        tone: COLORS.primary,
+      },
+      {
+        id: "units",
+        label: "Units in Stock",
+        value: String(totalUnits),
+        icon: "layers-outline" as const,
+        tone: COLORS.success,
+      },
+      {
+        id: "alerts",
+        label: "Need Attention",
+        value: String(lowCount + outCount),
+        icon: "alert-circle-outline" as const,
+        tone: COLORS.warning,
+      },
+      {
+        id: "value",
+        label: "Stock Value",
+        value: `₹${stockValue.toFixed(0)}`,
+        icon: "cash-outline" as const,
+        tone: COLORS.secondary,
+      },
+    ],
+    [allProducts.length, lowCount, outCount, stockValue, totalUnits],
   );
 
   return (
@@ -354,317 +457,468 @@ export function ItemsScreen({ navigation }: Props) {
           paddingTop: 8,
           paddingBottom: 12,
         }}
-        className="bg-card border-b border-slate-200"
+        className=""
       >
         <View
           style={{ width: "100%", maxWidth: contentWidth, alignSelf: "center" }}
         >
-          {/* Title row — collapses into search bar when active */}
-          {showSearch ? (
-            <View className="flex-row items-center gap-2 mb-3">
-              <View className="flex-1 flex-row items-center bg-slate-100 rounded-xl px-3 py-2">
-                <Ionicons
-                  name="search"
-                  size={18}
-                  color="#e67e22"
-                  style={{ marginRight: 8 }}
-                />
-                <TextInput
-                  ref={searchInputRef}
-                  className="flex-1 text-sm text-slate-800"
-                  placeholder="Search products..."
-                  placeholderTextColor="#94a3b8"
-                  value={search}
-                  onChangeText={setSearch}
-                  autoCorrect={false}
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  returnKeyType="search"
-                  clearButtonMode="while-editing"
-                  keyboardAppearance="light"
-                  selectionColor="#e67e2299"
-                  cursorColor="#e67e22"
-                  disableFullscreenUI={true}
-                />
-              </View>
-              <TouchableOpacity
-                onPress={closeSearch}
-                activeOpacity={0.8}
-                className="w-10 h-10 rounded-xl bg-slate-100 items-center justify-center"
-              >
-                <Ionicons name="close" size={20} color="#475569" />
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View className="flex-row items-center justify-between mb-3">
-              <View>
-                <Text className="text-xl font-bold tracking-tight text-slate-800">
-                  Items
-                </Text>
-                <Text className="text-xs text-slate-400">
-                  {filtersActive
-                    ? `${filtered.length} of ${allProducts.length} shown`
-                    : `${allProducts.length} products`}
-                </Text>
-              </View>
-              <View className="flex-row items-center gap-2">
-                <TouchableOpacity
-                  onPress={openSearch}
-                  activeOpacity={0.8}
-                  className="w-10 h-10 rounded-full bg-slate-100 items-center justify-center"
-                >
-                  <Ionicons name="search" size={20} color="#475569" />
-                </TouchableOpacity>
+          <View
+            className={`rounded-[24px] border border-slate-200 bg-white ${
+              isSmall ? "px-3.5 pt-3.5 pb-3.5" : "px-4 pt-4 pb-4"
+            }`}
+            style={styles.surfaceShadow}
+          >
+            {showSearch ? (
+              <View className="flex-row items-center gap-2 mb-4">
+                <View className="flex-1 flex-row items-center bg-slate-100 rounded-2xl px-3 min-h-[48]">
+                  <Ionicons
+                    name="search"
+                    size={18}
+                    color={COLORS.primary}
+                    style={{ marginRight: 8 }}
+                  />
+                  <TextInput
+                    ref={searchInputRef}
+                    className="flex-1 text-sm text-slate-800 py-3"
+                    placeholder="Search products, category..."
+                    placeholderTextColor={COLORS.slate[400]}
+                    value={search}
+                    onChangeText={setSearch}
+                    autoCorrect={false}
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    returnKeyType="search"
+                    clearButtonMode="while-editing"
+                    keyboardAppearance="light"
+                    selectionColor={`${COLORS.primary}66`}
+                    cursorColor={COLORS.primary}
+                    disableFullscreenUI={true}
+                  />
+                </View>
                 <Pressable
-                  onPress={() => {
-                    InteractionManager.runAfterInteractions(() => {
-                      navigation?.navigate?.("ItemsMenu");
-                    });
-                  }}
-                  className="w-10 h-10 rounded-full bg-slate-100 items-center justify-center"
+                  onPress={closeSearch}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close search"
+                  className="w-11 h-11 rounded-2xl items-center justify-center"
                   style={({ pressed }) => ({
-                    opacity: pressed ? 0.7 : 1,
-                    backgroundColor: pressed ? "#e2e8f0" : "#f1f5f9",
+                    backgroundColor: pressed
+                      ? COLORS.slate[200]
+                      : COLORS.slate[100],
                   })}
                 >
-                  <Ionicons
-                    name="ellipsis-horizontal"
-                    size={20}
-                    color="#475569"
-                  />
+                  <Ionicons name="close" size={20} color={COLORS.slate[600]} />
+                </Pressable>
+              </View>
+            ) : (
+              <View className="flex-row items-start justify-between mb-4 gap-3">
+                <View className="flex-1 min-w-0">
+                  <View className="flex-row items-center gap-2">
+                    <Text className="text-2xl font-bold tracking-tight text-slate-900">
+                      Items
+                    </Text>
+                    <View className="rounded-full bg-primary/10 px-2.5 py-1">
+                      <Text className="text-[11px] font-bold text-primary uppercase">
+                        Inventory
+                      </Text>
+                    </View>
+                  </View>
+                  <Text className="text-sm text-slate-500 mt-1">
+                    {filtersActive
+                      ? `${filtered.length} of ${allProducts.length} items visible`
+                      : `${allProducts.length} products across ${categories.length || 1} categories`}
+                  </Text>
+                  {previewCategories.length > 0 && (
+                    <View className="flex-row flex-wrap gap-2 mt-3">
+                      {previewCategories.map((category) => (
+                        <View
+                          key={category}
+                          className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5"
+                        >
+                          <Text className="text-[11px] font-medium text-slate-600">
+                            {category}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+                <View className="flex-row items-center gap-2">
+                  <Pressable
+                    onPress={openSearch}
+                    accessibilityRole="button"
+                    accessibilityLabel="Search items"
+                    className="w-11 h-11 rounded-2xl items-center justify-center"
+                    style={({ pressed }) => ({
+                      backgroundColor: pressed
+                        ? COLORS.slate[200]
+                        : COLORS.slate[100],
+                    })}
+                  >
+                    <Ionicons
+                      name="search"
+                      size={20}
+                      color={COLORS.slate[600]}
+                    />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => {
+                      InteractionManager.runAfterInteractions(() => {
+                        navigation?.navigate?.("ItemsMenu");
+                      });
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Open items menu"
+                    className="w-11 h-11 rounded-2xl items-center justify-center"
+                    style={({ pressed }) => ({
+                      backgroundColor: pressed
+                        ? COLORS.slate[200]
+                        : COLORS.slate[100],
+                    })}
+                  >
+                    <Ionicons
+                      name="ellipsis-horizontal"
+                      size={20}
+                      color={COLORS.slate[600]}
+                    />
+                  </Pressable>
+                </View>
+              </View>
+            )}
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8, paddingRight: 8 }}
+              className="mb-3"
+            >
+              {summaryCards.map((card) => (
+                <View
+                  key={card.id}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5"
+                  style={{ minWidth: isSmall ? 132 : 150 }}
+                >
+                  <View className="flex-row items-center justify-between">
+                    <Text className={TYPO.sectionTitle}>{card.label}</Text>
+                    <View
+                      style={{
+                        width: 26,
+                        height: 26,
+                        borderRadius: SIZES.RADIUS.full,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: `${card.tone}1A`,
+                      }}
+                    >
+                      <Ionicons name={card.icon} size={14} color={card.tone} />
+                    </View>
+                  </View>
+                  <Text
+                    className="text-base font-bold text-slate-900 mt-1.5"
+                    numberOfLines={1}
+                  >
+                    {card.value}
+                  </Text>
+                </View>
+              ))}
+            </ScrollView>
+
+            <View className="mb-3 flex-row items-center justify-between">
+              <Text className="text-xs font-semibold uppercase tracking-[1px] text-slate-500">
+                List Density
+              </Text>
+              <View className="rounded-xl bg-slate-100 p-1 flex-row">
+                <Pressable
+                  onPress={() => setDensityMode("compact")}
+                  accessibilityRole="button"
+                  accessibilityLabel="Use compact item list"
+                  className="px-3 py-1.5 rounded-lg"
+                  style={{
+                    backgroundColor:
+                      densityMode === "compact"
+                        ? COLORS.text.inverted
+                        : "transparent",
+                  }}
+                >
+                  <Text
+                    className={`text-xs font-semibold ${
+                      densityMode === "compact"
+                        ? "text-slate-800"
+                        : "text-slate-500"
+                    }`}
+                  >
+                    Compact
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setDensityMode("comfortable")}
+                  accessibilityRole="button"
+                  accessibilityLabel="Use comfortable item list"
+                  className="px-3 py-1.5 rounded-lg"
+                  style={{
+                    backgroundColor:
+                      densityMode === "comfortable"
+                        ? COLORS.text.inverted
+                        : "transparent",
+                  }}
+                >
+                  <Text
+                    className={`text-xs font-semibold ${
+                      densityMode === "comfortable"
+                        ? "text-slate-800"
+                        : "text-slate-500"
+                    }`}
+                  >
+                    Comfortable
+                  </Text>
                 </Pressable>
               </View>
             </View>
-          )}
 
-          {/* Controls — compact pill bar */}
-          <View>
-            <View className="flex-row items-center gap-2">
-              {/* Pill-bar toggle */}
-              <TouchableOpacity
-                onPress={() => setShowControls((v) => !v)}
-                activeOpacity={0.8}
-                className="flex-1 flex-row items-center bg-slate-100 rounded-xl px-3 py-2.5"
-              >
-                <Ionicons
-                  name="options-outline"
-                  size={16}
-                  color={filtersActive ? "#e67e22" : "#94a3b8"}
-                />
-                {filtersActive ? (
-                  <Text
-                    className="flex-1 text-xs font-semibold text-primary mx-2"
-                    numberOfLines={1}
-                  >
-                    {filterSummary}
-                  </Text>
-                ) : (
-                  <Text className="flex-1 text-xs text-slate-400 mx-2">
-                    Filter &amp; sort
-                  </Text>
-                )}
-                {filtersActive && (
-                  <View className="w-2 h-2 rounded-full bg-primary mr-2" />
-                )}
-                <Ionicons
-                  name={showControls ? "chevron-up" : "chevron-down"}
-                  size={14}
-                  color="#94a3b8"
-                />
-              </TouchableOpacity>
-
-              {/* Quick: categories */}
-              <TouchableOpacity
-                onPress={() => setShowCategoryModal(true)}
-                activeOpacity={0.8}
-                className="h-10 w-10 rounded-xl bg-slate-100 items-center justify-center"
-              >
-                <Ionicons name="grid-outline" size={18} color="#475569" />
-              </TouchableOpacity>
-
-              {/* Quick: clear if active */}
-              {filtersActive && (
-                <TouchableOpacity
-                  onPress={() => {
-                    setFilter("all");
-                    setCategoryFilter(null);
-                    setSortBy("name");
-                  }}
-                  activeOpacity={0.8}
-                  className="h-10 w-10 rounded-xl bg-red-50 items-center justify-center border border-red-100"
+            <View>
+              <View className="flex-row items-center gap-2">
+                <Pressable
+                  onPress={() => setShowControls((v) => !v)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Toggle item filters and sorting"
+                  className={`flex-1 flex-row items-center rounded-2xl px-3 ${
+                    isSmall ? "min-h-[44]" : "min-h-[48]"
+                  }`}
+                  style={{ backgroundColor: COLORS.slate[100] }}
                 >
-                  <Ionicons name="close" size={16} color="#ef4444" />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* Expandable controls panel */}
-            {showControls && (
-              <View className="mt-2 rounded-2xl border border-slate-200 bg-white px-2.5 py-2">
-                {/* Categories */}
-                <View className="mb-2 flex-row items-center">
-                  <View className="mr-2 h-6 w-6 items-center justify-center rounded-lg bg-slate-100">
-                    <Ionicons name="grid-outline" size={13} color="#64748b" />
-                  </View>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ gap: 6, paddingRight: 8 }}
-                  >
-                    <TouchableOpacity
-                      onPress={() => setCategoryFilter(null)}
-                      activeOpacity={0.8}
-                      className={
-                        !categoryFilter
-                          ? "px-2.5 py-1 rounded-full border border-primary bg-primary"
-                          : "px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50"
-                      }
+                  <Ionicons
+                    name="options-outline"
+                    size={16}
+                    color={filtersActive ? COLORS.primary : COLORS.slate[400]}
+                  />
+                  {filtersActive ? (
+                    <Text
+                      className="flex-1 text-xs font-semibold text-primary mx-2"
+                      numberOfLines={1}
                     >
-                      <Text
+                      {filterSummary}
+                    </Text>
+                  ) : (
+                    <Text className="flex-1 text-xs text-slate-400 mx-2">
+                      Filter, categories and sorting
+                    </Text>
+                  )}
+                  {filtersActive && (
+                    <View className="w-2 h-2 rounded-full bg-primary mr-2" />
+                  )}
+                  <Ionicons
+                    name={showControls ? "chevron-up" : "chevron-down"}
+                    size={14}
+                    color={COLORS.slate[400]}
+                  />
+                </Pressable>
+
+                <Pressable
+                  onPress={() => setShowCategoryModal(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open categories"
+                  className={`${isSmall ? "h-11 w-11" : "h-12 w-12"} rounded-2xl items-center justify-center`}
+                  style={{ backgroundColor: COLORS.slate[100] }}
+                >
+                  <Ionicons
+                    name="grid-outline"
+                    size={18}
+                    color={COLORS.slate[600]}
+                  />
+                </Pressable>
+
+                {filtersActive && (
+                  <Pressable
+                    onPress={() => {
+                      setFilter("all");
+                      setCategoryFilter(null);
+                      setSortBy("name");
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Clear active item filters"
+                    className={`${isSmall ? "h-11 w-11" : "h-12 w-12"} rounded-2xl items-center justify-center border border-red-100`}
+                    style={{ backgroundColor: COLORS.bg.error }}
+                  >
+                    <Ionicons name="close" size={16} color={COLORS.error} />
+                  </Pressable>
+                )}
+              </View>
+
+              {showControls && (
+                <View
+                  className="mt-3 rounded-2xl border border-slate-200 bg-white px-3 py-3"
+                  style={styles.cardShadow}
+                >
+                  {/* Categories */}
+                  <View className="mb-2 flex-row items-center">
+                    <View className="mr-2 h-6 w-6 items-center justify-center rounded-lg bg-slate-100">
+                      <Ionicons name="grid-outline" size={13} color="#64748b" />
+                    </View>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{ gap: 6, paddingRight: 8 }}
+                    >
+                      <TouchableOpacity
+                        onPress={() => setCategoryFilter(null)}
+                        activeOpacity={0.8}
                         className={
                           !categoryFilter
-                            ? "text-[11px] font-semibold text-white"
-                            : "text-[11px] font-semibold text-slate-600"
-                        }
-                      >
-                        All
-                      </Text>
-                    </TouchableOpacity>
-                    {categories.map((cat) => (
-                      <TouchableOpacity
-                        key={cat}
-                        onPress={() =>
-                          setCategoryFilter(categoryFilter === cat ? null : cat)
-                        }
-                        activeOpacity={0.8}
-                        className={
-                          categoryFilter === cat
-                            ? "px-2.5 py-1 rounded-full border border-primary bg-primary/10"
+                            ? "px-2.5 py-1 rounded-full border border-primary bg-primary"
                             : "px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50"
                         }
                       >
                         <Text
                           className={
-                            categoryFilter === cat
-                              ? "text-[11px] font-semibold text-primary"
-                              : "text-[11px] font-semibold text-slate-600"
-                          }
-                          numberOfLines={1}
-                        >
-                          {cat}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-
-                {/* Filters */}
-                <View className="mb-2 flex-row items-center">
-                  <View className="mr-2 h-6 w-6 items-center justify-center rounded-lg bg-slate-100">
-                    <Ionicons name="funnel-outline" size={13} color="#64748b" />
-                  </View>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ gap: 6, paddingRight: 8 }}
-                  >
-                    {[
-                      {
-                        key: "all" as FilterMode,
-                        label: `All (${allProducts.length})`,
-                      },
-                      {
-                        key: "low" as FilterMode,
-                        label: `Low (${lowCount})`,
-                        disabled: lowCount === 0,
-                      },
-                      {
-                        key: "out" as FilterMode,
-                        label: `Out (${outCount})`,
-                        disabled: outCount === 0,
-                      },
-                      {
-                        key: "favorites" as FilterMode,
-                        label: `Fav (${favoritesCount})`,
-                        disabled: favoritesCount === 0,
-                      },
-                    ].map(({ key, label, disabled }) => (
-                      <TouchableOpacity
-                        key={key}
-                        disabled={disabled}
-                        onPress={() =>
-                          requestAnimationFrame(() => setFilter(key))
-                        }
-                        activeOpacity={0.8}
-                        className={
-                          filter === key
-                            ? "px-2.5 py-1 rounded-full border border-primary bg-primary/10"
-                            : disabled
-                              ? "px-2.5 py-1 rounded-full border border-slate-200 bg-slate-100 opacity-40"
-                              : "px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50"
-                        }
-                      >
-                        <Text
-                          className={
-                            filter === key
-                              ? "text-[11px] font-semibold text-primary"
-                              : "text-[11px] font-semibold text-slate-600"
-                          }
-                        >
-                          {label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                </View>
-
-                {/* Sorting */}
-                <View className="flex-row items-center">
-                  <View className="mr-2 h-6 w-6 items-center justify-center rounded-lg bg-slate-100">
-                    <Ionicons
-                      name="swap-vertical-outline"
-                      size={13}
-                      color="#64748b"
-                    />
-                  </View>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ gap: 6, paddingRight: 8 }}
-                  >
-                    {[
-                      { key: "name" as SortMode, label: "Name" },
-                      { key: "stockAsc" as SortMode, label: "Stock ↑" },
-                      { key: "stockDesc" as SortMode, label: "Stock ↓" },
-                      { key: "price" as SortMode, label: "Price ↑" },
-                      { key: "priceDesc" as SortMode, label: "Price ↓" },
-                      { key: "category" as SortMode, label: "Category" },
-                    ].map(({ key, label }) => (
-                      <TouchableOpacity
-                        key={key}
-                        onPress={() => setSortBy(key)}
-                        activeOpacity={0.8}
-                        className={
-                          sortBy === key
-                            ? "px-2.5 py-1 rounded-full border border-slate-700 bg-slate-700"
-                            : "px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50"
-                        }
-                      >
-                        <Text
-                          className={
-                            sortBy === key
+                            !categoryFilter
                               ? "text-[11px] font-semibold text-white"
                               : "text-[11px] font-semibold text-slate-600"
                           }
                         >
-                          {label}
+                          All
                         </Text>
                       </TouchableOpacity>
-                    ))}
-                  </ScrollView>
+                      {categories.map((cat) => (
+                        <TouchableOpacity
+                          key={cat}
+                          onPress={() =>
+                            setCategoryFilter(
+                              categoryFilter === cat ? null : cat,
+                            )
+                          }
+                          activeOpacity={0.8}
+                          className={
+                            categoryFilter === cat
+                              ? "px-2.5 py-1 rounded-full border border-primary bg-primary/10"
+                              : "px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50"
+                          }
+                        >
+                          <Text
+                            className={
+                              categoryFilter === cat
+                                ? "text-[11px] font-semibold text-primary"
+                                : "text-[11px] font-semibold text-slate-600"
+                            }
+                            numberOfLines={1}
+                          >
+                            {cat}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+
+                  {/* Filters */}
+                  <View className="mb-2 flex-row items-center">
+                    <View className="mr-2 h-6 w-6 items-center justify-center rounded-lg bg-slate-100">
+                      <Ionicons
+                        name="funnel-outline"
+                        size={13}
+                        color="#64748b"
+                      />
+                    </View>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{ gap: 6, paddingRight: 8 }}
+                    >
+                      {[
+                        {
+                          key: "all" as FilterMode,
+                          label: `All (${allProducts.length})`,
+                        },
+                        {
+                          key: "low" as FilterMode,
+                          label: `Low (${lowCount})`,
+                          disabled: lowCount === 0,
+                        },
+                        {
+                          key: "out" as FilterMode,
+                          label: `Out (${outCount})`,
+                          disabled: outCount === 0,
+                        },
+                        {
+                          key: "favorites" as FilterMode,
+                          label: `Fav (${favoritesCount})`,
+                          disabled: favoritesCount === 0,
+                        },
+                      ].map(({ key, label, disabled }) => (
+                        <TouchableOpacity
+                          key={key}
+                          disabled={disabled}
+                          onPress={() =>
+                            requestAnimationFrame(() => setFilter(key))
+                          }
+                          activeOpacity={0.8}
+                          className={
+                            filter === key
+                              ? "px-2.5 py-1 rounded-full border border-primary bg-primary/10"
+                              : disabled
+                                ? "px-2.5 py-1 rounded-full border border-slate-200 bg-slate-100 opacity-40"
+                                : "px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50"
+                          }
+                        >
+                          <Text
+                            className={
+                              filter === key
+                                ? "text-[11px] font-semibold text-primary"
+                                : "text-[11px] font-semibold text-slate-600"
+                            }
+                          >
+                            {label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+
+                  {/* Sorting */}
+                  <View className="flex-row items-center">
+                    <View className="mr-2 h-6 w-6 items-center justify-center rounded-lg bg-slate-100">
+                      <Ionicons
+                        name="swap-vertical-outline"
+                        size={13}
+                        color="#64748b"
+                      />
+                    </View>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{ gap: 6, paddingRight: 8 }}
+                    >
+                      {[
+                        { key: "name" as SortMode, label: "Name" },
+                        { key: "stockAsc" as SortMode, label: "Stock ↑" },
+                        { key: "stockDesc" as SortMode, label: "Stock ↓" },
+                        { key: "price" as SortMode, label: "Price ↑" },
+                        { key: "priceDesc" as SortMode, label: "Price ↓" },
+                        { key: "category" as SortMode, label: "Category" },
+                      ].map(({ key, label }) => (
+                        <TouchableOpacity
+                          key={key}
+                          onPress={() => setSortBy(key)}
+                          activeOpacity={0.8}
+                          className={
+                            sortBy === key
+                              ? "px-2.5 py-1 rounded-full border border-slate-700 bg-slate-700"
+                              : "px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50"
+                          }
+                        >
+                          <Text
+                            className={
+                              sortBy === key
+                                ? "text-[11px] font-semibold text-white"
+                                : "text-[11px] font-semibold text-slate-600"
+                            }
+                          >
+                            {label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
                 </View>
-              </View>
-            )}
+              )}
+            </View>
           </View>
         </View>
       </View>
@@ -677,43 +931,56 @@ export function ItemsScreen({ navigation }: Props) {
             maxWidth: contentWidth,
             alignSelf: "center",
             marginTop: 12,
-            paddingHorizontal: 12,
-            paddingVertical: 12,
           }}
-          className="flex-row items-center justify-between rounded-xl border border-primary/30 bg-primary/5"
+          className="rounded-2xl border border-primary/30 bg-primary/5 px-4 py-4"
         >
-          <Text className="flex-1 text-sm text-slate-800">
-            Tap <Text className="font-bold">+</Text> /{" "}
-            <Text className="font-bold">−</Text> to adjust stock. Long-press for
-            custom qty.
-          </Text>
-          <TouchableOpacity
-            onPress={() => {
-              setShowHint(false);
-              storage.set("items-hint-dismissed", "1");
-            }}
-            className="ml-2"
-          >
-            <Text className="text-primary text-xs font-semibold">Got it</Text>
-          </TouchableOpacity>
+          <View className="flex-row items-start gap-3">
+            <View className="w-10 h-10 rounded-2xl bg-primary/10 items-center justify-center">
+              <Ionicons
+                name="information-circle-outline"
+                size={20}
+                color={COLORS.primary}
+              />
+            </View>
+            <View className="flex-1">
+              <Text className="text-sm font-bold text-slate-800">
+                Quick stock controls
+              </Text>
+              <Text className="text-sm text-slate-600 mt-1">
+                Use <Text className="font-bold">+</Text> and{" "}
+                <Text className="font-bold">−</Text> for instant adjustment, or
+                long-press a card for custom quantity.
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => {
+                setShowHint(false);
+                storage.set("items-hint-dismissed", "1");
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Dismiss items hint"
+            >
+              <Text className="text-primary text-xs font-semibold">Got it</Text>
+            </Pressable>
+          </View>
         </View>
       )}
 
       {/* ── Low-stock alert banner (PRD F-03.3) ───────────────────── */}
       {lowCount > 0 && filter === "all" && !search && (
-        <TouchableOpacity
+        <Pressable
           onPress={() => requestAnimationFrame(() => setFilter("low"))}
           style={{
             width: "100%",
             maxWidth: contentWidth,
             alignSelf: "center",
             marginTop: 12,
-            paddingHorizontal: 12,
-            paddingVertical: 12,
           }}
-          className="bg-amber-50 border border-amber-200 rounded-xl flex-row items-center"
+          className="bg-amber-50 border border-amber-200 rounded-2xl flex-row items-center px-4 py-4"
         >
-          <Text className="text-lg mr-2">⚠️</Text>
+          <View className="w-11 h-11 rounded-2xl bg-amber-100 items-center justify-center mr-3">
+            <Ionicons name="alert-circle" size={20} color={COLORS.warning} />
+          </View>
           <View className="flex-1">
             <Text className="text-sm font-bold text-amber-800">
               {lowCount} item{lowCount !== 1 ? "s" : ""} running low
@@ -722,8 +989,8 @@ export function ItemsScreen({ navigation }: Props) {
               Tap to review & restock
             </Text>
           </View>
-          <Text className="text-amber-500">›</Text>
-        </TouchableOpacity>
+          <Ionicons name="chevron-forward" size={18} color={COLORS.warning} />
+        </Pressable>
       )}
 
       {/* ── Product list ───────────────────────────────────────────── */}
@@ -760,8 +1027,11 @@ export function ItemsScreen({ navigation }: Props) {
       >
         <View style={{ width: "100%", maxWidth: contentWidth }}>
           {isFetching && allProducts.length === 0 && (
-            <View className="py-12 items-center">
-              <ActivityIndicator color="#e67e22" />
+            <View
+              className="rounded-[24px] border border-slate-200 bg-white py-12 items-center"
+              style={styles.surfaceShadow}
+            >
+              <ActivityIndicator color={COLORS.primary} />
               <Text className="text-slate-400 text-sm mt-2">
                 Loading products…
               </Text>
@@ -769,7 +1039,10 @@ export function ItemsScreen({ navigation }: Props) {
           )}
 
           {!isFetching && filtered.length === 0 && (
-            <View className="py-12 items-center">
+            <View
+              className="rounded-[24px] border border-slate-200 bg-white py-12 items-center px-6"
+              style={styles.surfaceShadow}
+            >
               <Text className="text-4xl mb-3">📦</Text>
               <Text className="text-slate-600 font-semibold text-base">
                 {search ? "No products match" : "No products yet"}
@@ -817,23 +1090,25 @@ export function ItemsScreen({ navigation }: Props) {
                         ).isFeatured,
                       })
               }
+              densityMode={densityMode}
+              isSmallScreen={isSmall}
             />
           ))}
 
           {hasMore && (
-            <TouchableOpacity
+            <Pressable
               onPress={loadMore}
               disabled={isFetching}
               className="py-4 items-center"
             >
               {isFetching ? (
-                <ActivityIndicator color="#e67e22" size="small" />
+                <ActivityIndicator color={COLORS.primary} size="small" />
               ) : (
                 <Text className="text-primary font-semibold text-sm">
                   Load more
                 </Text>
               )}
-            </TouchableOpacity>
+            </Pressable>
           )}
           <View className="h-6" />
         </View>
@@ -843,10 +1118,11 @@ export function ItemsScreen({ navigation }: Props) {
       <AddProductModal
         visible={addOpen}
         onClose={() => setAddOpen(false)}
-        onCreated={() => {
+        onCreated={(keepOpen = false) => {
           void qc.invalidateQueries({ queryKey: QUERY_KEYS.products.all() });
-          setAddOpen(false);
+          if (!keepOpen) setAddOpen(false);
         }}
+        isSmallScreen={isSmall}
         categories={[
           ...new Set(
             allProducts
@@ -1025,9 +1301,10 @@ export function ItemsScreen({ navigation }: Props) {
       </Modal>
 
       {/* ── FAB: Add Items (bottom right) ───────────────────────── */}
-      <TouchableOpacity
+      <Pressable
         onPress={() => setAddOpen(true)}
-        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel="Add item"
         style={{
           position: "absolute",
           bottom: fabBottom,
@@ -1038,17 +1315,13 @@ export function ItemsScreen({ navigation }: Props) {
           paddingHorizontal: 14,
           paddingVertical: 12,
           borderRadius: 24,
-          backgroundColor: "#e67e22",
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.25,
-          shadowRadius: 4,
-          elevation: 5,
+          backgroundColor: COLORS.primary,
+          ...styles.fabShadow,
         }}
       >
         <Ionicons name="add" size={22} color="#fff" />
         <Text className="text-white font-bold text-sm">Add Items</Text>
-      </TouchableOpacity>
+      </Pressable>
     </SafeAreaView>
   );
 }
@@ -1064,6 +1337,8 @@ function ProductCard({
   adjusting,
   onLongPress,
   onToggleFavorite,
+  densityMode,
+  isSmallScreen,
 }: {
   product: Product & {
     minStock?: number;
@@ -1079,7 +1354,11 @@ function ProductCard({
   adjusting: boolean;
   onLongPress: () => void;
   onToggleFavorite?: () => void;
+  densityMode: DensityMode;
+  isSmallScreen: boolean;
 }) {
+  const isCompact = densityMode === "compact";
+  const compactVisual = isCompact || isSmallScreen;
   const status = stockStatus(product);
   const s = STATUS_STYLES[status];
   const stockVal = num(product.stock);
@@ -1091,25 +1370,46 @@ function ProductCard({
     product.priceTier2 != null ? num(product.priceTier2) : null;
   const hasTiers = wholesalePrice !== null || dealerPrice !== null;
   const quantityText = `QTY: ${stockVal}${product.unit ? ` ${product.unit}` : ""}`;
+  const categoryLabel = (product.category ?? "General").trim() || "General";
+  const statusTone =
+    status === "out"
+      ? COLORS.error
+      : status === "low"
+        ? COLORS.warning
+        : COLORS.success;
+  const statusBg =
+    status === "out"
+      ? COLORS.bg.error
+      : status === "low"
+        ? COLORS.bg.warning
+        : COLORS.bg.success;
 
   const a11yLabel = `${product.name}, ${status === "out" ? "Out of stock" : status === "low" ? "Low stock" : "In stock"}, ${stockVal} ${product.unit ?? "units"}`;
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.75}
+    <Pressable
       onPress={onPress}
       onLongPress={onLongPress}
       delayLongPress={500}
       accessibilityLabel={a11yLabel}
       accessibilityRole="button"
       accessibilityHint="Tap to view details, long-press to adjust stock"
-      className="bg-white rounded-2xl border border-slate-200 mb-3 overflow-hidden"
+      className={`bg-white border border-slate-200 overflow-hidden ${
+        compactVisual ? "rounded-[22px] mb-2" : "rounded-[24px] mb-3"
+      }`}
+      style={({ pressed }) => ({
+        opacity: pressed ? 0.97 : 1,
+        backgroundColor: pressed ? COLORS.slate[50] : COLORS.text.inverted,
+        ...styles.cardShadow,
+      })}
     >
       {onToggleFavorite && (
-        <TouchableOpacity
+        <Pressable
           onPress={onToggleFavorite}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          className="absolute top-3 left-3 z-10 h-8 w-8 items-center justify-center rounded-full bg-amber-50 border border-amber-100"
+          className={`absolute top-3 left-3 z-10 items-center justify-center rounded-full bg-amber-50 border border-amber-100 ${
+            compactVisual ? "h-9 w-9" : "h-10 w-10"
+          }`}
           accessibilityLabel={
             product.isFeatured ? "Remove from favorites" : "Add to favorites"
           }
@@ -1119,59 +1419,145 @@ function ProductCard({
             size={18}
             color={product.isFeatured ? "#f59e0b" : "#94a3b8"}
           />
-        </TouchableOpacity>
+        </Pressable>
       )}
 
-      <View className="absolute top-3 right-3 rounded-full bg-emerald-500 px-2.5 py-1 z-10">
+      <View
+        className={`absolute top-3 right-3 rounded-full z-10 ${
+          compactVisual ? "px-2 py-1" : "px-2.5 py-1"
+        }`}
+        style={{ backgroundColor: statusTone }}
+      >
         <Text className="text-[10px] font-bold uppercase tracking-wide text-white">
           {quantityText}
         </Text>
       </View>
 
-      <View className="flex-row items-center px-4 pt-10 pb-3">
-        {/* Product image or category icon */}
-        <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center mr-3 overflow-hidden">
-          {imageUrl ? (
-            <Image
-              source={{ uri: imageUrl }}
-              className="w-full h-full"
-              resizeMode="cover"
-            />
-          ) : (
-            <Text className="text-xl">{categoryIcon(product.category)}</Text>
-          )}
+      <View className={compactVisual ? "px-3.5 pt-11 pb-3" : "px-4 pt-12 pb-4"}>
+        <View className="flex-row items-start gap-3">
+          <View
+            className={`bg-primary/10 items-center justify-center overflow-hidden ${
+              compactVisual ? "w-12 h-12 rounded-xl" : "w-14 h-14 rounded-2xl"
+            }`}
+          >
+            {imageUrl ? (
+              <Image
+                source={{ uri: imageUrl }}
+                className="w-full h-full"
+                resizeMode="cover"
+              />
+            ) : (
+              <Text className={compactVisual ? "text-xl" : "text-2xl"}>
+                {categoryIcon(product.category)}
+              </Text>
+            )}
+          </View>
+
+          <View className="flex-1 min-w-0">
+            <View className="flex-row items-start justify-between gap-3">
+              <View className="flex-1 min-w-0 pr-2">
+                <Text className="text-[11px] font-semibold uppercase tracking-[1px] text-slate-500">
+                  {categoryLabel}
+                </Text>
+                <Text
+                  className={
+                    compactVisual
+                      ? "text-sm font-bold text-slate-900 mt-1"
+                      : "text-base font-bold text-slate-900 mt-1"
+                  }
+                  numberOfLines={1}
+                >
+                  {product.name}
+                </Text>
+                <View
+                  className={`flex-row flex-wrap gap-2 ${compactVisual ? "mt-2" : "mt-3"}`}
+                >
+                  <View
+                    className={`rounded-full bg-slate-100 ${compactVisual ? "px-2.5 py-1" : "px-3 py-1.5"}`}
+                  >
+                    <Text className="text-[11px] font-medium text-slate-600">
+                      Stock {stockVal} {product.unit ?? "pcs"}
+                    </Text>
+                  </View>
+                  <View
+                    className={`rounded-full ${compactVisual ? "px-2.5 py-1" : "px-3 py-1.5"}`}
+                    style={{ backgroundColor: statusBg }}
+                  >
+                    <Text
+                      className="text-[11px] font-semibold"
+                      style={{ color: statusTone }}
+                    >
+                      {s.label}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </View>
         </View>
 
-        {/* Name + prices */}
-        <View className="flex-1 min-w-0 mr-2">
-          <Text className="text-sm font-bold text-slate-800" numberOfLines={1}>
-            {product.name}
-          </Text>
-          <View className="flex-row items-center gap-3 mt-1">
-            <View className="flex-row items-center gap-1">
-              <Text className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                Sales
+        <View
+          className={`${
+            isCompact || isSmallScreen
+              ? "mt-2.5 rounded-xl px-3 py-2.5"
+              : "mt-3 rounded-2xl px-3 py-3"
+          } bg-slate-50`}
+        >
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1 min-w-0">
+              <Text className="text-[10px] font-semibold uppercase tracking-[1px] text-slate-500">
+                Sales Price
               </Text>
-              <Text className="text-xs font-bold text-slate-700">
+              <Text
+                className={
+                  compactVisual
+                    ? "text-xs font-bold text-slate-900 mt-1"
+                    : "text-sm font-bold text-slate-900 mt-1"
+                }
+              >
                 ₹{price % 1 === 0 ? price : price.toFixed(2)}
               </Text>
             </View>
-
-            <View className="h-3.5 w-px bg-slate-200" />
-
-            <View className="flex-row items-center gap-1">
-              <Text className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+            <View className="flex-1 min-w-0 items-center">
+              <Text className="text-[10px] font-semibold uppercase tracking-[1px] text-slate-500">
                 Cost
               </Text>
-              <Text className="text-xs font-semibold text-slate-500">
+              <Text
+                className={
+                  compactVisual
+                    ? "text-xs font-semibold text-slate-700 mt-1"
+                    : "text-sm font-semibold text-slate-700 mt-1"
+                }
+              >
                 ₹{cost % 1 === 0 ? cost : cost.toFixed(2)}
               </Text>
             </View>
+            <View className="flex-1 min-w-0 items-end">
+              <Text className="text-[10px] font-semibold uppercase tracking-[1px] text-slate-500">
+                Margin
+              </Text>
+              <Text
+                className={
+                  compactVisual
+                    ? "text-xs font-semibold text-slate-700 mt-1"
+                    : "text-sm font-semibold text-slate-700 mt-1"
+                }
+              >
+                ₹{(price - cost).toFixed(2)}
+              </Text>
+            </View>
           </View>
+
           {hasTiers && (
-            <View className="flex-row gap-1.5 mt-1.5">
+            <View
+              className={`flex-row gap-1.5 ${compactVisual ? "mt-2" : "mt-3"}`}
+            >
               {wholesalePrice !== null && (
-                <View className="flex-row items-center gap-0.5 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5">
+                <View
+                  className={`flex-row items-center gap-1 bg-emerald-50 border border-emerald-200 rounded-full ${
+                    compactVisual ? "px-2 py-0.5" : "px-2.5 py-1"
+                  }`}
+                >
                   <Text className="text-[9px] font-bold text-emerald-700">
                     W
                   </Text>
@@ -1184,7 +1570,11 @@ function ProductCard({
                 </View>
               )}
               {dealerPrice !== null && (
-                <View className="flex-row items-center gap-0.5 bg-orange-50 border border-orange-200 rounded px-1.5 py-0.5">
+                <View
+                  className={`flex-row items-center gap-1 bg-orange-50 border border-orange-200 rounded-full ${
+                    compactVisual ? "px-2 py-0.5" : "px-2.5 py-1"
+                  }`}
+                >
                   <Text className="text-[9px] font-bold text-orange-700">
                     D
                   </Text>
@@ -1201,49 +1591,56 @@ function ProductCard({
         </View>
       </View>
 
-      {/* Quick stock actions (PRD F-03.2 — adjustment trigger) */}
-      <View className="flex-row border-t border-slate-100">
-        <TouchableOpacity
+      <View className="flex-row border-t border-slate-100 bg-white">
+        <Pressable
           onPress={() => {
             hapticLight();
             onSubtract();
           }}
           disabled={adjusting || stockVal <= 0}
           accessibilityLabel="Subtract one from stock"
-          className="flex-1 py-2.5 items-center border-r border-slate-100"
+          className={`flex-1 items-center border-r border-slate-100 ${
+            compactVisual ? "py-2.5" : "py-3"
+          }`}
         >
           <Text
-            className={`text-lg font-black ${stockVal <= 0 ? "text-slate-200" : "text-red-500"}`}
+            className={`${compactVisual ? "text-xs" : "text-sm"} font-bold ${stockVal <= 0 ? "text-slate-300" : "text-red-500"}`}
           >
-            {adjusting ? "…" : "−"}
+            {adjusting ? "Updating..." : "−1 stock"}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
 
-        <TouchableOpacity
+        <Pressable
           onPress={onLongPress}
           accessibilityLabel="Adjust stock with custom quantity"
-          className="flex-1 py-2.5 items-center border-r border-slate-100"
+          className={`flex-1 items-center border-r border-slate-100 ${
+            compactVisual ? "py-2.5" : "py-3"
+          }`}
         >
-          <Text className="text-xs text-slate-400 font-medium">Custom qty</Text>
-        </TouchableOpacity>
+          <Text
+            className={`${compactVisual ? "text-xs" : "text-sm"} text-slate-500 font-semibold`}
+          >
+            Custom qty
+          </Text>
+        </Pressable>
 
-        <TouchableOpacity
+        <Pressable
           onPress={() => {
             hapticLight();
             onAdd();
           }}
           disabled={adjusting}
           accessibilityLabel="Add one to stock"
-          className="flex-1 py-2.5 items-center"
+          className={`flex-1 items-center ${compactVisual ? "py-2.5" : "py-3"}`}
         >
           <Text
-            className={`text-lg font-black ${adjusting ? "text-slate-200" : "text-green-600"}`}
+            className={`${compactVisual ? "text-xs" : "text-sm"} font-bold ${adjusting ? "text-slate-300" : "text-green-600"}`}
           >
-            {adjusting ? "…" : "+"}
+            {adjusting ? "Updating..." : "+1 stock"}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
@@ -1253,11 +1650,13 @@ function AddProductModal({
   visible,
   onClose,
   onCreated,
+  isSmallScreen = false,
   categories = [],
 }: {
   visible: boolean;
   onClose: () => void;
-  onCreated: () => void;
+  onCreated: (keepOpen?: boolean) => void;
+  isSmallScreen?: boolean;
   categories?: string[];
 }) {
   const [name, setName] = useState("");
@@ -1280,6 +1679,14 @@ function AddProductModal({
     setBarcode("");
   };
 
+  const resetForNext = () => {
+    setName("");
+    setPrice("");
+    setStock("0");
+    setMinStock("5");
+    setBarcode("");
+  };
+
   const handleBarcodeScan = async (code: string) => {
     setBarcode(code);
     try {
@@ -1294,7 +1701,7 @@ function AddProductModal({
     }
   };
 
-  const handleCreate = async () => {
+  const handleCreate = async (keepOpen = false) => {
     if (!name.trim()) {
       showAlert("Required", "Product name is required");
       return;
@@ -1310,8 +1717,13 @@ function AddProductModal({
         minStock: parseInt(minStock) || 5,
         barcode: barcode.trim() || undefined,
       });
-      reset();
-      onCreated();
+      if (keepOpen) {
+        resetForNext();
+        onCreated(true);
+      } else {
+        reset();
+        onCreated(false);
+      }
     } catch (e: any) {
       showAlert("Error", e.message ?? "Failed to add product");
     } finally {
@@ -1335,7 +1747,7 @@ function AddProductModal({
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="pageSheet"
+      presentationStyle="fullScreen"
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
@@ -1343,34 +1755,67 @@ function AddProductModal({
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <SafeAreaView className="flex-1">
-          {/* Header */}
-          <View className="flex-row items-center border-b border-slate-200 px-4 py-4">
-            <TouchableOpacity onPress={onClose} className="mr-3">
-              <Text className="text-slate-500 text-base">✕</Text>
-            </TouchableOpacity>
-            <Text className="text-lg font-black text-slate-800 flex-1">
-              Add Product
-            </Text>
-            <TouchableOpacity
-              onPress={handleCreate}
-              disabled={loading || !name.trim()}
-              className={`px-4 py-2 rounded-xl ${loading || !name.trim() ? "bg-slate-200" : "bg-primary"}`}
-            >
-              <Text
-                className={`font-bold text-sm ${loading || !name.trim() ? "text-slate-400" : "text-white"}`}
+          <View
+            className={`border-b border-slate-200 ${
+              isSmallScreen ? "px-3.5 py-3" : "px-4 py-4"
+            }`}
+          >
+            <View className="flex-row items-start justify-between gap-3">
+              <View className="flex-1">
+                <Text
+                  className={`${
+                    isSmallScreen ? "text-lg" : "text-xl"
+                  } font-black text-slate-900`}
+                >
+                  Add Item
+                </Text>
+                <Text className="text-sm text-slate-500 mt-1">
+                  Quick entry for multiple products
+                </Text>
+              </View>
+              <Pressable
+                onPress={onClose}
+                accessibilityRole="button"
+                accessibilityLabel="Close add item modal"
+                className="w-10 h-10 rounded-xl bg-slate-100 items-center justify-center"
               >
-                {loading ? "Saving…" : "Save"}
-              </Text>
-            </TouchableOpacity>
+                <Ionicons name="close" size={20} color="#475569" />
+              </Pressable>
+            </View>
+
+            <View className="mt-3 rounded-xl bg-slate-100 p-1 flex-row">
+              <View className="flex-1 rounded-lg bg-white px-3 py-2">
+                <Text className="text-[11px] font-semibold uppercase tracking-[1px] text-slate-500">
+                  Unit
+                </Text>
+                <Text className="text-sm font-bold text-slate-800 mt-0.5">
+                  {unit}
+                </Text>
+              </View>
+              <View className="w-px bg-slate-200 mx-1" />
+              <View className="flex-1 rounded-lg bg-white px-3 py-2">
+                <Text className="text-[11px] font-semibold uppercase tracking-[1px] text-slate-500">
+                  Category
+                </Text>
+                <Text
+                  className="text-sm font-bold text-slate-800 mt-0.5"
+                  numberOfLines={1}
+                >
+                  {category.trim() || "General"}
+                </Text>
+              </View>
+            </View>
           </View>
 
           <ScrollView
-            className="flex-1 px-4 pt-4"
+            className={`flex-1 ${isSmallScreen ? "px-3.5 pt-3" : "px-4 pt-4"}`}
             keyboardShouldPersistTaps="handled"
           >
             <FormField label="Product Name *">
               <TextInput
-                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800"
+                className={`bg-slate-50 border border-slate-200 rounded-xl px-4 ${
+                  isSmallScreen ? "py-2.5" : "py-3"
+                } text-sm text-slate-800`}
                 placeholder="e.g. Aata, Amul Butter, Surf Excel"
                 value={name}
                 onChangeText={setName}
@@ -1379,11 +1824,13 @@ function AddProductModal({
               />
             </FormField>
 
-            <View className="flex-row gap-3">
+            <View className={`${isSmallScreen ? "gap-2" : "flex-row gap-3"}`}>
               <View className="flex-1">
                 <FormField label="Selling Price (₹)">
                   <TextInput
-                    className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800"
+                    className={`bg-slate-50 border border-slate-200 rounded-xl px-4 ${
+                      isSmallScreen ? "py-2.5" : "py-3"
+                    } text-sm text-slate-800`}
                     placeholder="0"
                     value={price}
                     onChangeText={setPrice}
@@ -1447,7 +1894,9 @@ function AddProductModal({
                 </ScrollView>
               )}
               <TextInput
-                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800"
+                className={`bg-slate-50 border border-slate-200 rounded-xl px-4 ${
+                  isSmallScreen ? "py-2.5" : "py-3"
+                } text-sm text-slate-800`}
                 placeholder={
                   categories.length > 0
                     ? "Or type new category"
@@ -1462,19 +1911,21 @@ function AddProductModal({
             <FormField label="Barcode (optional)">
               <View className="flex-row items-center bg-slate-50 border border-slate-200 rounded-xl overflow-hidden">
                 <TextInput
-                  className="flex-1 px-4 py-3 text-sm text-slate-800"
+                  className={`flex-1 px-4 ${isSmallScreen ? "py-2.5" : "py-3"} text-sm text-slate-800`}
                   placeholder="Scan or type barcode"
                   value={barcode}
                   onChangeText={setBarcode}
                   autoCorrect={false}
                   keyboardType="numeric"
                 />
-                <TouchableOpacity
+                <Pressable
                   onPress={() => setScanOpen(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Scan item barcode"
                   className="w-12 h-12 items-center justify-center border-l border-slate-200"
                 >
                   <Ionicons name="barcode-outline" size={24} color="#e67e22" />
-                </TouchableOpacity>
+                </Pressable>
               </View>
             </FormField>
             <BarcodeScanner
@@ -1488,7 +1939,9 @@ function AddProductModal({
               <View className="flex-1">
                 <FormField label="Opening Stock">
                   <TextInput
-                    className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800"
+                    className={`bg-slate-50 border border-slate-200 rounded-xl px-4 ${
+                      isSmallScreen ? "py-2.5" : "py-3"
+                    } text-sm text-slate-800`}
                     placeholder="0"
                     value={stock}
                     onChangeText={setStock}
@@ -1499,7 +1952,9 @@ function AddProductModal({
               <View className="flex-1">
                 <FormField label="Reorder Point">
                   <TextInput
-                    className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800"
+                    className={`bg-slate-50 border border-slate-200 rounded-xl px-4 ${
+                      isSmallScreen ? "py-2.5" : "py-3"
+                    } text-sm text-slate-800`}
                     placeholder="5"
                     value={minStock}
                     onChangeText={setMinStock}
@@ -1516,8 +1971,63 @@ function AddProductModal({
               </Text>
             </View>
 
-            <View className="h-8" />
+            <View className="h-4" />
           </ScrollView>
+
+          <View
+            className={`border-t border-slate-200 bg-white ${
+              isSmallScreen ? "px-3.5 py-2.5" : "px-4 py-3"
+            }`}
+          >
+            <View className={`${isSmallScreen ? "gap-2" : "flex-row gap-3"}`}>
+              <Pressable
+                onPress={onClose}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel add item"
+                className={`flex-1 rounded-xl border border-slate-200 items-center justify-center ${
+                  isSmallScreen ? "min-h-[42]" : "min-h-[46]"
+                }`}
+              >
+                <Text className="text-sm font-semibold text-slate-600">
+                  Cancel
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => void handleCreate(true)}
+                disabled={loading || !name.trim()}
+                accessibilityRole="button"
+                accessibilityLabel="Save and add another item"
+                className={`flex-1 rounded-xl items-center justify-center ${
+                  isSmallScreen ? "min-h-[42]" : "min-h-[46]"
+                } ${loading || !name.trim() ? "bg-slate-200" : "bg-slate-800"}`}
+              >
+                <Text
+                  className={`text-sm font-bold ${
+                    loading || !name.trim() ? "text-slate-400" : "text-white"
+                  }`}
+                >
+                  {loading ? "Saving..." : "Save + Next"}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => void handleCreate(false)}
+                disabled={loading || !name.trim()}
+                accessibilityRole="button"
+                accessibilityLabel="Save and close add item"
+                className={`flex-1 rounded-xl items-center justify-center ${
+                  isSmallScreen ? "min-h-[42]" : "min-h-[46]"
+                } ${loading || !name.trim() ? "bg-slate-200" : "bg-primary"}`}
+              >
+                <Text
+                  className={`text-sm font-bold ${
+                    loading || !name.trim() ? "text-slate-400" : "text-white"
+                  }`}
+                >
+                  {loading ? "Saving..." : "Save"}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
         </SafeAreaView>
       </KeyboardAvoidingView>
     </Modal>
