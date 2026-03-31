@@ -386,7 +386,7 @@ export function CompanyProfileScreen({ navigation }: Props) {
       );
       setLogoObjectKey(key);
       void qc.invalidateQueries({ queryKey: ["auth", "me"] });
-      showAlert("", "Logo uploaded successfully");
+      showAlert("", "Logo uploaded and saved successfully");
     } catch (e) {
       showAlert("Upload failed", (e as Error).message ?? "Please try again.");
     } finally {
@@ -529,6 +529,7 @@ export function CompanyProfileScreen({ navigation }: Props) {
           bankName: bankName || undefined,
           bankAccountNo: bankAccountNo || undefined,
           bankIfsc: bankIfscUpper || undefined,
+          logoObjectKey: logoObjectKey ?? null,
         },
       },
     });
@@ -677,9 +678,9 @@ export function CompanyProfileScreen({ navigation }: Props) {
                 </Pressable>
               )}
             </View>
-            {hasUnsavedChanges && logoObjectKey !== loadedProfileState.logoObjectKey ? (
+            {hasUnsavedChanges && !logoObjectKey && loadedProfileState.logoObjectKey ? (
               <Text className="text-xs text-amber-700 mt-2">
-                Save to apply logo changes.
+                Save to remove the current logo.
               </Text>
             ) : null}
           </View>
