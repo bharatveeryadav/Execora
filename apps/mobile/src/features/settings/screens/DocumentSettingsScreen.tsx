@@ -214,6 +214,8 @@ export function DocumentSettingsScreen({ navigation }: Props) {
   const [showFontStyleModal, setShowFontStyleModal] = useState(false);
   const [showOrientationModal, setShowOrientationModal] = useState(false);
   const [showDecimalsModal, setShowDecimalsModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importText, setImportText] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
 
   useFocusEffect(
@@ -263,6 +265,42 @@ export function DocumentSettingsScreen({ navigation }: Props) {
       ],
     );
   }, [save]);
+
+  const handleImportSettings = useCallback(() => {
+    try {
+      const parsed = JSON.parse(importText) as {
+        template?: string;
+        settings?: Partial<DocumentSettings>;
+      };
+      if (!parsed || typeof parsed !== "object" || !parsed.settings) {
+        showAlert("Invalid JSON", "Paste a valid exported settings JSON.");
+        return;
+      }
+
+      const merged: DocumentSettings = {
+        ...DEFAULT_SETTINGS,
+        ...parsed.settings,
+      };
+      save(merged);
+      storage.set(DOC_SETTINGS_KEY, JSON.stringify(merged));
+
+      if (
+        parsed.template &&
+        TEMPLATES.some((t) => t.id === parsed.template)
+      ) {
+        const tpl = parsed.template as TemplateId;
+        setInvoiceTemplate(tpl);
+        storage.set(INV_TEMPLATE_KEY, tpl);
+      }
+
+      setImportText("");
+      setShowImportModal(false);
+      setHasChanges(false);
+      showAlert("Imported", "Document settings imported successfully.");
+    } catch {
+      showAlert("Import failed", "Please check the pasted JSON and try again.");
+    }
+  }, [importText, save]);
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
@@ -419,6 +457,18 @@ export function DocumentSettingsScreen({ navigation }: Props) {
             <Text className="font-medium text-slate-800">Export Settings</Text>
             <Text className="text-sm text-slate-500 mt-0.5">
               Share your current document settings as JSON
+            </Text>
+            <View className="absolute right-4 top-4">
+              <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setShowImportModal(true)}
+            className="px-4 py-4 border-b border-slate-100"
+          >
+            <Text className="font-medium text-slate-800">Import Settings</Text>
+            <Text className="text-sm text-slate-500 mt-0.5">
+              Paste exported JSON to restore template and document preferences
             </Text>
             <View className="absolute right-4 top-4">
               <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
@@ -859,6 +909,58 @@ export function DocumentSettingsScreen({ navigation }: Props) {
                 <Text className="text-base">{n} decimal places</Text>
               </TouchableOpacity>
             ))}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Import Settings Modal */}
+      <Modal
+        visible={showImportModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowImportModal(false)}
+      >
+        <Pressable
+          className="flex-1 bg-black/40 justify-center items-center"
+          onPress={() => setShowImportModal(false)}
+        >
+          <Pressable
+            className="bg-white rounded-2xl p-5 w-[92%] max-w-md"
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text className="text-lg font-bold text-slate-800 mb-2">
+              Import Document Settings
+            </Text>
+            <Text className="text-sm text-slate-500 mb-3">
+              Paste the exported JSON payload here.
+            </Text>
+            <TextInput
+              value={importText}
+              onChangeText={setImportText}
+              placeholder='{"template":"classic","settings":{...}}'
+              placeholderTextColor="#94a3b8"
+              multiline
+              textAlignVertical="top"
+              className="border border-slate-200 rounded-xl px-3 py-3 text-xs text-slate-800 bg-slate-50 min-h-[180px]"
+              accessibilityLabel="Import settings JSON"
+            />
+            <View className="flex-row gap-2 mt-4">
+              <TouchableOpacity
+                onPress={() => {
+                  setShowImportModal(false);
+                  setImportText("");
+                }}
+                className="flex-1 rounded-xl border border-slate-200 py-2.5 items-center"
+              >
+                <Text className="text-slate-600 font-semibold">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleImportSettings}
+                className="flex-1 rounded-xl bg-primary py-2.5 items-center"
+              >
+                <Text className="text-white font-semibold">Import</Text>
+              </TouchableOpacity>
+            </View>
           </Pressable>
         </Pressable>
       </Modal>
