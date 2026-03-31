@@ -423,7 +423,10 @@ export function DocumentSettingsScreen({ navigation }: Props) {
                 </Text>
                 <TextInput
                   value={settings.invoicePrefix}
-                  onChangeText={(v) => save({ invoicePrefix: v })}
+                  onChangeText={(v) => {
+                    save({ invoicePrefix: v });
+                    setHasChanges(true);
+                  }}
                   placeholder="INV-"
                   autoCapitalize="characters"
                   maxLength={10}
@@ -437,7 +440,10 @@ export function DocumentSettingsScreen({ navigation }: Props) {
                 </Text>
                 <TextInput
                   value={settings.invoiceSuffix}
-                  onChangeText={(v) => save({ invoiceSuffix: v })}
+                  onChangeText={(v) => {
+                    save({ invoiceSuffix: v });
+                    setHasChanges(true);
+                  }}
                   placeholder="none"
                   autoCapitalize="characters"
                   maxLength={10}
@@ -622,6 +628,7 @@ export function DocumentSettingsScreen({ navigation }: Props) {
       {/* Update Button */}
       <View className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200">
         <TouchableOpacity
+          disabled={!hasChanges}
           onPress={handleUpdate}
           className="rounded-xl items-center justify-center"
           style={{

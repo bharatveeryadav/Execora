@@ -132,6 +132,7 @@ function readInvoiceBar(): Record<string, unknown> {
 
 function readDocumentSettings(): {
   invoicePrefix?: string;
+  invoiceSuffix?: string;
   defaultDueDays?: number;
   defaultNotes?: string;
 } {
@@ -142,6 +143,8 @@ function readDocumentSettings(): {
     return {
       invoicePrefix:
         typeof parsed.invoicePrefix === "string" ? parsed.invoicePrefix : undefined,
+      invoiceSuffix:
+        typeof parsed.invoiceSuffix === "string" ? parsed.invoiceSuffix : undefined,
       defaultDueDays:
         typeof parsed.defaultDueDays === "number" ? parsed.defaultDueDays : undefined,
       defaultNotes:
@@ -334,6 +337,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
       documentSettingsRef.current.invoicePrefix ??
       "INV-",
   );
+  const invoiceSuffix = documentSettingsRef.current.invoiceSuffix ?? "";
   const [documentDate, setDocumentDate] = useState(() => {
     const today = new Date().toISOString().slice(0, 10);
     return (readInvoiceBar().documentDate as string) ?? today;
@@ -1133,7 +1137,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
               <View className="mb-3">
                 <InvoiceHeaderBar
                   prefix={invoicePrefix}
-                  counter="DRAFT"
+                  counter={`DRAFT${invoiceSuffix}`}
                   documentType={documentType as any}
                   documentDate={documentDate}
                   dueDate={computedDueDate}
@@ -1678,7 +1682,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                 })()}
                 data={
                   {
-                    invoiceNo: `${invoicePrefix}DRAFT`,
+                    invoiceNo: `${invoicePrefix}DRAFT${invoiceSuffix}`,
                     date: new Date(documentDate).toLocaleDateString("en-IN"),
                     shopName,
                     customerName: selectedCustomer?.name ?? "Walk-in Customer",
