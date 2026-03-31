@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { ErrorBoundary } from "../components/ui/ErrorBoundary";
 
 import { DashboardScreen } from "../features/dashboard";
+import { KpiDetailScreen } from "../features/dashboard/screens/KpiDetailScreen";
 import { LoginScreen } from "../features/auth";
 import {
   BillingScreen,
@@ -126,6 +127,7 @@ export type MoreStackParams = {
   Addons: { title?: string };
   MyDrive: { title?: string };
   Tutorial: { title?: string };
+  KpiDetail: { type: "sales" | "pending" | "collected" | "rate" };
 };
 
 export type DocumentType =
@@ -145,7 +147,9 @@ export type InvoiceStackParams = {
 };
 
 export type InvoicesStackParams = {
-  InvoiceList: { initialDateFilter?: string; initialStatusFilter?: string } | undefined;
+  InvoiceList:
+    | { initialDateFilter?: string; initialStatusFilter?: string }
+    | undefined;
   InvoiceForm: { startAsWalkIn?: boolean; documentType?: DocumentType };
   InvoiceDetail: { id: string };
   BillsMenu: undefined;
@@ -562,6 +566,11 @@ function MoreNavigator() {
           component={ComingSoonScreen}
           initialParams={{ title: "Tutorial" }}
           options={{ title: "Tutorial" }}
+        />
+        <MoreStack.Screen
+          name="KpiDetail"
+          component={KpiDetailScreen}
+          options={{ headerShown: false }}
         />
         <MoreStack.Screen
           name="Settings"

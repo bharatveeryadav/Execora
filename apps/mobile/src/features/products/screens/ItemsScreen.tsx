@@ -1085,8 +1085,10 @@ function ProductCard({
   const stockVal = num(product.stock);
   const price = num(product.price);
   const cost = num(product.cost);
-  const wholesalePrice = product.wholesalePrice != null ? num(product.wholesalePrice) : null;
-  const dealerPrice = product.priceTier2 != null ? num(product.priceTier2) : null;
+  const wholesalePrice =
+    product.wholesalePrice != null ? num(product.wholesalePrice) : null;
+  const dealerPrice =
+    product.priceTier2 != null ? num(product.priceTier2) : null;
   const hasTiers = wholesalePrice !== null || dealerPrice !== null;
   const quantityText = `QTY: ${stockVal}${product.unit ? ` ${product.unit}` : ""}`;
 
@@ -1170,17 +1172,27 @@ function ProductCard({
             <View className="flex-row gap-1.5 mt-1.5">
               {wholesalePrice !== null && (
                 <View className="flex-row items-center gap-0.5 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5">
-                  <Text className="text-[9px] font-bold text-emerald-700">W</Text>
+                  <Text className="text-[9px] font-bold text-emerald-700">
+                    W
+                  </Text>
                   <Text className="text-[9px] font-semibold text-emerald-600">
-                    ₹{wholesalePrice % 1 === 0 ? wholesalePrice : wholesalePrice.toFixed(2)}
+                    ₹
+                    {wholesalePrice % 1 === 0
+                      ? wholesalePrice
+                      : wholesalePrice.toFixed(2)}
                   </Text>
                 </View>
               )}
               {dealerPrice !== null && (
                 <View className="flex-row items-center gap-0.5 bg-orange-50 border border-orange-200 rounded px-1.5 py-0.5">
-                  <Text className="text-[9px] font-bold text-orange-700">D</Text>
+                  <Text className="text-[9px] font-bold text-orange-700">
+                    D
+                  </Text>
                   <Text className="text-[9px] font-semibold text-orange-600">
-                    ₹{dealerPrice % 1 === 0 ? dealerPrice : dealerPrice.toFixed(2)}
+                    ₹
+                    {dealerPrice % 1 === 0
+                      ? dealerPrice
+                      : dealerPrice.toFixed(2)}
                   </Text>
                 </View>
               )}

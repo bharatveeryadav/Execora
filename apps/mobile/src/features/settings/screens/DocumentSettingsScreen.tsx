@@ -263,7 +263,10 @@ export function DocumentSettingsScreen({ navigation }: Props) {
             storage.set(DOC_SETTINGS_KEY, JSON.stringify(DEFAULT_SETTINGS));
             setHasChanges(false);
             save(DEFAULT_SETTINGS);
-            showAlert("Reset complete", "Document settings restored to defaults.");
+            showAlert(
+              "Reset complete",
+              "Document settings restored to defaults.",
+            );
           },
         },
       ],
@@ -288,10 +291,7 @@ export function DocumentSettingsScreen({ navigation }: Props) {
       save(merged);
       storage.set(DOC_SETTINGS_KEY, JSON.stringify(merged));
 
-      if (
-        parsed.template &&
-        TEMPLATES.some((t) => t.id === parsed.template)
-      ) {
+      if (parsed.template && TEMPLATES.some((t) => t.id === parsed.template)) {
         const tpl = parsed.template as TemplateId;
         setInvoiceTemplate(tpl);
         storage.set(INV_TEMPLATE_KEY, tpl);
@@ -352,7 +352,9 @@ export function DocumentSettingsScreen({ navigation }: Props) {
         <SectionTitle title="Preferences" />
         <View className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <View className="px-4 py-4 border-b border-slate-100">
-            <Text className="font-medium text-slate-800">Show / Hide Details</Text>
+            <Text className="font-medium text-slate-800">
+              Show / Hide Details
+            </Text>
             <Text className="text-sm text-slate-500 mt-0.5 mb-3">
               Turn invoice elements on or off to match your business needs
             </Text>
@@ -382,7 +384,9 @@ export function DocumentSettingsScreen({ navigation }: Props) {
                     setHasChanges(true);
                   }}
                   trackColor={{ false: "#cbd5e1", true: "#fdba74" }}
-                  thumbColor={settings.showCustomerAddress ? "#e67e22" : "#f8fafc"}
+                  thumbColor={
+                    settings.showCustomerAddress ? "#e67e22" : "#f8fafc"
+                  }
                 />
               }
             />
@@ -583,10 +587,9 @@ export function DocumentSettingsScreen({ navigation }: Props) {
                 Preview:{" "}
                 <Text className="font-semibold text-slate-700">
                   {settings.invoicePrefix || ""}
-                  {String(Math.max(1, settings.nextInvoiceNumber || 1)).padStart(
-                    4,
-                    "0",
-                  )}
+                  {String(
+                    Math.max(1, settings.nextInvoiceNumber || 1),
+                  ).padStart(4, "0")}
                   {settings.invoiceSuffix || ""}
                 </Text>
               </Text>
@@ -595,7 +598,9 @@ export function DocumentSettingsScreen({ navigation }: Props) {
               onPress={handleResetDefaults}
               className="mt-3 px-3 py-2 rounded-lg border border-red-200 bg-red-50"
             >
-              <Text className="text-xs font-semibold text-red-700">Reset to defaults</Text>
+              <Text className="text-xs font-semibold text-red-700">
+                Reset to defaults
+              </Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -1045,6 +1045,16 @@ export function DashboardScreen({ navigation }: Props) {
     [navigation],
   );
 
+  const navigateKpiDetail = useCallback(
+    (type: "sales" | "pending" | "collected" | "rate") => {
+      (navigation as any).navigate("MoreTab", {
+        screen: "KpiDetail",
+        params: { type },
+      });
+    },
+    [navigation],
+  );
+
   const handleQuickAction = (
     route: string,
     params?: Record<string, unknown>,
@@ -1628,7 +1638,7 @@ export function DashboardScreen({ navigation }: Props) {
             }}
           >
             <PressableCard
-              onPress={navigateTodayInvoices}
+              onPress={() => navigateKpiDetail("sales")}
               style={{ width: (contentWidth - 6) / 2 - 3, minWidth: 0 }}
               className="shadow-sm py-2 px-2"
             >
@@ -1655,7 +1665,7 @@ export function DashboardScreen({ navigation }: Props) {
               </View>
             </PressableCard>
             <PressableCard
-              onPress={() => navigatePartiesStack("Overdue")}
+              onPress={() => navigateKpiDetail("pending")}
               style={{ width: (contentWidth - 6) / 2 - 3, minWidth: 0 }}
               className="shadow-sm py-2 px-2"
             >
@@ -1679,7 +1689,7 @@ export function DashboardScreen({ navigation }: Props) {
               </View>
             </PressableCard>
             <PressableCard
-              onPress={() => navigatePartiesStack("Payment")}
+              onPress={() => navigateKpiDetail("collected")}
               style={{ width: (contentWidth - 6) / 2 - 3, minWidth: 0 }}
               className="shadow-sm py-2 px-2"
             >
@@ -1703,7 +1713,7 @@ export function DashboardScreen({ navigation }: Props) {
               </View>
             </PressableCard>
             <PressableCard
-              onPress={() => navigateMoreStack("Reports")}
+              onPress={() => navigateKpiDetail("rate")}
               style={{ width: (contentWidth - 6) / 2 - 3, minWidth: 0 }}
               className="shadow-sm py-2 px-2"
             >

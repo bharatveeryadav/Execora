@@ -131,7 +131,12 @@ export function InvoiceHeaderBar({
     >
       <View
         className="rounded-xl border border-slate-200 bg-white overflow-hidden"
-        style={{ shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 2 }}
+        style={{
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.06,
+          shadowRadius: 2,
+        }}
       >
         {/* Colour accent bar at top */}
         <View style={{ height: 3, backgroundColor: meta.color }} />
