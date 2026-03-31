@@ -236,14 +236,18 @@ function formatDate(d: string | Date | undefined): string {
 }
 
 type Props = NativeStackScreenProps<InvoicesStackParams, "InvoiceList">;
-export function InvoiceListScreen({ navigation }: Props) {
+export function InvoiceListScreen({ navigation, route }: Props) {
   const { width, contentPad, contentWidth, isSmall } = useResponsive();
   const insets = useSafeAreaInsets();
   const stackSearchControls = contentWidth < 380;
   const [docTypeTab, setDocTypeTab] = useState<DocTypeTab>("sales");
-  const [statusTab, setStatusTab] = useState<StatusTab>("All");
+  const [statusTab, setStatusTab] = useState<StatusTab>(
+    () => (route.params?.initialStatusFilter as StatusTab) ?? "All",
+  );
   const [search, setSearch] = useState("");
-  const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  const [dateFilter, setDateFilter] = useState<DateFilter>(
+    () => (route.params?.initialDateFilter as DateFilter) ?? "all",
+  );
   const [customFrom, setCustomFrom] = useState<Date | undefined>();
   const [customTo, setCustomTo] = useState<Date | undefined>();
   const [dateFilterModalOpen, setDateFilterModalOpen] = useState(false);
@@ -809,10 +813,10 @@ export function InvoiceListScreen({ navigation }: Props) {
                   setDateFilter("all");
                   setDateFilterModalOpen(false);
                 }}
-                variant="modal"
+                variant="chips"
                 isOpen={dateFilterModalOpen}
                 onOpenChange={setDateFilterModalOpen}
-                maxVisible={3}
+                maxVisible={5}
                 className={stackSearchControls ? "mt-1.5" : "ml-1"}
               />
             )}

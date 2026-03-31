@@ -129,21 +129,23 @@ export type MoreStackParams = {
 };
 
 export type DocumentType =
-  | 'invoice'
-  | 'quotation'
-  | 'proforma'
-  | 'sales_order'
-  | 'delivery_challan'
-  | 'bill_of_supply'
-  | 'pos_sale';
+  | "invoice"
+  | "quotation"
+  | "proforma"
+  | "sales_order"
+  | "delivery_challan"
+  | "bill_of_supply"
+  | "pos_sale";
 
 export type InvoiceStackParams = {
-  InvoiceForm: { startAsWalkIn?: boolean; documentType?: DocumentType } | undefined;
+  InvoiceForm:
+    | { startAsWalkIn?: boolean; documentType?: DocumentType }
+    | undefined;
   InvoiceDetail: { id: string };
 };
 
 export type InvoicesStackParams = {
-  InvoiceList: undefined;
+  InvoiceList: { initialDateFilter?: string; initialStatusFilter?: string } | undefined;
   InvoiceForm: { startAsWalkIn?: boolean; documentType?: DocumentType };
   InvoiceDetail: { id: string };
   BillsMenu: undefined;
@@ -496,7 +498,9 @@ function MoreNavigator() {
             const p = (route.params as { type?: string }) ?? {};
             return {
               title:
-                p.type === "suppliers" ? "Import Suppliers" : "Import Customers",
+                p.type === "suppliers"
+                  ? "Import Suppliers"
+                  : "Import Customers",
             };
           }}
         />

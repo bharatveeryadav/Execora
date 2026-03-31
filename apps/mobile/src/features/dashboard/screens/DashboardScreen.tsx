@@ -944,6 +944,13 @@ export function DashboardScreen({ navigation }: Props) {
     (navigation as any).navigate("InvoicesTab");
   }, [navigation]);
 
+  const navigateTodayInvoices = useCallback(() => {
+    (navigation as any).navigate("InvoicesTab", {
+      screen: "InvoiceList",
+      params: { initialDateFilter: "today" },
+    });
+  }, [navigation]);
+
   const navigateMoreStack = useCallback(
     (screen: MoreRoute) => {
       (navigation as any).navigate("MoreTab", { screen });
@@ -1551,7 +1558,7 @@ export function DashboardScreen({ navigation }: Props) {
             }}
           >
             <PressableCard
-              onPress={navigateInvoicesTab}
+              onPress={navigateTodayInvoices}
               style={{ width: (contentWidth - 6) / 2 - 3, minWidth: 0 }}
               className="shadow-sm py-2 px-2"
             >
@@ -1657,6 +1664,85 @@ export function DashboardScreen({ navigation }: Props) {
               </View>
             </PressableCard>
           </View>
+
+          {/* ── Daily P&L Strip ───────────────────────────────────────────── */}
+          {!isLoadingSummary && (dailySummary?.totalSales ?? 0) > 0 && (
+            <Pressable
+              onPress={() => navigateMoreStack("Reports")}
+              accessibilityRole="button"
+              accessibilityLabel="View today's P&L in Reports"
+              style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+              className="rounded-xl border border-slate-200 bg-white p-3 mb-4"
+            >
+              <View className="flex-row items-center justify-between mb-2">
+                <View className="flex-row items-center gap-1.5">
+                  <Ionicons name="trending-up-outline" size={13} color="#64748b" />
+                  <Text className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                    Today's P&L
+                  </Text>
+                </View>
+                <Text
+                  className="text-[11px] font-bold"
+                  style={{
+                    color:
+                      collectionRate >= 80
+                        ? "#1a9248"
+                        : collectionRate >= 50
+                        ? "#e6a319"
+                        : "#dc2626",
+                  }}
+                >
+                  {collectionRate}% collected
+                </Text>
+              </View>
+
+              {/* Stacked bar: collected (green) + pending (amber) */}
+              <View
+                className="h-2 w-full rounded-full bg-slate-100 overflow-hidden mb-2"
+              >
+                {(() => {
+                  const total = dailySummary?.totalSales ?? 1;
+                  const paid = Math.min(dailySummary?.totalPayments ?? 0, total);
+                  const pending = Math.min(dailySummary?.pendingAmount ?? 0, total - paid);
+                  const collectedPct = Math.round((paid / total) * 100);
+                  const pendingPct = Math.round((pending / total) * 100);
+                  return (
+                    <View className="flex-row h-full w-full">
+                      <View style={{ width: `${collectedPct}%`, backgroundColor: "#22c55e" }} />
+                      <View style={{ width: `${pendingPct}%`, backgroundColor: "#f59e0b" }} />
+                    </View>
+                  );
+                })()}
+              </View>
+
+              <View className="flex-row justify-between">
+                <View className="flex-row items-center gap-1.5">
+                  <View className="w-2 h-2 rounded-full bg-green-500" />
+                  <Text className="text-[11px] text-slate-500">
+                    Collected{" "}
+                    <Text className="font-bold text-green-600">
+                      {formatCurrency(dailySummary?.totalPayments ?? 0)}
+                    </Text>
+                  </Text>
+                </View>
+                <View className="flex-row items-center gap-1.5">
+                  <View className="w-2 h-2 rounded-full bg-amber-400" />
+                  <Text className="text-[11px] text-slate-500">
+                    Pending{" "}
+                    <Text className="font-bold text-amber-600">
+                      {formatCurrency(dailySummary?.pendingAmount ?? 0)}
+                    </Text>
+                  </Text>
+                </View>
+                <View className="flex-row items-center gap-1.5">
+                  <Ionicons name="receipt-outline" size={11} color="#94a3b8" />
+                  <Text className="text-[11px] text-slate-500">
+                    {dailySummary?.invoiceCount ?? 0} bills
+                  </Text>
+                </View>
+              </View>
+            </Pressable>
+          )}
 
           {/* Period filter modal */}
           <Modal
