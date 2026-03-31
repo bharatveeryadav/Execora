@@ -62,6 +62,8 @@ export interface DocumentSettings {
   priceDecimals: number;
   invoicePrefix: string;
   invoiceSuffix: string;
+  defaultDueDays: number;
+  defaultNotes: string;
   showItemHsn: boolean;
   showCustomerAddress: boolean;
   showPaymentMode: boolean;
@@ -76,6 +78,8 @@ const DEFAULT_SETTINGS: DocumentSettings = {
   priceDecimals: 2,
   invoicePrefix: "INV-",
   invoiceSuffix: "",
+  defaultDueDays: 15,
+  defaultNotes: "Thank you for your business.",
   showItemHsn: true,
   showCustomerAddress: true,
   showPaymentMode: true,
@@ -114,6 +118,7 @@ const PDF_ORIENTATIONS = [
 ];
 
 const DECIMAL_OPTIONS = [0, 1, 2, 3];
+const DEFAULT_DUE_OPTIONS = [0, 15, 30, 60] as const;
 
 function useDocumentSettings() {
   const [settings, setSettings] = useState<DocumentSettings>(DEFAULT_SETTINGS);
@@ -267,24 +272,109 @@ export function DocumentSettingsScreen({ navigation }: Props) {
         {/* PREFERENCES */}
         <SectionTitle title="Preferences" />
         <View className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <TouchableOpacity
-            onPress={() =>
-              (navigation as any).navigate("ComingSoon", {
-                title: "Show / Hide Details",
-              })
-            }
-            className="px-4 py-4 border-b border-slate-100"
-          >
-            <Text className="font-medium text-slate-800">
-              Show / Hide Details
-            </Text>
-            <Text className="text-sm text-slate-500 mt-0.5">
+          <View className="px-4 py-4 border-b border-slate-100">
+            <Text className="font-medium text-slate-800">Show / Hide Details</Text>
+            <Text className="text-sm text-slate-500 mt-0.5 mb-3">
               Turn invoice elements on or off to match your business needs
             </Text>
-            <View className="absolute right-4 top-4">
-              <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+            <SettingRow
+              label="Show HSN codes"
+              description="Display HSN/SAC beside item rows in document preview"
+              right={
+                <Switch
+                  value={settings.showItemHsn}
+                  onValueChange={(value) => {
+                    save({ showItemHsn: value });
+                    setHasChanges(true);
+                  }}
+                  trackColor={{ false: "#cbd5e1", true: "#fdba74" }}
+                  thumbColor={settings.showItemHsn ? "#e67e22" : "#f8fafc"}
+                />
+              }
+            />
+            <SettingRow
+              label="Show customer address"
+              description="Include billing address in templates and preview"
+              right={
+                <Switch
+                  value={settings.showCustomerAddress}
+                  onValueChange={(value) => {
+                    save({ showCustomerAddress: value });
+                    setHasChanges(true);
+                  }}
+                  trackColor={{ false: "#cbd5e1", true: "#fdba74" }}
+                  thumbColor={settings.showCustomerAddress ? "#e67e22" : "#f8fafc"}
+                />
+              }
+            />
+            <SettingRow
+              label="Show payment mode"
+              description="Print payment mode on the invoice footer"
+              right={
+                <Switch
+                  value={settings.showPaymentMode}
+                  onValueChange={(value) => {
+                    save({ showPaymentMode: value });
+                    setHasChanges(true);
+                  }}
+                  trackColor={{ false: "#cbd5e1", true: "#fdba74" }}
+                  thumbColor={settings.showPaymentMode ? "#e67e22" : "#f8fafc"}
+                />
+              }
+            />
+          </View>
+          <View className="px-4 py-4 border-b border-slate-100">
+            <Text className="font-medium text-slate-800">Billing Defaults</Text>
+            <Text className="text-sm text-slate-500 mt-0.5">
+              Prefill payment terms and notes when a new invoice opens
+            </Text>
+            <Text className="text-xs font-semibold text-slate-500 mt-3 mb-2 uppercase tracking-wide">
+              Default Due Date
+            </Text>
+            <View className="flex-row flex-wrap gap-2">
+              {DEFAULT_DUE_OPTIONS.map((days) => {
+                const selected = settings.defaultDueDays === days;
+                return (
+                  <TouchableOpacity
+                    key={days}
+                    onPress={() => {
+                      save({ defaultDueDays: days });
+                      setHasChanges(true);
+                    }}
+                    className={`px-3 py-2 rounded-lg border ${
+                      selected
+                        ? "border-primary bg-primary/10"
+                        : "border-slate-200 bg-slate-50"
+                    }`}
+                  >
+                    <Text
+                      className={`text-xs font-semibold ${
+                        selected ? "text-primary" : "text-slate-600"
+                      }`}
+                    >
+                      {days === 0 ? "No due date" : `${days} days`}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-          </TouchableOpacity>
+            <Text className="text-xs font-semibold text-slate-500 mt-4 mb-1 uppercase tracking-wide">
+              Default Notes
+            </Text>
+            <TextInput
+              value={settings.defaultNotes}
+              onChangeText={(value) => {
+                save({ defaultNotes: value });
+                setHasChanges(true);
+              }}
+              placeholder="Add default thank-you note, bank details, or delivery instructions"
+              placeholderTextColor="#94a3b8"
+              multiline
+              textAlignVertical="top"
+              className="border border-slate-200 rounded-xl px-3 py-3 text-sm text-slate-800 bg-slate-50 min-h-[92px]"
+              accessibilityLabel="Default invoice notes"
+            />
+          </View>
           <TouchableOpacity
             onPress={() =>
               (navigation as any).navigate("ComingSoon", {
@@ -328,7 +418,9 @@ export function DocumentSettingsScreen({ navigation }: Props) {
             </Text>
             <View className="flex-row gap-3 mt-3">
               <View className="flex-1">
-                <Text className="text-xs font-semibold text-slate-500 mb-1">Prefix</Text>
+                <Text className="text-xs font-semibold text-slate-500 mb-1">
+                  Prefix
+                </Text>
                 <TextInput
                   value={settings.invoicePrefix}
                   onChangeText={(v) => save({ invoicePrefix: v })}
@@ -340,7 +432,9 @@ export function DocumentSettingsScreen({ navigation }: Props) {
                 />
               </View>
               <View className="flex-1">
-                <Text className="text-xs font-semibold text-slate-500 mb-1">Suffix</Text>
+                <Text className="text-xs font-semibold text-slate-500 mb-1">
+                  Suffix
+                </Text>
                 <TextInput
                   value={settings.invoiceSuffix}
                   onChangeText={(v) => save({ invoiceSuffix: v })}
@@ -356,7 +450,8 @@ export function DocumentSettingsScreen({ navigation }: Props) {
               <Text className="text-xs text-slate-500">
                 Preview:{" "}
                 <Text className="font-semibold text-slate-700">
-                  {settings.invoicePrefix || ""}0001{settings.invoiceSuffix || ""}
+                  {settings.invoicePrefix || ""}0001
+                  {settings.invoiceSuffix || ""}
                 </Text>
               </Text>
             </View>

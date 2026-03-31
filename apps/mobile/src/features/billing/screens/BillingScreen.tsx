@@ -105,7 +105,7 @@ import { InvoiceHeaderBar } from "../components/InvoiceHeaderBar";
 // New items use the formReducer (max(id)+1). New splits use the formReducer too.
 let _id = 1;
 
-const DUE_DATE_PRESETS = [15, 30, 60] as const;
+const DUE_DATE_PRESETS = [0, 15, 30, 60] as const;
 type DocumentTitle = "invoice" | "billOfSupply";
 
 // Modern icons (Ionicons) — matches web Lucide: Banknote, Smartphone, CreditCard, Wallet
@@ -130,6 +130,28 @@ function readInvoiceBar(): Record<string, unknown> {
   }
 }
 
+function readDocumentSettings(): {
+  invoicePrefix?: string;
+  defaultDueDays?: number;
+  defaultNotes?: string;
+} {
+  try {
+    const raw = storage.getString(DOC_SETTINGS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return {
+      invoicePrefix:
+        typeof parsed.invoicePrefix === "string" ? parsed.invoicePrefix : undefined,
+      defaultDueDays:
+        typeof parsed.defaultDueDays === "number" ? parsed.defaultDueDays : undefined,
+      defaultNotes:
+        typeof parsed.defaultNotes === "string" ? parsed.defaultNotes : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
 function persistInvoiceBar(data: Record<string, unknown>) {
   storage.set(INVOICE_BAR_KEY, JSON.stringify(data));
 }
@@ -139,13 +161,13 @@ function persistInvoiceBar(data: Record<string, unknown>) {
 type InvoiceProps = NativeStackScreenProps<InvoiceStackParams, "InvoiceForm">;
 
 const DOC_TYPE_LABELS: Record<string, string> = {
-  invoice: 'New Invoice',
-  quotation: 'New Quotation',
-  proforma: 'Proforma Invoice',
-  sales_order: 'Sales Order',
-  delivery_challan: 'Delivery Challan',
-  bill_of_supply: 'Bill of Supply',
-  pos_sale: 'Quick Sale',
+  invoice: "New Invoice",
+  quotation: "New Quotation",
+  proforma: "Proforma Invoice",
+  sales_order: "Sales Order",
+  delivery_challan: "Delivery Challan",
+  bill_of_supply: "Bill of Supply",
+  pos_sale: "Quick Sale",
 };
 
 export function BillingScreen({ navigation, route }: InvoiceProps) {
@@ -154,8 +176,8 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
   const { contentPad, contentWidth } = useResponsive();
   const insets = useSafeAreaInsets();
   const startAsWalkIn = route.params?.startAsWalkIn;
-  const documentType = route.params?.documentType ?? 'invoice';
-  const screenTitle = DOC_TYPE_LABELS[documentType] ?? 'New Invoice';
+  const documentType = route.params?.documentType ?? "invoice";
+  const screenTitle = DOC_TYPE_LABELS[documentType] ?? "New Invoice";
 
   // ── Form state (useInvoiceForm) ────────────────────────────────────────────
   const initialRoundOffRef = useRef(
@@ -169,6 +191,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
       }
     })(),
   );
+  const documentSettingsRef = useRef(readDocumentSettings());
   const {
     state: {
       items,
@@ -227,7 +250,10 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
     togglePreview,
     resetForm: formReset,
     loadDraft,
-  } = useInvoiceForm({ roundOffEnabled: initialRoundOffRef.current });
+  } = useInvoiceForm({
+    roundOffEnabled: initialRoundOffRef.current,
+    notes: documentSettingsRef.current.defaultNotes ?? "",
+  });
 
   // Success modal state (not part of form state)
   const [savedInvoice, setSavedInvoice] = useState<{
@@ -303,7 +329,10 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
   // ── Invoice bar (Indian standard) ───────────────────────────────────────
   // showInvoiceBarEdit is managed by useInvoiceForm (toggleInvoiceBarEdit)
   const [invoicePrefix, setInvoicePrefix] = useState(
-    () => (readInvoiceBar().invoicePrefix as string) ?? "INV-",
+    () =>
+      (readInvoiceBar().invoicePrefix as string) ??
+      documentSettingsRef.current.invoicePrefix ??
+      "INV-",
   );
   const [documentDate, setDocumentDate] = useState(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -311,9 +340,12 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
   });
   const [dueDateDays, setDueDateDays] = useState<number | "custom">(() => {
     const v = readInvoiceBar().dueDateDays;
-    return v === "custom" || (typeof v === "number" && [15, 30, 60].includes(v))
+    return v === "custom" || (typeof v === "number" && [0, 15, 30, 60].includes(v))
       ? (v as number | "custom")
-      : 15;
+      : typeof documentSettingsRef.current.defaultDueDays === "number" &&
+          [0, 15, 30, 60].includes(documentSettingsRef.current.defaultDueDays)
+        ? documentSettingsRef.current.defaultDueDays
+        : 15;
   });
   const [customDueDays, setCustomDueDays] = useState(() =>
     String((readInvoiceBar().customDueDays as number) ?? 45),
@@ -818,14 +850,16 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
 
   const discardDraft = useCallback(() => {
     formReset();
+    setNotes(documentSettingsRef.current.defaultNotes ?? "");
     storage.delete(INVOICE_DRAFT_KEY);
-  }, [formReset]);
+  }, [formReset, setNotes]);
 
   const resetForm = useCallback(() => {
     setSavedInvoice(null);
     formReset();
+    setNotes(documentSettingsRef.current.defaultNotes ?? "");
     storage.delete(INVOICE_DRAFT_KEY);
-  }, [formReset]);
+  }, [formReset, setNotes]);
 
   const handlePrintReceipt = useCallback(async () => {
     if (!savedInvoice) return;
@@ -1756,7 +1790,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                       dueDateDays === d ? "text-primary" : "text-slate-600"
                     }`}
                   >
-                    {d} days
+                    {d === 0 ? "No due" : `${d} days`}
                   </Text>
                 </TouchableOpacity>
               ))}
