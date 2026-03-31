@@ -1,0 +1,48 @@
+{
+  "newInvoice": "New Invoice",
+  "invoices": "Invoices",
+  "invoiceNo": "Invoice No",
+  "invoiceDate": "Invoice Date",
+  "dueDate": "Due Date",
+  "customer": "Customer",
+  "selectCustomer": "Select Customer",
+  "addCustomer": "Add Customer",
+  "items": "Items",
+  "addItem": "Add Item",
+  "subtotal": "Subtotal",
+  "discount": "Discount",
+  "tax": "Tax",
+  "grandTotal": "Grand Total",
+  "amountPaid": "Amount Paid",
+  "balance": "Balance Due",
+  "paymentMethod": "Payment Method",
+  "cash": "Cash",
+  "upi": "UPI",
+  "bank": "Bank Transfer",
+  "cheque": "Cheque",
+  "credit": "Credit",
+  "markAsPaid": "Mark as Paid",
+  "recordPayment": "Record Payment",
+  "sendInvoice": "Send Invoice",
+  "downloadPdf": "Download PDF",
+  "status": {
+    "draft": "Draft",
+    "pending": "Pending",
+    "partial": "Partial",
+    "paid": "Paid",
+    "cancelled": "Cancelled"
+  },
+  "documentType": {
+    "invoice": "Invoice",
+    "quotation": "Quotation",
+    "proforma": "Proforma Invoice",
+    "salesOrder": "Sales Order",
+    "deliveryChallan": "Delivery Challan",
+    "billOfSupply": "Bill of Supply"
+  },
+  "errors": {
+    "selectCustomer": "Please select a customer",
+    "addItem": "Please add at least one item",
+    "invalidAmount": "Invalid amount"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "items": "वस्तुएं",
+  "addItem": "वस्तु जोड़ें",
+  "editItem": "वस्तु संपादित करें",
+  "itemName": "वस्तु का नाम",
+  "sku": "SKU / आइटम कोड",
+  "unit": "इकाई",
+  "price": "बिक्री मूल्य",
+  "cost": "खरीद मूल्य",
+  "stock": "स्टॉक",
+  "currentStock": "वर्तमान स्टॉक",
+  "lowStock": "कम स्टॉक",
+  "outOfStock": "स्टॉक खत्म",
+  "adjustStock": "स्टॉक समायोजित करें",
+  "stockHistory": "स्टॉक इतिहास",
+  "category": "श्रेणी",
+  "hsn": "HSN कोड",
+  "gstRate": "GST दर",
+  "mrp": "MRP",
+  "barcode": "बारकोड",
+  "scanBarcode": "बारकोड स्कैन करें",
+  "expiry": "समाप्ति तारीख",
+  "batch": "बैच नं.",
+  "lowStockAlert": "कम स्टॉक: केवल {{count}} बचे हैं",
+  "errors": {
+    "nameRequired": "वस्तु का नाम आवश्यक है",
+    "priceRequired": "बिक्री मूल्य आवश्यक है",
+    "invalidPrice": "अमान्य मूल्य"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "items": "Items",
+  "addItem": "Add Item",
+  "editItem": "Edit Item",
+  "itemName": "Item Name",
+  "sku": "SKU / Item Code",
+  "unit": "Unit",
+  "price": "Sale Price",
+  "cost": "Purchase Price",
+  "stock": "Stock",
+  "currentStock": "Current Stock",
+  "lowStock": "Low Stock",
+  "outOfStock": "Out of Stock",
+  "adjustStock": "Adjust Stock",
+  "stockHistory": "Stock History",
+  "category": "Category",
+  "hsn": "HSN Code",
+  "gstRate": "GST Rate",
+  "mrp": "MRP",
+  "barcode": "Barcode",
+  "scanBarcode": "Scan Barcode",
+  "expiry": "Expiry Date",
+  "batch": "Batch No",
+  "lowStockAlert": "Low stock: only {{count}} left",
+  "errors": {
+    "nameRequired": "Item name is required",
+    "priceRequired": "Sale price is required",
+    "invalidPrice": "Invalid price"
+  }
+}

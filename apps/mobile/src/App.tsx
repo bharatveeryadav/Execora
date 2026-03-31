@@ -1,4 +1,5 @@
 import "./global.css";
+import "./lib/i18n"; // i18n must be initialized before any component renders
 import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   View,
@@ -43,9 +44,13 @@ import { TypographyProvider } from "./contexts/TypographyContext";
 import { storage } from "./lib/storage";
 import { SIZES } from "./lib/constants";
 import { MAX_FONT_SIZE_MULTIPLIER } from "./lib/typography";
+import { useModuleStore } from "./stores/moduleStore";
 
 // Boot the API client once (token storage injected)
 bootApi();
+
+// Hydrate module store from MMKV on cold start
+useModuleStore.getState().hydrate();
 
 const TextComponent = Text as any;
 const TextInputComponent = TextInput as any;

@@ -1,0 +1,24 @@
+{
+  "parties": "पार्टियां",
+  "customers": "ग्राहक",
+  "suppliers": "आपूर्तिकर्ता",
+  "addCustomer": "ग्राहक जोड़ें",
+  "addSupplier": "आपूर्तिकर्ता जोड़ें",
+  "customerName": "ग्राहक का नाम",
+  "supplierName": "आपूर्तिकर्ता का नाम",
+  "phone": "फोन",
+  "email": "ईमेल",
+  "gstin": "GSTIN",
+  "pan": "PAN",
+  "openingBalance": "शुरुआती शेष",
+  "totalOutstanding": "कुल बकाया",
+  "overdue": "अतिदेय",
+  "recordPayment": "भुगतान दर्ज करें",
+  "paymentHistory": "भुगतान इतिहास",
+  "ledger": "खाता बही",
+  "errors": {
+    "nameRequired": "नाम आवश्यक है",
+    "invalidPhone": "अमान्य फोन नंबर",
+    "invalidGstin": "अमान्य GSTIN"
+  }
+}

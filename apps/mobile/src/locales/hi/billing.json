@@ -1,0 +1,48 @@
+{
+  "newInvoice": "नया बिल",
+  "invoices": "बिल",
+  "invoiceNo": "बिल नं.",
+  "invoiceDate": "बिल तारीख",
+  "dueDate": "देय तारीख",
+  "customer": "ग्राहक",
+  "selectCustomer": "ग्राहक चुनें",
+  "addCustomer": "ग्राहक जोड़ें",
+  "items": "वस्तुएं",
+  "addItem": "वस्तु जोड़ें",
+  "subtotal": "उप-कुल",
+  "discount": "छूट",
+  "tax": "कर",
+  "grandTotal": "कुल योग",
+  "amountPaid": "भुगतान राशि",
+  "balance": "शेष राशि",
+  "paymentMethod": "भुगतान विधि",
+  "cash": "नकद",
+  "upi": "UPI",
+  "bank": "बैंक ट्रांसफर",
+  "cheque": "चेक",
+  "credit": "उधार",
+  "markAsPaid": "भुगतान किया",
+  "recordPayment": "भुगतान दर्ज करें",
+  "sendInvoice": "बिल भेजें",
+  "downloadPdf": "PDF डाउनलोड",
+  "status": {
+    "draft": "ड्राफ्ट",
+    "pending": "लंबित",
+    "partial": "आंशिक",
+    "paid": "भुगतान हो गया",
+    "cancelled": "रद्द"
+  },
+  "documentType": {
+    "invoice": "बिल",
+    "quotation": "कोटेशन",
+    "proforma": "प्रोफार्मा बिल",
+    "salesOrder": "बिक्री आदेश",
+    "deliveryChallan": "डिलीवरी चालान",
+    "billOfSupply": "आपूर्ति का बिल"
+  },
+  "errors": {
+    "selectCustomer": "कृपया ग्राहक चुनें",
+    "addItem": "कृपया कम से कम एक वस्तु जोड़ें",
+    "invalidAmount": "अमान्य राशि"
+  }
+}

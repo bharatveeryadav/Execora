@@ -1,0 +1,24 @@
+{
+  "parties": "Parties",
+  "customers": "Customers",
+  "suppliers": "Suppliers",
+  "addCustomer": "Add Customer",
+  "addSupplier": "Add Supplier",
+  "customerName": "Customer Name",
+  "supplierName": "Supplier Name",
+  "phone": "Phone",
+  "email": "Email",
+  "gstin": "GSTIN",
+  "pan": "PAN",
+  "openingBalance": "Opening Balance",
+  "totalOutstanding": "Total Outstanding",
+  "overdue": "Overdue",
+  "recordPayment": "Record Payment",
+  "paymentHistory": "Payment History",
+  "ledger": "Ledger",
+  "errors": {
+    "nameRequired": "Name is required",
+    "invalidPhone": "Invalid phone number",
+    "invalidGstin": "Invalid GSTIN"
+  }
+}
