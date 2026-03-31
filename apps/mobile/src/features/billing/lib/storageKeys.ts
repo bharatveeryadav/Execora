@@ -1,2 +1,2 @@
 // Billing-specific storage keys extracted for feature ownership.
-export { INVOICE_DRAFT_KEY, INVOICE_BAR_KEY } from "../../../shared/lib/storage";
+export { INVOICE_DRAFT_KEY, INVOICE_BAR_KEY, PRICE_TIER_KEY } from "../../../shared/lib/storage";

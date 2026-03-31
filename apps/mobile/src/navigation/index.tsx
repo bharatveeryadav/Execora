@@ -128,13 +128,23 @@ export type MoreStackParams = {
   Tutorial: { title?: string };
 };
 
+export type DocumentType =
+  | 'invoice'
+  | 'quotation'
+  | 'proforma'
+  | 'sales_order'
+  | 'delivery_challan'
+  | 'bill_of_supply'
+  | 'pos_sale';
+
 export type InvoiceStackParams = {
-  InvoiceForm: { startAsWalkIn?: boolean } | undefined;
+  InvoiceForm: { startAsWalkIn?: boolean; documentType?: DocumentType } | undefined;
   InvoiceDetail: { id: string };
 };
 
 export type InvoicesStackParams = {
   InvoiceList: undefined;
+  InvoiceForm: { startAsWalkIn?: boolean; documentType?: DocumentType };
   InvoiceDetail: { id: string };
   BillsMenu: undefined;
   Expenses: undefined;

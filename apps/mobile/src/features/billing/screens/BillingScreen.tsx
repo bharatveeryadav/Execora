@@ -90,7 +90,7 @@ import {
 import { cacheProducts } from "../../../lib/offlineQueue";
 import type { ReceiptData } from "../../../lib/thermalReceipt";
 import type { InvoiceStackParams } from "../../../navigation";
-import { useInvoiceForm } from "../hooks/useBillingForm";
+import { useBillingForm as useInvoiceForm } from "../hooks/useBillingForm";
 import {
   InvoiceTemplatePreview,
   TemplateThumbnail,
@@ -137,12 +137,24 @@ function persistInvoiceBar(data: Record<string, unknown>) {
 
 type InvoiceProps = NativeStackScreenProps<InvoiceStackParams, "InvoiceForm">;
 
+const DOC_TYPE_LABELS: Record<string, string> = {
+  invoice: 'New Invoice',
+  quotation: 'New Quotation',
+  proforma: 'Proforma Invoice',
+  sales_order: 'Sales Order',
+  delivery_challan: 'Delivery Challan',
+  bill_of_supply: 'Bill of Supply',
+  pos_sale: 'Quick Sale',
+};
+
 export function BillingScreen({ navigation, route }: BillingProps) {
   const qc = useQueryClient();
   const { isOffline } = useOffline();
   const { contentPad, contentWidth } = useResponsive();
   const insets = useSafeAreaInsets();
   const startAsWalkIn = route.params?.startAsWalkIn;
+  const documentType = route.params?.documentType ?? 'invoice';
+  const screenTitle = DOC_TYPE_LABELS[documentType] ?? 'New Invoice';
 
   // ── Form state (useInvoiceForm) ────────────────────────────────────────────
   const initialRoundOffRef = useRef(
@@ -472,9 +484,10 @@ export function BillingScreen({ navigation, route }: BillingProps) {
     };
   }, [logoObjectKey]);
 
-  // ── Header: Logo (document icon) or ellipsis → Document Settings ───────────
+  // ── Header: title + Logo (document icon) or ellipsis → Document Settings ───
   useLayoutEffect(() => {
     (navigation as any).setOptions({
+      title: screenTitle,
       headerRight: () => (
         <TouchableOpacity
           onPress={() =>
@@ -496,7 +509,7 @@ export function BillingScreen({ navigation, route }: BillingProps) {
         </TouchableOpacity>
       ),
     });
-  }, [navigation, logoDataUrl]);
+  }, [navigation, logoDataUrl, screenTitle]);
 
   // ── Item helpers ──────────────────────────────────────────────────────────
   // updateItem + removeItem come from useInvoiceForm (formUpdateItem, formRemoveItem)

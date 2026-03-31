@@ -58,7 +58,7 @@ export function useBillingForm(initialDraft?: Partial<FormState>) {
   }, []);
 
   const toggleCustomerSuggest = useCallback((value: boolean) => {
-    dispatch({ type: "TOGGLE_CUSTOMER_SUGGEST" });
+    dispatch({ type: "SET_CUSTOMER_SUGGEST", value });
   }, []);
 
   const setCustSuggest = useCallback((value: boolean) => {
