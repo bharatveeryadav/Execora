@@ -5,8 +5,8 @@ export * from "./api/customerApi";
 export * from "./hooks/useCustomerQueries";
 
 // Screens
-export { CustomersScreen } from "./screens/CustomersScreen";
+export { CustomersScreen } from "./screens/CustomerListScreen";
 export { CustomerDetailScreen } from "./screens/CustomerDetailScreen";
-export { PartiesScreen } from "./screens/PartiesScreen";
-export { PaymentScreen } from "./screens/PaymentScreen";
-export { OverdueScreen } from "./screens/OverdueScreen";
+export { PartiesScreen } from "./screens/PartiesTabsScreen";
+export { PaymentScreen } from "./screens/CustomerPaymentScreen";
+export { OverdueScreen } from "./screens/CustomerOverdueScreen";

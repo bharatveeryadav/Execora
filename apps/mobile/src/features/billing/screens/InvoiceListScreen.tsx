@@ -460,9 +460,10 @@ export function InvoiceListScreen({ navigation, route }: Props) {
         label: docTypeTab === "quotation" ? "Quotes" : "Bills",
         value: String(filteredInvoices.length),
         tone: COLORS.primary,
-        icon: docTypeTab === "quotation"
-          ? ("document-text-outline" as const)
-          : ("receipt-outline" as const),
+        icon:
+          docTypeTab === "quotation"
+            ? ("document-text-outline" as const)
+            : ("receipt-outline" as const),
       },
       {
         id: "value",
@@ -479,7 +480,14 @@ export function InvoiceListScreen({ navigation, route }: Props) {
         icon: "time-outline" as const,
       },
     ];
-  }, [docTypeTab, filteredInvoices.length, filteredPurchases.length, pendingAmount, purchasesTotal, totalValue]);
+  }, [
+    docTypeTab,
+    filteredInvoices.length,
+    filteredPurchases.length,
+    pendingAmount,
+    purchasesTotal,
+    totalValue,
+  ]);
 
   const showInvoiceList = docTypeTab === "sales" || docTypeTab === "quotation";
   const isInvoicesInitialLoading = showInvoiceList && isFetching && !invData;
@@ -607,10 +615,11 @@ export function InvoiceListScreen({ navigation, route }: Props) {
       const invAny = inv as any;
       const status = invAny.status ?? "draft";
       const s = STATUS_STYLES[status] ?? STATUS_STYLES.draft;
-      const invoiceNumber =
-        invAny.invoiceNo ?? inv.id.slice(-8).toUpperCase();
+      const invoiceNumber = invAny.invoiceNo ?? inv.id.slice(-8).toUpperCase();
       const invoiceDate = formatDate(invAny.invoiceDate ?? inv.createdAt);
-      const dueDate = invAny.dueDate ? formatDate(invAny.dueDate) : "No due date";
+      const dueDate = invAny.dueDate
+        ? formatDate(invAny.dueDate)
+        : "No due date";
       const total = parseFloat(String(inv.total ?? 0));
       const paidAmount = parseFloat(String(invAny.paidAmount ?? 0));
       const balance = Math.max(total - paidAmount, 0);
@@ -665,7 +674,11 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                   <Text className="text-[11px] font-semibold uppercase tracking-[1px] text-slate-500">
                     Invoice
                   </Text>
-                  <Text className={`${TYPO.labelBold} min-w-0 mt-1`} numberOfLines={1} ellipsizeMode="tail">
+                  <Text
+                    className={`${TYPO.labelBold} min-w-0 mt-1`}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
                     {invoiceNumber}
                   </Text>
                   <Text
@@ -692,7 +705,10 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                   >
                     ₹{inr(inv.total)}
                   </Text>
-                  <Text className="text-[11px] text-slate-500 mt-1" numberOfLines={1}>
+                  <Text
+                    className="text-[11px] text-slate-500 mt-1"
+                    numberOfLines={1}
+                  >
                     {status === "paid"
                       ? "Collected"
                       : status === "cancelled"
@@ -704,13 +720,21 @@ export function InvoiceListScreen({ navigation, route }: Props) {
 
               <View className="flex-row flex-wrap gap-2 mt-3">
                 <View className="flex-row items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5">
-                  <Ionicons name="calendar-outline" size={13} color={COLORS.slate[500]} />
+                  <Ionicons
+                    name="calendar-outline"
+                    size={13}
+                    color={COLORS.slate[500]}
+                  />
                   <Text className="text-[11px] font-medium text-slate-600">
                     {invoiceDate}
                   </Text>
                 </View>
                 <View className="flex-row items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5">
-                  <Ionicons name="time-outline" size={13} color={COLORS.slate[500]} />
+                  <Ionicons
+                    name="time-outline"
+                    size={13}
+                    color={COLORS.slate[500]}
+                  />
                   <Text className="text-[11px] font-medium text-slate-600">
                     {dueDate}
                   </Text>
@@ -750,7 +774,10 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                     <Text className="text-[10px] font-semibold uppercase tracking-[1px] text-slate-500">
                       Paid
                     </Text>
-                    <Text className="text-sm font-bold text-green-600 mt-2" numberOfLines={1}>
+                    <Text
+                      className="text-sm font-bold text-green-600 mt-2"
+                      numberOfLines={1}
+                    >
                       ₹{inr(paidAmount)}
                     </Text>
                   </View>
@@ -758,7 +785,10 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                     <Text className="text-[10px] font-semibold uppercase tracking-[1px] text-slate-500">
                       Balance
                     </Text>
-                    <Text className="text-sm font-bold text-amber-600 mt-2" numberOfLines={1}>
+                    <Text
+                      className="text-sm font-bold text-amber-600 mt-2"
+                      numberOfLines={1}
+                    >
                       ₹{inr(balance)}
                     </Text>
                   </View>
@@ -818,11 +848,19 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                 >
                   {p.itemName ?? p.category}
                 </Text>
-                <Text className={`${TYPO.caption} mt-1`} numberOfLines={1} ellipsizeMode="tail">
-                  {p.supplier ?? "Unknown supplier"} · {formatDate(p.date ?? p.createdAt ?? "")}
+                <Text
+                  className={`${TYPO.caption} mt-1`}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {p.supplier ?? "Unknown supplier"} ·{" "}
+                  {formatDate(p.date ?? p.createdAt ?? "")}
                 </Text>
                 {!!p.category && (
-                  <Text className="text-[11px] text-slate-500 mt-2" numberOfLines={1}>
+                  <Text
+                    className="text-[11px] text-slate-500 mt-2"
+                    numberOfLines={1}
+                  >
                     Category: {p.category}
                   </Text>
                 )}
@@ -834,11 +872,17 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                 >
                   ₹{inr(parseFloat(String(p.amount)))}
                 </Text>
-                <Text className="text-[11px] text-slate-500 mt-1">Open purchase log</Text>
+                <Text className="text-[11px] text-slate-500 mt-1">
+                  Open purchase log
+                </Text>
               </View>
             </View>
             <View className="flex-row items-center justify-end mt-3">
-              <Ionicons name="chevron-forward" size={16} color={COLORS.slate[400]} />
+              <Ionicons
+                name="chevron-forward"
+                size={16}
+                color={COLORS.slate[400]}
+              />
             </View>
           </View>
         </View>
@@ -902,26 +946,41 @@ export function InvoiceListScreen({ navigation, route }: Props) {
           paddingBottom: 8,
         }}
       >
-        <ScreenInner className="rounded-[24px] border border-slate-200/80 bg-white px-4 pt-4 pb-4" style={styles.surfaceShadow}>
+        <ScreenInner
+          className="rounded-[24px] border border-slate-200/80 bg-white px-4 pt-4 pb-4"
+          style={styles.surfaceShadow}
+        >
           <View className="flex-row items-start justify-between gap-3">
             <View className="flex-1 min-w-0">
               <View className="flex-row items-center gap-2">
                 <Text className="text-2xl font-bold text-slate-900">Bills</Text>
                 <View className="rounded-full bg-primary/10 px-2.5 py-1">
                   <Text className="text-[11px] font-bold text-primary">
-                    {docTypeTab === "quotation" ? "Quotes" : docTypeTab === "purchase" ? "Purchases" : "Sales"}
+                    {docTypeTab === "quotation"
+                      ? "Quotes"
+                      : docTypeTab === "purchase"
+                        ? "Purchases"
+                        : "Sales"}
                   </Text>
                 </View>
               </View>
-              <Text className="text-sm text-slate-500 mt-1">{headerSubtitle}</Text>
+              <Text className="text-sm text-slate-500 mt-1">
+                {headerSubtitle}
+              </Text>
               <View className="flex-row flex-wrap gap-2 mt-3">
                 {activeSummaryChips.map((chip) => (
                   <View
                     key={chip.id}
                     className="flex-row items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5"
                   >
-                    <Ionicons name={chip.icon} size={14} color={COLORS.slate[500]} />
-                    <Text className="text-xs font-medium text-slate-600">{chip.label}</Text>
+                    <Ionicons
+                      name={chip.icon}
+                      size={14}
+                      color={COLORS.slate[500]}
+                    />
+                    <Text className="text-xs font-medium text-slate-600">
+                      {chip.label}
+                    </Text>
                   </View>
                 ))}
               </View>
@@ -937,10 +996,16 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                 alignItems: "center",
                 justifyContent: "center",
                 opacity: pressed ? 0.8 : 1,
-                backgroundColor: pressed ? COLORS.slate[200] : COLORS.slate[100],
+                backgroundColor: pressed
+                  ? COLORS.slate[200]
+                  : COLORS.slate[100],
               })}
             >
-              <Ionicons name="ellipsis-horizontal" size={18} color={COLORS.slate[600]} />
+              <Ionicons
+                name="ellipsis-horizontal"
+                size={18}
+                color={COLORS.slate[600]}
+              />
             </Pressable>
           </View>
 
@@ -973,7 +1038,9 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                     fontSize: SIZES.FONT.sm,
                     fontWeight: docTypeTab === id ? "600" : "500",
                     color:
-                      docTypeTab === id ? COLORS.text.primary : COLORS.text.tertiary,
+                      docTypeTab === id
+                        ? COLORS.text.primary
+                        : COLORS.text.tertiary,
                   }}
                   numberOfLines={1}
                 >
@@ -1026,7 +1093,11 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                     style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
                     className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center"
                   >
-                    <Ionicons name="close" size={14} color={COLORS.slate[500]} />
+                    <Ionicons
+                      name="close"
+                      size={14}
+                      color={COLORS.slate[500]}
+                    />
                   </Pressable>
                 )}
                 {isFetching && showInvoiceList && (
@@ -1089,7 +1160,10 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                       <Ionicons name={card.icon} size={15} color={card.tone} />
                     </View>
                   </View>
-                  <Text className="text-lg font-bold text-slate-900 mt-2" numberOfLines={1}>
+                  <Text
+                    className="text-lg font-bold text-slate-900 mt-2"
+                    numberOfLines={1}
+                  >
                     {card.value}
                   </Text>
                 </View>
@@ -1112,15 +1186,24 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                     className="rounded-2xl border border-slate-200 px-3 py-3 bg-white min-h-[52]"
                     style={({ pressed }) => ({
                       opacity: pressed ? 0.7 : 1,
-                      backgroundColor: pressed ? COLORS.slate[50] : COLORS.text.inverted,
+                      backgroundColor: pressed
+                        ? COLORS.slate[50]
+                        : COLORS.text.inverted,
                       minWidth: 108,
                       ...styles.cardShadow,
                     })}
                   >
                     <View className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center self-center">
-                      <Ionicons name={item.icon} size={15} color={COLORS.slate[600]} />
+                      <Ionicons
+                        name={item.icon}
+                        size={15}
+                        color={COLORS.slate[600]}
+                      />
                     </View>
-                    <Text className="text-xs font-semibold text-slate-700 mt-2 text-center" numberOfLines={1}>
+                    <Text
+                      className="text-xs font-semibold text-slate-700 mt-2 text-center"
+                      numberOfLines={1}
+                    >
                       {item.label}
                     </Text>
                   </Pressable>
@@ -1143,21 +1226,30 @@ export function InvoiceListScreen({ navigation, route }: Props) {
         <ScreenInner style={{ flex: 1 }} className="min-w-0">
           {docTypeTab === "purchase" ? (
             isPurchaseError ? (
-              <View className="rounded-[24px] border border-slate-200 bg-white py-8 px-4" style={styles.surfaceShadow}>
+              <View
+                className="rounded-[24px] border border-slate-200 bg-white py-8 px-4"
+                style={styles.surfaceShadow}
+              >
                 <ErrorCard
                   message="Failed to load purchases"
                   onRetry={() => refetchPurchases()}
                 />
               </View>
             ) : isPurchasesInitialLoading ? (
-              <View className="rounded-[24px] border border-slate-200 bg-white p-4 gap-3" style={styles.surfaceShadow}>
+              <View
+                className="rounded-[24px] border border-slate-200 bg-white p-4 gap-3"
+                style={styles.surfaceShadow}
+              >
                 <Skeleton className="h-14 w-full" />
                 <Skeleton className="h-14 w-full" />
                 <Skeleton className="h-14 w-full" />
                 <Skeleton className="h-14 w-full" />
               </View>
             ) : filteredPurchases.length === 0 ? (
-              <View className="rounded-[24px] border border-slate-200 bg-white py-16" style={styles.surfaceShadow}>
+              <View
+                className="rounded-[24px] border border-slate-200 bg-white py-16"
+                style={styles.surfaceShadow}
+              >
                 <EmptyState
                   iconName="cube-outline"
                   title={search ? "No purchases match" : "No purchases yet"}
@@ -1190,7 +1282,9 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                   keyExtractor={(p) => p.id}
                   renderItem={renderPurchaseRow}
                   contentContainerStyle={{ paddingBottom: 96 }}
-                  ItemSeparatorComponent={() => <View style={{ height: SIZES.SPACING.sm }} />}
+                  ItemSeparatorComponent={() => (
+                    <View style={{ height: SIZES.SPACING.sm }} />
+                  )}
                   showsVerticalScrollIndicator={false}
                   refreshControl={
                     <RefreshControl
@@ -1204,14 +1298,20 @@ export function InvoiceListScreen({ navigation, route }: Props) {
               </View>
             )
           ) : isError ? (
-            <View className="rounded-[24px] border border-slate-200 bg-white py-8 px-4" style={styles.surfaceShadow}>
+            <View
+              className="rounded-[24px] border border-slate-200 bg-white py-8 px-4"
+              style={styles.surfaceShadow}
+            >
               <ErrorCard
                 message="Failed to load invoices"
                 onRetry={() => refetch()}
               />
             </View>
           ) : isInvoicesInitialLoading ? (
-            <View className="rounded-[24px] border border-slate-200 bg-white p-4 gap-3" style={styles.surfaceShadow}>
+            <View
+              className="rounded-[24px] border border-slate-200 bg-white p-4 gap-3"
+              style={styles.surfaceShadow}
+            >
               <Skeleton className="h-14 w-full" />
               <Skeleton className="h-14 w-full" />
               <Skeleton className="h-14 w-full" />
@@ -1219,7 +1319,10 @@ export function InvoiceListScreen({ navigation, route }: Props) {
               <Skeleton className="h-14 w-full" />
             </View>
           ) : filteredInvoices.length === 0 ? (
-            <View className="rounded-[24px] border border-slate-200 bg-white py-16" style={styles.surfaceShadow}>
+            <View
+              className="rounded-[24px] border border-slate-200 bg-white py-16"
+              style={styles.surfaceShadow}
+            >
               <EmptyState
                 iconName="receipt-outline"
                 title={
@@ -1249,7 +1352,9 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                 keyExtractor={(inv) => inv.id}
                 renderItem={renderInvoiceRow}
                 contentContainerStyle={{ paddingBottom: 96 }}
-                ItemSeparatorComponent={() => <View style={{ height: SIZES.SPACING.sm }} />}
+                ItemSeparatorComponent={() => (
+                  <View style={{ height: SIZES.SPACING.sm }} />
+                )}
                 showsVerticalScrollIndicator={false}
                 refreshControl={
                   <RefreshControl
@@ -1273,13 +1378,12 @@ export function InvoiceListScreen({ navigation, route }: Props) {
         accessibilityLabel={
           docTypeTab === "purchase" ? "Add purchase" : "Create invoice"
         }
-        style={({ pressed }) => ({
+        style={{
           position: "absolute",
           bottom: fabBottom,
           right: fabRight,
-          opacity: pressed ? 0.9 : 1,
           ...styles.fabShadow,
-        })}
+        }}
       >
         <Ionicons name="add" size={28} color="#fff" />
       </Pressable>

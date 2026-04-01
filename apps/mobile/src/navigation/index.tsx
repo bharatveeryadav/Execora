@@ -165,8 +165,6 @@ export type InvoicesStackParams = {
 
 export type PartiesStackParams = {
   Parties: { initialTab?: "customers" | "suppliers" } | undefined;
-  PartiesCustomersPage: undefined;
-  PartiesSuppliersPage: undefined;
   PartyDetail: { id: string };
   Payment: { customerId?: string };
   Overdue: undefined;
@@ -316,16 +314,6 @@ function PartiesNavigator() {
         }}
       >
         <PartiesStack.Screen name="Parties" component={PartiesScreen} />
-        <PartiesStack.Screen
-          name="PartiesCustomersPage"
-          component={PartiesScreen}
-          initialParams={{ initialTab: "customers" }}
-        />
-        <PartiesStack.Screen
-          name="PartiesSuppliersPage"
-          component={PartiesScreen}
-          initialParams={{ initialTab: "suppliers" }}
-        />
         <PartiesStack.Screen
           name="PartyDetail"
           component={CustomerDetailScreen}

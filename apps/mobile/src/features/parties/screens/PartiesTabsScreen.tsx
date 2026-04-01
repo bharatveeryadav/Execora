@@ -41,7 +41,7 @@ import { ScreenInner } from "../../../components/ui/ScreenLayout";
 import { FilterBar } from "../../../components/composites/FilterBar";
 import { TabBar, type TabItem } from "../../../components/composites/TabBar";
 import { TYPO } from "../../../lib/typography";
-import type { CustomersStackParams } from "../../../navigation";
+import type { PartiesStackParams } from "../../../navigation";
 
 const MIN_TOUCH = 44;
 
@@ -54,8 +54,7 @@ const PARTY_TABS: TabItem[] = [
   { id: "suppliers", label: "Suppliers", icon: "cube" },
 ];
 
-type CustomerRouteName = "CustomerList" | "CustomersPage" | "SuppliersPage";
-type Props = NativeStackScreenProps<CustomersStackParams, CustomerRouteName>;
+type Props = NativeStackScreenProps<PartiesStackParams, "Parties">;
 
 export function PartiesScreen({ navigation, route }: Props) {
   const qc = useQueryClient();
@@ -69,8 +68,7 @@ export function PartiesScreen({ navigation, route }: Props) {
   useWsInvalidation(["customers", "summary"]);
 
   const initialTab: Tab =
-    route.params?.initialTab ??
-    (route.name === "SuppliersPage" ? "suppliers" : "customers");
+    route.params?.initialTab === "suppliers" ? "suppliers" : "customers";
   const [tab, setTab] = useState<Tab>(initialTab);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterTab>("all");
@@ -147,11 +145,11 @@ export function PartiesScreen({ navigation, route }: Props) {
   const purchases = purchaseData?.purchases ?? [];
   const invoices = invoiceData?.invoices ?? [];
 
-  const toPay = purchases.reduce(
+  const vendorToPay = purchases.reduce(
     (s, p) => s + (parseFloat(String(p.amount)) || 0),
     0,
   );
-  const toCollect = 0;
+  const vendorToCollect = 0;
 
   // ── Aging (from web) ───────────────────────────────────────────────────
 
@@ -210,18 +208,23 @@ export function PartiesScreen({ navigation, route }: Props) {
     (s, c) => s + Math.max(0, parseFloat(String(c.balance))),
     0,
   );
+  const customerToPay = customers.reduce((sum, c) => {
+    const balance = parseFloat(String(c.balance));
+    return sum + Math.max(0, -balance);
+  }, 0);
+  const customerToCollect = outstanding;
   const outCount = customers.filter(
     (c) => parseFloat(String(c.balance)) > 0,
   ).length;
-  const clearCount = customers.filter(
-    (c) => parseFloat(String(c.balance)) <= 0,
+  const toPayCount = customers.filter(
+    (c) => parseFloat(String(c.balance)) < 0,
   ).length;
 
   const filtered = [...customers]
     .filter((c) => {
       const bal = parseFloat(String(c.balance));
       if (filter === "outstanding") return bal > 0;
-      if (filter === "clear") return bal <= 0;
+      if (filter === "clear") return bal < 0;
       return true;
     })
     .sort(
@@ -231,11 +234,11 @@ export function PartiesScreen({ navigation, route }: Props) {
   const customerFilterOptions = useMemo(
     () => [
       { id: "all", label: `All (${customers.length})` },
-      { id: "outstanding", label: `Has Due (${outCount})` },
-      { id: "clear", label: `Clear (${clearCount})` },
+      { id: "clear", label: `To Pay (${toPayCount})` },
+      { id: "outstanding", label: `To Collect (${outCount})` },
       { id: "aging", label: `Aging (${agingCustomers.length})` },
     ],
-    [agingCustomers.length, clearCount, customers.length, outCount],
+    [agingCustomers.length, customers.length, outCount, toPayCount],
   );
 
   const activeCustomerFilters = useMemo(
@@ -258,8 +261,7 @@ export function PartiesScreen({ navigation, route }: Props) {
       qc.invalidateQueries({ queryKey: ["customers"] });
       setAddOpen(false);
       const customer = res?.customer;
-      if (customer?.id)
-        navigation.navigate("CustomerDetail", { id: customer.id });
+      if (customer?.id) navigation.navigate("PartyDetail", { id: customer.id });
       showAlert("", `${newName} added`);
     },
     onError: () => showAlert("Error", "Failed to add customer"),
@@ -420,7 +422,7 @@ export function PartiesScreen({ navigation, route }: Props) {
           className="flex-row items-center gap-3 px-4 py-3.5 border-b border-slate-100 bg-white"
           accessibilityRole="button"
           accessibilityLabel={`Open ${c.name} details`}
-          onPress={() => navigation.navigate("CustomerDetail", { id: c.id })}
+          onPress={() => navigation.navigate("PartyDetail", { id: c.id })}
           style={({ pressed }) => ({
             backgroundColor: pressed ? "#f8fafc" : "#fff",
           })}
@@ -615,28 +617,40 @@ export function PartiesScreen({ navigation, route }: Props) {
           >
             <ScreenInner>
               {/* Summary cards — visual hierarchy */}
-              <View className="flex-row gap-3 mb-4">
-                <View className="flex-1 rounded-2xl bg-white border border-slate-200/80 p-4 items-center shadow-sm">
-                  <View className="w-10 h-10 rounded-full bg-slate-100 items-center justify-center mb-2">
-                    <Ionicons name="people" size={20} color="#64748b" />
+              <View className="rounded-xl border border-slate-200/80 bg-white p-2 mb-2.5 shadow-sm">
+                <View className="flex-row gap-1.5">
+                  <View className="flex-1 rounded-lg border border-red-100 bg-red-50 px-2 py-1.5 flex-row items-center gap-1.5">
+                    <View className="w-5 h-5 rounded-full bg-red-100 items-center justify-center">
+                      <Ionicons name="arrow-up" size={11} color="#dc2626" />
+                    </View>
+                    <View className="flex-1 min-w-0">
+                      <Text className="text-[10px] font-medium text-red-600">
+                        To Pay
+                      </Text>
+                      <Text
+                        className="text-[11px] font-bold text-red-700"
+                        numberOfLines={1}
+                      >
+                        ₹{inr(customerToPay)}
+                      </Text>
+                    </View>
                   </View>
-                  <Text className={TYPO.value}>{customers.length}</Text>
-                  <Text className={TYPO.caption}>Total</Text>
-                </View>
-                <View className="flex-1 rounded-2xl bg-white border border-red-100 p-4 items-center shadow-sm">
-                  <View className="w-10 h-10 rounded-full bg-red-50 items-center justify-center mb-2">
-                    <Ionicons name="alert-circle" size={20} color="#dc2626" />
+                  <View className="flex-1 rounded-lg border border-green-100 bg-green-50 px-2 py-1.5 flex-row items-center gap-1.5">
+                    <View className="w-5 h-5 rounded-full bg-green-100 items-center justify-center">
+                      <Ionicons name="arrow-down" size={11} color="#16a34a" />
+                    </View>
+                    <View className="flex-1 min-w-0">
+                      <Text className="text-[10px] font-medium text-green-600">
+                        To Collect
+                      </Text>
+                      <Text
+                        className="text-[11px] font-bold text-green-700"
+                        numberOfLines={1}
+                      >
+                        ₹{inr(customerToCollect)}
+                      </Text>
+                    </View>
                   </View>
-                  <Text className="text-base font-bold text-red-600">
-                    {outCount}
-                  </Text>
-                  <Text className={TYPO.caption}>Has Due</Text>
-                </View>
-                <View className="flex-1 rounded-2xl bg-white border border-red-100 p-4 items-center shadow-sm">
-                  <Text className="text-base font-bold text-red-600 mb-0.5">
-                    ₹{inr(outstanding)}
-                  </Text>
-                  <Text className={TYPO.caption}>Outstanding</Text>
                 </View>
               </View>
 
@@ -666,9 +680,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                           color="#22c55e"
                         />
                       </View>
-                      <Text className={TYPO.bodyMuted}>
-                        No outstanding balances
-                      </Text>
+                      <Text className={TYPO.bodyMuted}>No dues found</Text>
                     </View>
                   ) : (
                     agingBuckets.map(
@@ -750,14 +762,14 @@ export function PartiesScreen({ navigation, route }: Props) {
           {/* FAB — 56pt for prominence (Material Design) */}
           <Pressable
             onPress={openAdd}
-            className="absolute w-14 h-14 rounded-full bg-primary items-center justify-center shadow-lg"
+            className="w-14 h-14 rounded-full bg-primary items-center justify-center shadow-lg"
             accessibilityRole="button"
             accessibilityLabel="Add customer"
-            style={({ pressed }) => ({
+            style={{
+              position: "absolute",
               bottom: fabBottom,
               right: fabRight,
-              opacity: pressed ? 0.9 : 1,
-            })}
+            }}
           >
             <Ionicons name="add" size={28} color="#fff" />
           </Pressable>
@@ -793,7 +805,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                     <View>
                       <Text className={TYPO.caption}>To Pay</Text>
                       <Text className="text-base font-bold text-red-600">
-                        ₹{inr(toPay)}
+                        ₹{inr(vendorToPay)}
                       </Text>
                     </View>
                   </View>
@@ -804,7 +816,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                     <View>
                       <Text className={TYPO.caption}>To Collect</Text>
                       <Text className="text-base font-bold text-green-600">
-                        ₹{inr(toCollect)}
+                        ₹{inr(vendorToCollect)}
                       </Text>
                     </View>
                   </View>
@@ -877,7 +889,9 @@ export function PartiesScreen({ navigation, route }: Props) {
                         supplierSearch ? "search-outline" : "cube-outline"
                       }
                       title={
-                        supplierSearch ? "No suppliers found" : "No suppliers yet"
+                        supplierSearch
+                          ? "No suppliers found"
+                          : "No suppliers yet"
                       }
                       description={
                         supplierSearch
@@ -929,14 +943,14 @@ export function PartiesScreen({ navigation, route }: Props) {
           {/* Add Supplier FAB */}
           <Pressable
             onPress={openAddSupplier}
-            className="absolute w-14 h-14 rounded-full bg-primary items-center justify-center shadow-lg"
+            className="w-14 h-14 rounded-full bg-primary items-center justify-center shadow-lg"
             accessibilityRole="button"
             accessibilityLabel="Add supplier"
-            style={({ pressed }) => ({
+            style={{
+              position: "absolute",
               bottom: fabBottom,
               right: fabRight,
-              opacity: pressed ? 0.9 : 1,
-            })}
+            }}
           >
             <Ionicons name="add" size={28} color="#fff" />
           </Pressable>
