@@ -142,7 +142,7 @@ type SortMode =
   | "priceDesc"
   | "category";
 
-type DensityMode = "compact" | "comfortable";
+type ListMode = "compact" | "full";
 
 type Props = NativeStackScreenProps<
   import("../../../navigation").ItemsStackParams,
@@ -168,16 +168,19 @@ export function ItemsScreen({ navigation }: Props) {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showControls, setShowControls] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
-  const [densityMode, setDensityMode] = useState<DensityMode>(() =>
-    storage.getString("items-density-mode") === "comfortable"
-      ? "comfortable"
-      : "compact",
-  );
+  const [listMode, setListMode] = useState<ListMode>(() => {
+    const storedMode =
+      storage.getString("items-list-mode") ??
+      storage.getString("items-density-mode");
+    return storedMode === "comfortable" || storedMode === "full"
+      ? "full"
+      : "compact";
+  });
   const searchInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    storage.set("items-density-mode", densityMode);
-  }, [densityMode]);
+    storage.set("items-list-mode", listMode);
+  }, [listMode]);
 
   const openSearch = useCallback(() => {
     setShowSearch(true);
@@ -622,58 +625,6 @@ export function ItemsScreen({ navigation }: Props) {
               ))}
             </ScrollView>
 
-            <View className="mb-3 flex-row items-center justify-between">
-              <Text className="text-xs font-semibold uppercase tracking-[1px] text-slate-500">
-                List Density
-              </Text>
-              <View className="rounded-xl bg-slate-100 p-1 flex-row">
-                <Pressable
-                  onPress={() => setDensityMode("compact")}
-                  accessibilityRole="button"
-                  accessibilityLabel="Use compact item list"
-                  className="px-3 py-1.5 rounded-lg"
-                  style={{
-                    backgroundColor:
-                      densityMode === "compact"
-                        ? COLORS.text.inverted
-                        : "transparent",
-                  }}
-                >
-                  <Text
-                    className={`text-xs font-semibold ${
-                      densityMode === "compact"
-                        ? "text-slate-800"
-                        : "text-slate-500"
-                    }`}
-                  >
-                    Compact
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => setDensityMode("comfortable")}
-                  accessibilityRole="button"
-                  accessibilityLabel="Use comfortable item list"
-                  className="px-3 py-1.5 rounded-lg"
-                  style={{
-                    backgroundColor:
-                      densityMode === "comfortable"
-                        ? COLORS.text.inverted
-                        : "transparent",
-                  }}
-                >
-                  <Text
-                    className={`text-xs font-semibold ${
-                      densityMode === "comfortable"
-                        ? "text-slate-800"
-                        : "text-slate-500"
-                    }`}
-                  >
-                    Comfortable
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-
             <View>
               <View className="flex-row items-center gap-2">
                 <Pressable
@@ -916,6 +867,53 @@ export function ItemsScreen({ navigation }: Props) {
                       ))}
                     </ScrollView>
                   </View>
+
+                  <View className="mt-2 flex-row items-center">
+                    <View className="mr-2 h-6 w-6 items-center justify-center rounded-lg bg-slate-100">
+                      <Ionicons
+                        name="albums-outline"
+                        size={13}
+                        color="#64748b"
+                      />
+                    </View>
+                    <View className="flex-row gap-2">
+                      {[
+                        { key: "compact" as ListMode, label: "Compact" },
+                        { key: "full" as ListMode, label: "Full" },
+                      ].map(({ key, label }) => {
+                        const active = listMode === key;
+
+                        return (
+                          <Pressable
+                            key={key}
+                            onPress={() => setListMode(key)}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Use ${label.toLowerCase()} items list`}
+                            className="rounded-full border px-3 py-1.5"
+                            style={{
+                              borderColor: active
+                                ? COLORS.primary
+                                : COLORS.slate[200],
+                              backgroundColor: active
+                                ? COLORS.bg.primary
+                                : COLORS.slate[50],
+                            }}
+                          >
+                            <Text
+                              className="text-[11px] font-semibold"
+                              style={{
+                                color: active
+                                  ? COLORS.primary
+                                  : COLORS.slate[600],
+                              }}
+                            >
+                              {label}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  </View>
                 </View>
               )}
             </View>
@@ -1090,8 +1088,7 @@ export function ItemsScreen({ navigation }: Props) {
                         ).isFeatured,
                       })
               }
-              densityMode={densityMode}
-              isSmallScreen={isSmall}
+              listMode={listMode}
             />
           ))}
 
@@ -1337,8 +1334,7 @@ function ProductCard({
   adjusting,
   onLongPress,
   onToggleFavorite,
-  densityMode,
-  isSmallScreen,
+  listMode,
 }: {
   product: Product & {
     minStock?: number;
@@ -1354,11 +1350,9 @@ function ProductCard({
   adjusting: boolean;
   onLongPress: () => void;
   onToggleFavorite?: () => void;
-  densityMode: DensityMode;
-  isSmallScreen: boolean;
+  listMode: ListMode;
 }) {
-  const isCompact = densityMode === "compact";
-  const compactVisual = isCompact || isSmallScreen;
+  const isCompact = listMode === "compact";
   const status = stockStatus(product);
   const s = STATUS_STYLES[status];
   const stockVal = num(product.stock);
@@ -1395,10 +1389,9 @@ function ProductCard({
       accessibilityRole="button"
       accessibilityHint="Tap to view details, long-press to adjust stock"
       className={`bg-white border border-slate-200 overflow-hidden ${
-        compactVisual ? "rounded-[22px] mb-2" : "rounded-[24px] mb-3"
+        isCompact ? "rounded-[22px] mb-2" : "rounded-[24px] mb-3"
       }`}
       style={({ pressed }) => ({
-        opacity: pressed ? 0.97 : 1,
         backgroundColor: pressed ? COLORS.slate[50] : COLORS.text.inverted,
         ...styles.cardShadow,
       })}
@@ -1407,8 +1400,8 @@ function ProductCard({
         <Pressable
           onPress={onToggleFavorite}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          className={`absolute top-3 left-3 z-10 items-center justify-center rounded-full bg-amber-50 border border-amber-100 ${
-            compactVisual ? "h-9 w-9" : "h-10 w-10"
+          className={`absolute z-10 items-center justify-center rounded-full border border-amber-100 bg-amber-50 ${
+            isCompact ? "top-3 left-3 h-9 w-9" : "top-4 left-4 h-10 w-10"
           }`}
           accessibilityLabel={
             product.isFeatured ? "Remove from favorites" : "Add to favorites"
@@ -1416,15 +1409,15 @@ function ProductCard({
         >
           <Ionicons
             name={product.isFeatured ? "star" : "star-outline"}
-            size={18}
-            color={product.isFeatured ? "#f59e0b" : "#94a3b8"}
+            size={isCompact ? 18 : 20}
+            color={product.isFeatured ? COLORS.warning : COLORS.slate[400]}
           />
         </Pressable>
       )}
 
       <View
-        className={`absolute top-3 right-3 rounded-full z-10 ${
-          compactVisual ? "px-2 py-1" : "px-2.5 py-1"
+        className={`absolute rounded-full z-10 ${
+          isCompact ? "top-3 right-3 px-2 py-1" : "top-4 right-4 px-2.5 py-1"
         }`}
         style={{ backgroundColor: statusTone }}
       >
@@ -1433,163 +1426,177 @@ function ProductCard({
         </Text>
       </View>
 
-      <View className={compactVisual ? "px-3.5 pt-11 pb-3" : "px-4 pt-12 pb-4"}>
-        <View className="flex-row items-start gap-3">
-          <View
-            className={`bg-primary/10 items-center justify-center overflow-hidden ${
-              compactVisual ? "w-12 h-12 rounded-xl" : "w-14 h-14 rounded-2xl"
-            }`}
-          >
-            {imageUrl ? (
-              <Image
-                source={{ uri: imageUrl }}
-                className="w-full h-full"
-                resizeMode="cover"
-              />
-            ) : (
-              <Text className={compactVisual ? "text-xl" : "text-2xl"}>
-                {categoryIcon(product.category)}
-              </Text>
-            )}
-          </View>
+      {isCompact ? (
+        <View className="px-3 pt-10 pb-2.5">
+          <View className="flex-row items-start gap-2.5">
+            <View className="h-10 w-10 rounded-xl bg-primary/10 items-center justify-center overflow-hidden">
+              {imageUrl ? (
+                <Image
+                  source={{ uri: imageUrl }}
+                  className="w-full h-full"
+                  resizeMode="cover"
+                />
+              ) : (
+                <Text className="text-lg">{categoryIcon(product.category)}</Text>
+              )}
+            </View>
 
-          <View className="flex-1 min-w-0">
-            <View className="flex-row items-start justify-between gap-3">
-              <View className="flex-1 min-w-0 pr-2">
-                <Text className="text-[11px] font-semibold uppercase tracking-[1px] text-slate-500">
+            <View className="flex-1 min-w-0">
+              <Text className="text-sm font-bold text-slate-900" numberOfLines={1}>
+                {product.name}
+              </Text>
+
+              <View className="mt-1 flex-row items-center gap-1.5 flex-wrap">
+                <Text className="text-[10px] font-semibold uppercase tracking-[0.8px] text-slate-500">
                   {categoryLabel}
                 </Text>
-                <Text
-                  className={
-                    compactVisual
-                      ? "text-sm font-bold text-slate-900 mt-1"
-                      : "text-base font-bold text-slate-900 mt-1"
-                  }
-                  numberOfLines={1}
-                >
-                  {product.name}
-                </Text>
                 <View
-                  className={`flex-row flex-wrap gap-2 ${compactVisual ? "mt-2" : "mt-3"}`}
+                  className="rounded-full px-1.5 py-0.5"
+                  style={{ backgroundColor: statusBg }}
                 >
-                  <View
-                    className={`rounded-full bg-slate-100 ${compactVisual ? "px-2.5 py-1" : "px-3 py-1.5"}`}
-                  >
-                    <Text className="text-[11px] font-medium text-slate-600">
-                      Stock {stockVal} {product.unit ?? "pcs"}
+                  <Text className="text-[10px] font-semibold" style={{ color: statusTone }}>
+                    {s.label}
+                  </Text>
+                </View>
+                <Text className="text-[10px] font-medium text-slate-600">
+                  {stockVal} {product.unit ?? "pcs"}
+                </Text>
+              </View>
+
+              <View className="mt-1.5 flex-row flex-wrap gap-1.5">
+                <View className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5">
+                  <Text className="text-[10px] font-semibold text-slate-700">
+                    SP ₹{price % 1 === 0 ? price : price.toFixed(2)}
+                  </Text>
+                </View>
+                <View className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5">
+                  <Text className="text-[10px] font-semibold text-slate-700">
+                    C ₹{cost % 1 === 0 ? cost : cost.toFixed(2)}
+                  </Text>
+                </View>
+                <View className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5">
+                  <Text className="text-[10px] font-semibold text-slate-700">
+                    M ₹{(price - cost).toFixed(2)}
+                  </Text>
+                </View>
+                {wholesalePrice !== null && (
+                  <View className="flex-row items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5">
+                    <Text className="text-[9px] font-bold text-emerald-700">W</Text>
+                    <Text className="text-[9px] font-semibold text-emerald-600">
+                      ₹{wholesalePrice % 1 === 0 ? wholesalePrice : wholesalePrice.toFixed(2)}
                     </Text>
                   </View>
-                  <View
-                    className={`rounded-full ${compactVisual ? "px-2.5 py-1" : "px-3 py-1.5"}`}
-                    style={{ backgroundColor: statusBg }}
-                  >
-                    <Text
-                      className="text-[11px] font-semibold"
-                      style={{ color: statusTone }}
-                    >
-                      {s.label}
+                )}
+                {dealerPrice !== null && (
+                  <View className="flex-row items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5">
+                    <Text className="text-[9px] font-bold text-orange-700">D</Text>
+                    <Text className="text-[9px] font-semibold text-orange-600">
+                      ₹{dealerPrice % 1 === 0 ? dealerPrice : dealerPrice.toFixed(2)}
                     </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </View>
+        </View>
+      ) : (
+        <View className="px-4 pt-12 pb-4">
+          <View className="flex-row items-start gap-3">
+            <View className="h-14 w-14 rounded-2xl bg-primary/10 items-center justify-center overflow-hidden">
+              {imageUrl ? (
+                <Image
+                  source={{ uri: imageUrl }}
+                  className="w-full h-full"
+                  resizeMode="cover"
+                />
+              ) : (
+                <Text className="text-2xl">{categoryIcon(product.category)}</Text>
+              )}
+            </View>
+
+            <View className="flex-1 min-w-0">
+              <View className="flex-row items-start justify-between gap-3">
+                <View className="flex-1 min-w-0 pr-2">
+                  <Text className="text-[11px] font-semibold uppercase tracking-[1px] text-slate-500">
+                    {categoryLabel}
+                  </Text>
+                  <Text className="mt-1 text-base font-bold text-slate-900" numberOfLines={1}>
+                    {product.name}
+                  </Text>
+                  <View className="mt-3 flex-row flex-wrap gap-2">
+                    <View className="rounded-full bg-slate-100 px-3 py-1.5">
+                      <Text className="text-[11px] font-medium text-slate-600">
+                        Stock {stockVal} {product.unit ?? "pcs"}
+                      </Text>
+                    </View>
+                    <View className="rounded-full px-3 py-1.5" style={{ backgroundColor: statusBg }}>
+                      <Text className="text-[11px] font-semibold" style={{ color: statusTone }}>
+                        {s.label}
+                      </Text>
+                    </View>
                   </View>
                 </View>
               </View>
             </View>
           </View>
-        </View>
 
-        <View
-          className={`${
-            isCompact || isSmallScreen
-              ? "mt-2.5 rounded-xl px-3 py-2.5"
-              : "mt-3 rounded-2xl px-3 py-3"
-          } bg-slate-50`}
-        >
-          <View className="flex-row items-center justify-between">
-            <View className="flex-1 min-w-0">
-              <Text className="text-[10px] font-semibold uppercase tracking-[1px] text-slate-500">
-                Sales Price
-              </Text>
-              <Text
-                className={
-                  compactVisual
-                    ? "text-xs font-bold text-slate-900 mt-1"
-                    : "text-sm font-bold text-slate-900 mt-1"
-                }
-              >
-                ₹{price % 1 === 0 ? price : price.toFixed(2)}
-              </Text>
+          <View className="mt-3 rounded-2xl bg-slate-50 px-3 py-3">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-1 min-w-0">
+                <Text className="text-[10px] font-semibold uppercase tracking-[1px] text-slate-500">
+                  Sales Price
+                </Text>
+                <Text className="mt-1 text-sm font-bold text-slate-900">
+                  ₹{price % 1 === 0 ? price : price.toFixed(2)}
+                </Text>
+              </View>
+              <View className="flex-1 min-w-0 items-center">
+                <Text className="text-[10px] font-semibold uppercase tracking-[1px] text-slate-500">
+                  Cost
+                </Text>
+                <Text className="mt-1 text-sm font-semibold text-slate-700">
+                  ₹{cost % 1 === 0 ? cost : cost.toFixed(2)}
+                </Text>
+              </View>
+              <View className="flex-1 min-w-0 items-end">
+                <Text className="text-[10px] font-semibold uppercase tracking-[1px] text-slate-500">
+                  Margin
+                </Text>
+                <Text className="mt-1 text-sm font-semibold text-slate-700">
+                  ₹{(price - cost).toFixed(2)}
+                </Text>
+              </View>
             </View>
-            <View className="flex-1 min-w-0 items-center">
-              <Text className="text-[10px] font-semibold uppercase tracking-[1px] text-slate-500">
-                Cost
-              </Text>
-              <Text
-                className={
-                  compactVisual
-                    ? "text-xs font-semibold text-slate-700 mt-1"
-                    : "text-sm font-semibold text-slate-700 mt-1"
-                }
-              >
-                ₹{cost % 1 === 0 ? cost : cost.toFixed(2)}
-              </Text>
-            </View>
-            <View className="flex-1 min-w-0 items-end">
-              <Text className="text-[10px] font-semibold uppercase tracking-[1px] text-slate-500">
-                Margin
-              </Text>
-              <Text
-                className={
-                  compactVisual
-                    ? "text-xs font-semibold text-slate-700 mt-1"
-                    : "text-sm font-semibold text-slate-700 mt-1"
-                }
-              >
-                ₹{(price - cost).toFixed(2)}
-              </Text>
-            </View>
+
+            {hasTiers && (
+              <View className="mt-3 flex-row gap-1.5">
+                {wholesalePrice !== null && (
+                  <View className="flex-row items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1">
+                    <Text className="text-[9px] font-bold text-emerald-700">W</Text>
+                    <Text className="text-[9px] font-semibold text-emerald-600">
+                      ₹
+                      {wholesalePrice % 1 === 0
+                        ? wholesalePrice
+                        : wholesalePrice.toFixed(2)}
+                    </Text>
+                  </View>
+                )}
+                {dealerPrice !== null && (
+                  <View className="flex-row items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1">
+                    <Text className="text-[9px] font-bold text-orange-700">D</Text>
+                    <Text className="text-[9px] font-semibold text-orange-600">
+                      ₹
+                      {dealerPrice % 1 === 0
+                        ? dealerPrice
+                        : dealerPrice.toFixed(2)}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
-
-          {hasTiers && (
-            <View
-              className={`flex-row gap-1.5 ${compactVisual ? "mt-2" : "mt-3"}`}
-            >
-              {wholesalePrice !== null && (
-                <View
-                  className={`flex-row items-center gap-1 bg-emerald-50 border border-emerald-200 rounded-full ${
-                    compactVisual ? "px-2 py-0.5" : "px-2.5 py-1"
-                  }`}
-                >
-                  <Text className="text-[9px] font-bold text-emerald-700">
-                    W
-                  </Text>
-                  <Text className="text-[9px] font-semibold text-emerald-600">
-                    ₹
-                    {wholesalePrice % 1 === 0
-                      ? wholesalePrice
-                      : wholesalePrice.toFixed(2)}
-                  </Text>
-                </View>
-              )}
-              {dealerPrice !== null && (
-                <View
-                  className={`flex-row items-center gap-1 bg-orange-50 border border-orange-200 rounded-full ${
-                    compactVisual ? "px-2 py-0.5" : "px-2.5 py-1"
-                  }`}
-                >
-                  <Text className="text-[9px] font-bold text-orange-700">
-                    D
-                  </Text>
-                  <Text className="text-[9px] font-semibold text-orange-600">
-                    ₹
-                    {dealerPrice % 1 === 0
-                      ? dealerPrice
-                      : dealerPrice.toFixed(2)}
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
         </View>
-      </View>
+      )}
 
       <View className="flex-row border-t border-slate-100 bg-white">
         <Pressable
@@ -1599,12 +1606,12 @@ function ProductCard({
           }}
           disabled={adjusting || stockVal <= 0}
           accessibilityLabel="Subtract one from stock"
-          className={`flex-1 items-center border-r border-slate-100 ${
-            compactVisual ? "py-2.5" : "py-3"
+          className={`flex-1 items-center justify-center border-r border-slate-100 ${
+            isCompact ? "min-h-11 py-2.5" : "min-h-12 py-3"
           }`}
         >
           <Text
-            className={`${compactVisual ? "text-xs" : "text-sm"} font-bold ${stockVal <= 0 ? "text-slate-300" : "text-red-500"}`}
+            className={`${isCompact ? "text-xs" : "text-sm"} font-bold ${stockVal <= 0 ? "text-slate-300" : "text-red-500"}`}
           >
             {adjusting ? "Updating..." : "−1 stock"}
           </Text>
@@ -1613,13 +1620,11 @@ function ProductCard({
         <Pressable
           onPress={onLongPress}
           accessibilityLabel="Adjust stock with custom quantity"
-          className={`flex-1 items-center border-r border-slate-100 ${
-            compactVisual ? "py-2.5" : "py-3"
+          className={`flex-1 items-center justify-center border-r border-slate-100 ${
+            isCompact ? "min-h-11 py-2.5" : "min-h-12 py-3"
           }`}
         >
-          <Text
-            className={`${compactVisual ? "text-xs" : "text-sm"} text-slate-500 font-semibold`}
-          >
+          <Text className={`${isCompact ? "text-xs" : "text-sm"} font-semibold text-slate-500`}>
             Custom qty
           </Text>
         </Pressable>
@@ -1631,15 +1636,24 @@ function ProductCard({
           }}
           disabled={adjusting}
           accessibilityLabel="Add one to stock"
-          className={`flex-1 items-center ${compactVisual ? "py-2.5" : "py-3"}`}
+          className={`flex-1 items-center justify-center ${
+            isCompact ? "min-h-11 py-2.5" : "min-h-12 py-3"
+          }`}
         >
           <Text
-            className={`${compactVisual ? "text-xs" : "text-sm"} font-bold ${adjusting ? "text-slate-300" : "text-green-600"}`}
+            className={`${isCompact ? "text-xs" : "text-sm"} font-bold ${adjusting ? "text-slate-300" : "text-green-600"}`}
           >
             {adjusting ? "Updating..." : "+1 stock"}
           </Text>
         </Pressable>
       </View>
+
+      {adjusting && (
+        <View
+          className="h-0.5 bg-primary/30"
+          style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}
+        />
+      )}
     </Pressable>
   );
 }
