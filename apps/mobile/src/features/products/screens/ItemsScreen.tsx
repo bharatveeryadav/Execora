@@ -54,8 +54,7 @@ import { useWsInvalidation } from "../../../hooks/useWsInvalidation";
 import { useResponsive } from "../../../hooks/useResponsive";
 import { productExtApi } from "../../../lib/api";
 import { QUERY_KEYS } from "../../../lib/queryKeys";
-import { COLORS, SIZES } from "../../../lib/constants";
-import { TYPO } from "../../../lib/typography";
+import { COLORS } from "../../../lib/constants";
 
 // ── Helper: parse numeric fields returned as string | number from API ─────────
 
@@ -292,11 +291,6 @@ export function ItemsScreen({ navigation }: Props) {
 
   const { width, contentPad, contentWidth, isSmall } = useResponsive();
 
-  const previewCategories = useMemo(
-    () => categories.slice(0, isSmall ? 3 : 6),
-    [categories, isSmall],
-  );
-
   // Reset stale category filter when product set changes.
   useEffect(() => {
     if (categoryFilter && !categories.includes(categoryFilter)) {
@@ -346,19 +340,6 @@ export function ItemsScreen({ navigation }: Props) {
   const favoritesCount = allProducts.filter(
     (p) => (p as Product & { isFeatured?: boolean }).isFeatured,
   ).length;
-  const totalUnits = useMemo(
-    () => allProducts.reduce((sum, product) => sum + num(product.stock), 0),
-    [allProducts],
-  );
-  const stockValue = useMemo(
-    () =>
-      allProducts.reduce(
-        (sum, product) => sum + num(product.stock) * num(product.price),
-        0,
-      ),
-    [allProducts],
-  );
-
   const imageIds = useMemo(
     () => [...new Set(filtered.map((p) => p.id))].slice(0, 50),
     [filtered],
@@ -417,38 +398,45 @@ export function ItemsScreen({ navigation }: Props) {
     (width - contentWidth) / 2 + contentPad,
   );
 
-  const summaryCards = useMemo(
-    () => [
-      {
-        id: "products",
-        label: "Products",
-        value: String(allProducts.length),
-        icon: "cube-outline" as const,
-        tone: COLORS.primary,
-      },
-      {
-        id: "units",
-        label: "Units in Stock",
-        value: String(totalUnits),
-        icon: "layers-outline" as const,
-        tone: COLORS.success,
-      },
-      {
-        id: "alerts",
-        label: "Need Attention",
-        value: String(lowCount + outCount),
-        icon: "alert-circle-outline" as const,
-        tone: COLORS.warning,
-      },
-      {
-        id: "value",
-        label: "Stock Value",
-        value: `₹${stockValue.toFixed(0)}`,
-        icon: "cash-outline" as const,
-        tone: COLORS.secondary,
-      },
-    ],
-    [allProducts.length, lowCount, outCount, stockValue, totalUnits],
+  const openQuickAccess = useCallback(
+    (
+      target:
+        | "stockSummary"
+        | "itemDetails"
+        | "lowStockSummary"
+        | "onlineStore",
+    ) => {
+      const nav = navigation as any;
+
+      try {
+        if (target === "stockSummary") {
+          nav.getParent?.()?.navigate?.("MoreTab", {
+            screen: "ComingSoon",
+            params: { title: "Stock Summary", emoji: "📊" },
+          });
+          return;
+        }
+        if (target === "itemDetails") {
+          nav.navigate?.("ItemsMenu");
+          return;
+        }
+        if (target === "lowStockSummary") {
+          nav.getParent?.()?.navigate?.("MoreTab", {
+            screen: "ComingSoon",
+            params: { title: "Low Stock Summary", emoji: "⚠️" },
+          });
+          return;
+        }
+
+        nav.getParent?.()?.navigate?.("MoreTab", {
+          screen: "OnlineStore",
+          params: { title: "Online Store" },
+        });
+      } catch {
+        showAlert("Not available", "This section opens from another screen");
+      }
+    },
+    [navigation],
   );
 
   return (
@@ -513,37 +501,24 @@ export function ItemsScreen({ navigation }: Props) {
                 </Pressable>
               </View>
             ) : (
-              <View className="flex-row items-start justify-between mb-4 gap-3">
+              <>
+              <View className="flex-row items-start justify-between mb-3 gap-3">
                 <View className="flex-1 min-w-0">
                   <View className="flex-row items-center gap-2">
                     <Text className="text-2xl font-bold tracking-tight text-slate-900">
-                      Items
+                      All Items
                     </Text>
                     <View className="rounded-full bg-primary/10 px-2.5 py-1">
                       <Text className="text-[11px] font-bold text-primary uppercase">
-                        Inventory
+                        Full List
                       </Text>
                     </View>
                   </View>
                   <Text className="text-sm text-slate-500 mt-1">
                     {filtersActive
-                      ? `${filtered.length} of ${allProducts.length} items visible`
-                      : `${allProducts.length} products across ${categories.length || 1} categories`}
+                      ? `${filtered.length} of ${allProducts.length} items`
+                      : `${allProducts.length} items • use filters for focus`}
                   </Text>
-                  {previewCategories.length > 0 && (
-                    <View className="flex-row flex-wrap gap-2 mt-3">
-                      {previewCategories.map((category) => (
-                        <View
-                          key={category}
-                          className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5"
-                        >
-                          <Text className="text-[11px] font-medium text-slate-600">
-                            {category}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  )}
                 </View>
                 <View className="flex-row items-center gap-2">
                   <Pressable
@@ -586,44 +561,72 @@ export function ItemsScreen({ navigation }: Props) {
                   </Pressable>
                 </View>
               </View>
-            )}
 
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 8, paddingRight: 8 }}
-              className="mb-3"
-            >
-              {summaryCards.map((card) => (
-                <View
-                  key={card.id}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2.5"
-                  style={{ minWidth: isSmall ? 132 : 150 }}
-                >
-                  <View className="flex-row items-center justify-between">
-                    <Text className={TYPO.sectionTitle}>{card.label}</Text>
-                    <View
-                      style={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: SIZES.RADIUS.full,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: `${card.tone}1A`,
-                      }}
+              <View className="mb-3 rounded-2xl border border-slate-200 bg-slate-50 p-2.5">
+                <Text className="text-[11px] font-semibold uppercase tracking-[1px] text-slate-500 mb-2 px-1">
+                  Quick Access
+                </Text>
+                <View className="flex-row items-center gap-2">
+                  {[
+                    {
+                      key: "stockSummary",
+                      icon: "stats-chart-outline" as const,
+                      label: "Stock Summary",
+                      color: COLORS.warning,
+                    },
+                    {
+                      key: "itemDetails",
+                      icon: "receipt-outline" as const,
+                      label: "Details",
+                      color: COLORS.primary,
+                    },
+                    {
+                      key: "lowStockSummary",
+                      icon: "alert-circle-outline" as const,
+                      label: "Low Stock",
+                      color: COLORS.success,
+                    },
+                    {
+                      key: "onlineStore",
+                      icon: "storefront-outline" as const,
+                      label: "Store",
+                      color: COLORS.secondary,
+                    },
+                  ].map((action) => (
+                    <Pressable
+                      key={action.key}
+                      onPress={() =>
+                        openQuickAccess(
+                          action.key as
+                            | "stockSummary"
+                            | "itemDetails"
+                            | "lowStockSummary"
+                            | "onlineStore",
+                        )
+                      }
+                      accessibilityRole="button"
+                      accessibilityLabel={`Open ${action.label}`}
+                      className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 items-center"
                     >
-                      <Ionicons name={card.icon} size={14} color={card.tone} />
-                    </View>
-                  </View>
-                  <Text
-                    className="text-base font-bold text-slate-900 mt-1.5"
-                    numberOfLines={1}
-                  >
-                    {card.value}
-                  </Text>
+                      <View
+                        className="h-8 w-8 rounded-lg items-center justify-center"
+                        style={{ backgroundColor: `${action.color}1A` }}
+                      >
+                        <Ionicons
+                          name={action.icon}
+                          size={16}
+                          color={action.color}
+                        />
+                      </View>
+                      <Text className="text-[11px] font-semibold text-slate-700 mt-1.5">
+                        {action.label}
+                      </Text>
+                    </Pressable>
+                  ))}
                 </View>
-              ))}
-            </ScrollView>
+              </View>
+              </>
+            )}
 
             <View>
               <View className="flex-row items-center gap-2">
