@@ -977,20 +977,20 @@ export function ItemsScreen({ navigation }: Props) {
             alignSelf: "center",
             marginTop: 12,
           }}
-          className="bg-amber-50 border border-amber-200 rounded-2xl flex-row items-center px-4 py-4"
+          className="bg-amber-50 border border-amber-200 rounded-xl flex-row items-center px-3 py-2.5"
         >
-          <View className="w-11 h-11 rounded-2xl bg-amber-100 items-center justify-center mr-3">
-            <Ionicons name="alert-circle" size={20} color={COLORS.warning} />
+          <View className="w-8 h-8 rounded-xl bg-amber-100 items-center justify-center mr-2.5">
+            <Ionicons name="alert-circle" size={16} color={COLORS.warning} />
           </View>
           <View className="flex-1">
-            <Text className="text-sm font-bold text-amber-800">
+            <Text className="text-xs font-bold text-amber-800" numberOfLines={1}>
               {lowCount} item{lowCount !== 1 ? "s" : ""} running low
             </Text>
-            <Text className="text-xs text-amber-600">
+            <Text className="text-[11px] text-amber-600" numberOfLines={1}>
               Tap to review & restock
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={18} color={COLORS.warning} />
+          <Ionicons name="chevron-forward" size={16} color={COLORS.warning} />
         </Pressable>
       )}
 
