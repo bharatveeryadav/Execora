@@ -29,7 +29,6 @@ import { purchaseApi } from "../../../lib/api";
 import { inr, type Invoice } from "@execora/shared";
 import { useWsInvalidation } from "../../../shared/hooks/useWsInvalidation";
 import { useResponsive } from "../../../shared/hooks/useResponsive";
-import { FilterBar } from "../../../components/composites/FilterBar";
 import { TabBar, type TabItem } from "../../../components/composites/TabBar";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import { ErrorCard } from "../../../components/ui/ErrorCard";
@@ -51,6 +50,12 @@ type DateFilter =
   | "last_year"
   | "last_quarter"
   | "custom";
+type SortKey =
+  | "latest"
+  | "oldest"
+  | "amount_high"
+  | "amount_low"
+  | "pending_high";
 type StatusTab =
   | "All"
   | "Draft"
@@ -277,10 +282,10 @@ function formatDate(d: string | Date | undefined): string {
 
 type Props = NativeStackScreenProps<InvoicesStackParams, "InvoiceList">;
 export function InvoiceListScreen({ navigation, route }: Props) {
-  const { width, contentPad, contentWidth, isSmall } = useResponsive();
+  const { width, contentPad, contentWidth } = useResponsive();
   const insets = useSafeAreaInsets();
   const stackSearchControls = contentWidth < 380;
-  const stackSummaryCards = contentWidth < 460;
+  const isVerySmall = contentWidth < 360;
   const [docTypeTab, setDocTypeTab] = useState<DocTypeTab>("sales");
   const [statusTab, setStatusTab] = useState<StatusTab>(
     () => (route.params?.initialStatusFilter as StatusTab) ?? "All",
@@ -291,8 +296,11 @@ export function InvoiceListScreen({ navigation, route }: Props) {
   );
   const [customFrom, setCustomFrom] = useState<Date | undefined>();
   const [customTo, setCustomTo] = useState<Date | undefined>();
+  const [searchExpanded, setSearchExpanded] = useState(false);
   const [dateFilterModalOpen, setDateFilterModalOpen] = useState(false);
+  const [sortModalOpen, setSortModalOpen] = useState(false);
   const [customDateModalOpen, setCustomDateModalOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<SortKey>("latest");
   const [customFromTemp, setCustomFromTemp] = useState<Date>(() => new Date());
   const [customToTemp, setCustomToTemp] = useState<Date>(() => new Date());
   const [customPickerMode, setCustomPickerMode] = useState<
@@ -349,7 +357,7 @@ export function InvoiceListScreen({ navigation, route }: Props) {
   );
 
   const filteredInvoices = useMemo(() => {
-    return invoicesByDate.filter((inv: any) => {
+    const filtered = invoicesByDate.filter((inv: any) => {
       const matchStatus =
         statusTab === "All" ||
         inv.status?.toLowerCase() === statusTab.toLowerCase();
@@ -360,19 +368,53 @@ export function InvoiceListScreen({ navigation, route }: Props) {
         fuzzyMatch(q, inv.customer?.name ?? "");
       return matchStatus && matchSearch;
     });
-  }, [invoicesByDate, statusTab, search]);
+
+    const withPending = filtered.map((inv) => {
+      const invAny = inv as any;
+      const total = parseFloat(String(inv.total ?? 0));
+      const paid = parseFloat(String(invAny.paidAmount ?? 0));
+      return {
+        inv,
+        pending: Math.max(total - paid, 0),
+        date: new Date(invAny.invoiceDate ?? inv.createdAt).getTime(),
+        amount: total,
+      };
+    });
+
+    withPending.sort((a, b) => {
+      if (sortBy === "oldest") return a.date - b.date;
+      if (sortBy === "amount_high") return b.amount - a.amount;
+      if (sortBy === "amount_low") return a.amount - b.amount;
+      if (sortBy === "pending_high") return b.pending - a.pending;
+      return b.date - a.date;
+    });
+
+    return withPending.map((x) => x.inv);
+  }, [invoicesByDate, search, sortBy, statusTab]);
 
   const filteredPurchases = useMemo(() => {
     if (docTypeTab !== "purchase") return [];
-    if (!search.trim()) return purchases;
-    const q = search.toLowerCase();
-    return purchases.filter(
-      (p: any) =>
-        (p.itemName ?? "").toLowerCase().includes(q) ||
-        (p.supplier ?? "").toLowerCase().includes(q) ||
-        (p.category ?? "").toLowerCase().includes(q),
-    );
-  }, [purchases, search, docTypeTab]);
+    const base = !search.trim()
+      ? purchases
+      : purchases.filter(
+          (p: any) =>
+            (p.itemName ?? "").toLowerCase().includes(search.toLowerCase()) ||
+            (p.supplier ?? "").toLowerCase().includes(search.toLowerCase()) ||
+            (p.category ?? "").toLowerCase().includes(search.toLowerCase()),
+        );
+
+    return [...base].sort((a: any, b: any) => {
+      const aDate = new Date(a.date ?? a.createdAt ?? 0).getTime();
+      const bDate = new Date(b.date ?? b.createdAt ?? 0).getTime();
+      const aAmount = parseFloat(String(a.amount ?? 0));
+      const bAmount = parseFloat(String(b.amount ?? 0));
+
+      if (sortBy === "oldest") return aDate - bDate;
+      if (sortBy === "amount_high") return bAmount - aAmount;
+      if (sortBy === "amount_low") return aAmount - bAmount;
+      return bDate - aDate;
+    });
+  }, [docTypeTab, purchases, search, sortBy]);
 
   const counts = useMemo(
     () =>
@@ -383,111 +425,6 @@ export function InvoiceListScreen({ navigation, route }: Props) {
       }, {}),
     [invoicesByDate],
   );
-
-  const totalValue = useMemo(
-    () =>
-      filteredInvoices.reduce(
-        (s, inv) => s + parseFloat(String(inv.total ?? 0)),
-        0,
-      ),
-    [filteredInvoices],
-  );
-  const pendingAmount = useMemo(
-    () =>
-      filteredInvoices.reduce((s, inv) => {
-        if (
-          (inv as any).status === "paid" ||
-          (inv as any).status === "cancelled"
-        )
-          return s;
-        const total = parseFloat(String(inv.total ?? 0));
-        const paid = parseFloat(String((inv as any).paidAmount ?? 0));
-        return s + (total - paid);
-      }, 0),
-    [filteredInvoices],
-  );
-  const purchasesTotal = useMemo(
-    () =>
-      filteredPurchases.reduce(
-        (s, p) => s + (parseFloat(String(p.amount)) || 0),
-        0,
-      ),
-    [filteredPurchases],
-  );
-
-  const docTypeCounts = {
-    sales: allInvoices
-      .filter((i: any) => i.status !== "proforma")
-      .filter((i: any) => isInRange(i.invoiceDate ?? i.createdAt, dateRange))
-      .length,
-    purchase: purchases.length,
-    quotation: allInvoices
-      .filter((i: any) => i.status === "proforma")
-      .filter((i: any) => isInRange(i.invoiceDate ?? i.createdAt, dateRange))
-      .length,
-  };
-
-  const headerSubtitle =
-    docTypeTab === "purchase"
-      ? "Track supplier purchases and cash outflow"
-      : docTypeTab === "quotation"
-        ? "Review estimates and convert faster"
-        : "Track invoices, payments, and follow-ups";
-
-  const summaryCards = useMemo(() => {
-    if (docTypeTab === "purchase") {
-      return [
-        {
-          id: "purchases",
-          label: "Purchases",
-          value: String(filteredPurchases.length),
-          tone: COLORS.secondary,
-          icon: "cube-outline" as const,
-        },
-        {
-          id: "spent",
-          label: "Total Spent",
-          value: `₹${inr(purchasesTotal)}`,
-          tone: COLORS.warning,
-          icon: "wallet-outline" as const,
-        },
-      ];
-    }
-
-    return [
-      {
-        id: "count",
-        label: docTypeTab === "quotation" ? "Quotes" : "Bills",
-        value: String(filteredInvoices.length),
-        tone: COLORS.primary,
-        icon:
-          docTypeTab === "quotation"
-            ? ("document-text-outline" as const)
-            : ("receipt-outline" as const),
-      },
-      {
-        id: "value",
-        label: "Total Value",
-        value: `₹${inr(totalValue)}`,
-        tone: COLORS.success,
-        icon: "cash-outline" as const,
-      },
-      {
-        id: "pending",
-        label: "Pending",
-        value: `₹${inr(pendingAmount)}`,
-        tone: COLORS.warning,
-        icon: "time-outline" as const,
-      },
-    ];
-  }, [
-    docTypeTab,
-    filteredInvoices.length,
-    filteredPurchases.length,
-    pendingAmount,
-    purchasesTotal,
-    totalValue,
-  ]);
 
   const showInvoiceList = docTypeTab === "sales" || docTypeTab === "quotation";
   const isInvoicesInitialLoading = showInvoiceList && isFetching && !invData;
@@ -555,47 +492,31 @@ export function InvoiceListScreen({ navigation, route }: Props) {
       ? `${customFrom.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}–${customTo.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}`
       : DATE_LABELS[dateFilter];
 
-  const dateFilterOptions = useMemo(
-    () => DATE_FILTERS.map((id) => ({ id, label: DATE_LABELS[id] })),
-    [],
-  );
+  const dateFilterCompactLabel = useMemo(() => {
+    if (!isVerySmall) return dateFilterLabel;
+    if (dateFilter === "all") return "Date";
+    if (dateFilter === "today") return "Today";
+    if (dateFilter === "this_week") return "Week";
+    if (dateFilter === "this_month") return "Month";
+    if (dateFilter === "custom") return "Custom";
+    return DATE_LABELS[dateFilter].replace("this ", "").replace("last ", "");
+  }, [dateFilter, dateFilterLabel, isVerySmall]);
 
-  const activeDateFilters = useMemo(
-    () => [{ id: dateFilter, label: dateFilterLabel }],
-    [dateFilter, dateFilterLabel],
-  );
+  const sortLabel = useMemo(() => {
+    if (sortBy === "oldest") return "Oldest";
+    if (sortBy === "amount_high") return "Amount high";
+    if (sortBy === "amount_low") return "Amount low";
+    if (sortBy === "pending_high") return "Pending high";
+    return "Latest";
+  }, [sortBy]);
 
-  const activeSummaryChips = useMemo(() => {
-    const chips: Array<{
-      id: string;
-      label: string;
-      icon: keyof typeof Ionicons.glyphMap;
-    }> = [
-      {
-        id: "date",
-        label: dateFilterLabel,
-        icon: "calendar-outline" as const,
-      },
-    ];
-
-    if (showInvoiceList && statusTab !== "All") {
-      chips.push({
-        id: "status",
-        label: statusTab,
-        icon: "funnel-outline" as const,
-      });
-    }
-
-    if (search.trim()) {
-      chips.push({
-        id: "search",
-        label: `Search: ${search.trim()}`,
-        icon: "search-outline" as const,
-      });
-    }
-
-    return chips;
-  }, [dateFilterLabel, search, showInvoiceList, statusTab]);
+  const sortCompactLabel = useMemo(() => {
+    if (!isVerySmall) return sortLabel;
+    if (sortBy === "amount_high") return "Amt high";
+    if (sortBy === "amount_low") return "Amt low";
+    if (sortBy === "pending_high") return "Pending";
+    return sortLabel;
+  }, [isVerySmall, sortBy, sortLabel]);
 
   const statusTabItems = useMemo(
     (): TabItem[] =>
@@ -617,9 +538,7 @@ export function InvoiceListScreen({ navigation, route }: Props) {
       const s = STATUS_STYLES[status] ?? STATUS_STYLES.draft;
       const invoiceNumber = invAny.invoiceNo ?? inv.id.slice(-8).toUpperCase();
       const invoiceDate = formatDate(invAny.invoiceDate ?? inv.createdAt);
-      const dueDate = invAny.dueDate
-        ? formatDate(invAny.dueDate)
-        : "No due date";
+      const dueDate = invAny.dueDate ? formatDate(invAny.dueDate) : null;
       const total = parseFloat(String(inv.total ?? 0));
       const paidAmount = parseFloat(String(invAny.paidAmount ?? 0));
       const balance = Math.max(total - paidAmount, 0);
@@ -637,15 +556,15 @@ export function InvoiceListScreen({ navigation, route }: Props) {
               navigation?.navigate?.("InvoiceDetail", { id: inv.id });
             });
           }}
-          className="rounded-2xl border border-slate-200 bg-white px-4 py-4 min-w-0"
+          className="rounded-2xl border border-slate-200 bg-white px-4 py-3 min-w-0"
           style={({ pressed }) => ({
             backgroundColor: pressed ? COLORS.slate[50] : COLORS.text.inverted,
-            minHeight: 88,
+            minHeight: 72,
             opacity: pressed ? 0.96 : 1,
             ...styles.cardShadow,
           })}
         >
-          <View className="flex-row items-start gap-3">
+          <View className="flex-row items-center gap-3">
             <View
               style={{
                 width: 42,
@@ -669,13 +588,10 @@ export function InvoiceListScreen({ navigation, route }: Props) {
               />
             </View>
             <View className="flex-1 min-w-0">
-              <View className="flex-row items-start justify-between gap-3">
+              <View className="flex-row items-center justify-between gap-3">
                 <View className="flex-1 min-w-0">
-                  <Text className="text-[11px] font-semibold uppercase tracking-[1px] text-slate-500">
-                    Invoice
-                  </Text>
                   <Text
-                    className={`${TYPO.labelBold} min-w-0 mt-1`}
+                    className={TYPO.labelBold}
                     numberOfLines={1}
                     ellipsizeMode="tail"
                   >
@@ -686,16 +602,16 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                     numberOfLines={1}
                     ellipsizeMode="tail"
                   >
-                    {invAny.customer?.name ?? "Unknown customer"}
+                    {(invAny.customer?.name ?? "Unknown customer") +
+                      " • " +
+                      invoiceDate +
+                      (dueDate ? ` • Due ${dueDate}` : "")}
                   </Text>
                 </View>
                 <View className="items-end shrink-0">
-                  <Text className="text-[11px] font-semibold uppercase tracking-[1px] text-slate-500">
-                    Amount
-                  </Text>
                   <Text
                     style={{
-                      fontSize: SIZES.FONT.lg,
+                      fontSize: SIZES.FONT.base,
                       fontWeight: "700",
                       color: amtColor,
                       textDecorationLine:
@@ -705,106 +621,31 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                   >
                     ₹{inr(inv.total)}
                   </Text>
+                </View>
+              </View>
+              <View className="flex-row items-center justify-between mt-2">
+                <View
+                  style={{
+                    borderRadius: SIZES.RADIUS.full,
+                    paddingHorizontal: 9,
+                    paddingVertical: 4,
+                    backgroundColor: s.bgColor,
+                  }}
+                >
                   <Text
-                    className="text-[11px] text-slate-500 mt-1"
-                    numberOfLines={1}
+                    style={{
+                      fontSize: SIZES.FONT.xs,
+                      fontWeight: "700",
+                      color: s.textColor,
+                      textTransform: "capitalize",
+                    }}
                   >
-                    {status === "paid"
-                      ? "Collected"
-                      : status === "cancelled"
-                        ? "Cancelled"
-                        : `Pending ₹${inr(balance)}`}
+                    {status}
                   </Text>
                 </View>
-              </View>
-
-              <View className="flex-row flex-wrap gap-2 mt-3">
-                <View className="flex-row items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5">
-                  <Ionicons
-                    name="calendar-outline"
-                    size={13}
-                    color={COLORS.slate[500]}
-                  />
-                  <Text className="text-[11px] font-medium text-slate-600">
-                    {invoiceDate}
-                  </Text>
-                </View>
-                <View className="flex-row items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5">
-                  <Ionicons
-                    name="time-outline"
-                    size={13}
-                    color={COLORS.slate[500]}
-                  />
-                  <Text className="text-[11px] font-medium text-slate-600">
-                    {dueDate}
-                  </Text>
-                </View>
-              </View>
-
-              <View className="mt-3 rounded-2xl bg-slate-50 px-3 py-3">
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-1 min-w-0">
-                    <Text className="text-[10px] font-semibold uppercase tracking-[1px] text-slate-500">
-                      Status
-                    </Text>
-                    <View
-                      style={{
-                        alignSelf: "flex-start",
-                        borderRadius: SIZES.RADIUS.full,
-                        paddingHorizontal: 10,
-                        paddingVertical: 5,
-                        backgroundColor: s.bgColor,
-                        marginTop: 6,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: SIZES.FONT.xs,
-                          fontWeight: "700",
-                          color: s.textColor,
-                          textTransform: "capitalize",
-                        }}
-                        numberOfLines={1}
-                      >
-                        {status}
-                      </Text>
-                    </View>
-                  </View>
-                  <View className="flex-1 min-w-0 items-center">
-                    <Text className="text-[10px] font-semibold uppercase tracking-[1px] text-slate-500">
-                      Paid
-                    </Text>
-                    <Text
-                      className="text-sm font-bold text-green-600 mt-2"
-                      numberOfLines={1}
-                    >
-                      ₹{inr(paidAmount)}
-                    </Text>
-                  </View>
-                  <View className="flex-1 min-w-0 items-end">
-                    <Text className="text-[10px] font-semibold uppercase tracking-[1px] text-slate-500">
-                      Balance
-                    </Text>
-                    <Text
-                      className="text-sm font-bold text-amber-600 mt-2"
-                      numberOfLines={1}
-                    >
-                      ₹{inr(balance)}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              <View className="flex-row items-center justify-end mt-3 gap-1">
-                <Text className="text-[11px] font-medium text-slate-500">
-                  Open invoice
+                <Text className="text-xs font-medium text-slate-500">
+                  Pending ₹{inr(balance)}
                 </Text>
-                <Ionicons
-                  name="chevron-forward"
-                  size={16}
-                  color={COLORS.slate[400]}
-                  style={{ flexShrink: 0 }}
-                />
               </View>
             </View>
           </View>
@@ -826,20 +667,20 @@ export function InvoiceListScreen({ navigation, route }: Props) {
             } catch (_) {}
           });
         }}
-        className="rounded-2xl border border-slate-200 bg-white px-4 py-4 min-w-0"
+        className="rounded-2xl border border-slate-200 bg-white px-4 py-3 min-w-0"
         style={({ pressed }) => ({
           backgroundColor: pressed ? COLORS.slate[50] : COLORS.text.inverted,
-          minHeight: 88,
+          minHeight: 72,
           opacity: pressed ? 0.96 : 1,
           ...styles.cardShadow,
         })}
       >
-        <View className="flex-row items-start gap-3">
+        <View className="flex-row items-center gap-3">
           <View className="w-11 h-11 rounded-2xl bg-amber-100 items-center justify-center shrink-0">
             <Ionicons name="cube-outline" size={20} color="#d97706" />
           </View>
           <View className="flex-1 min-w-0">
-            <View className="flex-row items-start justify-between gap-3">
+            <View className="flex-row items-center justify-between gap-3">
               <View className="flex-1 min-w-0 shrink">
                 <Text
                   className={TYPO.labelBold}
@@ -856,33 +697,18 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                   {p.supplier ?? "Unknown supplier"} ·{" "}
                   {formatDate(p.date ?? p.createdAt ?? "")}
                 </Text>
-                {!!p.category && (
-                  <Text
-                    className="text-[11px] text-slate-500 mt-2"
-                    numberOfLines={1}
-                  >
-                    Category: {p.category}
-                  </Text>
-                )}
               </View>
               <View className="items-end shrink-0">
                 <Text
-                  className="text-base font-bold text-red-600"
+                  className="text-sm font-bold text-red-600"
                   numberOfLines={1}
                 >
                   ₹{inr(parseFloat(String(p.amount)))}
                 </Text>
-                <Text className="text-[11px] text-slate-500 mt-1">
-                  Open purchase log
+                <Text className="text-xs text-slate-500 mt-1">
+                  Open purchases
                 </Text>
               </View>
-            </View>
-            <View className="flex-row items-center justify-end mt-3">
-              <Ionicons
-                name="chevron-forward"
-                size={16}
-                color={COLORS.slate[400]}
-              />
             </View>
           </View>
         </View>
@@ -922,6 +748,12 @@ export function InvoiceListScreen({ navigation, route }: Props) {
       icon: "trending-up" as const,
       label: "Analytics",
       onPress: navToReports,
+    },
+    {
+      id: "pending",
+      icon: "hourglass" as const,
+      label: "Pending",
+      onPress: () => setStatusTab("Pending"),
     },
     {
       id: "aging",
@@ -964,49 +796,68 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                   </Text>
                 </View>
               </View>
-              <Text className="text-sm text-slate-500 mt-1">
-                {headerSubtitle}
+              <Text className="text-xs text-slate-500 mt-1">
+                Focus: all invoices, search, sort, filter
               </Text>
-              <View className="flex-row flex-wrap gap-2 mt-3">
-                {activeSummaryChips.map((chip) => (
-                  <View
-                    key={chip.id}
-                    className="flex-row items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5"
-                  >
-                    <Ionicons
-                      name={chip.icon}
-                      size={14}
-                      color={COLORS.slate[500]}
-                    />
-                    <Text className="text-xs font-medium text-slate-600">
-                      {chip.label}
-                    </Text>
-                  </View>
-                ))}
-              </View>
             </View>
-            <Pressable
-              onPress={handleBillsMenu}
-              accessibilityRole="button"
-              accessibilityLabel="Open bills menu"
-              style={({ pressed }) => ({
-                width: 44,
-                height: 44,
-                borderRadius: SIZES.RADIUS.full,
-                alignItems: "center",
-                justifyContent: "center",
-                opacity: pressed ? 0.8 : 1,
-                backgroundColor: pressed
-                  ? COLORS.slate[200]
-                  : COLORS.slate[100],
-              })}
-            >
-              <Ionicons
-                name="ellipsis-horizontal"
-                size={18}
-                color={COLORS.slate[600]}
-              />
-            </Pressable>
+            <View className="flex-row items-center gap-2">
+              <Pressable
+                onPress={() => {
+                  if (searchExpanded && !search.trim()) {
+                    setSearchExpanded(false);
+                    return;
+                  }
+                  setSearchExpanded(true);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  searchExpanded ? "Close search" : "Open search"
+                }
+                style={({ pressed }) => ({
+                  width: 40,
+                  height: 40,
+                  borderRadius: SIZES.RADIUS.full,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: pressed ? 0.8 : 1,
+                  backgroundColor: pressed
+                    ? COLORS.slate[200]
+                    : COLORS.slate[100],
+                })}
+              >
+                <Ionicons
+                  name={
+                    searchExpanded && !search.trim()
+                      ? "close-outline"
+                      : "search-outline"
+                  }
+                  size={18}
+                  color={COLORS.slate[600]}
+                />
+              </Pressable>
+              <Pressable
+                onPress={handleBillsMenu}
+                accessibilityRole="button"
+                accessibilityLabel="Open bills menu"
+                style={({ pressed }) => ({
+                  width: 40,
+                  height: 40,
+                  borderRadius: SIZES.RADIUS.full,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: pressed ? 0.8 : 1,
+                  backgroundColor: pressed
+                    ? COLORS.slate[200]
+                    : COLORS.slate[100],
+                })}
+              >
+                <Ionicons
+                  name="ellipsis-horizontal"
+                  size={18}
+                  color={COLORS.slate[600]}
+                />
+              </Pressable>
+            </View>
           </View>
 
           <View className="mt-4 rounded-2xl bg-slate-100 p-1 flex-row items-center min-w-0">
@@ -1062,113 +913,141 @@ export function InvoiceListScreen({ navigation, route }: Props) {
             />
           )}
 
-          <View className="mt-4 rounded-[20px] border border-slate-200 bg-slate-50 p-2 min-w-0">
-            <View
-              className="rounded-2xl border border-slate-200 bg-white min-w-0"
-              style={{
-                flexDirection: stackSearchControls ? "column" : "row",
-                alignItems: stackSearchControls ? undefined : "center",
-              }}
-            >
-              <View className="flex-1 flex-row items-center rounded-2xl px-3 min-h-[48] min-w-0">
+          <View className="mt-3 flex-row items-center gap-2">
+            {showInvoiceList && (
+              <Pressable
+                onPress={() => setDateFilterModalOpen(true)}
+                className="rounded-full border border-slate-200 bg-white flex-row items-center gap-1.5"
+                style={({ pressed }) => ({
+                  opacity: pressed ? 0.8 : 1,
+                  paddingHorizontal: isVerySmall ? 10 : 12,
+                  paddingVertical: isVerySmall ? 7 : 8,
+                })}
+              >
                 <Ionicons
-                  name="search"
-                  size={16}
+                  name="funnel-outline"
+                  size={14}
+                  color={COLORS.slate[600]}
+                />
+                <Text className="text-xs font-medium text-slate-700" numberOfLines={1}>
+                  {dateFilterCompactLabel}
+                </Text>
+                <Ionicons
+                  name="chevron-down"
+                  size={14}
                   color={COLORS.slate[500]}
-                  style={{ marginRight: 8 }}
                 />
-                <TextInput
-                  value={search}
-                  onChangeText={setSearch}
-                  placeholder={placeholder}
-                  accessibilityLabel="Search bills"
-                  placeholderTextColor={COLORS.slate[400]}
-                  className="flex-1 min-w-0 text-sm text-slate-800 py-3"
-                />
-                {!!search.trim() && (
-                  <Pressable
-                    onPress={() => setSearch("")}
-                    accessibilityRole="button"
-                    accessibilityLabel="Clear search"
-                    style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-                    className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center"
-                  >
-                    <Ionicons
-                      name="close"
-                      size={14}
-                      color={COLORS.slate[500]}
-                    />
-                  </Pressable>
-                )}
-                {isFetching && showInvoiceList && (
-                  <ActivityIndicator
-                    size="small"
-                    color={COLORS.primary}
-                    style={{ marginLeft: 6 }}
-                  />
-                )}
-              </View>
-            </View>
-
-            {showInvoiceList && !search.trim() && (
-              <FilterBar
-                options={dateFilterOptions}
-                activeFilters={activeDateFilters}
-                onFilterChange={(toAdd) => {
-                  handleDateSelect(toAdd as DateFilter);
-                }}
-                onClearAll={() => {
-                  setDateFilter("all");
-                  setDateFilterModalOpen(false);
-                }}
-                variant="chips"
-                isOpen={dateFilterModalOpen}
-                onOpenChange={setDateFilterModalOpen}
-                maxVisible={5}
-                className={stackSearchControls ? "mt-2 mb-0" : "ml-1 mb-0"}
+              </Pressable>
+            )}
+            <Pressable
+              onPress={() => setSortModalOpen(true)}
+              className="rounded-full border border-slate-200 bg-white flex-row items-center gap-1.5"
+              style={({ pressed }) => ({
+                opacity: pressed ? 0.8 : 1,
+                paddingHorizontal: isVerySmall ? 10 : 12,
+                paddingVertical: isVerySmall ? 7 : 8,
+              })}
+            >
+              <Ionicons
+                name="swap-vertical-outline"
+                size={14}
+                color={COLORS.slate[600]}
               />
+              <Text className="text-xs font-medium text-slate-700" numberOfLines={1}>
+                {sortCompactLabel}
+              </Text>
+              <Ionicons
+                name="chevron-down"
+                size={14}
+                color={COLORS.slate[500]}
+              />
+            </Pressable>
+          </View>
+
+          <View className="mt-4 rounded-[20px] border border-slate-200 bg-slate-50 p-2 min-w-0">
+            {(searchExpanded || !!search.trim()) && (
+              <View
+                className="rounded-2xl border border-slate-200 bg-white min-w-0"
+                style={{
+                  flexDirection: stackSearchControls ? "column" : "row",
+                  alignItems: stackSearchControls ? undefined : "center",
+                }}
+              >
+                <View className="flex-1 flex-row items-center rounded-2xl px-3 min-h-[48] min-w-0">
+                  <Ionicons
+                    name="search"
+                    size={16}
+                    color={COLORS.slate[500]}
+                    style={{ marginRight: 8 }}
+                  />
+                  <TextInput
+                    value={search}
+                    onChangeText={setSearch}
+                    placeholder={placeholder}
+                    accessibilityLabel="Search bills"
+                    placeholderTextColor={COLORS.slate[400]}
+                    className="flex-1 min-w-0 text-sm text-slate-800 py-3"
+                  />
+                  {!!search.trim() && (
+                    <Pressable
+                      onPress={() => setSearch("")}
+                      accessibilityRole="button"
+                      accessibilityLabel="Clear search"
+                      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                      className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center"
+                    >
+                      <Ionicons
+                        name="close"
+                        size={14}
+                        color={COLORS.slate[500]}
+                      />
+                    </Pressable>
+                  )}
+                  {!search.trim() && (
+                    <Pressable
+                      onPress={() => setSearchExpanded(false)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Collapse search"
+                      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                      className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center"
+                    >
+                      <Ionicons
+                        name="chevron-up"
+                        size={14}
+                        color={COLORS.slate[500]}
+                      />
+                    </Pressable>
+                  )}
+                  {isFetching && showInvoiceList && (
+                    <ActivityIndicator
+                      size="small"
+                      color={COLORS.primary}
+                      style={{ marginLeft: 6 }}
+                    />
+                  )}
+                </View>
+              </View>
             )}
 
-            <View
-              className="mt-2"
-              style={{
-                flexDirection: stackSummaryCards ? "column" : "row",
-                gap: SIZES.SPACING.sm,
-              }}
-            >
-              {summaryCards.map((card) => (
-                <View
-                  key={card.id}
-                  className="rounded-2xl border border-slate-200 bg-white px-3 py-3 min-w-0"
-                  style={{
-                    flex: stackSummaryCards ? undefined : 1,
-                    ...styles.cardShadow,
-                  }}
-                >
-                  <View className="flex-row items-center justify-between">
-                    <Text className={TYPO.sectionTitle}>{card.label}</Text>
-                    <View
-                      style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: 999,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: `${card.tone}1A`,
-                      }}
-                    >
-                      <Ionicons name={card.icon} size={15} color={card.tone} />
-                    </View>
-                  </View>
-                  <Text
-                    className="text-lg font-bold text-slate-900 mt-2"
-                    numberOfLines={1}
-                  >
-                    {card.value}
-                  </Text>
-                </View>
-              ))}
-            </View>
+            {!!search.trim() && (
+              <View
+                className="mt-2 self-start rounded-xl border border-slate-200 bg-white flex-row items-center gap-1.5"
+                style={{
+                  paddingHorizontal: isVerySmall ? 10 : 12,
+                  paddingVertical: isVerySmall ? 8 : 10,
+                  maxWidth: isVerySmall ? 150 : 220,
+                }}
+              >
+                <Ionicons
+                  name="search-outline"
+                  size={14}
+                  color={COLORS.slate[500]}
+                />
+                <Text className="text-xs text-slate-600" numberOfLines={1}>
+                  {search.trim()}
+                </Text>
+              </View>
+            )}
 
             {showInvoiceList && (
               <ScrollView
@@ -1183,25 +1062,24 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                     onPress={item.onPress}
                     accessibilityRole="button"
                     accessibilityLabel={`Open ${item.label}`}
-                    className="rounded-2xl border border-slate-200 px-3 py-3 bg-white min-h-[52]"
+                    className="rounded-full border border-slate-200 px-3 py-2 bg-white flex-row items-center gap-1.5 min-h-[38]"
                     style={({ pressed }) => ({
                       opacity: pressed ? 0.7 : 1,
                       backgroundColor: pressed
                         ? COLORS.slate[50]
                         : COLORS.text.inverted,
-                      minWidth: 108,
+                      paddingHorizontal: isVerySmall ? 10 : 12,
+                      paddingVertical: isVerySmall ? 7 : 8,
                       ...styles.cardShadow,
                     })}
                   >
-                    <View className="w-8 h-8 rounded-full bg-slate-100 items-center justify-center self-center">
-                      <Ionicons
-                        name={item.icon}
-                        size={15}
-                        color={COLORS.slate[600]}
-                      />
-                    </View>
+                    <Ionicons
+                      name={item.icon}
+                      size={14}
+                      color={COLORS.slate[600]}
+                    />
                     <Text
-                      className="text-xs font-semibold text-slate-700 mt-2 text-center"
+                      className="text-xs font-semibold text-slate-700"
                       numberOfLines={1}
                     >
                       {item.label}
@@ -1493,6 +1371,60 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                 <Text className="text-sm font-semibold text-white">Apply</Text>
               </Pressable>
             </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={sortModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSortModalOpen(false)}
+      >
+        <Pressable
+          className="flex-1 bg-black/50 justify-center items-center p-4"
+          onPress={() => setSortModalOpen(false)}
+        >
+          <Pressable
+            className="bg-white rounded-2xl p-4 w-full max-w-sm"
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text className="text-base font-bold text-slate-800 mb-3">
+              Sort invoices
+            </Text>
+            {[
+              { id: "latest" as SortKey, label: "Latest first" },
+              { id: "oldest" as SortKey, label: "Oldest first" },
+              { id: "amount_high" as SortKey, label: "Amount high to low" },
+              { id: "amount_low" as SortKey, label: "Amount low to high" },
+              ...(showInvoiceList
+                ? ([
+                    {
+                      id: "pending_high" as SortKey,
+                      label: "Pending high to low",
+                    },
+                  ] as const)
+                : []),
+            ].map((option) => (
+              <Pressable
+                key={option.id}
+                onPress={() => {
+                  setSortBy(option.id);
+                  setSortModalOpen(false);
+                }}
+                className="py-3 px-3 rounded-xl flex-row items-center justify-between"
+                style={({ pressed }) => ({
+                  opacity: pressed ? 0.8 : 1,
+                  backgroundColor:
+                    sortBy === option.id ? COLORS.slate[100] : "transparent",
+                })}
+              >
+                <Text className="text-sm text-slate-800">{option.label}</Text>
+                {sortBy === option.id && (
+                  <Ionicons name="checkmark" size={16} color={COLORS.primary} />
+                )}
+              </Pressable>
+            ))}
           </Pressable>
         </Pressable>
       </Modal>
