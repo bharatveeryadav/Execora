@@ -22,6 +22,7 @@ import {
   Share,
   Platform,
   Animated,
+  StyleSheet,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -51,7 +52,7 @@ import {
 } from "../../../components/dashboard/QuickActionsSection";
 import { RecentActivitySection } from "../../../components/dashboard/RecentActivitySection";
 import { showInfo } from "../../../lib/alerts";
-import { SIZES } from "../../../lib/constants";
+import { COLORS, SIZES } from "../../../lib/constants";
 import { formatCurrency } from "../../../lib/utils";
 import { TYPO } from "../../../lib/typography";
 
@@ -421,6 +422,33 @@ function reminderPillStyle(days: number) {
 }
 
 const SECTION_GAP = 16;
+
+const styles = StyleSheet.create({
+  heroShadow: Platform.select({
+    ios: {
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.08,
+      shadowRadius: 20,
+    },
+    android: {
+      elevation: 3,
+    },
+    default: {},
+  }),
+  cardShadow: Platform.select({
+    ios: {
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 5 },
+      shadowOpacity: 0.06,
+      shadowRadius: 12,
+    },
+    android: {
+      elevation: 2,
+    },
+    default: {},
+  }),
+});
 
 function getActionColumns(width: number): number {
   if (width < 340) return 2;
@@ -1081,6 +1109,10 @@ export function DashboardScreen({ navigation }: Props) {
 
   const currentSet = COMMAND_SETS[cmdSetIdx];
   const currentCmd = currentSet.items[cmdItemIdx];
+  const nowLabel = new Date().toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+  });
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -1233,7 +1265,7 @@ export function DashboardScreen({ navigation }: Props) {
               !businessHealthExpanded && setBusinessHealthExpanded(true)
             }
             style={{
-              borderRadius: 12,
+              borderRadius: 20,
               borderWidth:
                 flashCollection || flashStock || flashReceivables ? 2 : 1,
               borderColor:
@@ -1241,8 +1273,9 @@ export function DashboardScreen({ navigation }: Props) {
                   ? "#e67e22"
                   : "#e2e8f0",
               backgroundColor: "#fff",
-              padding: businessHealthExpanded ? 12 : 10,
+              padding: businessHealthExpanded ? 14 : 12,
               marginBottom: 16,
+              ...(styles.cardShadow as object),
             }}
           >
             <View
@@ -1616,18 +1649,14 @@ export function DashboardScreen({ navigation }: Props) {
             )}
           </TouchableOpacity>
 
-          {/* Numbers filter — left aligned */}
-          <View className="mb-1.5">
-            <TouchableOpacity
-              onPress={() => setPeriodModalOpen(true)}
-              activeOpacity={0.7}
-              className="self-start flex-row items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5"
-            >
-              <Text className="text-[11px] font-semibold text-slate-600">
-                {numbersPeriodLabel}
-              </Text>
-              <Ionicons name="chevron-down" size={12} color="#64748b" />
-            </TouchableOpacity>
+          {/* KPI strip */}
+          <View className="mb-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5" style={styles.cardShadow}>
+            <Text className="text-[11px] font-semibold uppercase tracking-[1px] text-slate-500">
+              Revenue Snapshot
+            </Text>
+            <Text className="mt-1 text-sm font-semibold text-slate-700">
+              Track sales, pending, collections and rate for {numbersPeriodLabel.toLowerCase()}
+            </Text>
           </View>
           <View
             style={{
@@ -2030,23 +2059,31 @@ export function DashboardScreen({ navigation }: Props) {
             className="mb-3"
           />
           {feed.length > 0 && (
-            <View className="rounded-xl border border-slate-200 bg-card px-4 py-2 mb-4">
-              <View className="flex-row items-center gap-2 border-b border-slate-100 pb-2 mb-2">
+            <View
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 mb-4"
+              style={styles.cardShadow}
+            >
+              <View className="flex-row items-center gap-2 border-b border-slate-100 pb-2.5 mb-2.5">
                 <View
                   className={`h-1.5 w-1.5 rounded-full ${isConnected ? "bg-green-500" : "bg-slate-400"}`}
                 />
                 <Text className={TYPO.sectionTitle}>AI Activity Feed</Text>
+                <View className="ml-auto rounded-full bg-slate-100 px-2 py-0.5">
+                  <Text className="text-[10px] font-semibold text-slate-500">
+                    {feed.length} events
+                  </Text>
+                </View>
               </View>
               {feed.slice(0, 5).map((item) => (
                 <View
                   key={item.id}
-                  className="flex-row items-start gap-2 py-1.5"
+                  className="flex-row items-start gap-2 py-2 border-b border-slate-100"
                 >
                   {item.icon.includes("-") ? (
                     <Ionicons
                       name={item.icon as keyof typeof Ionicons.glyphMap}
-                      size={20}
-                      color="#64748b"
+                      size={18}
+                      color={COLORS.slate[600]}
                     />
                   ) : (
                     <Text className="text-base">{item.icon}</Text>
@@ -2099,19 +2136,41 @@ export function DashboardScreen({ navigation }: Props) {
 
           {/* 7 — Low Stock */}
           {!loadingLowStock && lowStock.length > 0 && (
-            <TouchableOpacity
+            <Pressable
               onPress={() => navigateMoreStack("Items")}
-              activeOpacity={0.9}
-              className="flex-row flex-wrap items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 mb-5"
+              accessibilityRole="button"
+              accessibilityLabel="Open low stock items"
+              className="flex-row flex-wrap items-center gap-2 rounded-2xl border border-amber-300 bg-amber-50 px-3.5 py-3 mb-5"
+              style={({ pressed }) => ({
+                opacity: pressed ? 0.92 : 1,
+                ...(styles.cardShadow as object),
+              })}
             >
-              <Text className={TYPO.labelBold + " text-amber-700"}>
-                {lowStock.filter((p) => p.stock === 0).length > 0 ? "🔴" : "⚠️"}{" "}
-                Stock Alert ({lowStock.length}):
-              </Text>
+              <View className="w-10 h-10 rounded-xl bg-amber-100 items-center justify-center">
+                <Ionicons
+                  name={lowStock.filter((p) => p.stock === 0).length > 0 ? "alert-circle" : "warning-outline"}
+                  size={18}
+                  color={COLORS.warning}
+                />
+              </View>
+              <View className="flex-1 min-w-0">
+                <Text className={TYPO.labelBold + " text-amber-700"}>
+                  Stock Alert ({lowStock.length})
+                </Text>
+                <Text className="text-[11px] text-amber-700/80 mt-0.5">
+                  Review low and out-of-stock products
+                </Text>
+              </View>
+              <View className="rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5">
+                <Text className="text-[10px] font-semibold text-amber-700">
+                  Tap to open
+                </Text>
+              </View>
+              <View className="w-full h-px bg-amber-200 my-1" />
               {lowStock.slice(0, 5).map((p) => (
                 <View
                   key={p.id}
-                  className={`rounded-full border px-2 py-0.5 ${p.stock === 0 ? "border-red-300 bg-red-100" : "border-amber-300 bg-amber-100"}`}
+                  className={`rounded-full border px-2 py-1 ${p.stock === 0 ? "border-red-300 bg-red-100" : "border-amber-300 bg-amber-100"}`}
                 >
                   <Text
                     className={`${TYPO.label} ${p.stock === 0 ? "text-red-700" : "text-amber-700"}`}
@@ -2122,27 +2181,44 @@ export function DashboardScreen({ navigation }: Props) {
                 </View>
               ))}
               {lowStock.length > 5 && (
-                <View className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5">
-                  <Text className={TYPO.caption}>
-                    +{lowStock.length - 5} more
-                  </Text>
+                <View className="rounded-full border border-slate-200 bg-white px-2 py-1">
+                  <Text className={TYPO.caption}>+{lowStock.length - 5} more</Text>
                 </View>
               )}
-              <Text className={`${TYPO.caption} ml-auto`}>
-                Manage Inventory →
-              </Text>
-            </TouchableOpacity>
+              <Text className={`${TYPO.caption} ml-auto`}>Manage Inventory →</Text>
+            </Pressable>
           )}
 
           {/* 8 — Expiry Alert */}
           {batches.length > 0 && (
-            <View className="flex-row flex-wrap items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5">
-              <Text className={TYPO.labelBold + " text-amber-700"}>
-                {batches.filter((b) => daysUntil(b.expiryDate) <= 0).length > 0
-                  ? "🔴"
-                  : "⚠️"}{" "}
-                Expiry Alert ({batches.length}):
-              </Text>
+            <View
+              className="flex-row flex-wrap items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-3.5 py-3"
+              style={styles.cardShadow}
+            >
+              <View className="w-10 h-10 rounded-xl bg-rose-100 items-center justify-center">
+                <Ionicons
+                  name={batches.filter((b) => daysUntil(b.expiryDate) <= 0).length > 0 ? "alert-circle" : "alarm-outline"}
+                  size={18}
+                  color={COLORS.error}
+                />
+              </View>
+              <View className="flex-1 min-w-0">
+                <Text className={TYPO.labelBold + " text-rose-700"}>
+                  Expiry Alert ({batches.length})
+                </Text>
+                <Text className="text-[11px] text-rose-700/80 mt-0.5">
+                  Track batches that are close to expiry
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => navigateMoreStack("Expiry")}
+                className="rounded-full border border-rose-200 bg-white px-2.5 py-1"
+                accessibilityRole="button"
+                accessibilityLabel="Open expiry tracker"
+              >
+                <Text className="text-[10px] font-semibold text-rose-700">View All</Text>
+              </Pressable>
+              <View className="w-full h-px bg-rose-200 my-1" />
               {batches.slice(0, 6).map((batch) => {
                 const days = daysUntil(batch.expiryDate);
                 const pillClass =
@@ -2150,40 +2226,36 @@ export function DashboardScreen({ navigation }: Props) {
                     ? "border-red-300 bg-red-100"
                     : days <= 7
                       ? "border-red-200 bg-red-50"
-                      : "border-amber-300 bg-amber-100";
+                      : "border-rose-200 bg-rose-100";
                 return (
-                  <TouchableOpacity
+                  <Pressable
                     key={batch.id}
                     onPress={() => setExpirySelected(batch)}
-                    className={`rounded-full border px-2 py-0.5 ${pillClass}`}
+                    className={`rounded-full border px-2 py-1 ${pillClass}`}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Expiry details for ${batch.product.name}`}
                   >
                     <Text
-                      className={`${TYPO.label} ${days <= 7 ? "text-red-700" : "text-amber-700"}`}
+                      className={`${TYPO.label} ${days <= 7 ? "text-red-700" : "text-rose-700"}`}
                     >
                       {batch.product.name.length > 14
                         ? batch.product.name.slice(0, 13) + "…"
                         : batch.product.name}{" "}
                       <Text className="opacity-70">{daysLabel(days)}</Text>
                     </Text>
-                  </TouchableOpacity>
+                  </Pressable>
                 );
               })}
               {batches.length > 6 && (
-                <TouchableOpacity
+                <Pressable
                   onPress={() => navigateMoreStack("Expiry")}
-                  className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5"
+                  className="rounded-full border border-slate-200 bg-white px-2 py-1"
+                  accessibilityRole="button"
+                  accessibilityLabel="See more expiring batches"
                 >
-                  <Text className={TYPO.caption}>
-                    +{batches.length - 6} more
-                  </Text>
-                </TouchableOpacity>
+                  <Text className={TYPO.caption}>+{batches.length - 6} more</Text>
+                </Pressable>
               )}
-              <TouchableOpacity
-                onPress={() => navigateMoreStack("Expiry")}
-                className="ml-auto"
-              >
-                <Text className={TYPO.caption}>View All →</Text>
-              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -2202,7 +2274,7 @@ export function DashboardScreen({ navigation }: Props) {
         >
           <Pressable
             onPress={(e) => e.stopPropagation()}
-            className="bg-white rounded-t-3xl pt-3 pb-6"
+            className="bg-white rounded-t-[30px] pt-3 pb-6 border-t border-slate-200"
             style={{
               width: "100%",
               maxWidth: contentWidth,
@@ -2215,12 +2287,17 @@ export function DashboardScreen({ navigation }: Props) {
               <View className="min-w-0 flex-1 pr-2">
                 <Text className={TYPO.sectionTitle}>Quick Actions</Text>
                 <Text className={TYPO.caption} numberOfLines={1}>
-                  Launch billing, parties, stock, and document flows
+                  Launch billing, parties, stock, and business flows
                 </Text>
               </View>
-              <TouchableOpacity onPress={() => setQuickActionPopupOpen(false)}>
+              <Pressable
+                onPress={() => setQuickActionPopupOpen(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close quick actions"
+                className="h-10 w-10 rounded-xl bg-slate-100 items-center justify-center"
+              >
                 <Ionicons name="close" size={20} color="#64748b" />
-              </TouchableOpacity>
+              </Pressable>
             </View>
 
             <ScrollView
@@ -2358,14 +2435,13 @@ export function DashboardScreen({ navigation }: Props) {
                           style={{ flexDirection: "row", gap: popupGridGap }}
                         >
                           {row.map((item) => (
-                            <TouchableOpacity
+                            <Pressable
                               key={`popup-${group.label}-${item.label}`}
                               onPress={() => {
                                 setQuickActionPopupOpen(false);
                                 handleQuickAction(item.route, item.params);
                               }}
-                              activeOpacity={0.85}
-                              style={{
+                              style={({ pressed }) => ({
                                 width: popupTileWidth,
                                 minHeight: compactAddPopup
                                   ? SIZES.TOUCH_MIN + 14
@@ -2376,10 +2452,13 @@ export function DashboardScreen({ navigation }: Props) {
                                 borderRadius: 12,
                                 borderWidth: 1,
                                 borderColor: "#dbe2ea",
-                                backgroundColor: "#ffffff",
+                                backgroundColor: pressed ? COLORS.slate[50] : "#ffffff",
                                 paddingVertical: compactAddPopup ? 6 : 8,
                                 paddingHorizontal: contentWidth < 360 ? 2 : 4,
-                              }}
+                              })}
+                              accessibilityRole="button"
+                              accessibilityLabel={item.label}
+                              accessibilityHint="Opens this workflow"
                             >
                               <Ionicons
                                 name={item.icon}
@@ -2392,7 +2471,7 @@ export function DashboardScreen({ navigation }: Props) {
                               >
                                 {item.label}
                               </Text>
-                            </TouchableOpacity>
+                            </Pressable>
                           ))}
                         </View>
                       ),
