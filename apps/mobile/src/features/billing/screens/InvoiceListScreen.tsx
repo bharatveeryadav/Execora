@@ -480,6 +480,13 @@ export function InvoiceListScreen({ navigation, route }: Props) {
     setCustomDateModalOpen(false);
   }, [customFromTemp, customToTemp]);
 
+  const resetListControls = useCallback(() => {
+    setDateFilter("all");
+    setCustomFrom(undefined);
+    setCustomTo(undefined);
+    setSortBy("latest");
+  }, []);
+
   const placeholder =
     docTypeTab === "purchase"
       ? "Search by item, supplier, category…"
@@ -492,16 +499,6 @@ export function InvoiceListScreen({ navigation, route }: Props) {
       ? `${customFrom.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}–${customTo.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}`
       : DATE_LABELS[dateFilter];
 
-  const dateFilterCompactLabel = useMemo(() => {
-    if (!isVerySmall) return dateFilterLabel;
-    if (dateFilter === "all") return "Date";
-    if (dateFilter === "today") return "Today";
-    if (dateFilter === "this_week") return "Week";
-    if (dateFilter === "this_month") return "Month";
-    if (dateFilter === "custom") return "Custom";
-    return DATE_LABELS[dateFilter].replace("this ", "").replace("last ", "");
-  }, [dateFilter, dateFilterLabel, isVerySmall]);
-
   const sortLabel = useMemo(() => {
     if (sortBy === "oldest") return "Oldest";
     if (sortBy === "amount_high") return "Amount high";
@@ -510,13 +507,8 @@ export function InvoiceListScreen({ navigation, route }: Props) {
     return "Latest";
   }, [sortBy]);
 
-  const sortCompactLabel = useMemo(() => {
-    if (!isVerySmall) return sortLabel;
-    if (sortBy === "amount_high") return "Amt high";
-    if (sortBy === "amount_low") return "Amt low";
-    if (sortBy === "pending_high") return "Pending";
-    return sortLabel;
-  }, [isVerySmall, sortBy, sortLabel]);
+  const hasActiveListControls =
+    sortBy !== "latest" || (showInvoiceList && dateFilter !== "all");
 
   const statusTabItems = useMemo(
     (): TabItem[] =>
@@ -861,61 +853,98 @@ export function InvoiceListScreen({ navigation, route }: Props) {
             />
           )}
 
-          <View className="mt-3 flex-row items-center gap-2">
-            {showInvoiceList && (
+          <View className="mt-3 min-w-0">
+            <View className="flex-row items-center justify-between gap-3 min-w-0">
+              {showInvoiceList ? (
+                <Pressable
+                  onPress={() => setDateFilterModalOpen(true)}
+                  className="min-h-[40] flex-row items-center gap-1.5"
+                  style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+                >
+                  <Ionicons
+                    name="calendar-outline"
+                    size={14}
+                    color={COLORS.slate[600]}
+                  />
+                  <Text className="text-xs font-semibold text-slate-700">
+                    Date Range
+                  </Text>
+                  <Ionicons
+                    name="chevron-down"
+                    size={13}
+                    color={COLORS.slate[500]}
+                  />
+                </Pressable>
+              ) : (
+                <View />
+              )}
+
               <Pressable
-                onPress={() => setDateFilterModalOpen(true)}
-                className="rounded-full border border-slate-200 bg-white flex-row items-center gap-1.5"
-                style={({ pressed }) => ({
-                  opacity: pressed ? 0.8 : 1,
-                  paddingHorizontal: isVerySmall ? 10 : 12,
-                  paddingVertical: isVerySmall ? 7 : 8,
-                })}
+                onPress={() => setSortModalOpen(true)}
+                className="min-h-[40] flex-row items-center gap-1.5"
+                style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
               >
                 <Ionicons
-                  name="funnel-outline"
+                  name="swap-vertical-outline"
                   size={14}
                   color={COLORS.slate[600]}
                 />
-                <Text
-                  className="text-xs font-medium text-slate-700"
-                  numberOfLines={1}
-                >
-                  {dateFilterCompactLabel}
+                <Text className="text-xs font-semibold text-slate-700">
+                  Sort By
                 </Text>
                 <Ionicons
                   name="chevron-down"
-                  size={14}
+                  size={13}
                   color={COLORS.slate[500]}
                 />
               </Pressable>
+            </View>
+
+            {hasActiveListControls && (
+              <View className="mt-1.5 flex-row items-center justify-between gap-1.5 flex-wrap">
+                <View className="flex-row items-center gap-1 flex-wrap flex-1">
+                  {showInvoiceList && dateFilter !== "all" && (
+                    <View className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 flex-row items-center gap-1">
+                      <Ionicons
+                        name="calendar-outline"
+                        size={11}
+                        color="#0369a1"
+                      />
+                      <Text className="text-[11px] font-medium text-sky-700">
+                        {dateFilterLabel}
+                      </Text>
+                    </View>
+                  )}
+                  {sortBy !== "latest" && (
+                    <View className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 flex-row items-center gap-1">
+                      <Ionicons
+                        name="swap-vertical-outline"
+                        size={11}
+                        color="#b45309"
+                      />
+                      <Text className="text-[11px] font-medium text-amber-700">
+                        {sortLabel}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                <Pressable
+                  onPress={resetListControls}
+                  className="rounded-full border border-slate-200 bg-white px-2 py-0.5 flex-row items-center gap-1"
+                  style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
+                >
+                  <Ionicons
+                    name="refresh-outline"
+                    size={11}
+                    color={COLORS.slate[500]}
+                  />
+                  <Text className="text-[11px] font-medium text-slate-600">
+                    Reset
+                  </Text>
+                </Pressable>
+              </View>
             )}
-            <Pressable
-              onPress={() => setSortModalOpen(true)}
-              className="rounded-full border border-slate-200 bg-white flex-row items-center gap-1.5"
-              style={({ pressed }) => ({
-                opacity: pressed ? 0.8 : 1,
-                paddingHorizontal: isVerySmall ? 10 : 12,
-                paddingVertical: isVerySmall ? 7 : 8,
-              })}
-            >
-              <Ionicons
-                name="swap-vertical-outline"
-                size={14}
-                color={COLORS.slate[600]}
-              />
-              <Text
-                className="text-xs font-medium text-slate-700"
-                numberOfLines={1}
-              >
-                {sortCompactLabel}
-              </Text>
-              <Ionicons
-                name="chevron-down"
-                size={14}
-                color={COLORS.slate[500]}
-              />
-            </Pressable>
           </View>
 
           {(searchExpanded || !!search.trim()) && (
@@ -1185,6 +1214,46 @@ export function InvoiceListScreen({ navigation, route }: Props) {
       >
         <Ionicons name="add" size={28} color="#fff" />
       </Pressable>
+
+      <Modal
+        visible={dateFilterModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDateFilterModalOpen(false)}
+      >
+        <Pressable
+          className="flex-1 bg-black/50 justify-center items-center p-4"
+          onPress={() => setDateFilterModalOpen(false)}
+        >
+          <Pressable
+            className="bg-white rounded-2xl p-4 w-full max-w-sm"
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text className="text-base font-bold text-slate-800 mb-3">
+              Filter by date
+            </Text>
+            {DATE_FILTERS.map((option) => (
+              <Pressable
+                key={option}
+                onPress={() => handleDateSelect(option)}
+                className="py-3 px-3 rounded-xl flex-row items-center justify-between"
+                style={({ pressed }) => ({
+                  opacity: pressed ? 0.8 : 1,
+                  backgroundColor:
+                    dateFilter === option ? COLORS.slate[100] : "transparent",
+                })}
+              >
+                <Text className="text-sm text-slate-800">
+                  {DATE_LABELS[option]}
+                </Text>
+                {dateFilter === option && (
+                  <Ionicons name="checkmark" size={16} color={COLORS.primary} />
+                )}
+              </Pressable>
+            ))}
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Custom date range modal — web: Popover with From/To calendar */}
       <Modal
