@@ -297,13 +297,7 @@ const QUICK_ACTION_SHEET_GROUPS: Array<{
     label: "Billing",
     color: ACTION_COLORS.primary,
     icon: "flash-outline",
-    actions: [
-      "Quick Sale",
-      "New Invoice",
-      "Invoices",
-      "Pro forma",
-      "Quotation",
-    ]
+    actions: ["Quick Sale", "New Invoice", "Invoices", "Pro forma", "Quotation"]
       .map(findQuickAction)
       .filter(isQuickActionItem),
   },
@@ -590,7 +584,7 @@ type MoreRoute = keyof import("../../../navigation").MoreStackParams;
 type PartyRoute = keyof import("../../../navigation").PartiesStackParams;
 type InvoiceRoute = keyof import("../../../navigation").InvoicesStackParams;
 
-export function DashboardScreen({ navigation }: Props) {
+export function DashboardScreen({ navigation, route }: Props) {
   const { contentWidth, contentPad: padding } = useResponsive();
   const quickActionColumns = getActionColumns(contentWidth);
   const quickActionTileWidth = getActionTileWidth(
@@ -861,6 +855,13 @@ export function DashboardScreen({ navigation }: Props) {
   const [quickActionsExpanded, setQuickActionsExpanded] = useState(false);
   const [recentActivityHidden, setRecentActivityHidden] = useState(false);
   const [quickActionPopupOpen, setQuickActionPopupOpen] = useState(false);
+
+  useEffect(() => {
+    if (route.params?.openQuickActions) {
+      setQuickActionPopupOpen(true);
+      navigation.setParams({ openQuickActions: undefined });
+    }
+  }, [navigation, route.params?.openQuickActions]);
   const [expirySelected, setExpirySelected] = useState<{
     id: string;
     batchNo: string;
@@ -1650,12 +1651,16 @@ export function DashboardScreen({ navigation }: Props) {
           </TouchableOpacity>
 
           {/* KPI strip */}
-          <View className="mb-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5" style={styles.cardShadow}>
+          <View
+            className="mb-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5"
+            style={styles.cardShadow}
+          >
             <Text className="text-[11px] font-semibold uppercase tracking-[1px] text-slate-500">
               Revenue Snapshot
             </Text>
             <Text className="mt-1 text-sm font-semibold text-slate-700">
-              Track sales, pending, collections and rate for {numbersPeriodLabel.toLowerCase()}
+              Track sales, pending, collections and rate for{" "}
+              {numbersPeriodLabel.toLowerCase()}
             </Text>
           </View>
           <View
@@ -2148,7 +2153,11 @@ export function DashboardScreen({ navigation }: Props) {
             >
               <View className="w-10 h-10 rounded-xl bg-amber-100 items-center justify-center">
                 <Ionicons
-                  name={lowStock.filter((p) => p.stock === 0).length > 0 ? "alert-circle" : "warning-outline"}
+                  name={
+                    lowStock.filter((p) => p.stock === 0).length > 0
+                      ? "alert-circle"
+                      : "warning-outline"
+                  }
                   size={18}
                   color={COLORS.warning}
                 />
@@ -2182,10 +2191,14 @@ export function DashboardScreen({ navigation }: Props) {
               ))}
               {lowStock.length > 5 && (
                 <View className="rounded-full border border-slate-200 bg-white px-2 py-1">
-                  <Text className={TYPO.caption}>+{lowStock.length - 5} more</Text>
+                  <Text className={TYPO.caption}>
+                    +{lowStock.length - 5} more
+                  </Text>
                 </View>
               )}
-              <Text className={`${TYPO.caption} ml-auto`}>Manage Inventory →</Text>
+              <Text className={`${TYPO.caption} ml-auto`}>
+                Manage Inventory →
+              </Text>
             </Pressable>
           )}
 
@@ -2197,7 +2210,12 @@ export function DashboardScreen({ navigation }: Props) {
             >
               <View className="w-10 h-10 rounded-xl bg-rose-100 items-center justify-center">
                 <Ionicons
-                  name={batches.filter((b) => daysUntil(b.expiryDate) <= 0).length > 0 ? "alert-circle" : "alarm-outline"}
+                  name={
+                    batches.filter((b) => daysUntil(b.expiryDate) <= 0).length >
+                    0
+                      ? "alert-circle"
+                      : "alarm-outline"
+                  }
                   size={18}
                   color={COLORS.error}
                 />
@@ -2216,7 +2234,9 @@ export function DashboardScreen({ navigation }: Props) {
                 accessibilityRole="button"
                 accessibilityLabel="Open expiry tracker"
               >
-                <Text className="text-[10px] font-semibold text-rose-700">View All</Text>
+                <Text className="text-[10px] font-semibold text-rose-700">
+                  View All
+                </Text>
               </Pressable>
               <View className="w-full h-px bg-rose-200 my-1" />
               {batches.slice(0, 6).map((batch) => {
@@ -2253,7 +2273,9 @@ export function DashboardScreen({ navigation }: Props) {
                   accessibilityRole="button"
                   accessibilityLabel="See more expiring batches"
                 >
-                  <Text className={TYPO.caption}>+{batches.length - 6} more</Text>
+                  <Text className={TYPO.caption}>
+                    +{batches.length - 6} more
+                  </Text>
                 </Pressable>
               )}
             </View>
@@ -2332,7 +2354,11 @@ export function DashboardScreen({ navigation }: Props) {
                         className="h-6 w-6 rounded-full items-center justify-center"
                         style={{ backgroundColor: `${group.color}22` }}
                       >
-                        <Ionicons name={group.icon} size={14} color={group.color} />
+                        <Ionicons
+                          name={group.icon}
+                          size={14}
+                          color={group.color}
+                        />
                       </View>
                       <Text className={TYPO.labelBold}>{group.label}</Text>
                       <View className="ml-auto rounded-full bg-white px-2 py-0.5 border border-slate-200">
@@ -2343,47 +2369,53 @@ export function DashboardScreen({ navigation }: Props) {
                     </View>
 
                     <View style={{ gap: popupGridGap }}>
-                      {chunkItems(group.actions, popupColumns).map((row, rowIdx) => (
-                        <View
-                          key={`${group.label}-row-${rowIdx}`}
-                          style={{ flexDirection: "row", gap: popupGridGap }}
-                        >
-                          {row.map((item) => (
-                            <Pressable
-                              key={`quick-${group.label}-${item.label}`}
-                              onPress={() => {
-                                setQuickActionPopupOpen(false);
-                                handleQuickAction(item.route, item.params);
-                              }}
-                              className="items-center justify-center rounded-xl border border-slate-200 bg-white"
-                              style={{
-                                width: popupTileWidth,
-                                minHeight: compactAddPopup
-                                  ? SIZES.TOUCH_MIN + 14
-                                  : SIZES.TOUCH_MIN + 18,
-                                gap: 4,
-                                paddingVertical: compactAddPopup ? 6 : 8,
-                                paddingHorizontal: contentWidth < 360 ? 2 : 4,
-                              }}
-                              accessibilityRole="button"
-                              accessibilityLabel={item.label}
-                              accessibilityHint="Opens this workflow"
-                            >
-                              <Ionicons
-                                name={item.icon}
-                                size={compactAddPopup ? 16 : 18}
-                                color={item.primary ? ACTION_COLORS.primary : item.color}
-                              />
-                              <Text
-                                className={`${TYPO.micro} font-semibold text-center ${item.primary ? "text-primary" : "text-slate-600"}`}
-                                numberOfLines={2}
+                      {chunkItems(group.actions, popupColumns).map(
+                        (row, rowIdx) => (
+                          <View
+                            key={`${group.label}-row-${rowIdx}`}
+                            style={{ flexDirection: "row", gap: popupGridGap }}
+                          >
+                            {row.map((item) => (
+                              <Pressable
+                                key={`quick-${group.label}-${item.label}`}
+                                onPress={() => {
+                                  setQuickActionPopupOpen(false);
+                                  handleQuickAction(item.route, item.params);
+                                }}
+                                className="items-center justify-center rounded-xl border border-slate-200 bg-white"
+                                style={{
+                                  width: popupTileWidth,
+                                  minHeight: compactAddPopup
+                                    ? SIZES.TOUCH_MIN + 14
+                                    : SIZES.TOUCH_MIN + 18,
+                                  gap: 4,
+                                  paddingVertical: compactAddPopup ? 6 : 8,
+                                  paddingHorizontal: contentWidth < 360 ? 2 : 4,
+                                }}
+                                accessibilityRole="button"
+                                accessibilityLabel={item.label}
+                                accessibilityHint="Opens this workflow"
                               >
-                                {item.label}
-                              </Text>
-                            </Pressable>
-                          ))}
-                        </View>
-                      ))}
+                                <Ionicons
+                                  name={item.icon}
+                                  size={compactAddPopup ? 16 : 18}
+                                  color={
+                                    item.primary
+                                      ? ACTION_COLORS.primary
+                                      : item.color
+                                  }
+                                />
+                                <Text
+                                  className={`${TYPO.micro} font-semibold text-center ${item.primary ? "text-primary" : "text-slate-600"}`}
+                                  numberOfLines={2}
+                                >
+                                  {item.label}
+                                </Text>
+                              </Pressable>
+                            ))}
+                          </View>
+                        ),
+                      )}
                     </View>
                   </View>
                 ))}
@@ -2452,7 +2484,9 @@ export function DashboardScreen({ navigation }: Props) {
                                 borderRadius: 12,
                                 borderWidth: 1,
                                 borderColor: "#dbe2ea",
-                                backgroundColor: pressed ? COLORS.slate[50] : "#ffffff",
+                                backgroundColor: pressed
+                                  ? COLORS.slate[50]
+                                  : "#ffffff",
                                 paddingVertical: compactAddPopup ? 6 : 8,
                                 paddingHorizontal: contentWidth < 360 ? 2 : 4,
                               })}

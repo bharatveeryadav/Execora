@@ -77,7 +77,7 @@ export type AuthStackParams = {
 };
 
 export type MainTabParams = {
-  Dashboard: undefined;
+  Dashboard: { openQuickActions?: boolean } | undefined;
   ItemsTab: undefined;
   PartiesTab: undefined;
   InvoicesTab: undefined;
