@@ -22,14 +22,22 @@ const MENU_ITEMS: {
   id: string;
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
+  subtitle: string;
   action: "expiry" | "comingSoon";
   title?: string;
 }[] = [
-  { id: "expiry", icon: "calendar", label: "Product Expiry", action: "expiry" },
+  {
+    id: "expiry",
+    icon: "calendar",
+    label: "Product Expiry",
+    subtitle: "Track products nearing expiry date",
+    action: "expiry",
+  },
   {
     id: "import",
     icon: "cloud-upload",
     label: "Import Products",
+    subtitle: "Upload item list from file",
     action: "comingSoon",
     title: "Import Products",
   },
@@ -37,6 +45,7 @@ const MENU_ITEMS: {
     id: "export",
     icon: "download",
     label: "Export Products",
+    subtitle: "Download catalog and stock data",
     action: "comingSoon",
     title: "Export Products",
   },
@@ -44,15 +53,9 @@ const MENU_ITEMS: {
     id: "bulk",
     icon: "swap-vertical",
     label: "Bulk Stock Adjust",
+    subtitle: "Update stock in one operation",
     action: "comingSoon",
     title: "Bulk Stock Adjust",
-  },
-  {
-    id: "reports",
-    icon: "bar-chart",
-    label: "Stock Reports",
-    action: "comingSoon",
-    title: "Stock Reports",
   },
 ];
 
@@ -88,24 +91,32 @@ export function ItemsMenuScreen({ navigation }: Props) {
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={["top", "bottom"]}>
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 16 }}>
-        <Text className={TYPO.sectionTitle + " mb-3"}>More</Text>
-        <View className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
-          {MENU_ITEMS.map((item, idx) => (
+        <View className="rounded-2xl border border-slate-200 bg-white px-4 py-4 mb-3">
+          <Text className="text-lg font-bold text-slate-900">Item Actions</Text>
+          <Text className="text-xs text-slate-500 mt-1">
+            Manage inventory tools from one place.
+          </Text>
+        </View>
+
+        <View className="flex-row flex-wrap gap-2">
+          {MENU_ITEMS.map((item) => (
             <Pressable
               key={item.id}
               onPress={() => handleMenuPress(item)}
-              className="flex-row items-center gap-3 px-4 py-3.5 min-h-[52]"
+              className="w-[48.5%] rounded-2xl border border-slate-200 bg-white px-3 py-3 min-h-[116]"
               style={({ pressed }) => ({
                 backgroundColor: pressed ? "#f8fafc" : "#fff",
-                borderBottomWidth: idx < MENU_ITEMS.length - 1 ? 1 : 0,
-                borderBottomColor: "#f1f5f9",
               })}
             >
-              <View className="w-10 h-10 rounded-lg bg-slate-100 items-center justify-center">
-                <Ionicons name={item.icon as any} size={20} color="#64748b" />
+              <View className="w-9 h-9 rounded-lg bg-slate-100 items-center justify-center mb-2">
+                <Ionicons name={item.icon as any} size={18} color="#64748b" />
               </View>
-              <Text className={TYPO.body + " flex-1"}>{item.label}</Text>
-              <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+              <Text className="text-sm font-semibold text-slate-800" numberOfLines={1}>
+                {item.label}
+              </Text>
+              <Text className="text-[11px] text-slate-500 mt-1" numberOfLines={2}>
+                {item.subtitle}
+              </Text>
             </Pressable>
           ))}
         </View>
