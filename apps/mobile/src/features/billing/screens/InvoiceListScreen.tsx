@@ -736,9 +736,6 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                   </Text>
                 </View>
               </View>
-              <Text className="text-xs text-slate-500 mt-1">
-                Focus: all invoices, search, sort, filter
-              </Text>
             </View>
             <View className="flex-row items-center gap-2">
               <Pressable
