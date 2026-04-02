@@ -646,7 +646,8 @@ export function PartiesScreen({ navigation, route }: Props) {
             activeTab={tab}
             onChange={(nextTab) => setTab(nextTab as Tab)}
             variant="pills"
-            className="rounded-xl bg-slate-100 p-0.5"
+            equalWidth
+            className="w-full rounded-xl bg-slate-100 p-0.5"
           />
         </ScreenInner>
       </View>

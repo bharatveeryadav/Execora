@@ -24,6 +24,7 @@ export interface TabBarProps {
   onChange: (tabId: string) => void;
   scrollable?: boolean;
   variant?: "default" | "pills";
+  equalWidth?: boolean;
   className?: string;
 }
 
@@ -39,6 +40,7 @@ export const TabBar = React.memo(function TabBar({
   onChange,
   scrollable = false,
   variant = "default",
+  equalWidth = false,
   className = "",
 }: TabBarProps) {
   const handleTabPress = useCallback(
@@ -49,12 +51,14 @@ export const TabBar = React.memo(function TabBar({
   );
 
   const tabContent = (
-    <View className="flex-row gap-0.5">
+    <View
+      className={`flex-row gap-0.5 ${equalWidth && !scrollable ? "w-full" : ""}`}
+    >
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
         const baseStyle =
           variant === "pills"
-            ? "rounded-full min-h-[44px] px-4 border border-slate-200"
+            ? `${equalWidth && !scrollable ? "flex-1 " : ""}rounded-full min-h-[44px] px-4 border border-slate-200`
             : `${scrollable ? "" : "flex-1 "}min-h-[44px] px-3 border-b-2`;
 
         return (

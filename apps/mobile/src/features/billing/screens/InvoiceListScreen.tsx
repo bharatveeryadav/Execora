@@ -929,7 +929,10 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                   size={14}
                   color={COLORS.slate[600]}
                 />
-                <Text className="text-xs font-medium text-slate-700" numberOfLines={1}>
+                <Text
+                  className="text-xs font-medium text-slate-700"
+                  numberOfLines={1}
+                >
                   {dateFilterCompactLabel}
                 </Text>
                 <Ionicons
@@ -953,7 +956,10 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                 size={14}
                 color={COLORS.slate[600]}
               />
-              <Text className="text-xs font-medium text-slate-700" numberOfLines={1}>
+              <Text
+                className="text-xs font-medium text-slate-700"
+                numberOfLines={1}
+              >
                 {sortCompactLabel}
               </Text>
               <Ionicons
