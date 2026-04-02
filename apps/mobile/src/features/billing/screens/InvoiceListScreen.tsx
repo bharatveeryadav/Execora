@@ -280,12 +280,24 @@ function formatDate(d: string | Date | undefined): string {
   }
 }
 
+function chunkItems<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
+
 type Props = NativeStackScreenProps<InvoicesStackParams, "InvoiceList">;
 export function InvoiceListScreen({ navigation, route }: Props) {
   const { width, contentPad, contentWidth } = useResponsive();
   const insets = useSafeAreaInsets();
   const stackSearchControls = contentWidth < 380;
   const isVerySmall = contentWidth < 360;
+  const quickAddColumns = contentWidth < 360 ? 2 : 3;
+  const quickAddGap = contentWidth < 360 ? 6 : 8;
+  const quickAddTileWidth =
+    (contentWidth - quickAddGap * (quickAddColumns - 1) - 32) / quickAddColumns;
   const [docTypeTab, setDocTypeTab] = useState<DocTypeTab>("sales");
   const [statusTab, setStatusTab] = useState<StatusTab>(
     () => (route.params?.initialStatusFilter as StatusTab) ?? "All",
@@ -300,6 +312,7 @@ export function InvoiceListScreen({ navigation, route }: Props) {
   const [dateFilterModalOpen, setDateFilterModalOpen] = useState(false);
   const [sortModalOpen, setSortModalOpen] = useState(false);
   const [customDateModalOpen, setCustomDateModalOpen] = useState(false);
+  const [quickAddPopupOpen, setQuickAddPopupOpen] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey>("latest");
   const [customFromTemp, setCustomFromTemp] = useState<Date>(() => new Date());
   const [customToTemp, setCustomToTemp] = useState<Date>(() => new Date());
@@ -709,6 +722,194 @@ export function InvoiceListScreen({ navigation, route }: Props) {
     [navigation],
   );
 
+  const headerQuickActions = useMemo(
+    () => [
+      { id: "add", label: "Add Transaction", icon: "add-circle-outline" },
+      { id: "payments", label: "Payments", icon: "wallet-outline" },
+      { id: "sales_report", label: "Sale Report", icon: "bar-chart-outline" },
+      { id: "txn", label: "Txn", icon: "receipt-outline" },
+      { id: "settings", label: "Settings", icon: "settings-outline" },
+      { id: "show_all", label: "Show All", icon: "apps-outline" },
+    ],
+    [],
+  );
+
+  type QuickAddAction = {
+    id: string;
+    label: string;
+    icon: keyof typeof Ionicons.glyphMap;
+    target: "invoices" | "more";
+    route: string;
+    params?: Record<string, unknown>;
+  };
+
+  type QuickAddGroup = {
+    label: string;
+    color: string;
+    actions: QuickAddAction[];
+  };
+
+  const addTransactionGroups = useMemo<QuickAddGroup[]>(
+    () => [
+      {
+        label: "Sales",
+        color: "#e67e22",
+        actions: [
+          {
+            id: "new_invoice",
+            label: "New Invoice",
+            icon: "receipt-outline",
+            target: "invoices",
+            route: "InvoiceForm",
+            params: { documentType: "invoice" },
+          },
+          {
+            id: "quotation",
+            label: "Quotation",
+            icon: "clipboard-outline",
+            target: "invoices",
+            route: "InvoiceForm",
+            params: { documentType: "quotation" },
+          },
+          {
+            id: "proforma",
+            label: "Proforma",
+            icon: "document-outline",
+            target: "invoices",
+            route: "InvoiceForm",
+            params: { documentType: "proforma" },
+          },
+          {
+            id: "sales_payment",
+            label: "Sales Payment",
+            icon: "card-outline",
+            target: "invoices",
+            route: "Payment",
+            params: {},
+          },
+          {
+            id: "sales_return",
+            label: "Sales Return",
+            icon: "return-up-back-outline",
+            target: "invoices",
+            route: "CreditNotes",
+          },
+          {
+            id: "delivery_challan",
+            label: "Delivery Challan",
+            icon: "car-outline",
+            target: "more",
+            route: "DeliveryChallans",
+            params: { title: "Delivery Challan" },
+          },
+        ],
+      },
+      {
+        label: "Purchase",
+        color: "#0ea5e9",
+        actions: [
+          {
+            id: "purchase",
+            label: "Purchase",
+            icon: "cube-outline",
+            target: "invoices",
+            route: "Purchases",
+          },
+          {
+            id: "purchase_order",
+            label: "Purchase Order",
+            icon: "bag-handle-outline",
+            target: "more",
+            route: "PurchaseOrders",
+          },
+          {
+            id: "purchase_payment",
+            label: "Payment Out",
+            icon: "wallet-outline",
+            target: "more",
+            route: "PurchasePaymentOut",
+            params: { title: "Purchase Payment Out" },
+          },
+          {
+            id: "purchase_return",
+            label: "Purchase Return",
+            icon: "return-down-back-outline",
+            target: "more",
+            route: "PurchaseReturn",
+            params: { title: "Purchase Return" },
+          },
+        ],
+      },
+      {
+        label: "Other",
+        color: "#f59e0b",
+        actions: [
+          {
+            id: "expense",
+            label: "Expense",
+            icon: "cart-outline",
+            target: "invoices",
+            route: "Expenses",
+          },
+        ],
+      },
+    ],
+    [],
+  );
+
+  const handleQuickAddAction = useCallback(
+    (action: QuickAddAction) => {
+      setQuickAddPopupOpen(false);
+      InteractionManager.runAfterInteractions(() => {
+        const tabNav = navigation.getParent() as any;
+        if (action.target === "invoices") {
+          (navigation as any).navigate(
+            action.route,
+            action.params ?? undefined,
+          );
+          return;
+        }
+        tabNav?.navigate("MoreTab", {
+          screen: action.route,
+          params: action.params,
+        });
+      });
+    },
+    [navigation],
+  );
+
+  const handleHeaderQuickAction = useCallback(
+    (id: string) => {
+      InteractionManager.runAfterInteractions(() => {
+        const tabNav = navigation.getParent() as any;
+        if (id === "add") {
+          setQuickAddPopupOpen(true);
+          return;
+        }
+        if (id === "payments") {
+          navigation.navigate("Payment", {});
+          return;
+        }
+        if (id === "sales_report") {
+          navigation.navigate("Reports");
+          return;
+        }
+        if (id === "txn") {
+          tabNav?.navigate("MoreTab", { screen: "DayBook" });
+          return;
+        }
+        if (id === "settings") {
+          tabNav?.navigate("MoreTab", { screen: "Settings" });
+          return;
+        }
+        if (id === "show_all") {
+          handleBillsMenu();
+        }
+      });
+    },
+    [handleBillsMenu, navigation],
+  );
+
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={["top", "bottom"]}>
       <View
@@ -795,6 +996,48 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                 />
               </Pressable>
             </View>
+          </View>
+
+          <View className="mt-3 rounded-2xl border border-amber-200 bg-amber-50/70 p-2">
+            <View className="flex-row items-center justify-between mb-2 px-1">
+              <Text className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+                Quick Access
+              </Text>
+              <Text className="text-[10px] text-amber-700/80">Tap to open</Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8, paddingRight: 2 }}
+            >
+              {headerQuickActions.map((item) => (
+                <Pressable
+                  key={item.id}
+                  onPress={() => handleHeaderQuickAction(item.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.label}
+                  className="rounded-xl border border-amber-200 bg-white px-3 py-2.5 items-center justify-center gap-1 min-h-[64] min-w-[92]"
+                  style={({ pressed }) => ({
+                    opacity: pressed ? 0.78 : 1,
+                    ...styles.cardShadow,
+                  })}
+                >
+                  <View className="w-7 h-7 rounded-full bg-amber-100 items-center justify-center">
+                    <Ionicons
+                      name={item.icon as keyof typeof Ionicons.glyphMap}
+                      size={15}
+                      color="#b45309"
+                    />
+                  </View>
+                  <Text
+                    className="text-[11px] font-semibold text-slate-700 text-center"
+                    numberOfLines={2}
+                  >
+                    {item.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
           </View>
 
           <View className="mt-4 rounded-2xl bg-slate-100 p-1 flex-row items-center min-w-0">
@@ -1211,6 +1454,141 @@ export function InvoiceListScreen({ navigation, route }: Props) {
       >
         <Ionicons name="add" size={28} color="#fff" />
       </Pressable>
+
+      <Modal
+        visible={quickAddPopupOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setQuickAddPopupOpen(false)}
+      >
+        <Pressable
+          className="flex-1 bg-black/50 justify-end"
+          onPress={() => setQuickAddPopupOpen(false)}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            className="bg-white rounded-t-[30px] pt-3 pb-6 border-t border-slate-200"
+            style={{
+              width: "100%",
+              maxWidth: contentWidth,
+              alignSelf: "center",
+              paddingHorizontal: isVerySmall ? 10 : 14,
+            }}
+          >
+            <View className="w-8 h-0.5 rounded-full bg-slate-200 self-center mb-2" />
+            <View className="flex-row items-center justify-between mb-3">
+              <View className="min-w-0 flex-1 pr-2">
+                <Text className={TYPO.sectionTitle}>Add Transaction</Text>
+                <Text className={TYPO.caption} numberOfLines={1}>
+                  Create sales, purchase, and expense entries
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => setQuickAddPopupOpen(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close add transaction"
+                className="h-10 w-10 rounded-xl bg-slate-100 items-center justify-center"
+              >
+                <Ionicons name="close" size={20} color="#64748b" />
+              </Pressable>
+            </View>
+
+            <ScrollView
+              style={{ maxHeight: contentWidth < 360 ? 440 : 520 }}
+              contentContainerStyle={{ paddingBottom: 4 }}
+              showsVerticalScrollIndicator={false}
+            >
+              {addTransactionGroups.map((group, groupIndex) => (
+                <View
+                  key={group.label}
+                  style={{
+                    paddingTop: groupIndex === 0 ? 0 : 8,
+                    marginTop: groupIndex === 0 ? 0 : 10,
+                    marginBottom:
+                      groupIndex === addTransactionGroups.length - 1 ? 0 : 10,
+                    borderRadius: 14,
+                    borderWidth: 1,
+                    borderColor: "#e2e8f0",
+                    backgroundColor: "#f8fafc",
+                    paddingHorizontal: isVerySmall ? 8 : 10,
+                    paddingBottom: isVerySmall ? 8 : 12,
+                  }}
+                >
+                  <View className="flex-row items-center gap-2 mb-2">
+                    <View
+                      className="h-6 w-6 rounded-full items-center justify-center"
+                      style={{ backgroundColor: `${group.color}22` }}
+                    >
+                      <Ionicons
+                        name="add-circle-outline"
+                        size={14}
+                        color={group.color}
+                      />
+                    </View>
+                    <Text className={TYPO.labelBold}>{group.label}</Text>
+                    <View className="ml-auto rounded-full bg-white px-2 py-0.5 border border-slate-200">
+                      <Text className="text-[10px] font-semibold text-slate-500">
+                        {group.actions.length}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={{ gap: quickAddGap }}>
+                    {chunkItems(group.actions, quickAddColumns).map(
+                      (row, rowIdx) => (
+                        <View
+                          key={`${group.label}-row-${rowIdx}`}
+                          style={{ flexDirection: "row", gap: quickAddGap }}
+                        >
+                          {row.map((item) => (
+                            <Pressable
+                              key={`${group.label}-${item.id}`}
+                              onPress={() => handleQuickAddAction(item)}
+                              style={({ pressed }) => ({
+                                width: quickAddTileWidth,
+                                minHeight: isVerySmall
+                                  ? SIZES.TOUCH_MIN + 14
+                                  : SIZES.TOUCH_MIN + 18,
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: 4,
+                                borderRadius: 12,
+                                borderWidth: 1,
+                                borderColor: "#dbe2ea",
+                                backgroundColor: pressed
+                                  ? COLORS.slate[50]
+                                  : "#ffffff",
+                                paddingVertical: isVerySmall ? 6 : 8,
+                                paddingHorizontal: contentWidth < 360 ? 2 : 4,
+                              })}
+                              accessibilityRole="button"
+                              accessibilityLabel={item.label}
+                            >
+                              <Ionicons
+                                name={
+                                  item.icon as keyof typeof Ionicons.glyphMap
+                                }
+                                size={isVerySmall ? 16 : 18}
+                                color={group.color}
+                              />
+                              <Text
+                                className={`${TYPO.micro} font-semibold text-center text-slate-600`}
+                                numberOfLines={2}
+                              >
+                                {item.label}
+                              </Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      ),
+                    )}
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <Modal
         visible={dateFilterModalOpen}
