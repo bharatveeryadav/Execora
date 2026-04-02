@@ -400,6 +400,9 @@ export function PartiesScreen({ navigation, route }: Props) {
   const isCustomersInitialLoading = isFetching && !custData;
   const isSuppliersInitialLoading =
     tab === "suppliers" && isSuppliersFetching && !supplierData;
+  const currentSearchValue = tab === "suppliers" ? supplierSearch : search;
+  const currentResultCount =
+    tab === "suppliers" ? supplierFiltered.length : customerListData.length;
 
   // ── Mutations ──────────────────────────────────────────────────────────
 
@@ -671,56 +674,82 @@ export function PartiesScreen({ navigation, route }: Props) {
       >
         <ScreenInner>
           {showSearch ? (
-            <View className="flex-row items-center gap-2 mb-3">
-              <View className="flex-1 flex-row items-center bg-slate-100 rounded-xl px-3 min-h-[44]">
-                <Ionicons
-                  name="search"
-                  size={17}
-                  color="#64748b"
-                  style={{ marginRight: 8 }}
-                />
-                <TextInput
-                  ref={
-                    tab === "suppliers"
-                      ? supplierSearchInputRef
-                      : customerSearchInputRef
-                  }
-                  value={tab === "suppliers" ? supplierSearch : search}
-                  onChangeText={
-                    tab === "suppliers" ? setSupplierSearch : setSearch
-                  }
-                  placeholder={
-                    tab === "suppliers"
-                      ? "Search suppliers…"
-                      : "Search by name or phone…"
-                  }
-                  accessibilityLabel={
-                    tab === "suppliers"
-                      ? "Search suppliers"
-                      : "Search customers"
-                  }
-                  placeholderTextColor="#94a3b8"
-                  className="flex-1 text-sm text-slate-800 py-2"
-                  autoCorrect={false}
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  returnKeyType="search"
-                />
-                {(tab === "suppliers" ? isSuppliersFetching : isFetching) && (
-                  <ActivityIndicator size="small" color="#e67e22" />
-                )}
+            <View className="mb-3">
+              <View className="flex-row items-center gap-2">
+                <View className="flex-1 rounded-2xl border border-slate-200 bg-white min-h-[48] px-3 flex-row items-center shadow-sm">
+                  <View className="w-7 h-7 rounded-full bg-slate-100 items-center justify-center mr-2">
+                    <Ionicons name="search" size={15} color="#64748b" />
+                  </View>
+                  <TextInput
+                    ref={
+                      tab === "suppliers"
+                        ? supplierSearchInputRef
+                        : customerSearchInputRef
+                    }
+                    value={tab === "suppliers" ? supplierSearch : search}
+                    onChangeText={
+                      tab === "suppliers" ? setSupplierSearch : setSearch
+                    }
+                    placeholder={
+                      tab === "suppliers"
+                        ? "Search suppliers by name, phone…"
+                        : "Search customers by name, phone…"
+                    }
+                    accessibilityLabel={
+                      tab === "suppliers"
+                        ? "Search suppliers"
+                        : "Search customers"
+                    }
+                    placeholderTextColor="#94a3b8"
+                    className="flex-1 text-[15px] text-slate-800 py-2"
+                    autoCorrect={false}
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    returnKeyType="search"
+                  />
+                  {!!currentSearchValue && (
+                    <Pressable
+                      onPress={() =>
+                        tab === "suppliers"
+                          ? setSupplierSearch("")
+                          : setSearch("")
+                      }
+                      className="w-7 h-7 rounded-full bg-slate-100 items-center justify-center"
+                      accessibilityRole="button"
+                      accessibilityLabel="Clear search text"
+                    >
+                      <Ionicons name="close" size={14} color="#64748b" />
+                    </Pressable>
+                  )}
+                  {(tab === "suppliers" ? isSuppliersFetching : isFetching) && (
+                    <ActivityIndicator
+                      size="small"
+                      color="#e67e22"
+                      style={{ marginLeft: 8 }}
+                    />
+                  )}
+                </View>
+                <Pressable
+                  onPress={closeSearch}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close search"
+                  className="px-3 min-h-[44] rounded-xl items-center justify-center bg-slate-100"
+                  style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
+                >
+                  <Text className="text-xs font-semibold text-slate-600">
+                    Cancel
+                  </Text>
+                </Pressable>
               </View>
-              <Pressable
-                onPress={closeSearch}
-                accessibilityRole="button"
-                accessibilityLabel="Close search"
-                className="w-10 h-10 rounded-xl items-center justify-center"
-                style={({ pressed }) => ({
-                  backgroundColor: pressed ? "#e2e8f0" : "#f1f5f9",
-                })}
-              >
-                <Ionicons name="close" size={18} color="#475569" />
-              </Pressable>
+              <View className="flex-row items-center justify-between mt-2 px-1">
+                <Text className="text-[11px] font-medium text-slate-500 uppercase">
+                  {tab === "suppliers" ? "Suppliers" : "Customers"}
+                </Text>
+                <Text className="text-[11px] text-slate-500">
+                  {currentResultCount} result
+                  {currentResultCount === 1 ? "" : "s"}
+                </Text>
+              </View>
             </View>
           ) : (
             <View className="flex-row items-center justify-between mb-3">
