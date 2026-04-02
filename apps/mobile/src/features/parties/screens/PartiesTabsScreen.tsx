@@ -52,6 +52,12 @@ const MIN_TOUCH = 44;
 
 type Tab = "customers" | "suppliers";
 type FilterTab = "all" | "outstanding" | "clear" | "aging";
+type SupplierFilterTab =
+  | "all"
+  | "active"
+  | "recent"
+  | "withGstin"
+  | "missingContact";
 
 const CUSTOMER_TAGS = ["VIP", "Wholesale", "Blacklist", "Regular"] as const;
 const PARTY_TABS: TabItem[] = [
@@ -87,6 +93,8 @@ export function PartiesScreen({ navigation, route }: Props) {
   const [addOpen, setAddOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [supplierSearch, setSupplierSearch] = useState("");
+  const [supplierFilter, setSupplierFilter] =
+    useState<SupplierFilterTab>("all");
   const [showSearch, setShowSearch] = useState(false);
   const customerSearchInputRef = useRef<TextInput>(null);
   const supplierSearchInputRef = useRef<TextInput>(null);
@@ -185,6 +193,15 @@ export function PartiesScreen({ navigation, route }: Props) {
     0,
   );
   const supplierPurchaseCount = purchases.length;
+
+  const activePurchaseSupplierNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const purchase of purchases) {
+      const name = String((purchase as any).supplier ?? "").trim().toLowerCase();
+      if (name) names.add(name);
+    }
+    return names;
+  }, [purchases]);
 
   // ── Aging (from web) ───────────────────────────────────────────────────
 
@@ -287,6 +304,73 @@ export function PartiesScreen({ navigation, route }: Props) {
   const customerListData = useMemo(
     () => (filter === "aging" ? agingCustomers : filtered),
     [agingCustomers, filter, filtered],
+  );
+
+  const supplierFiltered = useMemo(() => {
+    const recentCutoff = new Date();
+    recentCutoff.setDate(recentCutoff.getDate() - 30);
+
+    return suppliers.filter((s) => {
+      if (supplierFilter === "withGstin") return !!s.gstin;
+      if (supplierFilter === "missingContact") return !s.phone && !s.email;
+      if (supplierFilter === "active") {
+        return activePurchaseSupplierNames.has(String(s.name ?? "").trim().toLowerCase());
+      }
+      if (supplierFilter === "recent") {
+        const supplierName = String(s.name ?? "").trim().toLowerCase();
+        return purchases.some((purchase) => {
+          const purchaseSupplier = String((purchase as any).supplier ?? "").trim().toLowerCase();
+          if (!purchaseSupplier || purchaseSupplier !== supplierName) return false;
+          const date = new Date((purchase as any).date ?? (purchase as any).createdAt ?? "");
+          return Number.isFinite(date.getTime()) && date >= recentCutoff;
+        });
+      }
+      return true;
+    });
+  }, [activePurchaseSupplierNames, purchases, supplierFilter, suppliers]);
+
+  const activeSuppliersCount = useMemo(
+    () =>
+      suppliers.filter((s) =>
+        activePurchaseSupplierNames.has(String(s.name ?? "").trim().toLowerCase()),
+      ).length,
+    [activePurchaseSupplierNames, suppliers],
+  );
+
+  const supplierFilterOptions = useMemo(
+    () => {
+      const recentCutoff = new Date();
+      recentCutoff.setDate(recentCutoff.getDate() - 30);
+      const recentCount = suppliers.filter((s) => {
+        const supplierName = String(s.name ?? "").trim().toLowerCase();
+        return purchases.some((purchase) => {
+          const purchaseSupplier = String((purchase as any).supplier ?? "").trim().toLowerCase();
+          if (!purchaseSupplier || purchaseSupplier !== supplierName) return false;
+          const date = new Date((purchase as any).date ?? (purchase as any).createdAt ?? "");
+          return Number.isFinite(date.getTime()) && date >= recentCutoff;
+        });
+      }).length;
+
+      return [
+        { id: "all", label: `All (${suppliers.length})` },
+        { id: "active", label: `Active (${activeSuppliersCount})` },
+        { id: "recent", label: `Recent 30d (${recentCount})` },
+        { id: "withGstin", label: `GSTIN (${suppliers.filter((s) => !!s.gstin).length})` },
+        {
+          id: "missingContact",
+          label: `Missing Contact (${suppliers.filter((s) => !s.phone && !s.email).length})`,
+        },
+      ];
+    },
+    [activeSuppliersCount, purchases, suppliers],
+  );
+
+  const activeSupplierFilters = useMemo(
+    () =>
+      supplierFilterOptions
+        .filter((option) => option.id === supplierFilter)
+        .map((option) => ({ id: option.id, label: option.label })),
+    [supplierFilter, supplierFilterOptions],
   );
 
   const isCustomersInitialLoading = isFetching && !custData;
@@ -873,6 +957,22 @@ export function PartiesScreen({ navigation, route }: Props) {
                 </View>
               </View>
 
+              <FilterBar
+                options={supplierFilterOptions}
+                activeFilters={activeSupplierFilters}
+                onFilterChange={(nextFilter, toRemove) => {
+                  requestAnimationFrame(() => {
+                    setSupplierFilter(
+                      toRemove ? "all" : (nextFilter as SupplierFilterTab),
+                    );
+                  });
+                }}
+                onClearAll={() => setSupplierFilter("all")}
+                variant="chips"
+                maxVisible={4}
+                className="mb-4"
+              />
+
               {/* Supplier list */}
               <View className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
                 {isSuppliersInitialLoading ? (
@@ -888,20 +988,22 @@ export function PartiesScreen({ navigation, route }: Props) {
                       onRetry={() => refetchSuppliers()}
                     />
                   </View>
-                ) : suppliers.length === 0 ? (
+                ) : supplierFiltered.length === 0 ? (
                   <View className="py-14 items-center">
                     <EmptyState
                       iconName={
-                        supplierSearch ? "search-outline" : "cube-outline"
+                        supplierSearch || supplierFilter !== "all"
+                          ? "search-outline"
+                          : "cube-outline"
                       }
                       title={
-                        supplierSearch
+                        supplierSearch || supplierFilter !== "all"
                           ? "No suppliers found"
                           : "No suppliers yet"
                       }
                       description={
-                        supplierSearch
-                          ? "Try a different search"
+                        supplierSearch || supplierFilter !== "all"
+                          ? "Try different search or filter"
                           : "Add your first supplier"
                       }
                       actionLabel="Add Supplier"
@@ -909,7 +1011,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                     />
                   </View>
                 ) : (
-                  suppliers.map((s) => (
+                  supplierFiltered.map((s) => (
                     <Pressable
                       key={s.id}
                       className="flex-row items-center justify-between px-4 py-3.5 border-b border-slate-100 min-h-[56]"
