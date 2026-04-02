@@ -184,57 +184,52 @@ export function BillsMenuScreen({ navigation }: Props) {
         contentContainerStyle={{
           padding: pad,
           alignItems: "center",
-          paddingBottom: 32,
+          paddingBottom: 24,
         }}
       >
         <View style={{ width: "100%", maxWidth: contentWidth }}>
-          {/* ── Document Type Shortcuts ───────────────────────────────────── */}
-          <Text className={TYPO.sectionTitle + " mb-3"}>Create New</Text>
-          <View className="flex-row flex-wrap gap-2 mb-6">
+          <View className="rounded-2xl border border-slate-200 bg-white px-4 py-4 mb-3">
+            <Text className={TYPO.pageTitle}>Bills Actions</Text>
+            <Text className="text-xs text-slate-500 mt-1">
+              Quick actions and tools
+            </Text>
+          </View>
+
+          <View className="rounded-2xl border border-slate-200 bg-slate-50 p-2 gap-2 mb-3">
             {DOC_SHORTCUTS.map((doc) => (
               <Pressable
                 key={doc.id}
                 onPress={() => navigateToForm(doc.documentType)}
-                className="items-center justify-center rounded-xl border px-3 py-3 min-h-[72] flex-1"
-                style={({ pressed }) => ({
-                  backgroundColor: pressed ? doc.bgColor : "#fff",
-                  borderColor: "#e2e8f0",
-                  minWidth: 96,
-                  opacity: pressed ? 0.85 : 1,
-                })}
+                className="min-h-[48] rounded-xl border border-slate-200 bg-white px-3 py-3 flex-row items-center gap-3"
+                style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
               >
                 <View
-                  className="w-9 h-9 rounded-lg items-center justify-center mb-1.5"
+                  className="w-8 h-8 rounded-lg items-center justify-center"
                   style={{ backgroundColor: doc.bgColor }}
                 >
-                  <Ionicons name={doc.icon} size={20} color={doc.color} />
+                  <Ionicons name={doc.icon} size={18} color={doc.color} />
                 </View>
                 <Text
-                  className="text-xs font-medium text-slate-700 text-center"
+                  className={TYPO.body + " flex-1 min-w-0"}
                   numberOfLines={1}
                 >
                   {doc.label}
                 </Text>
+                <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
               </Pressable>
             ))}
           </View>
 
-          {/* ── Menu Items ────────────────────────────────────────────────── */}
-          <Text className={TYPO.sectionTitle + " mb-3"}>More</Text>
-          <View className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
-            {MENU_ITEMS.map((item, idx) => (
+          <View className="rounded-2xl border border-slate-200 bg-slate-50 p-2 gap-2 mb-3">
+            {MENU_ITEMS.map((item) => (
               <Pressable
                 key={item.id}
                 onPress={() => handleMenuPress(item)}
-                className="flex-row items-center gap-3 px-4 py-3.5 min-h-[52]"
-                style={({ pressed }) => ({
-                  backgroundColor: pressed ? "#f8fafc" : "#fff",
-                  borderBottomWidth: idx < MENU_ITEMS.length - 1 ? 1 : 0,
-                  borderBottomColor: "#f1f5f9",
-                })}
+                className="min-h-[48] rounded-xl border border-slate-200 bg-white px-3 py-3 flex-row items-center gap-3"
+                style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
               >
-                <View className="w-10 h-10 rounded-lg bg-slate-100 items-center justify-center">
-                  <Ionicons name={item.icon} size={20} color="#64748b" />
+                <View className="w-8 h-8 rounded-lg bg-slate-100 items-center justify-center">
+                  <Ionicons name={item.icon} size={18} color="#64748b" />
                 </View>
                 <Text
                   className={TYPO.body + " flex-1 min-w-0"}
@@ -242,31 +237,40 @@ export function BillsMenuScreen({ navigation }: Props) {
                 >
                   {item.label}
                 </Text>
-                <Ionicons name="chevron-forward" size={18} color="#94a3b8" />
+                <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
               </Pressable>
             ))}
           </View>
 
-          {/* ── Quick Links ───────────────────────────────────────────────── */}
-          <Text className={TYPO.sectionTitle + " mt-6 mb-3"}>Quick links</Text>
-          <View className="flex-row flex-wrap gap-2">
+          <View className="rounded-2xl border border-slate-200 bg-slate-50 p-2 gap-2">
             {QUICK_LINKS.map((item) => (
               <Pressable
                 key={item.id}
                 onPress={() => handleQuickLink(item)}
-                className="flex-row items-center gap-2 rounded-xl border border-slate-200 px-4 py-3 min-h-[48] bg-white min-w-0"
-                style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                className="min-h-[48] rounded-xl border border-slate-200 bg-white px-3 py-3 flex-row items-center gap-3"
+                style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
               >
-                <Ionicons name={item.icon} size={18} color="#64748b" />
+                <View className="w-8 h-8 rounded-lg bg-slate-100 items-center justify-center">
+                  <Ionicons name={item.icon} size={18} color="#64748b" />
+                </View>
                 <Text
-                  className="text-sm font-medium text-slate-700 min-w-0"
+                  className={TYPO.body + " flex-1 min-w-0"}
                   numberOfLines={1}
                 >
                   {item.label}
                 </Text>
+                <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
               </Pressable>
             ))}
           </View>
+
+          <Pressable
+            onPress={() => navigation.goBack()}
+            className="mt-4 py-3 rounded-xl border border-slate-200 items-center min-h-[44] bg-white"
+            style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
+          >
+            <Text className={TYPO.body}>Close</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </SafeAreaView>
