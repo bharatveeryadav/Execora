@@ -1107,7 +1107,11 @@ export function PartiesScreen({ navigation, route }: Props) {
                       <Ionicons name="alert-circle" size={18} color="#dc2626" />
                     </View>
                     <Text className={`${TYPO.body} flex-1`}>Udhaar List</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
+                    <Ionicons
+                      name="chevron-forward"
+                      size={16}
+                      color="#94a3b8"
+                    />
                   </Pressable>
 
                   <Pressable
@@ -1118,8 +1122,14 @@ export function PartiesScreen({ navigation, route }: Props) {
                     <View className="w-8 h-8 rounded-lg bg-slate-100 items-center justify-center">
                       <Ionicons name="cloud-upload" size={18} color="#64748b" />
                     </View>
-                    <Text className={`${TYPO.body} flex-1`}>Import Customers</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
+                    <Text className={`${TYPO.body} flex-1`}>
+                      Import Customers
+                    </Text>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={16}
+                      color="#94a3b8"
+                    />
                   </Pressable>
 
                   <Pressable
@@ -1136,8 +1146,14 @@ export function PartiesScreen({ navigation, route }: Props) {
                     <View className="w-8 h-8 rounded-lg bg-slate-100 items-center justify-center">
                       <Ionicons name="git-merge" size={18} color="#64748b" />
                     </View>
-                    <Text className={`${TYPO.body} flex-1`}>Merge Customers</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
+                    <Text className={`${TYPO.body} flex-1`}>
+                      Merge Customers
+                    </Text>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={16}
+                      color="#94a3b8"
+                    />
                   </Pressable>
 
                   <Pressable
@@ -1146,10 +1162,20 @@ export function PartiesScreen({ navigation, route }: Props) {
                     style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
                   >
                     <View className="w-8 h-8 rounded-lg bg-slate-100 items-center justify-center">
-                      <Ionicons name="document-text" size={18} color="#64748b" />
+                      <Ionicons
+                        name="document-text"
+                        size={18}
+                        color="#64748b"
+                      />
                     </View>
-                    <Text className={`${TYPO.body} flex-1`}>Download Excel (CSV)</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
+                    <Text className={`${TYPO.body} flex-1`}>
+                      Download Excel (CSV)
+                    </Text>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={16}
+                      color="#94a3b8"
+                    />
                   </Pressable>
 
                   <Pressable
@@ -1161,7 +1187,11 @@ export function PartiesScreen({ navigation, route }: Props) {
                       <Ionicons name="document" size={18} color="#64748b" />
                     </View>
                     <Text className={`${TYPO.body} flex-1`}>Download PDF</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
+                    <Ionicons
+                      name="chevron-forward"
+                      size={16}
+                      color="#94a3b8"
+                    />
                   </Pressable>
                 </>
               ) : (
@@ -1177,8 +1207,14 @@ export function PartiesScreen({ navigation, route }: Props) {
                     <View className="w-8 h-8 rounded-lg bg-slate-100 items-center justify-center">
                       <Ionicons name="cube" size={18} color="#64748b" />
                     </View>
-                    <Text className={`${TYPO.body} flex-1`}>View Purchases</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
+                    <Text className={`${TYPO.body} flex-1`}>
+                      View Purchases
+                    </Text>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={16}
+                      color="#94a3b8"
+                    />
                   </Pressable>
 
                   <Pressable
@@ -1193,7 +1229,11 @@ export function PartiesScreen({ navigation, route }: Props) {
                       <Ionicons name="receipt" size={18} color="#64748b" />
                     </View>
                     <Text className={`${TYPO.body} flex-1`}>View Expenses</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
+                    <Ionicons
+                      name="chevron-forward"
+                      size={16}
+                      color="#94a3b8"
+                    />
                   </Pressable>
 
                   <Pressable
@@ -1204,8 +1244,14 @@ export function PartiesScreen({ navigation, route }: Props) {
                     <View className="w-8 h-8 rounded-lg bg-slate-100 items-center justify-center">
                       <Ionicons name="cloud-upload" size={18} color="#64748b" />
                     </View>
-                    <Text className={`${TYPO.body} flex-1`}>Import Suppliers</Text>
-                    <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
+                    <Text className={`${TYPO.body} flex-1`}>
+                      Import Suppliers
+                    </Text>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={16}
+                      color="#94a3b8"
+                    />
                   </Pressable>
                 </>
               )}
