@@ -120,7 +120,14 @@ export const supplierApi = {
 };
 
 export const purchaseApi = {
-  list: (params: { from?: string; to?: string; supplier?: string; limit?: number } = {}) => {
+  list: (
+    params: {
+      from?: string;
+      to?: string;
+      supplier?: string;
+      limit?: number;
+    } = {},
+  ) => {
     const q = new URLSearchParams();
     if (params.from) q.set("from", params.from);
     if (params.to) q.set("to", params.to);

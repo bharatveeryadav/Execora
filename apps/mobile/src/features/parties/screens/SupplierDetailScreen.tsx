@@ -1,5 +1,12 @@
 import React, { useMemo } from "react";
-import { View, Text, Pressable, ScrollView, Linking, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  Pressable,
+  ScrollView,
+  Linking,
+  ActivityIndicator,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useQuery } from "@tanstack/react-query";
@@ -21,7 +28,12 @@ export function SupplierDetailScreen({ navigation, route }: Props) {
   const { contentPad, contentWidth } = useResponsive();
   const { supplierId, supplierName } = route.params;
 
-  const { data: supplierData, isFetching: supplierFetching, isError: supplierError, refetch: refetchSupplier } = useQuery({
+  const {
+    data: supplierData,
+    isFetching: supplierFetching,
+    isError: supplierError,
+    refetch: refetchSupplier,
+  } = useQuery({
     queryKey: ["supplier", supplierId],
     queryFn: () => supplierApi.get(supplierId),
     staleTime: 30_000,
@@ -30,14 +42,24 @@ export function SupplierDetailScreen({ navigation, route }: Props) {
   const supplier = supplierData?.supplier;
   const supplierFilter = supplier?.name || supplierName || "";
 
-  const { data: purchasesData, isFetching: purchasesFetching, isError: purchasesError, refetch: refetchPurchases } = useQuery({
+  const {
+    data: purchasesData,
+    isFetching: purchasesFetching,
+    isError: purchasesError,
+    refetch: refetchPurchases,
+  } = useQuery({
     queryKey: ["supplier-purchases", supplierFilter],
     queryFn: () => purchaseApi.list({ supplier: supplierFilter, limit: 20 }),
     enabled: supplierFilter.length > 0,
     staleTime: 30_000,
   });
 
-  const { data: expensesData, isFetching: expensesFetching, isError: expensesError, refetch: refetchExpenses } = useQuery({
+  const {
+    data: expensesData,
+    isFetching: expensesFetching,
+    isError: expensesError,
+    refetch: refetchExpenses,
+  } = useQuery({
     queryKey: ["supplier-expenses", supplierFilter],
     queryFn: () => expenseApi.list({ supplier: supplierFilter, limit: 20 }),
     enabled: supplierFilter.length > 0,
@@ -48,11 +70,19 @@ export function SupplierDetailScreen({ navigation, route }: Props) {
   const expenses = expensesData?.expenses ?? [];
 
   const purchaseTotal = useMemo(
-    () => purchases.reduce((sum, purchase) => sum + (parseFloat(String(purchase.amount)) || 0), 0),
+    () =>
+      purchases.reduce(
+        (sum, purchase) => sum + (parseFloat(String(purchase.amount)) || 0),
+        0,
+      ),
     [purchases],
   );
   const expenseTotal = useMemo(
-    () => expenses.reduce((sum, expense) => sum + (parseFloat(String(expense.amount)) || 0), 0),
+    () =>
+      expenses.reduce(
+        (sum, expense) => sum + (parseFloat(String(expense.amount)) || 0),
+        0,
+      ),
     [expenses],
   );
 
@@ -74,7 +104,11 @@ export function SupplierDetailScreen({ navigation, route }: Props) {
     <SafeAreaView className="flex-1 bg-slate-50" edges={["top", "bottom"]}>
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ padding: contentPad, paddingBottom: 32, alignItems: "center" }}
+        contentContainerStyle={{
+          padding: contentPad,
+          paddingBottom: 32,
+          alignItems: "center",
+        }}
       >
         <ScreenInner>
           {isInitialLoading ? (
@@ -98,16 +132,25 @@ export function SupplierDetailScreen({ navigation, route }: Props) {
                     </Text>
                   </View>
                   <View className="flex-1 min-w-0">
-                    <Text className="text-lg font-bold text-slate-800" numberOfLines={1}>
+                    <Text
+                      className="text-lg font-bold text-slate-800"
+                      numberOfLines={1}
+                    >
                       {supplier.name}
                     </Text>
                     {!!supplier.companyName && (
-                      <Text className="text-sm text-slate-500 mt-0.5" numberOfLines={1}>
+                      <Text
+                        className="text-sm text-slate-500 mt-0.5"
+                        numberOfLines={1}
+                      >
                         {supplier.companyName}
                       </Text>
                     )}
                     {!!supplier.gstin && (
-                      <Text className="text-xs text-slate-500 mt-1" numberOfLines={1}>
+                      <Text
+                        className="text-xs text-slate-500 mt-1"
+                        numberOfLines={1}
+                      >
                         GSTIN: {supplier.gstin}
                       </Text>
                     )}
@@ -116,13 +159,19 @@ export function SupplierDetailScreen({ navigation, route }: Props) {
 
                 <View className="mt-4 gap-2">
                   {!!supplier.phone && (
-                    <Text className="text-sm text-slate-600">Phone: {supplier.phone}</Text>
+                    <Text className="text-sm text-slate-600">
+                      Phone: {supplier.phone}
+                    </Text>
                   )}
                   {!!supplier.email && (
-                    <Text className="text-sm text-slate-600">Email: {supplier.email}</Text>
+                    <Text className="text-sm text-slate-600">
+                      Email: {supplier.email}
+                    </Text>
                   )}
                   {!!supplier.address && (
-                    <Text className="text-sm text-slate-600">Address: {supplier.address}</Text>
+                    <Text className="text-sm text-slate-600">
+                      Address: {supplier.address}
+                    </Text>
                   )}
                 </View>
 
@@ -132,8 +181,14 @@ export function SupplierDetailScreen({ navigation, route }: Props) {
                     disabled={!supplier.phone}
                     className={`flex-1 min-h-[44] rounded-xl border px-3 py-3 flex-row items-center justify-center gap-2 ${supplier.phone ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50"}`}
                   >
-                    <Ionicons name="call-outline" size={16} color={supplier.phone ? "#475569" : "#cbd5e1"} />
-                    <Text className={`text-sm font-medium ${supplier.phone ? "text-slate-700" : "text-slate-400"}`}>
+                    <Ionicons
+                      name="call-outline"
+                      size={16}
+                      color={supplier.phone ? "#475569" : "#cbd5e1"}
+                    />
+                    <Text
+                      className={`text-sm font-medium ${supplier.phone ? "text-slate-700" : "text-slate-400"}`}
+                    >
                       Call
                     </Text>
                   </Pressable>
@@ -142,8 +197,14 @@ export function SupplierDetailScreen({ navigation, route }: Props) {
                     disabled={!supplier.email}
                     className={`flex-1 min-h-[44] rounded-xl border px-3 py-3 flex-row items-center justify-center gap-2 ${supplier.email ? "border-slate-200 bg-white" : "border-slate-100 bg-slate-50"}`}
                   >
-                    <Ionicons name="mail-outline" size={16} color={supplier.email ? "#475569" : "#cbd5e1"} />
-                    <Text className={`text-sm font-medium ${supplier.email ? "text-slate-700" : "text-slate-400"}`}>
+                    <Ionicons
+                      name="mail-outline"
+                      size={16}
+                      color={supplier.email ? "#475569" : "#cbd5e1"}
+                    />
+                    <Text
+                      className={`text-sm font-medium ${supplier.email ? "text-slate-700" : "text-slate-400"}`}
+                    >
                       Email
                     </Text>
                   </Pressable>
@@ -152,14 +213,26 @@ export function SupplierDetailScreen({ navigation, route }: Props) {
 
               <View className="flex-row gap-2">
                 <View className="flex-1 rounded-xl border border-red-100 bg-red-50 p-3">
-                  <Text className="text-[11px] font-medium text-red-600">Purchase Total</Text>
-                  <Text className="text-base font-bold text-red-700 mt-1">₹{inr(purchaseTotal)}</Text>
-                  <Text className="text-[11px] text-red-500 mt-1">{purchases.length} purchases</Text>
+                  <Text className="text-[11px] font-medium text-red-600">
+                    Purchase Total
+                  </Text>
+                  <Text className="text-base font-bold text-red-700 mt-1">
+                    ₹{inr(purchaseTotal)}
+                  </Text>
+                  <Text className="text-[11px] text-red-500 mt-1">
+                    {purchases.length} purchases
+                  </Text>
                 </View>
                 <View className="flex-1 rounded-xl border border-slate-200 bg-white p-3">
-                  <Text className="text-[11px] font-medium text-slate-500">Expense Total</Text>
-                  <Text className="text-base font-bold text-slate-800 mt-1">₹{inr(expenseTotal)}</Text>
-                  <Text className="text-[11px] text-slate-500 mt-1">{expenses.length} expenses</Text>
+                  <Text className="text-[11px] font-medium text-slate-500">
+                    Expense Total
+                  </Text>
+                  <Text className="text-base font-bold text-slate-800 mt-1">
+                    ₹{inr(expenseTotal)}
+                  </Text>
+                  <Text className="text-[11px] text-slate-500 mt-1">
+                    {expenses.length} expenses
+                  </Text>
                 </View>
               </View>
 
@@ -173,7 +246,9 @@ export function SupplierDetailScreen({ navigation, route }: Props) {
                       })
                     }
                   >
-                    <Text className="text-sm font-medium text-primary">View all</Text>
+                    <Text className="text-sm font-medium text-primary">
+                      View all
+                    </Text>
                   </Pressable>
                 </View>
                 {purchasesFetching ? (
@@ -183,30 +258,51 @@ export function SupplierDetailScreen({ navigation, route }: Props) {
                   </View>
                 ) : purchasesError ? (
                   <View className="p-4">
-                    <ErrorCard message="Failed to load purchases" onRetry={() => refetchPurchases()} />
+                    <ErrorCard
+                      message="Failed to load purchases"
+                      onRetry={() => refetchPurchases()}
+                    />
                   </View>
                 ) : purchases.length === 0 ? (
                   <View className="py-10 px-4">
-                    <EmptyState iconName="cube-outline" title="No purchases yet" description="No purchases are linked to this supplier yet." />
+                    <EmptyState
+                      iconName="cube-outline"
+                      title="No purchases yet"
+                      description="No purchases are linked to this supplier yet."
+                    />
                   </View>
                 ) : (
                   purchases.slice(0, 5).map((purchase, index) => (
-                    <View key={purchase.id} className={`px-4 py-3 ${index > 0 ? "border-t border-slate-100" : ""}`}>
+                    <View
+                      key={purchase.id}
+                      className={`px-4 py-3 ${index > 0 ? "border-t border-slate-100" : ""}`}
+                    >
                       <View className="flex-row items-start justify-between gap-3">
                         <View className="flex-1 min-w-0">
-                          <Text className="text-sm font-semibold text-slate-800" numberOfLines={1}>
+                          <Text
+                            className="text-sm font-semibold text-slate-800"
+                            numberOfLines={1}
+                          >
                             {purchase.itemName || purchase.category}
                           </Text>
-                          <Text className="text-xs text-slate-500 mt-0.5" numberOfLines={1}>
+                          <Text
+                            className="text-xs text-slate-500 mt-0.5"
+                            numberOfLines={1}
+                          >
                             {purchase.category} · {formatDate(purchase.date)}
                           </Text>
                           {!!purchase.note && (
-                            <Text className="text-xs text-slate-400 mt-1" numberOfLines={1}>
+                            <Text
+                              className="text-xs text-slate-400 mt-1"
+                              numberOfLines={1}
+                            >
                               {purchase.note}
                             </Text>
                           )}
                         </View>
-                        <Text className="text-sm font-bold text-slate-800">₹{inr(parseFloat(String(purchase.amount)) || 0)}</Text>
+                        <Text className="text-sm font-bold text-slate-800">
+                          ₹{inr(parseFloat(String(purchase.amount)) || 0)}
+                        </Text>
                       </View>
                     </View>
                   ))
@@ -223,7 +319,9 @@ export function SupplierDetailScreen({ navigation, route }: Props) {
                       })
                     }
                   >
-                    <Text className="text-sm font-medium text-primary">View all</Text>
+                    <Text className="text-sm font-medium text-primary">
+                      View all
+                    </Text>
                   </Pressable>
                 </View>
                 {expensesFetching ? (
@@ -232,30 +330,51 @@ export function SupplierDetailScreen({ navigation, route }: Props) {
                   </View>
                 ) : expensesError ? (
                   <View className="p-4">
-                    <ErrorCard message="Failed to load expenses" onRetry={() => refetchExpenses()} />
+                    <ErrorCard
+                      message="Failed to load expenses"
+                      onRetry={() => refetchExpenses()}
+                    />
                   </View>
                 ) : expenses.length === 0 ? (
                   <View className="py-10 px-4">
-                    <EmptyState iconName="receipt-outline" title="No related expenses" description="No expenses are tagged with this supplier yet." />
+                    <EmptyState
+                      iconName="receipt-outline"
+                      title="No related expenses"
+                      description="No expenses are tagged with this supplier yet."
+                    />
                   </View>
                 ) : (
                   expenses.slice(0, 5).map((expense, index) => (
-                    <View key={expense.id} className={`px-4 py-3 ${index > 0 ? "border-t border-slate-100" : ""}`}>
+                    <View
+                      key={expense.id}
+                      className={`px-4 py-3 ${index > 0 ? "border-t border-slate-100" : ""}`}
+                    >
                       <View className="flex-row items-start justify-between gap-3">
                         <View className="flex-1 min-w-0">
-                          <Text className="text-sm font-semibold text-slate-800" numberOfLines={1}>
+                          <Text
+                            className="text-sm font-semibold text-slate-800"
+                            numberOfLines={1}
+                          >
                             {expense.category}
                           </Text>
-                          <Text className="text-xs text-slate-500 mt-0.5" numberOfLines={1}>
+                          <Text
+                            className="text-xs text-slate-500 mt-0.5"
+                            numberOfLines={1}
+                          >
                             {formatDate(expense.date)}
                           </Text>
                           {!!expense.note && (
-                            <Text className="text-xs text-slate-400 mt-1" numberOfLines={1}>
+                            <Text
+                              className="text-xs text-slate-400 mt-1"
+                              numberOfLines={1}
+                            >
                               {expense.note}
                             </Text>
                           )}
                         </View>
-                        <Text className="text-sm font-bold text-slate-800">₹{inr(parseFloat(String(expense.amount)) || 0)}</Text>
+                        <Text className="text-sm font-bold text-slate-800">
+                          ₹{inr(parseFloat(String(expense.amount)) || 0)}
+                        </Text>
                       </View>
                     </View>
                   ))

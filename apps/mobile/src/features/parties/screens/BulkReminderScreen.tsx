@@ -64,13 +64,19 @@ export function BulkReminderScreen({ navigation }: Props) {
     today.setHours(0, 0, 0, 0);
     const map = new Map<string, number>();
     for (const inv of invoices) {
-      if ((inv as any).status === "paid" || (inv as any).status === "cancelled") continue;
+      if ((inv as any).status === "paid" || (inv as any).status === "cancelled")
+        continue;
       const remaining =
-        parseFloat(String((inv as any).total)) - parseFloat(String((inv as any).paidAmount ?? 0));
+        parseFloat(String((inv as any).total)) -
+        parseFloat(String((inv as any).paidAmount ?? 0));
       if (remaining <= 0) continue;
-      const invDate = new Date((inv as any).invoiceDate ?? (inv as any).createdAt);
+      const invDate = new Date(
+        (inv as any).invoiceDate ?? (inv as any).createdAt,
+      );
       invDate.setHours(0, 0, 0, 0);
-      const days = Math.floor((today.getTime() - invDate.getTime()) / 86_400_000);
+      const days = Math.floor(
+        (today.getTime() - invDate.getTime()) / 86_400_000,
+      );
       const customerId = (inv as any).customerId;
       const existing = map.get(customerId);
       if (existing === undefined || days > existing) map.set(customerId, days);
@@ -93,17 +99,27 @@ export function BulkReminderScreen({ navigation }: Props) {
   }, [onlyHighOverdue, overdueCustomers]);
 
   const targetAmount = useMemo(
-    () => targets.reduce((sum, c) => sum + Math.max(0, parseFloat(String(c.balance)) || 0), 0),
+    () =>
+      targets.reduce(
+        (sum, c) => sum + Math.max(0, parseFloat(String(c.balance)) || 0),
+        0,
+      ),
     [targets],
   );
 
   const bulkReminderMutation = useMutation({
-    mutationFn: (payload: { customerIds: string[]; message?: string; daysOffset?: number }) =>
-      reminderApi.bulkCreate(payload),
+    mutationFn: (payload: {
+      customerIds: string[];
+      message?: string;
+      daysOffset?: number;
+    }) => reminderApi.bulkCreate(payload),
     onSuccess: (res) => {
       const scheduled = res?.reminders?.length ?? 0;
       qc.invalidateQueries({ queryKey: ["reminders"] });
-      showAlert("", `${scheduled} reminder${scheduled === 1 ? "" : "s"} scheduled`);
+      showAlert(
+        "",
+        `${scheduled} reminder${scheduled === 1 ? "" : "s"} scheduled`,
+      );
       navigation.goBack();
     },
     onError: () => showAlert("Error", "Failed to schedule bulk reminders"),
@@ -114,7 +130,10 @@ export function BulkReminderScreen({ navigation }: Props) {
 
   function submitBulkReminder() {
     if (targets.length === 0 || bulkReminderMutation.isPending) return;
-    const parsedDaysOffset = Math.max(0, Math.min(30, parseInt(daysOffset || "0", 10) || 0));
+    const parsedDaysOffset = Math.max(
+      0,
+      Math.min(30, parseInt(daysOffset || "0", 10) || 0),
+    );
     bulkReminderMutation.mutate({
       customerIds: targets.map((c) => c.id),
       daysOffset: parsedDaysOffset,
@@ -124,12 +143,19 @@ export function BulkReminderScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={["bottom"]}>
-      <ScrollView className="flex-1" contentContainerStyle={{ padding: contentPad, paddingBottom: 28 }}>
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ padding: contentPad, paddingBottom: 28 }}
+      >
         <ScreenInner>
           <View className="rounded-2xl border border-amber-200 bg-amber-50 p-4 mb-3">
             <View className="flex-row items-center justify-between">
-              <Text className="text-sm font-semibold text-amber-800">Target Customers</Text>
-              <Text className="text-base font-bold text-amber-900">{targets.length}</Text>
+              <Text className="text-sm font-semibold text-amber-800">
+                Target Customers
+              </Text>
+              <Text className="text-base font-bold text-amber-900">
+                {targets.length}
+              </Text>
             </View>
             <Text className="text-xs text-amber-700 mt-1">
               Total pending amount: ₹{inr(targetAmount)}
@@ -142,7 +168,9 @@ export function BulkReminderScreen({ navigation }: Props) {
               className="flex-row items-center justify-between min-h-[44]"
             >
               <View className="flex-1 pr-3">
-                <Text className="text-sm font-semibold text-slate-700">Only 31+ days overdue</Text>
+                <Text className="text-sm font-semibold text-slate-700">
+                  Only 31+ days overdue
+                </Text>
                 <Text className="text-xs text-slate-500 mt-0.5">
                   Turn off to include all customers with pending balance.
                 </Text>
@@ -154,7 +182,9 @@ export function BulkReminderScreen({ navigation }: Props) {
               </View>
             </Pressable>
 
-            <Text className={TYPO.label + " mt-4 mb-1"}>Schedule after days</Text>
+            <Text className={TYPO.label + " mt-4 mb-1"}>
+              Schedule after days
+            </Text>
             <TextInput
               value={daysOffset}
               onChangeText={setDaysOffset}
@@ -164,7 +194,9 @@ export function BulkReminderScreen({ navigation }: Props) {
               placeholderTextColor="#94a3b8"
             />
 
-            <Text className={TYPO.label + " mt-4 mb-1"}>Message (optional)</Text>
+            <Text className={TYPO.label + " mt-4 mb-1"}>
+              Message (optional)
+            </Text>
             <TextInput
               value={message}
               onChangeText={setMessage}
@@ -212,21 +244,32 @@ export function BulkReminderScreen({ navigation }: Props) {
             ) : (
               targets.slice(0, 25).map((customer, idx) => {
                 const ageDays = (customer as any).ageDays ?? 0;
-                const balance = Math.max(0, parseFloat(String(customer.balance)) || 0);
+                const balance = Math.max(
+                  0,
+                  parseFloat(String(customer.balance)) || 0,
+                );
                 return (
                   <View
                     key={customer.id}
                     className={`px-4 py-3 flex-row items-center justify-between ${idx > 0 ? "border-t border-slate-100" : ""}`}
                   >
                     <View className="flex-1 min-w-0 pr-2">
-                      <Text className="text-sm font-semibold text-slate-800" numberOfLines={1}>
+                      <Text
+                        className="text-sm font-semibold text-slate-800"
+                        numberOfLines={1}
+                      >
                         {customer.name}
                       </Text>
-                      <Text className="text-xs text-slate-500 mt-0.5" numberOfLines={1}>
+                      <Text
+                        className="text-xs text-slate-500 mt-0.5"
+                        numberOfLines={1}
+                      >
                         {ageDays === 0 ? "Today" : `${ageDays} days overdue`}
                       </Text>
                     </View>
-                    <Text className="text-sm font-bold text-red-600">₹{inr(balance)}</Text>
+                    <Text className="text-sm font-bold text-red-600">
+                      ₹{inr(balance)}
+                    </Text>
                   </View>
                 );
               })
@@ -243,7 +286,9 @@ export function BulkReminderScreen({ navigation }: Props) {
             ) : (
               <View className="flex-row items-center gap-2">
                 <Ionicons name="notifications" size={16} color="#fff" />
-                <Text className="text-sm font-semibold text-white">Schedule Bulk Follow-up</Text>
+                <Text className="text-sm font-semibold text-white">
+                  Schedule Bulk Follow-up
+                </Text>
               </View>
             )}
           </TouchableOpacity>
