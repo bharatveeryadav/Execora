@@ -100,30 +100,32 @@ export function ItemsMenuScreen({ navigation }: Props) {
     }
   }
 
+  const actionRowClass =
+    "min-h-[48] rounded-xl border px-3 py-3 flex-row items-center gap-3";
+
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={["top", "bottom"]}>
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 16 }}>
         <View className="rounded-2xl border border-slate-200 bg-white px-4 py-4 mb-3">
-          <Text className="text-lg font-bold text-slate-900">Item Actions</Text>
+          <Text className={TYPO.pageTitle}>Item Actions</Text>
           <Text className="text-xs text-slate-500 mt-1">
-            Manage inventory tools from one place.
+            Quick actions and tools
           </Text>
         </View>
 
-        <View className="rounded-2xl border border-slate-200 bg-white px-4 py-4 mb-3">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center flex-1 pr-3">
-              <View className="w-9 h-9 rounded-lg bg-amber-100 items-center justify-center mr-3">
-                <Ionicons name="notifications" size={18} color="#b45309" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-sm font-semibold text-slate-800">
-                  Low Stock Notification
-                </Text>
-                <Text className="text-[11px] text-slate-500 mt-0.5">
-                  Show or hide low-stock alert banner on Items screen
-                </Text>
-              </View>
+        <View className="rounded-2xl border border-slate-200 bg-slate-50 p-2 gap-2">
+          <View
+            className={`${actionRowClass} border-amber-100 bg-amber-50`}
+            pointerEvents="box-none"
+          >
+            <View className="w-8 h-8 rounded-lg bg-amber-100 items-center justify-center">
+              <Ionicons name="notifications" size={18} color="#d97706" />
+            </View>
+            <View className="flex-1 min-w-0 pr-2">
+              <Text className={TYPO.body}>Low Stock Notification</Text>
+              <Text className="text-[11px] text-amber-700 mt-0.5" numberOfLines={1}>
+                Show or hide low-stock alert banner on Items screen
+              </Text>
             </View>
             <Switch
               value={lowStockAlertsEnabled}
@@ -133,36 +135,37 @@ export function ItemsMenuScreen({ navigation }: Props) {
               accessibilityLabel="Toggle low stock notification"
             />
           </View>
-        </View>
 
-        <View className="flex-row flex-wrap gap-2">
           {MENU_ITEMS.map((item) => (
             <Pressable
               key={item.id}
               onPress={() => handleMenuPress(item)}
-              className="w-[48.5%] rounded-2xl border border-slate-200 bg-white px-3 py-3 min-h-[116]"
-              style={({ pressed }) => ({
-                backgroundColor: pressed ? "#f8fafc" : "#fff",
-              })}
+              className={`${actionRowClass} border-slate-200 bg-white`}
+              style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
             >
-              <View className="w-9 h-9 rounded-lg bg-slate-100 items-center justify-center mb-2">
+              <View className="w-8 h-8 rounded-lg bg-slate-100 items-center justify-center">
                 <Ionicons name={item.icon as any} size={18} color="#64748b" />
               </View>
-              <Text
-                className="text-sm font-semibold text-slate-800"
-                numberOfLines={1}
-              >
-                {item.label}
-              </Text>
-              <Text
-                className="text-[11px] text-slate-500 mt-1"
-                numberOfLines={2}
-              >
-                {item.subtitle}
-              </Text>
+              <View className="flex-1 min-w-0 pr-2">
+                <Text className={TYPO.body} numberOfLines={1}>
+                  {item.label}
+                </Text>
+                <Text className="text-[11px] text-slate-500 mt-0.5" numberOfLines={1}>
+                  {item.subtitle}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
             </Pressable>
           ))}
         </View>
+
+        <Pressable
+          onPress={() => navigation.goBack()}
+          className="mt-4 py-3 rounded-xl border border-slate-200 items-center min-h-[44] bg-white"
+          style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
+        >
+          <Text className={TYPO.body}>Close</Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
