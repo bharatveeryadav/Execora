@@ -1040,7 +1040,7 @@ export function InvoiceListScreen({ navigation, route }: Props) {
             </ScrollView>
           </View>
 
-          <View className="mt-4 rounded-2xl bg-slate-100 p-1 flex-row items-center min-w-0">
+          <View className="mt-2 rounded-xl bg-slate-100 p-0.5 flex-row items-center min-w-0">
             {[
               { id: "sales" as DocTypeTab, label: "Sales" },
               { id: "purchase" as DocTypeTab, label: "Purchase" },
@@ -1055,7 +1055,7 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                   flex: 1,
                   opacity: pressed && docTypeTab !== id ? 0.8 : 1,
                   minHeight: SIZES.TOUCH_MIN,
-                  borderRadius: SIZES.RADIUS.xl,
+                  borderRadius: SIZES.RADIUS.lg,
                   alignItems: "center",
                   justifyContent: "center",
                   backgroundColor:
@@ -1066,7 +1066,7 @@ export function InvoiceListScreen({ navigation, route }: Props) {
               >
                 <Text
                   style={{
-                    fontSize: SIZES.FONT.sm,
+                    fontSize: SIZES.FONT.xs,
                     fontWeight: docTypeTab === id ? "600" : "500",
                     color:
                       docTypeTab === id
