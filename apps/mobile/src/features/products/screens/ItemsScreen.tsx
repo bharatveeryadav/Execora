@@ -527,7 +527,7 @@ export function ItemsScreen({ navigation }: Props) {
                   <View className="flex-1 min-w-0">
                     <View className="flex-row items-center gap-2">
                       <Text className="text-2xl font-bold tracking-tight text-slate-900">
-                        All Items
+                        Items & services
                       </Text>
                       <View className="rounded-full bg-primary/10 px-2.5 py-1">
                         <Text className="text-[11px] font-bold text-primary uppercase">
@@ -535,11 +535,6 @@ export function ItemsScreen({ navigation }: Props) {
                         </Text>
                       </View>
                     </View>
-                    <Text className="text-sm text-slate-500 mt-1">
-                      {filtersActive
-                        ? `${filtered.length} of ${allProducts.length} items`
-                        : `${allProducts.length} items • use filters for focus`}
-                    </Text>
                   </View>
                   <View className="flex-row items-center gap-2">
                     <Pressable
