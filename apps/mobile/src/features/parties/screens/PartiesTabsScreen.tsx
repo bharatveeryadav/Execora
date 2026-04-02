@@ -2,7 +2,7 @@
  * PartiesScreen — Customers + Suppliers tabs (matches web Parties.tsx).
  * Modern UI/UX: TYPO scale, 44pt touch targets (iOS HIG), 8px spacing grid.
  */
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -75,6 +75,9 @@ export function PartiesScreen({ navigation, route }: Props) {
   const [addOpen, setAddOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [supplierSearch, setSupplierSearch] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+  const customerSearchInputRef = useRef<TextInput>(null);
+  const supplierSearchInputRef = useRef<TextInput>(null);
   const [addSupplierOpen, setAddSupplierOpen] = useState(false);
 
   // Add Customer form
@@ -98,6 +101,26 @@ export function PartiesScreen({ navigation, route }: Props) {
   useEffect(() => {
     setTab(initialTab);
   }, [initialTab]);
+
+  const openSearch = useCallback(() => {
+    setShowSearch(true);
+    setTimeout(() => {
+      if (tab === "suppliers") {
+        supplierSearchInputRef.current?.focus();
+      } else {
+        customerSearchInputRef.current?.focus();
+      }
+    }, 80);
+  }, [tab]);
+
+  const closeSearch = useCallback(() => {
+    setShowSearch(false);
+    if (tab === "suppliers") {
+      setSupplierSearch("");
+    } else {
+      setSearch("");
+    }
+  }, [tab]);
 
   // ── Queries ─────────────────────────────────────────────────────────────
 
@@ -528,37 +551,75 @@ export function PartiesScreen({ navigation, route }: Props) {
         style={{ paddingHorizontal: contentPad }}
       >
         <ScreenInner>
-          <View className="flex-row items-center justify-between mb-4">
-            <Text className={TYPO.pageTitle}>Parties</Text>
-            <View className="flex-row items-center gap-2">
-              {tab === "customers" && (
-                <Pressable
-                  onPress={() => navigation.navigate("Overdue")}
-                  className="flex-row items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-4 py-2.5 min-h-[44]"
-                  accessibilityRole="button"
-                  accessibilityLabel="Open udhaar list"
-                  style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
-                >
-                  <Ionicons name="alert-circle" size={16} color="#dc2626" />
-                  <Text className="text-xs font-bold text-red-600">Udhaar</Text>
-                </Pressable>
-              )}
-              <Pressable
-                onPress={() => setMenuOpen(true)}
-                className="w-11 h-11 rounded-full bg-slate-100 items-center justify-center"
-                accessibilityRole="button"
-                accessibilityLabel="Open parties menu"
-                style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
+          {showSearch ? (
+            <View className="flex-row items-center gap-2 mb-4">
+              <View className="flex-1 flex-row items-center bg-slate-100 rounded-2xl px-3 min-h-[48]">
                 <Ionicons
-                  name="ellipsis-horizontal"
-                  size={22}
-                  color="#475569"
+                  name="search"
+                  size={18}
+                  color="#64748b"
+                  style={{ marginRight: 8 }}
                 />
+                <TextInput
+                  ref={tab === "suppliers" ? supplierSearchInputRef : customerSearchInputRef}
+                  value={tab === "suppliers" ? supplierSearch : search}
+                  onChangeText={tab === "suppliers" ? setSupplierSearch : setSearch}
+                  placeholder={tab === "suppliers" ? "Search suppliers…" : "Search by name or phone…"}
+                  accessibilityLabel={tab === "suppliers" ? "Search suppliers" : "Search customers"}
+                  placeholderTextColor="#94a3b8"
+                  className="flex-1 text-sm text-slate-800 py-3"
+                  autoCorrect={false}
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  returnKeyType="search"
+                />
+                {(tab === "suppliers" ? isSuppliersFetching : isFetching) && (
+                  <ActivityIndicator size="small" color="#e67e22" />
+                )}
+              </View>
+              <Pressable
+                onPress={closeSearch}
+                accessibilityRole="button"
+                accessibilityLabel="Close search"
+                className="w-11 h-11 rounded-2xl items-center justify-center"
+                style={({ pressed }) => ({
+                  backgroundColor: pressed ? "#e2e8f0" : "#f1f5f9",
+                })}
+              >
+                <Ionicons name="close" size={20} color="#475569" />
               </Pressable>
             </View>
-          </View>
+          ) : (
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className={TYPO.pageTitle}>Parties</Text>
+              <View className="flex-row items-center gap-2">
+                <Pressable
+                  onPress={openSearch}
+                  className="w-11 h-11 rounded-2xl bg-slate-100 items-center justify-center"
+                  accessibilityRole="button"
+                  accessibilityLabel="Search parties"
+                  style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="search" size={20} color="#475569" />
+                </Pressable>
+                <Pressable
+                  onPress={() => setMenuOpen(true)}
+                  className="w-11 h-11 rounded-2xl bg-slate-100 items-center justify-center"
+                  accessibilityRole="button"
+                  accessibilityLabel="Open parties menu"
+                  style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons
+                    name="ellipsis-horizontal"
+                    size={22}
+                    color="#475569"
+                  />
+                </Pressable>
+              </View>
+            </View>
+          )}
 
           <TabBar
             tabs={PARTY_TABS}
@@ -572,34 +633,6 @@ export function PartiesScreen({ navigation, route }: Props) {
 
       {tab === "customers" && (
         <>
-          {/* Search — 48pt min height for touch */}
-          <View
-            className="py-3 bg-white border-b border-slate-100"
-            style={{ paddingHorizontal: contentPad }}
-          >
-            <ScreenInner>
-              <View className="flex-row items-center rounded-2xl bg-slate-100 px-4 min-h-[48]">
-                <Ionicons
-                  name="search"
-                  size={20}
-                  color="#94a3b8"
-                  style={{ marginRight: 12 }}
-                />
-                <TextInput
-                  value={search}
-                  onChangeText={setSearch}
-                  placeholder="Search by name or phone…"
-                  accessibilityLabel="Search customers"
-                  placeholderTextColor="#94a3b8"
-                  className="flex-1 text-base text-slate-800 py-0"
-                />
-                {isFetching && (
-                  <ActivityIndicator size="small" color="#e67e22" />
-                )}
-              </View>
-            </ScreenInner>
-          </View>
-
           <ScrollView
             className="flex-1"
             contentContainerStyle={{
@@ -795,76 +828,41 @@ export function PartiesScreen({ navigation, route }: Props) {
           >
             <ScreenInner>
               {/* Collect & Pay */}
-              <View className="rounded-2xl border border-slate-200/80 bg-white p-4 mb-4 shadow-sm">
-                <Text className={TYPO.sectionTitle}>Collect & Pay</Text>
-                <View className="flex-row gap-3 mt-3">
-                  <View className="flex-1 rounded-xl border border-red-100 bg-red-50 p-4 flex-row items-center gap-3">
-                    <View className="w-10 h-10 rounded-full bg-red-100 items-center justify-center">
-                      <Ionicons name="arrow-up" size={20} color="#dc2626" />
+              <View className="rounded-xl border border-slate-200/80 bg-white p-2 mb-2.5 shadow-sm">
+                <View className="flex-row gap-1.5">
+                  <View className="flex-1 rounded-lg border border-red-100 bg-red-50 px-2 py-1.5 flex-row items-center gap-1.5">
+                    <View className="w-5 h-5 rounded-full bg-red-100 items-center justify-center">
+                      <Ionicons name="arrow-up" size={11} color="#dc2626" />
                     </View>
-                    <View>
-                      <Text className={TYPO.caption}>To Pay</Text>
-                      <Text className="text-base font-bold text-red-600">
+                    <View className="flex-1 min-w-0">
+                      <Text className="text-[10px] font-medium text-red-600">
+                        To Pay
+                      </Text>
+                      <Text
+                        className="text-[11px] font-bold text-red-700"
+                        numberOfLines={1}
+                      >
                         ₹{inr(vendorToPay)}
                       </Text>
                     </View>
                   </View>
-                  <View className="flex-1 rounded-xl border border-green-100 bg-green-50 p-4 flex-row items-center gap-3">
-                    <View className="w-10 h-10 rounded-full bg-green-100 items-center justify-center">
-                      <Ionicons name="arrow-down" size={20} color="#16a34a" />
+                  <View className="flex-1 rounded-lg border border-green-100 bg-green-50 px-2 py-1.5 flex-row items-center gap-1.5">
+                    <View className="w-5 h-5 rounded-full bg-green-100 items-center justify-center">
+                      <Ionicons name="arrow-down" size={11} color="#16a34a" />
                     </View>
-                    <View>
-                      <Text className={TYPO.caption}>To Collect</Text>
-                      <Text className="text-base font-bold text-green-600">
+                    <View className="flex-1 min-w-0">
+                      <Text className="text-[10px] font-medium text-green-600">
+                        To Collect
+                      </Text>
+                      <Text
+                        className="text-[11px] font-bold text-green-700"
+                        numberOfLines={1}
+                      >
                         ₹{inr(vendorToCollect)}
                       </Text>
                     </View>
                   </View>
                 </View>
-              </View>
-
-              {/* Quick links — 44pt touch targets */}
-              <View className="flex-row flex-wrap gap-3 mb-4">
-                <Pressable
-                  onPress={() =>
-                    getTabNav()?.navigate("MoreTab", { screen: "Purchases" })
-                  }
-                  className="flex-row items-center gap-2 border border-slate-200 rounded-xl px-4 py-3 min-h-[44] bg-white"
-                >
-                  <Ionicons name="cube" size={20} color="#64748b" />
-                  <Text className={TYPO.body}>View Purchases</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() =>
-                    getTabNav()?.navigate("MoreTab", { screen: "Expenses" })
-                  }
-                  className="flex-row items-center gap-2 border border-slate-200 rounded-xl px-4 py-3 min-h-[44] bg-white"
-                  style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-                >
-                  <Ionicons name="receipt" size={20} color="#64748b" />
-                  <Text className={TYPO.body}>View Expenses</Text>
-                </Pressable>
-              </View>
-
-              {/* Supplier search */}
-              <View className="flex-row items-center rounded-2xl bg-slate-100 px-4 min-h-[48] mb-4">
-                <Ionicons
-                  name="search"
-                  size={20}
-                  color="#94a3b8"
-                  style={{ marginRight: 12 }}
-                />
-                <TextInput
-                  value={supplierSearch}
-                  onChangeText={setSupplierSearch}
-                  placeholder="Search suppliers…"
-                  accessibilityLabel="Search suppliers"
-                  placeholderTextColor="#94a3b8"
-                  className="flex-1 text-base text-slate-800 py-0"
-                />
-                {isSuppliersFetching && (
-                  <ActivityIndicator size="small" color="#e67e22" />
-                )}
               </View>
 
               {/* Supplier list */}
@@ -1071,6 +1069,17 @@ export function PartiesScreen({ navigation, route }: Props) {
             {tab === "customers" ? (
               <>
                 <Pressable
+                  onPress={() => {
+                    setMenuOpen(false);
+                    navigation.navigate("Overdue");
+                  }}
+                  className="flex-row items-center gap-3 py-3.5 min-h-[48] border-b border-slate-100"
+                  style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                >
+                  <Ionicons name="alert-circle" size={22} color="#dc2626" />
+                  <Text className={TYPO.body}>Udhaar List</Text>
+                </Pressable>
+                <Pressable
                   onPress={() => navigateToImport("customers")}
                   className="flex-row items-center gap-3 py-3.5 min-h-[48] border-b border-slate-100"
                   style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
@@ -1110,14 +1119,38 @@ export function PartiesScreen({ navigation, route }: Props) {
                 </Pressable>
               </>
             ) : (
-              <Pressable
-                onPress={() => navigateToImport("suppliers")}
-                className="flex-row items-center gap-3 py-3.5 min-h-[48] border-b border-slate-100"
-                style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-              >
-                <Ionicons name="cloud-upload" size={22} color="#64748b" />
-                <Text className={TYPO.body}>Import Suppliers</Text>
-              </Pressable>
+              <>
+                <Pressable
+                  onPress={() => {
+                    setMenuOpen(false);
+                    getTabNav()?.navigate("MoreTab", { screen: "Purchases" });
+                  }}
+                  className="flex-row items-center gap-3 py-3.5 min-h-[48] border-b border-slate-100"
+                  style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                >
+                  <Ionicons name="cube" size={22} color="#64748b" />
+                  <Text className={TYPO.body}>View Purchases</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    setMenuOpen(false);
+                    getTabNav()?.navigate("MoreTab", { screen: "Expenses" });
+                  }}
+                  className="flex-row items-center gap-3 py-3.5 min-h-[48] border-b border-slate-100"
+                  style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                >
+                  <Ionicons name="receipt" size={22} color="#64748b" />
+                  <Text className={TYPO.body}>View Expenses</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => navigateToImport("suppliers")}
+                  className="flex-row items-center gap-3 py-3.5 min-h-[48] border-b border-slate-100"
+                  style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                >
+                  <Ionicons name="cloud-upload" size={22} color="#64748b" />
+                  <Text className={TYPO.body}>Import Suppliers</Text>
+                </Pressable>
+              </>
             )}
             <Pressable
               onPress={() => setMenuOpen(false)}
