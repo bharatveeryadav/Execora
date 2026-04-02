@@ -11,3 +11,4 @@ export { PartiesScreen } from "./screens/PartiesTabsScreen";
 export { PaymentScreen } from "./screens/CustomerPaymentScreen";
 export { OverdueScreen } from "./screens/CustomerOverdueScreen";
 export { SupplierDetailScreen } from "./screens/SupplierDetailScreen";
+export { BulkReminderScreen } from "./screens/BulkReminderScreen";

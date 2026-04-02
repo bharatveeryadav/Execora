@@ -27,6 +27,7 @@ import {
   PaymentScreen,
   OverdueScreen,
   SupplierDetailScreen,
+  BulkReminderScreen,
 } from "../features/parties";
 import {
   ItemsScreen,
@@ -168,6 +169,7 @@ export type PartiesStackParams = {
   Parties: { initialTab?: "customers" | "suppliers" } | undefined;
   PartyDetail: { id: string };
   SupplierDetail: { supplierId: string; supplierName?: string };
+  BulkReminder: undefined;
   Payment: { customerId?: string };
   Overdue: undefined;
 };
@@ -324,6 +326,11 @@ function PartiesNavigator() {
           name="SupplierDetail"
           component={SupplierDetailScreen}
           options={{ headerShown: true, title: "Supplier" }}
+        />
+        <PartiesStack.Screen
+          name="BulkReminder"
+          component={BulkReminderScreen}
+          options={{ headerShown: true, title: "Bulk Follow-up" }}
         />
         <PartiesStack.Screen name="Payment" component={PaymentScreen} />
         <PartiesStack.Screen

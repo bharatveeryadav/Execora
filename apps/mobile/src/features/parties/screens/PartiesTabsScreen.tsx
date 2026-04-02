@@ -448,6 +448,11 @@ export function PartiesScreen({ navigation, route }: Props) {
     });
   }
 
+  function openBulkReminder() {
+    setMenuOpen(false);
+    navigation.navigate("BulkReminder");
+  }
+
   // ── Render customer row ─────────────────────────────────────────────────
 
   const renderCustomerRow = useCallback(
@@ -1091,6 +1096,34 @@ export function PartiesScreen({ navigation, route }: Props) {
                       <Ionicons name="alert-circle" size={18} color="#dc2626" />
                     </View>
                     <Text className={`${TYPO.body} flex-1`}>Udhaar List</Text>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={16}
+                      color="#94a3b8"
+                    />
+                  </Pressable>
+
+                  <Pressable
+                    onPress={openBulkReminder}
+                    className="min-h-[48] rounded-xl border border-amber-100 bg-amber-50 px-3 py-3 flex-row items-center gap-3"
+                    style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
+                  >
+                    <View className="w-8 h-8 rounded-lg bg-amber-100 items-center justify-center">
+                      <Ionicons
+                        name="notifications"
+                        size={18}
+                        color="#d97706"
+                      />
+                    </View>
+                    <View className="flex-1 min-w-0">
+                      <Text className={TYPO.body}>Bulk Remind Overdue</Text>
+                      <Text
+                        className="text-[11px] text-amber-700 mt-0.5"
+                        numberOfLines={1}
+                      >
+                        Schedule reminders in one dedicated flow
+                      </Text>
+                    </View>
                     <Ionicons
                       name="chevron-forward"
                       size={16}

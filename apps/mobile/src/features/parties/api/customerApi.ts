@@ -84,9 +84,26 @@ export const reminderApi = {
       body: JSON.stringify({
         customerId: data.customerId,
         amount: data.amount,
-        scheduledTime: data.datetime,
+        datetime: data.datetime,
         message: data.message,
       }),
+    }),
+
+  bulkCreate: (data: {
+    customerIds: string[];
+    message?: string;
+    daysOffset?: number;
+  }) =>
+    apiFetch<{
+      reminders: Array<{
+        id: string;
+        customerId?: string;
+        status: string;
+        scheduledTime: string;
+      }>;
+    }>("/api/v1/reminders/bulk", {
+      method: "POST",
+      body: JSON.stringify(data),
     }),
 };
 
