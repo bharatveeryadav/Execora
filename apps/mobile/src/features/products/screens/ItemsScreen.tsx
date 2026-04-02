@@ -23,6 +23,7 @@ import React, {
 import {
   View,
   Text,
+  Animated,
   ScrollView,
   TextInput,
   TouchableOpacity,
@@ -182,6 +183,7 @@ export function ItemsScreen({ navigation }: Props) {
   });
   const searchInputRef = useRef<TextInput>(null);
   const prevLowCountRef = useRef(0);
+  const clearFilterPulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     storage.set("items-list-mode", listMode);
@@ -209,6 +211,33 @@ export function ItemsScreen({ navigation }: Props) {
     categoryFilter ||
     sortBy !== "name"
   );
+
+  useEffect(() => {
+    if (!filtersActive) {
+      clearFilterPulse.stopAnimation(() => {
+        clearFilterPulse.setValue(1);
+      });
+      return;
+    }
+
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(clearFilterPulse, {
+          toValue: 1.1,
+          duration: 520,
+          useNativeDriver: true,
+        }),
+        Animated.timing(clearFilterPulse, {
+          toValue: 1,
+          duration: 520,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    pulseLoop.start();
+    return () => pulseLoop.stop();
+  }, [clearFilterPulse, filtersActive]);
 
   const filterSummary = useMemo(() => {
     const parts: string[] = [];
@@ -700,19 +729,29 @@ export function ItemsScreen({ navigation }: Props) {
                 </Pressable>
 
                 {filtersActive && (
-                  <Pressable
-                    onPress={() => {
-                      setFilter("all");
-                      setCategoryFilter(null);
-                      setSortBy("name");
+                  <Animated.View
+                    style={{
+                      transform: [{ scale: clearFilterPulse }],
+                      opacity: clearFilterPulse.interpolate({
+                        inputRange: [1, 1.1],
+                        outputRange: [1, 0.84],
+                      }),
                     }}
-                    accessibilityRole="button"
-                    accessibilityLabel="Clear active item filters"
-                    className={`${isSmall ? "h-11 w-11" : "h-12 w-12"} rounded-2xl items-center justify-center border border-red-100`}
-                    style={{ backgroundColor: COLORS.bg.error }}
                   >
-                    <Ionicons name="close" size={16} color={COLORS.error} />
-                  </Pressable>
+                    <Pressable
+                      onPress={() => {
+                        setFilter("all");
+                        setCategoryFilter(null);
+                        setSortBy("name");
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Clear active item filters"
+                      className={`${isSmall ? "h-11 w-11" : "h-12 w-12"} rounded-2xl items-center justify-center border border-red-100`}
+                      style={{ backgroundColor: COLORS.bg.error }}
+                    >
+                      <Ionicons name="close" size={16} color={COLORS.error} />
+                    </Pressable>
+                  </Animated.View>
                 )}
               </View>
 
