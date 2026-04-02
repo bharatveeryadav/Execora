@@ -34,7 +34,7 @@ export interface FilterBarProps {
     label: string;
   }[];
   onFilterChange: (toAdd: string, toRemove?: string) => void;
-  onClearAll: () => void;
+  onClearAll?: () => void;
   variant?: "chips" | "dropdown" | "modal";
   isOpen?: boolean;
   onOpenChange?: (isOpen: boolean) => void;
@@ -126,7 +126,7 @@ export const FilterBar = React.memo(function FilterBar({
           </TouchableOpacity>
         )}
 
-        {activeFilters.length > 0 && (
+        {activeFilters.length > 0 && onClearAll && (
           <TouchableOpacity
             onPress={onClearAll}
             className="flex-row items-center gap-1 rounded-full px-3 py-1.5"

@@ -197,7 +197,9 @@ export function PartiesScreen({ navigation, route }: Props) {
   const activePurchaseSupplierNames = useMemo(() => {
     const names = new Set<string>();
     for (const purchase of purchases) {
-      const name = String((purchase as any).supplier ?? "").trim().toLowerCase();
+      const name = String((purchase as any).supplier ?? "")
+        .trim()
+        .toLowerCase();
       if (name) names.add(name);
     }
     return names;
@@ -314,14 +316,25 @@ export function PartiesScreen({ navigation, route }: Props) {
       if (supplierFilter === "withGstin") return !!s.gstin;
       if (supplierFilter === "missingContact") return !s.phone && !s.email;
       if (supplierFilter === "active") {
-        return activePurchaseSupplierNames.has(String(s.name ?? "").trim().toLowerCase());
+        return activePurchaseSupplierNames.has(
+          String(s.name ?? "")
+            .trim()
+            .toLowerCase(),
+        );
       }
       if (supplierFilter === "recent") {
-        const supplierName = String(s.name ?? "").trim().toLowerCase();
+        const supplierName = String(s.name ?? "")
+          .trim()
+          .toLowerCase();
         return purchases.some((purchase) => {
-          const purchaseSupplier = String((purchase as any).supplier ?? "").trim().toLowerCase();
-          if (!purchaseSupplier || purchaseSupplier !== supplierName) return false;
-          const date = new Date((purchase as any).date ?? (purchase as any).createdAt ?? "");
+          const purchaseSupplier = String((purchase as any).supplier ?? "")
+            .trim()
+            .toLowerCase();
+          if (!purchaseSupplier || purchaseSupplier !== supplierName)
+            return false;
+          const date = new Date(
+            (purchase as any).date ?? (purchase as any).createdAt ?? "",
+          );
           return Number.isFinite(date.getTime()) && date >= recentCutoff;
         });
       }
@@ -332,38 +345,49 @@ export function PartiesScreen({ navigation, route }: Props) {
   const activeSuppliersCount = useMemo(
     () =>
       suppliers.filter((s) =>
-        activePurchaseSupplierNames.has(String(s.name ?? "").trim().toLowerCase()),
+        activePurchaseSupplierNames.has(
+          String(s.name ?? "")
+            .trim()
+            .toLowerCase(),
+        ),
       ).length,
     [activePurchaseSupplierNames, suppliers],
   );
 
-  const supplierFilterOptions = useMemo(
-    () => {
-      const recentCutoff = new Date();
-      recentCutoff.setDate(recentCutoff.getDate() - 30);
-      const recentCount = suppliers.filter((s) => {
-        const supplierName = String(s.name ?? "").trim().toLowerCase();
-        return purchases.some((purchase) => {
-          const purchaseSupplier = String((purchase as any).supplier ?? "").trim().toLowerCase();
-          if (!purchaseSupplier || purchaseSupplier !== supplierName) return false;
-          const date = new Date((purchase as any).date ?? (purchase as any).createdAt ?? "");
-          return Number.isFinite(date.getTime()) && date >= recentCutoff;
-        });
-      }).length;
+  const supplierFilterOptions = useMemo(() => {
+    const recentCutoff = new Date();
+    recentCutoff.setDate(recentCutoff.getDate() - 30);
+    const recentCount = suppliers.filter((s) => {
+      const supplierName = String(s.name ?? "")
+        .trim()
+        .toLowerCase();
+      return purchases.some((purchase) => {
+        const purchaseSupplier = String((purchase as any).supplier ?? "")
+          .trim()
+          .toLowerCase();
+        if (!purchaseSupplier || purchaseSupplier !== supplierName)
+          return false;
+        const date = new Date(
+          (purchase as any).date ?? (purchase as any).createdAt ?? "",
+        );
+        return Number.isFinite(date.getTime()) && date >= recentCutoff;
+      });
+    }).length;
 
-      return [
-        { id: "all", label: `All (${suppliers.length})` },
-        { id: "active", label: `Active (${activeSuppliersCount})` },
-        { id: "recent", label: `Recent 30d (${recentCount})` },
-        { id: "withGstin", label: `GSTIN (${suppliers.filter((s) => !!s.gstin).length})` },
-        {
-          id: "missingContact",
-          label: `Missing Contact (${suppliers.filter((s) => !s.phone && !s.email).length})`,
-        },
-      ];
-    },
-    [activeSuppliersCount, purchases, suppliers],
-  );
+    return [
+      { id: "all", label: `All (${suppliers.length})` },
+      { id: "active", label: `Active (${activeSuppliersCount})` },
+      { id: "recent", label: `Recent 30d (${recentCount})` },
+      {
+        id: "withGstin",
+        label: `GSTIN (${suppliers.filter((s) => !!s.gstin).length})`,
+      },
+      {
+        id: "missingContact",
+        label: `Missing Contact (${suppliers.filter((s) => !s.phone && !s.email).length})`,
+      },
+    ];
+  }, [activeSuppliersCount, purchases, suppliers]);
 
   const activeSupplierFilters = useMemo(
     () =>
@@ -805,7 +829,6 @@ export function PartiesScreen({ navigation, route }: Props) {
                     setFilter(toRemove ? "all" : (nextFilter as FilterTab));
                   });
                 }}
-                onClearAll={() => setFilter("all")}
                 variant="chips"
                 maxVisible={4}
                 className="mb-4"
@@ -967,7 +990,6 @@ export function PartiesScreen({ navigation, route }: Props) {
                     );
                   });
                 }}
-                onClearAll={() => setSupplierFilter("all")}
                 variant="chips"
                 maxVisible={4}
                 className="mb-4"
