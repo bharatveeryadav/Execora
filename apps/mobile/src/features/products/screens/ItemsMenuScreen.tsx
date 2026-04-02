@@ -123,7 +123,10 @@ export function ItemsMenuScreen({ navigation }: Props) {
             </View>
             <View className="flex-1 min-w-0 pr-2">
               <Text className={TYPO.body}>Low Stock Notification</Text>
-              <Text className="text-[11px] text-amber-700 mt-0.5" numberOfLines={1}>
+              <Text
+                className="text-[11px] text-amber-700 mt-0.5"
+                numberOfLines={1}
+              >
                 Show or hide low-stock alert banner on Items screen
               </Text>
             </View>
@@ -150,7 +153,10 @@ export function ItemsMenuScreen({ navigation }: Props) {
                 <Text className={TYPO.body} numberOfLines={1}>
                   {item.label}
                 </Text>
-                <Text className="text-[11px] text-slate-500 mt-0.5" numberOfLines={1}>
+                <Text
+                  className="text-[11px] text-slate-500 mt-0.5"
+                  numberOfLines={1}
+                >
                   {item.subtitle}
                 </Text>
               </View>
