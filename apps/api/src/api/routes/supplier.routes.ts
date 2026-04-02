@@ -44,6 +44,23 @@ export async function supplierRoutes(fastify: FastifyInstance) {
 		}
 	);
 
+	// ── GET /api/v1/suppliers/:id ─────────────────────────────────────────────
+	fastify.get<{ Params: { id: string } }>(
+		'/api/v1/suppliers/:id',
+		async (request, reply) => {
+			const tenantId = request.user!.tenantId;
+			const supplier = await prisma.supplier.findFirst({
+				where: { id: request.params.id, tenantId },
+			});
+
+			if (!supplier) {
+				return reply.code(404).send({ error: 'Supplier not found' });
+			}
+
+			return { supplier };
+		}
+	);
+
 	// ── POST /api/v1/suppliers ────────────────────────────────────────────────
 	fastify.post(
 		'/api/v1/suppliers',

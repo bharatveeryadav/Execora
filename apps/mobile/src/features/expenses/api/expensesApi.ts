@@ -22,14 +22,18 @@ export const expenseApi = {
       from?: string;
       to?: string;
       category?: string;
+      supplier?: string;
       type?: "expense" | "income";
+      limit?: number;
     } = {},
   ) => {
     const q = new URLSearchParams();
     if (params.from) q.set("from", params.from);
     if (params.to) q.set("to", params.to);
     if (params.category) q.set("category", params.category);
+    if (params.supplier) q.set("supplier", params.supplier);
     if (params.type) q.set("type", params.type);
+    if (params.limit) q.set("limit", String(params.limit));
     const s = q.toString();
     return apiFetch<{
       expenses: Array<{
@@ -89,6 +93,18 @@ export const supplierApi = {
       }>;
     }>(`/api/v1/suppliers${s ? `?${s}` : ""}`);
   },
+  get: (id: string) =>
+    apiFetch<{
+      supplier: {
+        id: string;
+        name: string;
+        companyName?: string | null;
+        phone?: string | null;
+        email?: string | null;
+        address?: string | null;
+        gstin?: string | null;
+      };
+    }>(`/api/v1/suppliers/${id}`),
   create: (data: {
     name: string;
     companyName?: string;
@@ -104,18 +120,24 @@ export const supplierApi = {
 };
 
 export const purchaseApi = {
-  list: (params: { from?: string; to?: string } = {}) => {
+  list: (params: { from?: string; to?: string; supplier?: string; limit?: number } = {}) => {
     const q = new URLSearchParams();
     if (params.from) q.set("from", params.from);
     if (params.to) q.set("to", params.to);
+    if (params.supplier) q.set("supplier", params.supplier);
+    if (params.limit) q.set("limit", String(params.limit));
     const s = q.toString();
     return apiFetch<{
       purchases: Array<{
         id: string;
         category: string;
         amount: string | number;
+        itemName?: string;
         note?: string;
         supplier?: string;
+        quantity?: string | number;
+        unit?: string;
+        ratePerUnit?: string | number;
         date: string;
       }>;
       total: number;

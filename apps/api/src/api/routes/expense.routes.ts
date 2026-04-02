@@ -22,11 +22,11 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 		'/api/v1/expenses',
 		async (
 			request: FastifyRequest<{
-				Querystring: { from?: string; to?: string; category?: string; type?: string; limit?: string };
+				Querystring: { from?: string; to?: string; category?: string; type?: string; supplier?: string; limit?: string };
 			}>
 		) => {
 			const tenantId = request.user!.tenantId;
-			const { from, to, category, type: typeFilter } = request.query;
+			const { from, to, category, supplier, type: typeFilter } = request.query;
 			const limit = Math.min(parseInt(request.query.limit ?? '200', 10) || 200, 500);
 			const { f, t } = parseDateRange(from, to);
 			const expenseType = typeFilter === 'income' ? 'income' : 'expense';
@@ -37,6 +37,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 					type: expenseType,
 					date: { gte: f, lte: t },
 					...(category ? { category } : {}),
+					...(supplier ? { supplier: { contains: supplier, mode: 'insensitive' } } : {}),
 				},
 				orderBy: { date: 'desc' },
 				take: limit,
@@ -135,15 +136,21 @@ export async function expenseRoutes(fastify: FastifyInstance) {
 		'/api/v1/purchases',
 		async (
 			request: FastifyRequest<{
-				Querystring: { from?: string; to?: string; limit?: string };
+				Querystring: { from?: string; to?: string; supplier?: string; limit?: string };
 			}>
 		) => {
 			const tenantId = request.user!.tenantId;
 			const limit = Math.min(parseInt(request.query.limit ?? '200', 10) || 200, 500);
+			const supplier = (request.query.supplier ?? '').trim();
 			const { f, t } = parseDateRange(request.query.from, request.query.to);
 
 			const purchases = await prisma.expense.findMany({
-				where: { tenantId, type: 'purchase', date: { gte: f, lte: t } },
+				where: {
+					tenantId,
+					type: 'purchase',
+					date: { gte: f, lte: t },
+					...(supplier ? { supplier: { contains: supplier, mode: 'insensitive' } } : {}),
+				},
 				orderBy: { date: 'desc' },
 				take: limit,
 			});
