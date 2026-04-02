@@ -7,6 +7,7 @@ export const paymentApi = {
     amount: number;
     method: string;
     reference?: string;
+    note?: string;
     date?: string;
   }) =>
     apiFetch<{ payment: unknown }>("/api/v1/payments", {

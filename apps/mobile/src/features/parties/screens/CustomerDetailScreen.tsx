@@ -19,7 +19,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { customerApi, reminderApi, customerExtApi } from ".."; // APIs from feature;
 import { useCustomerDetail, useCustomerInvoices, useCustomerLedger } from ".."; // Re-exported from feature;
 import {
@@ -58,6 +58,13 @@ const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
 export function CustomerDetailScreen({ navigation, route }: Props) {
   const { id } = route.params;
   const qc = useQueryClient();
+
+  const toWhatsAppNumber = (phone: string) => {
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length === 10) return `91${digits}`;
+    if (digits.length === 12 && digits.startsWith("91")) return digits;
+    return digits;
+  };
 
   const navigateInvoice = () => {
     (navigation.getParent() as any)?.navigate("MoreTab", {
@@ -114,6 +121,26 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
 
   const { data: ledgerData } = useCustomerLedger(id);
 
+  const {
+    data: remindersData,
+    refetch: refetchReminders,
+    isFetching: remindersFetching,
+  } = useQuery({
+    queryKey: ["reminders", id],
+    queryFn: () => reminderApi.list(id),
+    staleTime: 30_000,
+  });
+
+  const {
+    data: commPrefsData,
+    refetch: refetchCommPrefs,
+    isFetching: commPrefsFetching,
+  } = useQuery({
+    queryKey: ["customer-comm-prefs", id],
+    queryFn: () => customerExtApi.getCommPrefs(id),
+    staleTime: 30_000,
+  });
+
   // ── Mutations ─────────────────────────────────────────────────────────────
 
   const updateMutation = useMutation({
@@ -140,6 +167,8 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
     mutationFn: (data: any) => reminderApi.create(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEYS.reminders.all() });
+      qc.invalidateQueries({ queryKey: ["reminders", id] });
+      refetchReminders();
       setReminderOpen(false);
       showSuccess("Reminder set ✅");
     },
@@ -149,7 +178,8 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
   const updatePrefsMutation = useMutation({
     mutationFn: (data: any) => customerExtApi.updateCommPrefs(id, data),
     onSuccess: () => {
-      // TODO: Add comm prefs to QUERY_KEYS when implementing notification preferences
+      qc.invalidateQueries({ queryKey: ["customer-comm-prefs", id] });
+      refetchCommPrefs();
       setPrefsOpen(false);
       showSuccess("Preferences saved ✅");
     },
@@ -184,8 +214,8 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
 
   const invoices = (invoiceData as any)?.invoices ?? [];
   const ledger = (ledgerData as any)?.entries ?? [];
-  // TODO: Implement useReminders hook - fetch reminders for this customer
-  const reminders: any[] = [];
+  const reminders: any[] = (remindersData as any)?.reminders ?? [];
+  const commPrefs = (commPrefsData as any)?.prefs ?? null;
 
   const balance = toFloat(customer.balance);
   const totalBilled = invoices.reduce(
@@ -212,14 +242,12 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
   }
 
   function openPrefs() {
-    // Initialize with defaults from customer data
-    // TODO: Load actual prefs from API when implemented
-    setPWaEnabled(true);
-    setPWaNumber(customer?.phone ?? "");
-    setPEmailEnabled(false);
-    setPEmailAddress(customer?.email ?? "");
-    setPSmsEnabled(false);
-    setPLang("hi");
+    setPWaEnabled(commPrefs?.whatsappEnabled ?? true);
+    setPWaNumber(commPrefs?.whatsappNumber ?? customer?.phone ?? "");
+    setPEmailEnabled(commPrefs?.emailEnabled ?? false);
+    setPEmailAddress(commPrefs?.emailAddress ?? customer?.email ?? "");
+    setPSmsEnabled(commPrefs?.smsEnabled ?? false);
+    setPLang(commPrefs?.preferredLanguage ?? "hi");
     setPrefsOpen(true);
   }
 
@@ -265,7 +293,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
               <TouchableOpacity
                 onPress={() =>
                   Linking.openURL(
-                    `https://wa.me/91${customer.phone.replace(/\D/g, "")}`,
+                    `https://wa.me/${toWhatsAppNumber(customer.phone)}`,
                   )
                 }
                 className="p-2"
@@ -467,17 +495,17 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
               {[
                 {
                   label: "WhatsApp",
-                  on: true, // Default: enabled
-                  detail: customer?.phone,
+                  on: commPrefs?.whatsappEnabled ?? true,
+                  detail: commPrefs?.whatsappNumber ?? customer?.phone,
                 },
                 {
                   label: "Email",
-                  on: false, // Default: disabled
-                  detail: customer?.email,
+                  on: commPrefs?.emailEnabled ?? false,
+                  detail: commPrefs?.emailAddress ?? customer?.email,
                 },
                 {
                   label: "SMS",
-                  on: false, // Default: disabled
+                  on: commPrefs?.smsEnabled ?? false,
                   detail: undefined,
                 },
               ].map((ch) => (
@@ -495,6 +523,11 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
                   </Text>
                 </View>
               ))}
+              {commPrefsFetching && (
+                <Text className="text-[11px] text-slate-400 mt-1">
+                  Syncing saved preferences...
+                </Text>
+              )}
             </View>
           </>
         )}
@@ -600,7 +633,11 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
               </TouchableOpacity>
             </View>
             <View className="bg-white rounded-2xl overflow-hidden shadow-sm">
-              {reminders.length === 0 ? (
+              {remindersFetching ? (
+                <View className="py-8 items-center">
+                  <ActivityIndicator size="small" color="#e67e22" />
+                </View>
+              ) : reminders.length === 0 ? (
                 <View className="py-10 items-center">
                   <Text className="text-slate-400 text-sm">
                     No reminders yet

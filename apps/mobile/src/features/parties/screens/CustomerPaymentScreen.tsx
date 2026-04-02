@@ -85,6 +85,7 @@ export function PaymentScreen({ navigation, route }: Props) {
         amount: parsedAmount,
         method,
         reference: reference || undefined,
+        note: note.trim() || undefined,
       }),
     onSuccess: () => {
       hapticSuccess();

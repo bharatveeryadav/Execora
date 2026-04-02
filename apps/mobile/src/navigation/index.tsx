@@ -26,6 +26,7 @@ import {
   CustomerDetailScreen,
   PaymentScreen,
   OverdueScreen,
+  SupplierDetailScreen,
 } from "../features/parties";
 import {
   ItemsScreen,
@@ -166,6 +167,7 @@ export type InvoicesStackParams = {
 export type PartiesStackParams = {
   Parties: { initialTab?: "customers" | "suppliers" } | undefined;
   PartyDetail: { id: string };
+  SupplierDetail: { supplierId: string; supplierName?: string };
   Payment: { customerId?: string };
   Overdue: undefined;
 };
@@ -317,6 +319,11 @@ function PartiesNavigator() {
         <PartiesStack.Screen
           name="PartyDetail"
           component={CustomerDetailScreen}
+        />
+        <PartiesStack.Screen
+          name="SupplierDetail"
+          component={SupplierDetailScreen}
+          options={{ headerShown: true, title: "Supplier" }}
         />
         <PartiesStack.Screen name="Payment" component={PaymentScreen} />
         <PartiesStack.Screen

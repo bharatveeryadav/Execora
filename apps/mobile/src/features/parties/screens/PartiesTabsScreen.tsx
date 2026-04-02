@@ -20,7 +20,6 @@ import {
   RefreshControl,
   ActivityIndicator,
   Linking,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
@@ -72,6 +71,13 @@ export function PartiesScreen({ navigation, route }: Props) {
     (width - contentWidth) / 2 + contentPad,
   );
   useWsInvalidation(["customers", "summary"]);
+
+  const toWhatsAppNumber = useCallback((phone: string) => {
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length === 10) return `91${digits}`;
+    if (digits.length === 12 && digits.startsWith("91")) return digits;
+    return digits;
+  }, []);
 
   const initialTab: Tab =
     route.params?.initialTab === "suppliers" ? "suppliers" : "customers";
@@ -174,11 +180,11 @@ export function PartiesScreen({ navigation, route }: Props) {
   const purchases = purchaseData?.purchases ?? [];
   const invoices = invoiceData?.invoices ?? [];
 
-  const vendorToPay = purchases.reduce(
-    (s, p) => s + (parseFloat(String(p.amount)) || 0),
+  const supplierPurchaseTotal = purchases.reduce(
+    (sum, p) => sum + (parseFloat(String(p.amount)) || 0),
     0,
   );
-  const vendorToCollect = 0;
+  const supplierPurchaseCount = purchases.length;
 
   // ── Aging (from web) ───────────────────────────────────────────────────
 
@@ -276,6 +282,11 @@ export function PartiesScreen({ navigation, route }: Props) {
         .filter((option) => option.id === filter)
         .map((option) => ({ id: option.id, label: option.label })),
     [customerFilterOptions, filter],
+  );
+
+  const customerListData = useMemo(
+    () => (filter === "aging" ? agingCustomers : filtered),
+    [agingCustomers, filter, filtered],
   );
 
   const isCustomersInitialLoading = isFetching && !custData;
@@ -448,7 +459,7 @@ export function PartiesScreen({ navigation, route }: Props) {
       return (
         <Pressable
           key={c.id}
-          className="flex-row items-center gap-3 px-4 py-3.5 border-b border-slate-100 bg-white"
+          className="min-h-[74] flex-row items-center gap-3 px-4 py-3 border-b border-slate-100 bg-white"
           accessibilityRole="button"
           accessibilityLabel={`Open ${c.name} details`}
           onPress={() => navigation.navigate("PartyDetail", { id: c.id })}
@@ -465,7 +476,7 @@ export function PartiesScreen({ navigation, route }: Props) {
               {c.name?.charAt(0)?.toUpperCase() ?? "?"}
             </Text>
           </View>
-          <View className="flex-1 min-w-0">
+          <View className="flex-1 min-w-0 justify-center pr-2">
             <View className="flex-row items-center gap-2 min-w-0">
               <Text
                 className={`${TYPO.labelBold} flex-1 min-w-0`}
@@ -474,7 +485,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                 {c.name}
               </Text>
               {((c as any).tags ?? []).includes("VIP") && (
-                <View className="bg-amber-100 px-2 py-0.5 rounded-full">
+                <View className="bg-amber-100 px-1.5 py-0.5 rounded-full">
                   <Text className="text-[10px] font-semibold text-amber-700">
                     VIP
                   </Text>
@@ -493,13 +504,13 @@ export function PartiesScreen({ navigation, route }: Props) {
               {filter === "aging" && c.phone ? ` · ${c.phone}` : ""}
             </Text>
           </View>
-          <View className="items-end min-w-[4rem]">
+          <View className="w-[88px] items-end justify-center">
             {hasOutstanding ? (
               <Text className="text-sm font-bold tabular-nums text-red-600">
                 ₹{inr(balance)}
               </Text>
             ) : (
-              <View className="flex-row items-center gap-1 bg-green-50 px-2.5 py-1 rounded-full">
+              <View className="flex-row items-center gap-1 bg-green-50 px-2 py-1 rounded-full">
                 <Ionicons name="checkmark-circle" size={12} color="#16a34a" />
                 <Text className="text-[11px] font-medium text-green-700">
                   Clear
@@ -507,13 +518,13 @@ export function PartiesScreen({ navigation, route }: Props) {
               </View>
             )}
           </View>
-          <View className="flex-row gap-1">
-            {c.phone && (
+          <View className="w-[44px] items-end justify-center">
+            {c.phone ? (
               <Pressable
                 onPress={(e) => {
                   e.stopPropagation();
                   Linking.openURL(
-                    `https://wa.me/91${c.phone!.replace(/\D/g, "")}`,
+                    `https://wa.me/${toWhatsAppNumber(c.phone!)}`,
                   );
                 }}
                 accessibilityRole="button"
@@ -524,27 +535,16 @@ export function PartiesScreen({ navigation, route }: Props) {
               >
                 <Ionicons name="logo-whatsapp" size={18} color="#16a34a" />
               </Pressable>
-            )}
-            {c.phone && (
-              <Pressable
-                onPress={(e) => {
-                  e.stopPropagation();
-                  Linking.openURL(`tel:${c.phone}`);
-                }}
-                accessibilityRole="button"
-                accessibilityLabel={`Call ${c.name}`}
-                hitSlop={hitSlop}
-                className="w-10 h-10 rounded-full bg-slate-100 items-center justify-center"
-                style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-              >
-                <Ionicons name="call" size={16} color="#475569" />
-              </Pressable>
+            ) : (
+              <View className="w-10 h-10 rounded-full bg-slate-50 items-center justify-center">
+                <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
+              </View>
             )}
           </View>
         </Pressable>
       );
     },
-    [filter, navigation],
+    [filter, navigation, toWhatsAppNumber],
   );
 
   // ── Main render ─────────────────────────────────────────────────────────
@@ -722,91 +722,73 @@ export function PartiesScreen({ navigation, route }: Props) {
                 className="mb-4"
               />
 
-              {/* Aging buckets */}
-              {filter === "aging" && (
-                <View className="gap-4 mb-4">
-                  {agingCustomers.length === 0 ? (
-                    <View className="rounded-2xl border border-slate-200/80 bg-white py-16 items-center shadow-sm">
-                      <View className="w-16 h-16 rounded-full bg-green-50 items-center justify-center mb-3">
-                        <Ionicons
-                          name="checkmark-circle"
-                          size={40}
-                          color="#22c55e"
-                        />
-                      </View>
-                      <Text className={TYPO.bodyMuted}>No dues found</Text>
-                    </View>
-                  ) : (
-                    agingBuckets.map(
-                      (bucket) =>
-                        bucket.items.length > 0 && (
+              {isCustomersInitialLoading ? (
+                <View className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-sm px-4 py-4 gap-3">
+                  <Skeleton className="h-14 w-full" />
+                  <Skeleton className="h-14 w-full" />
+                  <Skeleton className="h-14 w-full" />
+                  <Skeleton className="h-14 w-full" />
+                </View>
+              ) : isError ? (
+                <View className="py-8 px-4">
+                  <ErrorCard
+                    message="Failed to load customers"
+                    onRetry={() => refetch()}
+                  />
+                </View>
+              ) : customerListData.length === 0 ? (
+                <View className="py-14 items-center rounded-2xl bg-white border border-slate-200/80">
+                  <EmptyState
+                    iconName={search ? "search-outline" : "people-outline"}
+                    title={search ? "No customers found" : "No customers yet"}
+                    description={
+                      search
+                        ? "Try a different search"
+                        : filter === "aging"
+                          ? "No dues found"
+                          : "Add your first customer"
+                    }
+                    actionLabel={
+                      !search && filter !== "aging" ? "Add Customer" : undefined
+                    }
+                    onAction={
+                      !search && filter !== "aging" ? openAdd : undefined
+                    }
+                  />
+                </View>
+              ) : filter === "aging" ? (
+                <View className="gap-0">
+                  {agingBuckets.map(
+                    (bucket) =>
+                      bucket.items.length > 0 && (
+                        <View key={bucket.label} className="mb-3">
                           <View
-                            key={bucket.label}
-                            className="rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm mb-4"
+                            className={`flex-row items-center justify-between px-4 py-2.5 rounded-xl mb-2 ${bucket.bg}`}
                           >
-                            <View
-                              className={`flex-row items-center justify-between px-4 py-3 ${bucket.bg}`}
+                            <Text
+                              className={`text-xs font-semibold ${bucket.color}`}
                             >
-                              <Text
-                                className={`text-sm font-semibold ${bucket.color}`}
-                              >
-                                {bucket.label}
-                              </Text>
-                              <View
-                                className={`rounded-full px-2 py-0.5 ${bucket.bg}`}
-                              >
-                                <Text
-                                  className={`text-[10px] font-bold ${bucket.color}`}
-                                >
-                                  {bucket.items.length}
-                                </Text>
-                              </View>
-                            </View>
-                            <View className="bg-white">
-                              {bucket.items.map((c) => renderCustomerRow(c))}
-                            </View>
+                              {bucket.label}
+                            </Text>
+                            <Text
+                              className={`text-xs font-bold ${bucket.color}`}
+                            >
+                              {bucket.items.length}
+                            </Text>
                           </View>
-                        ),
-                    )
+                          <View className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
+                            {bucket.items.map((customer) =>
+                              renderCustomerRow(customer),
+                            )}
+                          </View>
+                        </View>
+                      ),
                   )}
                 </View>
-              )}
-
-              {/* Customer list */}
-              {filter !== "aging" && (
+              ) : (
                 <View className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
-                  {isCustomersInitialLoading ? (
-                    <View className="px-4 py-4 gap-3">
-                      <Skeleton className="h-14 w-full" />
-                      <Skeleton className="h-14 w-full" />
-                      <Skeleton className="h-14 w-full" />
-                      <Skeleton className="h-14 w-full" />
-                    </View>
-                  ) : isError ? (
-                    <View className="py-8 px-4">
-                      <ErrorCard
-                        message="Failed to load customers"
-                        onRetry={() => refetch()}
-                      />
-                    </View>
-                  ) : filtered.length === 0 ? (
-                    <View className="py-14 items-center rounded-2xl bg-white border border-slate-200/80">
-                      <EmptyState
-                        iconName={search ? "search-outline" : "people-outline"}
-                        title={
-                          search ? "No customers found" : "No customers yet"
-                        }
-                        description={
-                          search
-                            ? "Try a different search"
-                            : "Add your first customer"
-                        }
-                        actionLabel={!search ? "Add Customer" : undefined}
-                        onAction={!search ? openAdd : undefined}
-                      />
-                    </View>
-                  ) : (
-                    filtered.map((c) => renderCustomerRow(c))
+                  {customerListData.map((customer) =>
+                    renderCustomerRow(customer),
                   )}
                 </View>
               )}
@@ -857,13 +839,13 @@ export function PartiesScreen({ navigation, route }: Props) {
                     </View>
                     <View className="flex-1 min-w-0">
                       <Text className="text-[10px] font-medium text-red-600">
-                        To Pay
+                        Purchases
                       </Text>
                       <Text
                         className="text-[11px] font-bold text-red-700"
                         numberOfLines={1}
                       >
-                        ₹{inr(vendorToPay)}
+                        ₹{inr(supplierPurchaseTotal)}
                       </Text>
                     </View>
                   </View>
@@ -873,13 +855,13 @@ export function PartiesScreen({ navigation, route }: Props) {
                     </View>
                     <View className="flex-1 min-w-0">
                       <Text className="text-[10px] font-medium text-green-600">
-                        To Collect
+                        Entries
                       </Text>
                       <Text
                         className="text-[11px] font-bold text-green-700"
                         numberOfLines={1}
                       >
-                        ₹{inr(vendorToCollect)}
+                        {supplierPurchaseCount}
                       </Text>
                     </View>
                   </View>
@@ -927,8 +909,9 @@ export function PartiesScreen({ navigation, route }: Props) {
                       key={s.id}
                       className="flex-row items-center justify-between px-4 py-3.5 border-b border-slate-100 min-h-[56]"
                       onPress={() =>
-                        getTabNav()?.navigate("MoreTab", {
-                          screen: "Purchases",
+                        navigation.navigate("SupplierDetail", {
+                          supplierId: s.id,
+                          supplierName: s.name,
                         })
                       }
                       style={({ pressed }) => ({
@@ -1134,21 +1117,15 @@ export function PartiesScreen({ navigation, route }: Props) {
                   </Pressable>
 
                   <Pressable
-                    onPress={() => {
-                      setMenuOpen(false);
-                      showAlert(
-                        "Coming soon",
-                        "Merge customers feature is coming soon.",
-                      );
-                    }}
-                    className="min-h-[48] rounded-xl border border-slate-200 bg-white px-3 py-3 flex-row items-center gap-3"
+                    disabled
+                    className="min-h-[48] rounded-xl border border-slate-200 bg-slate-100 px-3 py-3 flex-row items-center gap-3 opacity-70"
                     style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
                   >
                     <View className="w-8 h-8 rounded-lg bg-slate-100 items-center justify-center">
                       <Ionicons name="git-merge" size={18} color="#64748b" />
                     </View>
                     <Text className={`${TYPO.body} flex-1`}>
-                      Merge Customers
+                      Merge Customers (Soon)
                     </Text>
                     <Ionicons
                       name="chevron-forward"
