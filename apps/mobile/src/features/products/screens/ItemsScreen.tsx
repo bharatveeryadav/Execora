@@ -151,6 +151,7 @@ type Props = NativeStackScreenProps<
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 export function ItemsScreen({ navigation }: Props) {
+  const LOW_STOCK_ALERTS_KEY = "items-low-stock-alerts-enabled";
   const qc = useQueryClient();
   useWsInvalidation(["products", "lowStock"]);
   const [search, setSearch] = useState("");
@@ -161,6 +162,10 @@ export function ItemsScreen({ navigation }: Props) {
   const [showHint, setShowHint] = useState(
     () => !storage.getString("items-hint-dismissed"),
   );
+  const [lowAlertEnabled, setLowAlertEnabled] = useState(
+    () => storage.getString(LOW_STOCK_ALERTS_KEY) !== "0",
+  );
+  const [lowAlertDismissed, setLowAlertDismissed] = useState(false);
   const [adjustTarget, setAdjustTarget] = useState<
     (Product & { minStock?: number }) | null
   >(null);
@@ -176,10 +181,18 @@ export function ItemsScreen({ navigation }: Props) {
       : "compact";
   });
   const searchInputRef = useRef<TextInput>(null);
+  const prevLowCountRef = useRef(0);
 
   useEffect(() => {
     storage.set("items-list-mode", listMode);
   }, [listMode]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      setLowAlertEnabled(storage.getString(LOW_STOCK_ALERTS_KEY) !== "0");
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const openSearch = useCallback(() => {
     setShowSearch(true);
@@ -392,6 +405,14 @@ export function ItemsScreen({ navigation }: Props) {
   );
 
   const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    if (lowCount !== prevLowCountRef.current) {
+      setLowAlertDismissed(false);
+      prevLowCountRef.current = lowCount;
+    }
+  }, [lowCount]);
+
   const fabBottom = Math.max(insets.bottom + 16, 20);
   const fabRight = Math.max(
     contentPad,
@@ -971,34 +992,49 @@ export function ItemsScreen({ navigation }: Props) {
       )}
 
       {/* ── Low-stock alert banner (PRD F-03.3) ───────────────────── */}
-      {lowCount > 0 && filter === "all" && !search && (
-        <Pressable
-          onPress={() => requestAnimationFrame(() => setFilter("low"))}
-          style={{
-            width: "100%",
-            maxWidth: contentWidth,
-            alignSelf: "center",
-            marginTop: 12,
-          }}
-          className="bg-amber-50 border border-amber-200 rounded-xl flex-row items-center px-3 py-2.5"
-        >
-          <View className="w-8 h-8 rounded-xl bg-amber-100 items-center justify-center mr-2.5">
-            <Ionicons name="alert-circle" size={16} color={COLORS.warning} />
-          </View>
-          <View className="flex-1">
-            <Text
-              className="text-xs font-bold text-amber-800"
-              numberOfLines={1}
+      {lowAlertEnabled &&
+        lowCount > 0 &&
+        filter === "all" &&
+        !search &&
+        !lowAlertDismissed && (
+          <Pressable
+            onPress={() => requestAnimationFrame(() => setFilter("low"))}
+            style={{
+              width: "100%",
+              maxWidth: contentWidth,
+              alignSelf: "center",
+              marginTop: 12,
+            }}
+            className="bg-amber-50 border border-amber-200 rounded-xl flex-row items-center px-3 py-2.5"
+          >
+            <View className="w-8 h-8 rounded-xl bg-amber-100 items-center justify-center mr-2.5">
+              <Ionicons name="alert-circle" size={16} color={COLORS.warning} />
+            </View>
+            <View className="flex-1">
+              <Text
+                className="text-xs font-bold text-amber-800"
+                numberOfLines={1}
+              >
+                {lowCount} item{lowCount !== 1 ? "s" : ""} running low
+              </Text>
+              <Text className="text-[11px] text-amber-600" numberOfLines={1}>
+                Tap to review & restock
+              </Text>
+            </View>
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation();
+                setLowAlertDismissed(true);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Close low stock notification"
+              className="w-7 h-7 rounded-full bg-amber-100 items-center justify-center mr-1"
             >
-              {lowCount} item{lowCount !== 1 ? "s" : ""} running low
-            </Text>
-            <Text className="text-[11px] text-amber-600" numberOfLines={1}>
-              Tap to review & restock
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={16} color={COLORS.warning} />
-        </Pressable>
-      )}
+              <Ionicons name="close" size={14} color={COLORS.warning} />
+            </Pressable>
+            <Ionicons name="chevron-forward" size={16} color={COLORS.warning} />
+          </Pressable>
+        )}
 
       {/* ── Product list ───────────────────────────────────────────── */}
       <ScrollView
