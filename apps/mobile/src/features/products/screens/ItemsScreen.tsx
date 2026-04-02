@@ -445,8 +445,8 @@ export function ItemsScreen({ navigation }: Props) {
       <View
         style={{
           paddingHorizontal: contentPad,
-          paddingTop: 8,
-          paddingBottom: 12,
+          paddingTop: 6,
+          paddingBottom: 8,
         }}
         className=""
       >
@@ -455,12 +455,12 @@ export function ItemsScreen({ navigation }: Props) {
         >
           <View
             className={`rounded-[24px] border border-slate-200 bg-white ${
-              isSmall ? "px-3.5 pt-3.5 pb-3.5" : "px-4 pt-4 pb-4"
+              isSmall ? "px-3.5 pt-3 pb-3" : "px-4 pt-3.5 pb-3.5"
             }`}
             style={styles.surfaceShadow}
           >
             {showSearch ? (
-              <View className="flex-row items-center gap-2 mb-4">
+              <View className="flex-row items-center gap-2 mb-2.5">
                 <View className="flex-1 flex-row items-center bg-slate-100 rounded-2xl px-3 min-h-[48]">
                   <Ionicons
                     name="search"
@@ -502,129 +502,132 @@ export function ItemsScreen({ navigation }: Props) {
               </View>
             ) : (
               <>
-              <View className="flex-row items-start justify-between mb-3 gap-3">
-                <View className="flex-1 min-w-0">
-                  <View className="flex-row items-center gap-2">
-                    <Text className="text-2xl font-bold tracking-tight text-slate-900">
-                      All Items
-                    </Text>
-                    <View className="rounded-full bg-primary/10 px-2.5 py-1">
-                      <Text className="text-[11px] font-bold text-primary uppercase">
-                        Full List
+                <View className="flex-row items-start justify-between mb-2 gap-3">
+                  <View className="flex-1 min-w-0">
+                    <View className="flex-row items-center gap-2">
+                      <Text className="text-2xl font-bold tracking-tight text-slate-900">
+                        All Items
                       </Text>
-                    </View>
-                  </View>
-                  <Text className="text-sm text-slate-500 mt-1">
-                    {filtersActive
-                      ? `${filtered.length} of ${allProducts.length} items`
-                      : `${allProducts.length} items • use filters for focus`}
-                  </Text>
-                </View>
-                <View className="flex-row items-center gap-2">
-                  <Pressable
-                    onPress={openSearch}
-                    accessibilityRole="button"
-                    accessibilityLabel="Search items"
-                    className="w-11 h-11 rounded-2xl items-center justify-center"
-                    style={({ pressed }) => ({
-                      backgroundColor: pressed
-                        ? COLORS.slate[200]
-                        : COLORS.slate[100],
-                    })}
-                  >
-                    <Ionicons
-                      name="search"
-                      size={20}
-                      color={COLORS.slate[600]}
-                    />
-                  </Pressable>
-                  <Pressable
-                    onPress={() => {
-                      InteractionManager.runAfterInteractions(() => {
-                        navigation?.navigate?.("ItemsMenu");
-                      });
-                    }}
-                    accessibilityRole="button"
-                    accessibilityLabel="Open items menu"
-                    className="w-11 h-11 rounded-2xl items-center justify-center"
-                    style={({ pressed }) => ({
-                      backgroundColor: pressed
-                        ? COLORS.slate[200]
-                        : COLORS.slate[100],
-                    })}
-                  >
-                    <Ionicons
-                      name="ellipsis-horizontal"
-                      size={20}
-                      color={COLORS.slate[600]}
-                    />
-                  </Pressable>
-                </View>
-              </View>
-
-              <View className="mb-3 rounded-2xl border border-slate-200 bg-slate-50 p-2.5">
-                <Text className="text-[11px] font-semibold uppercase tracking-[1px] text-slate-500 mb-2 px-1">
-                  Quick Access
-                </Text>
-                <View className="flex-row items-center gap-2">
-                  {[
-                    {
-                      key: "stockSummary",
-                      icon: "stats-chart-outline" as const,
-                      label: "Stock Summary",
-                      color: COLORS.warning,
-                    },
-                    {
-                      key: "itemDetails",
-                      icon: "receipt-outline" as const,
-                      label: "Details",
-                      color: COLORS.primary,
-                    },
-                    {
-                      key: "lowStockSummary",
-                      icon: "alert-circle-outline" as const,
-                      label: "Low Stock",
-                      color: COLORS.success,
-                    },
-                    {
-                      key: "onlineStore",
-                      icon: "storefront-outline" as const,
-                      label: "Store",
-                      color: COLORS.secondary,
-                    },
-                  ].map((action) => (
-                    <Pressable
-                      key={action.key}
-                      onPress={() =>
-                        openQuickAccess(
-                          action.key as
-                            | "stockSummary"
-                            | "itemDetails"
-                            | "lowStockSummary"
-                            | "onlineStore",
-                        )
-                      }
-                      accessibilityRole="button"
-                      accessibilityLabel={`Open ${action.label}`}
-                      className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 items-center"
-                    >
-                      <View
-                        className="h-8 w-8 rounded-lg items-center justify-center"
-                        style={{ backgroundColor: `${action.color}1A` }}
-                      >
-                        <Ionicons
-                          name={action.icon}
-                          size={16}
-                          color={action.color}
-                        />
+                      <View className="rounded-full bg-primary/10 px-2.5 py-1">
+                        <Text className="text-[11px] font-bold text-primary uppercase">
+                          Full List
+                        </Text>
                       </View>
-                      <Text className="text-[11px] font-semibold text-slate-700 mt-1.5">
-                        {action.label}
-                      </Text>
+                    </View>
+                    <Text className="text-sm text-slate-500 mt-1">
+                      {filtersActive
+                        ? `${filtered.length} of ${allProducts.length} items`
+                        : `${allProducts.length} items • use filters for focus`}
+                    </Text>
+                  </View>
+                  <View className="flex-row items-center gap-2">
+                    <Pressable
+                      onPress={openSearch}
+                      accessibilityRole="button"
+                      accessibilityLabel="Search items"
+                      className="w-11 h-11 rounded-2xl items-center justify-center"
+                      style={({ pressed }) => ({
+                        backgroundColor: pressed
+                          ? COLORS.slate[200]
+                          : COLORS.slate[100],
+                      })}
+                    >
+                      <Ionicons
+                        name="search"
+                        size={20}
+                        color={COLORS.slate[600]}
+                      />
                     </Pressable>
-                  ))}
+                    <Pressable
+                      onPress={() => {
+                        InteractionManager.runAfterInteractions(() => {
+                          navigation?.navigate?.("ItemsMenu");
+                        });
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Open items menu"
+                      className="w-11 h-11 rounded-2xl items-center justify-center"
+                      style={({ pressed }) => ({
+                        backgroundColor: pressed
+                          ? COLORS.slate[200]
+                          : COLORS.slate[100],
+                      })}
+                    >
+                      <Ionicons
+                        name="ellipsis-horizontal"
+                        size={20}
+                        color={COLORS.slate[600]}
+                      />
+                    </Pressable>
+                  </View>
                 </View>
-              </View>
+
+                <View className="mb-2 rounded-2xl border border-slate-200 bg-slate-50 px-2.5 py-2">
+                  <Text className="text-[10px] font-semibold uppercase tracking-[1px] text-slate-500 mb-1 px-1">
+                    Quick Access
+                  </Text>
+                  <View className="flex-row items-stretch gap-2">
+                    {[
+                      {
+                        key: "stockSummary",
+                        icon: "stats-chart-outline" as const,
+                        label: "Stock",
+                        color: COLORS.warning,
+                      },
+                      {
+                        key: "itemDetails",
+                        icon: "receipt-outline" as const,
+                        label: "Details",
+                        color: COLORS.primary,
+                      },
+                      {
+                        key: "lowStockSummary",
+                        icon: "alert-circle-outline" as const,
+                        label: "Low",
+                        color: COLORS.success,
+                      },
+                      {
+                        key: "onlineStore",
+                        icon: "storefront-outline" as const,
+                        label: "Store",
+                        color: COLORS.secondary,
+                      },
+                    ].map((action) => (
+                      <Pressable
+                        key={action.key}
+                        onPress={() =>
+                          openQuickAccess(
+                            action.key as
+                              | "stockSummary"
+                              | "itemDetails"
+                              | "lowStockSummary"
+                              | "onlineStore",
+                          )
+                        }
+                        accessibilityRole="button"
+                        accessibilityLabel={`Open ${action.label}`}
+                        className="flex-1 rounded-xl border border-slate-200 bg-white px-2 py-2.5 items-center justify-center min-h-[56]"
+                      >
+                        <View
+                          className="h-7 w-7 rounded-md items-center justify-center"
+                          style={{ backgroundColor: `${action.color}1A` }}
+                        >
+                          <Ionicons
+                            name={action.icon}
+                            size={14}
+                            color={action.color}
+                          />
+                        </View>
+                        <Text
+                          className="text-[10px] font-semibold text-slate-700 mt-1"
+                          numberOfLines={1}
+                        >
+                          {action.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
               </>
             )}
 
@@ -983,7 +986,10 @@ export function ItemsScreen({ navigation }: Props) {
             <Ionicons name="alert-circle" size={16} color={COLORS.warning} />
           </View>
           <View className="flex-1">
-            <Text className="text-xs font-bold text-amber-800" numberOfLines={1}>
+            <Text
+              className="text-xs font-bold text-amber-800"
+              numberOfLines={1}
+            >
               {lowCount} item{lowCount !== 1 ? "s" : ""} running low
             </Text>
             <Text className="text-[11px] text-amber-600" numberOfLines={1}>
@@ -1440,12 +1446,17 @@ function ProductCard({
                   resizeMode="cover"
                 />
               ) : (
-                <Text className="text-lg">{categoryIcon(product.category)}</Text>
+                <Text className="text-lg">
+                  {categoryIcon(product.category)}
+                </Text>
               )}
             </View>
 
             <View className="flex-1 min-w-0">
-              <Text className="text-sm font-bold text-slate-900" numberOfLines={1}>
+              <Text
+                className="text-sm font-bold text-slate-900"
+                numberOfLines={1}
+              >
                 {product.name}
               </Text>
 
@@ -1457,7 +1468,10 @@ function ProductCard({
                   className="rounded-full px-1.5 py-0.5"
                   style={{ backgroundColor: statusBg }}
                 >
-                  <Text className="text-[10px] font-semibold" style={{ color: statusTone }}>
+                  <Text
+                    className="text-[10px] font-semibold"
+                    style={{ color: statusTone }}
+                  >
                     {s.label}
                   </Text>
                 </View>
@@ -1484,17 +1498,27 @@ function ProductCard({
                 </View>
                 {wholesalePrice !== null && (
                   <View className="flex-row items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5">
-                    <Text className="text-[9px] font-bold text-emerald-700">W</Text>
+                    <Text className="text-[9px] font-bold text-emerald-700">
+                      W
+                    </Text>
                     <Text className="text-[9px] font-semibold text-emerald-600">
-                      ₹{wholesalePrice % 1 === 0 ? wholesalePrice : wholesalePrice.toFixed(2)}
+                      ₹
+                      {wholesalePrice % 1 === 0
+                        ? wholesalePrice
+                        : wholesalePrice.toFixed(2)}
                     </Text>
                   </View>
                 )}
                 {dealerPrice !== null && (
                   <View className="flex-row items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5">
-                    <Text className="text-[9px] font-bold text-orange-700">D</Text>
+                    <Text className="text-[9px] font-bold text-orange-700">
+                      D
+                    </Text>
                     <Text className="text-[9px] font-semibold text-orange-600">
-                      ₹{dealerPrice % 1 === 0 ? dealerPrice : dealerPrice.toFixed(2)}
+                      ₹
+                      {dealerPrice % 1 === 0
+                        ? dealerPrice
+                        : dealerPrice.toFixed(2)}
                     </Text>
                   </View>
                 )}
@@ -1513,7 +1537,9 @@ function ProductCard({
                   resizeMode="cover"
                 />
               ) : (
-                <Text className="text-2xl">{categoryIcon(product.category)}</Text>
+                <Text className="text-2xl">
+                  {categoryIcon(product.category)}
+                </Text>
               )}
             </View>
 
@@ -1523,7 +1549,10 @@ function ProductCard({
                   <Text className="text-[11px] font-semibold uppercase tracking-[1px] text-slate-500">
                     {categoryLabel}
                   </Text>
-                  <Text className="mt-1 text-base font-bold text-slate-900" numberOfLines={1}>
+                  <Text
+                    className="mt-1 text-base font-bold text-slate-900"
+                    numberOfLines={1}
+                  >
                     {product.name}
                   </Text>
                   <View className="mt-3 flex-row flex-wrap gap-2">
@@ -1532,8 +1561,14 @@ function ProductCard({
                         Stock {stockVal} {product.unit ?? "pcs"}
                       </Text>
                     </View>
-                    <View className="rounded-full px-3 py-1.5" style={{ backgroundColor: statusBg }}>
-                      <Text className="text-[11px] font-semibold" style={{ color: statusTone }}>
+                    <View
+                      className="rounded-full px-3 py-1.5"
+                      style={{ backgroundColor: statusBg }}
+                    >
+                      <Text
+                        className="text-[11px] font-semibold"
+                        style={{ color: statusTone }}
+                      >
                         {s.label}
                       </Text>
                     </View>
@@ -1575,7 +1610,9 @@ function ProductCard({
               <View className="mt-3 flex-row gap-1.5">
                 {wholesalePrice !== null && (
                   <View className="flex-row items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1">
-                    <Text className="text-[9px] font-bold text-emerald-700">W</Text>
+                    <Text className="text-[9px] font-bold text-emerald-700">
+                      W
+                    </Text>
                     <Text className="text-[9px] font-semibold text-emerald-600">
                       ₹
                       {wholesalePrice % 1 === 0
@@ -1586,7 +1623,9 @@ function ProductCard({
                 )}
                 {dealerPrice !== null && (
                   <View className="flex-row items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1">
-                    <Text className="text-[9px] font-bold text-orange-700">D</Text>
+                    <Text className="text-[9px] font-bold text-orange-700">
+                      D
+                    </Text>
                     <Text className="text-[9px] font-semibold text-orange-600">
                       ₹
                       {dealerPrice % 1 === 0
@@ -1627,7 +1666,9 @@ function ProductCard({
             isCompact ? "min-h-11 py-2.5" : "min-h-12 py-3"
           }`}
         >
-          <Text className={`${isCompact ? "text-xs" : "text-sm"} font-semibold text-slate-500`}>
+          <Text
+            className={`${isCompact ? "text-xs" : "text-sm"} font-semibold text-slate-500`}
+          >
             Custom qty
           </Text>
         </Pressable>
