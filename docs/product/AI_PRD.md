@@ -34,18 +34,18 @@
 
 ### Voice & AI (7/8 built = 88%)
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| 35 voice intents (Hindi/Hinglish) | ✅ Shipped | `engine/index.ts` switch |
-| Voice payment recording | ✅ Shipped | RECORD_PAYMENT intent |
-| Voice customer lookup | ✅ Shipped | GET_CUSTOMER_INFO + CHECK_BALANCE |
-| Voice stock check | ✅ Shipped | CHECK_STOCK intent |
-| Voice reminder creation | ✅ Shipped | CREATE_REMINDER intent |
-| Multi-turn conversation memory (Redis) | ✅ Shipped | 4h TTL ConversationSession |
-| Devanagari number support | ✅ Shipped | `devanagari.ts` normalizer |
-| Deepgram STT + Browser WebSpeech fallback | ✅ Shipped | |
-| TTS (ElevenLabs / OpenAI / Browser) | ✅ Shipped | |
-| True Agent Mode (Mode 3) | ❌ P2 | LLM tool-calling; planned Q3 2026 |
+| Feature                                   | Status     | Notes                             |
+| ----------------------------------------- | ---------- | --------------------------------- |
+| 35 voice intents (Hindi/Hinglish)         | ✅ Shipped | `engine/index.ts` switch          |
+| Voice payment recording                   | ✅ Shipped | RECORD_PAYMENT intent             |
+| Voice customer lookup                     | ✅ Shipped | GET_CUSTOMER_INFO + CHECK_BALANCE |
+| Voice stock check                         | ✅ Shipped | CHECK_STOCK intent                |
+| Voice reminder creation                   | ✅ Shipped | CREATE_REMINDER intent            |
+| Multi-turn conversation memory (Redis)    | ✅ Shipped | 4h TTL ConversationSession        |
+| Devanagari number support                 | ✅ Shipped | `devanagari.ts` normalizer        |
+| Deepgram STT + Browser WebSpeech fallback | ✅ Shipped |                                   |
+| TTS (ElevenLabs / OpenAI / Browser)       | ✅ Shipped |                                   |
+| True Agent Mode (Mode 3)                  | ❌ P2      | LLM tool-calling; planned Q3 2026 |
 
 ---
 
@@ -70,16 +70,16 @@ Every voice interaction follows this exact pipeline:
 
 ### WebSocket Message Types
 
-| Direction | Type | Payload |
-|---|---|---|
-| Server → Client | `voice:start` | `{ sessionId }` |
-| Client → Server | `voice:transcript` | `{ text }` (partial) |
-| Server → Client | `voice:transcript` | `{ text }` (echo) |
-| Server → Client | `voice:intent` | `{ intent, entities, confidence }` |
-| Server → Client | `voice:response` | `{ message, data }` |
-| Server → Client | `voice:tts-stream` | Audio buffer |
-| Client → Server | `recording:start` | — |
-| Server → Client | `recording:started` | — |
+| Direction       | Type                | Payload                            |
+| --------------- | ------------------- | ---------------------------------- |
+| Server → Client | `voice:start`       | `{ sessionId }`                    |
+| Client → Server | `voice:transcript`  | `{ text }` (partial)               |
+| Server → Client | `voice:transcript`  | `{ text }` (echo)                  |
+| Server → Client | `voice:intent`      | `{ intent, entities, confidence }` |
+| Server → Client | `voice:response`    | `{ message, data }`                |
+| Server → Client | `voice:tts-stream`  | Audio buffer                       |
+| Client → Server | `recording:start`   | —                                  |
+| Server → Client | `recording:started` | —                                  |
 
 ### Key Files
 
@@ -95,6 +95,7 @@ Every voice interaction follows this exact pipeline:
 ### LLM-Powered Extraction
 
 Intent extraction uses **GPT-4o-mini** with a structured prompt containing:
+
 - 20+ extraction rules (Indian Hinglish patterns, GST flags, email parsing, etc.)
 - Conversation history from Redis (last N turns for context)
 - Pending invoice context injection (so "haan" → `CONFIRM_INVOICE` after a bill preview)
@@ -102,33 +103,33 @@ Intent extraction uses **GPT-4o-mini** with a structured prompt containing:
 
 ### All Supported Intents
 
-| Intent | Trigger Examples | Key Entities |
-|---|---|---|
-| `CREATE_INVOICE` | "Rahul ka bill banao 2 chawal 1 cheeni" | `customer`, `items[]`, `withGst` |
-| `CONFIRM_INVOICE` | "haan", "confirm", "theek hai", "bhej do" | — |
-| `CANCEL_INVOICE` | "invoice cancel karo", "bill mat banao" | — |
-| `SHOW_PENDING_INVOICE` | "pending invoice dikhao", "draft bill batao" | — |
-| `TOGGLE_GST` | "GST add karo", "GST hatao", "bina GST ke" | `withGst: boolean` |
-| `RECORD_PAYMENT` | "Rahul ne 500 diya", "payment liya" | `customer`, `amount` |
-| `ADD_CREDIT` | "Rahul ka 200 add karo", "likh do" | `customer`, `amount` |
-| `CHECK_BALANCE` | "Rahul ka balance", "kitna baaki hai" | `customer` |
-| `CHECK_STOCK` | "chawal kitna bacha hai", "stock check" | `product` |
-| `CREATE_CUSTOMER` | "naya customer Priya add karo" | `name`, `phone`, `amount` |
-| `UPDATE_CUSTOMER_PHONE` | "Rahul ka number change karo" | `customer`, `phone` |
-| `GET_CUSTOMER_INFO` | "Rahul ki details batao" | `customer` |
-| `DELETE_CUSTOMER_DATA` | "Rahul ka data delete karo" | `customer` |
-| `CREATE_REMINDER` | "kal Rahul ko 500 ka reminder bhejo" | `customer`, `amount`, `datetime` |
-| `MODIFY_REMINDER` | "reminder change karo 2 bajkar" | `customer`, `datetime` |
-| `CANCEL_REMINDER` | "reminder cancel karo" | `customer` |
-| `LIST_REMINDERS` | "reminders dikhao", "aaj ke reminders" | — |
-| `PROVIDE_EMAIL` | "rahul at gmail dot com" | `email` |
-| `LIST_CUSTOMER_BALANCES` | "sabka balance dikhao" | — |
-| `TOTAL_PENDING_AMOUNT` | "total pending kitna hai" | — |
-| `DAILY_SUMMARY` | "aaj ka summary", "daily report" | — |
-| `SWITCH_LANGUAGE` | "Hindi mein bolo", "English mode" | `language` (BCP-47) |
-| `START_RECORDING` | "recording start karo" | — |
-| `STOP_RECORDING` | "recording band karo" | — |
-| `UNKNOWN` | Fallback when intent is unclear | — |
+| Intent                   | Trigger Examples                             | Key Entities                     |
+| ------------------------ | -------------------------------------------- | -------------------------------- |
+| `CREATE_INVOICE`         | "Rahul ka bill banao 2 chawal 1 cheeni"      | `customer`, `items[]`, `withGst` |
+| `CONFIRM_INVOICE`        | "haan", "confirm", "theek hai", "bhej do"    | —                                |
+| `CANCEL_INVOICE`         | "invoice cancel karo", "bill mat banao"      | —                                |
+| `SHOW_PENDING_INVOICE`   | "pending invoice dikhao", "draft bill batao" | —                                |
+| `TOGGLE_GST`             | "GST add karo", "GST hatao", "bina GST ke"   | `withGst: boolean`               |
+| `RECORD_PAYMENT`         | "Rahul ne 500 diya", "payment liya"          | `customer`, `amount`             |
+| `ADD_CREDIT`             | "Rahul ka 200 add karo", "likh do"           | `customer`, `amount`             |
+| `CHECK_BALANCE`          | "Rahul ka balance", "kitna baaki hai"        | `customer`                       |
+| `CHECK_STOCK`            | "chawal kitna bacha hai", "stock check"      | `product`                        |
+| `CREATE_CUSTOMER`        | "naya customer Priya add karo"               | `name`, `phone`, `amount`        |
+| `UPDATE_CUSTOMER_PHONE`  | "Rahul ka number change karo"                | `customer`, `phone`              |
+| `GET_CUSTOMER_INFO`      | "Rahul ki details batao"                     | `customer`                       |
+| `DELETE_CUSTOMER_DATA`   | "Rahul ka data delete karo"                  | `customer`                       |
+| `CREATE_REMINDER`        | "kal Rahul ko 500 ka reminder bhejo"         | `customer`, `amount`, `datetime` |
+| `MODIFY_REMINDER`        | "reminder change karo 2 bajkar"              | `customer`, `datetime`           |
+| `CANCEL_REMINDER`        | "reminder cancel karo"                       | `customer`                       |
+| `LIST_REMINDERS`         | "reminders dikhao", "aaj ke reminders"       | —                                |
+| `PROVIDE_EMAIL`          | "rahul at gmail dot com"                     | `email`                          |
+| `LIST_CUSTOMER_BALANCES` | "sabka balance dikhao"                       | —                                |
+| `TOTAL_PENDING_AMOUNT`   | "total pending kitna hai"                    | —                                |
+| `DAILY_SUMMARY`          | "aaj ka summary", "daily report"             | —                                |
+| `SWITCH_LANGUAGE`        | "Hindi mein bolo", "English mode"            | `language` (BCP-47)              |
+| `START_RECORDING`        | "recording start karo"                       | —                                |
+| `STOP_RECORDING`         | "recording band karo"                        | —                                |
+| `UNKNOWN`                | Fallback when intent is unclear              | —                                |
 
 ### Context-Aware Intent Injection
 
@@ -246,14 +247,14 @@ conv:{conversationId}:mem   → JSON blob (ConversationMemoryData)
 
 ```typescript
 interface ConversationMemoryData {
-  conversationId:  string;
-  messages:        ConversationMessage[];  // last 20 turns (user + assistant)
-  context:         Record<string, any>;   // arbitrary key-value (pendingInvoice, etc.)
-  lastActivity:    string;                // ISO timestamp
+  conversationId: string;
+  messages: ConversationMessage[]; // last 20 turns (user + assistant)
+  context: Record<string, any>; // arbitrary key-value (pendingInvoice, etc.)
+  lastActivity: string; // ISO timestamp
   activeCustomer?: { id: string; name: string };
-  customerHistory: CustomerContext[];     // oldest → newest mentioned customers
-  recentCustomers: Record<string, CustomerContext>;  // keyed by name.toLowerCase()
-  turnCount:       number;
+  customerHistory: CustomerContext[]; // oldest → newest mentioned customers
+  recentCustomers: Record<string, CustomerContext>; // keyed by name.toLowerCase()
+  turnCount: number;
 }
 ```
 
@@ -264,16 +265,16 @@ Override via `CONV_TTL_HOURS` env variable.
 
 ### Key Operations
 
-| Method | Description |
-|---|---|
-| `addUserMessage(id, text, intent, entities)` | Append user turn, trim to 20 messages |
-| `addAssistantMessage(id, text)` | Append assistant turn |
-| `setContext(id, key, value)` | Store arbitrary context (e.g. pendingInvoice) |
-| `getContext(id, key)` | Read context value |
-| `setActiveCustomer(id, customer)` | Mark customer as active |
-| `getActiveCustomer(id)` | Read active customer |
-| `getContextSummary(id)` | Build LLM prompt string from memory |
-| `clearMemory(id)` | Delete key from Redis |
+| Method                                       | Description                                   |
+| -------------------------------------------- | --------------------------------------------- |
+| `addUserMessage(id, text, intent, entities)` | Append user turn, trim to 20 messages         |
+| `addAssistantMessage(id, text)`              | Append assistant turn                         |
+| `setContext(id, key, value)`                 | Store arbitrary context (e.g. pendingInvoice) |
+| `getContext(id, key)`                        | Read context value                            |
+| `setActiveCustomer(id, customer)`            | Mark customer as active                       |
+| `getActiveCustomer(id)`                      | Read active customer                          |
+| `getContextSummary(id)`                      | Build LLM prompt string from memory           |
+| `clearMemory(id)`                            | Delete key from Redis                         |
 
 ### Key Files
 
@@ -448,16 +449,16 @@ Execora has **three distinct execution modes**. Understanding the difference bet
 
 #### Characteristics of Intent-Based Mode
 
-| Property | Value |
-|---|---|
-| LLM role | Extraction only (input) + phrasing only (output). Does NOT decide logic. |
-| Execution path | 100% deterministic — `switch(intent)` in `engine/index.ts` |
-| Tool calling | None — handler code is pre-written, not dynamically selected |
-| Multi-step reasoning | None — one intent = one handler = one result |
-| Error recovery | None — if intent unknown, returns `UNKNOWN_INTENT` error |
-| Context injection | Manual — conversation history + draft injected into prompt as text |
-| Reliability | Very high — no hallucination in execution path |
-| Speed | Fast — one extraction call + one response call |
+| Property             | Value                                                                    |
+| -------------------- | ------------------------------------------------------------------------ |
+| LLM role             | Extraction only (input) + phrasing only (output). Does NOT decide logic. |
+| Execution path       | 100% deterministic — `switch(intent)` in `engine/index.ts`               |
+| Tool calling         | None — handler code is pre-written, not dynamically selected             |
+| Multi-step reasoning | None — one intent = one handler = one result                             |
+| Error recovery       | None — if intent unknown, returns `UNKNOWN_INTENT` error                 |
+| Context injection    | Manual — conversation history + draft injected into prompt as text       |
+| Reliability          | Very high — no hallucination in execution path                           |
+| Speed                | Fast — one extraction call + one response call                           |
 
 #### When It Fails
 
@@ -514,16 +515,16 @@ When User A creates an invoice via voice:
 
 #### The Core Difference
 
-| | Intent-Based Mode | True Agent Mode |
-|---|---|---|
-| LLM role | Extract JSON, then step aside | Orchestrate the entire execution |
-| Execution control | Pre-written switch/case | LLM decides which tool(s) to call |
-| Multi-step | No — one intent per turn | Yes — LLM chains tools |
-| Conditional logic | No | Yes — "if balance > X then..." |
-| Error recovery | No | Yes — LLM retries with different tool |
-| New capabilities | Requires code change (new intent case) | Describe tool in English → LLM uses it |
-| Unpredictability | Zero (safe) | Low but exists |
-| Power | Limited to predefined intents | Anything expressible in language |
+|                   | Intent-Based Mode                      | True Agent Mode                        |
+| ----------------- | -------------------------------------- | -------------------------------------- |
+| LLM role          | Extract JSON, then step aside          | Orchestrate the entire execution       |
+| Execution control | Pre-written switch/case                | LLM decides which tool(s) to call      |
+| Multi-step        | No — one intent per turn               | Yes — LLM chains tools                 |
+| Conditional logic | No                                     | Yes — "if balance > X then..."         |
+| Error recovery    | No                                     | Yes — LLM retries with different tool  |
+| New capabilities  | Requires code change (new intent case) | Describe tool in English → LLM uses it |
+| Unpredictability  | Zero (safe)                            | Low but exists                         |
+| Power             | Limited to predefined intents          | Anything expressible in language       |
 
 #### True Agent Architecture (OpenAI Tool Calling)
 
@@ -685,14 +686,14 @@ Rather than a single monolithic agent, use two specialized agents:
 
 #### Why Two Agents?
 
-| Concern | Single Agent | Two-Agent |
-|---|---|---|
-| Tool explosion | LLM gets confused with 30+ tools + conversation | Executor has tools, Guide has context |
-| Response quality | Hard to be both "good at tasks" and "good at conversation" | Specialist agents do one thing well |
-| Error messages | Generic LLM error handling | Guide crafts human-friendly explanation |
-| Suggestions | Baked into task execution (messy) | Guide always suggests next step |
-| Cost | One big prompt | Two smaller focused prompts (cheaper) |
-| Debugging | Hard to trace: conversation or execution issue? | Clear separation |
+| Concern          | Single Agent                                               | Two-Agent                               |
+| ---------------- | ---------------------------------------------------------- | --------------------------------------- |
+| Tool explosion   | LLM gets confused with 30+ tools + conversation            | Executor has tools, Guide has context   |
+| Response quality | Hard to be both "good at tasks" and "good at conversation" | Specialist agents do one thing well     |
+| Error messages   | Generic LLM error handling                                 | Guide crafts human-friendly explanation |
+| Suggestions      | Baked into task execution (messy)                          | Guide always suggests next step         |
+| Cost             | One big prompt                                             | Two smaller focused prompts (cheaper)   |
+| Debugging        | Hard to trace: conversation or execution issue?            | Clear separation                        |
 
 #### Conversation Agent — Responsibilities
 
@@ -771,22 +772,22 @@ export async function executeNewThing(entities, conversationId) {
 
 ### Mode Comparison — Full Matrix
 
-| Capability | Intent-Based (Current Voice) | Form/Dashboard (UI) | True Agent Mode (Planned) |
-|---|---|---|---|
-| Speed for common task | ⚡ 3s | 30-90s | ⚡ 3-5s |
-| Learning curve | Near zero | Low | Zero |
-| Multi-step reasoning | ❌ One intent per turn | ❌ N/A | ✅ LLM chains steps |
-| Conditional logic | ❌ | ✅ (user does it) | ✅ Agent reasons |
-| Error recovery | ❌ Returns error | ✅ User fixes form | ✅ Agent retries |
-| Complex edits | ❌ | ✅ Visual forms | ✅ Conversational edits |
-| Hands-free counter use | ✅ | ❌ | ✅ |
-| Bulk operations | ❌ | ✅ Checkboxes | ✅ "Top 5 ko remind karo" |
-| New capabilities | New code required | New route required | Describe in English |
-| Offline support | ❌ STT needs internet | ✅ (with cache) | ❌ LLM needs internet |
-| Predictability | ✅ 100% deterministic | ✅ 100% deterministic | ✅ High (tools are safe) |
-| Multi-language | ✅ Via LLM prompt | ❌ Hindi UI only | ✅ Any language |
-| Suggestions | ❌ | ❌ | ✅ "Aur kuch chahiye?" |
-| Cost per interaction | Low (2 LLM calls) | Zero (no LLM) | Medium (3-5 LLM calls) |
+| Capability             | Intent-Based (Current Voice) | Form/Dashboard (UI)   | True Agent Mode (Planned) |
+| ---------------------- | ---------------------------- | --------------------- | ------------------------- |
+| Speed for common task  | ⚡ 3s                        | 30-90s                | ⚡ 3-5s                   |
+| Learning curve         | Near zero                    | Low                   | Zero                      |
+| Multi-step reasoning   | ❌ One intent per turn       | ❌ N/A                | ✅ LLM chains steps       |
+| Conditional logic      | ❌                           | ✅ (user does it)     | ✅ Agent reasons          |
+| Error recovery         | ❌ Returns error             | ✅ User fixes form    | ✅ Agent retries          |
+| Complex edits          | ❌                           | ✅ Visual forms       | ✅ Conversational edits   |
+| Hands-free counter use | ✅                           | ❌                    | ✅                        |
+| Bulk operations        | ❌                           | ✅ Checkboxes         | ✅ "Top 5 ko remind karo" |
+| New capabilities       | New code required            | New route required    | Describe in English       |
+| Offline support        | ❌ STT needs internet        | ✅ (with cache)       | ❌ LLM needs internet     |
+| Predictability         | ✅ 100% deterministic        | ✅ 100% deterministic | ✅ High (tools are safe)  |
+| Multi-language         | ✅ Via LLM prompt            | ❌ Hindi UI only      | ✅ Any language           |
+| Suggestions            | ❌                           | ❌                    | ✅ "Aur kuch chahiye?"    |
+| Cost per interaction   | Low (2 LLM calls)            | Zero (no LLM)         | Medium (3-5 LLM calls)    |
 
 ---
 
@@ -794,37 +795,38 @@ export async function executeNewThing(entities, conversationId) {
 
 All intents route through `packages/modules/src/modules/voice/engine/index.ts`.
 
-| Intent | Handler File | Status |
-|--------|-------------|--------|
-| CREATE_INVOICE | invoice.handler.ts | ✅ |
-| CONFIRM_INVOICE | invoice.handler.ts | ✅ |
-| CANCEL_INVOICE | invoice.handler.ts | ✅ |
-| SHOW_PENDING_INVOICE | invoice.handler.ts | ✅ |
-| TOGGLE_GST | invoice.handler.ts | ✅ |
-| PROVIDE_EMAIL / SEND_INVOICE | invoice.handler.ts | ✅ |
-| ADD_DISCOUNT | invoice.handler.ts | ✅ |
-| SET_SUPPLY_TYPE | invoice.handler.ts | ✅ |
-| RECORD_MIXED_PAYMENT | invoice.handler.ts | ✅ |
-| TOTAL_PENDING_AMOUNT | customer.handler.ts | ✅ |
-| LIST_CUSTOMER_BALANCES | customer.handler.ts | ✅ |
-| CHECK_BALANCE | customer.handler.ts | ✅ |
-| CREATE_CUSTOMER | customer.handler.ts | ✅ |
-| UPDATE_CUSTOMER / UPDATE_CUSTOMER_PHONE | customer.handler.ts | ✅ |
-| GET_CUSTOMER_INFO | customer.handler.ts | ✅ |
-| DELETE_CUSTOMER_DATA | customer.handler.ts | ✅ |
-| RECORD_PAYMENT | payment.handler.ts | ✅ |
-| ADD_CREDIT | payment.handler.ts | ✅ |
-| CREATE_REMINDER | reminder.handler.ts | ✅ |
-| CANCEL_REMINDER | reminder.handler.ts | ✅ |
-| LIST_REMINDERS | reminder.handler.ts | ✅ |
-| MODIFY_REMINDER | reminder.handler.ts | ✅ |
-| DAILY_SUMMARY | report.handler.ts | ✅ |
-| CHECK_STOCK | report.handler.ts | ✅ |
-| EXPORT_GSTR1 | report.handler.ts | ✅ |
-| EXPORT_PNL | report.handler.ts | ✅ |
-| UPDATE_STOCK | product.handler.ts | ✅ |
+| Intent                                  | Handler File        | Status |
+| --------------------------------------- | ------------------- | ------ |
+| CREATE_INVOICE                          | invoice.handler.ts  | ✅     |
+| CONFIRM_INVOICE                         | invoice.handler.ts  | ✅     |
+| CANCEL_INVOICE                          | invoice.handler.ts  | ✅     |
+| SHOW_PENDING_INVOICE                    | invoice.handler.ts  | ✅     |
+| TOGGLE_GST                              | invoice.handler.ts  | ✅     |
+| PROVIDE_EMAIL / SEND_INVOICE            | invoice.handler.ts  | ✅     |
+| ADD_DISCOUNT                            | invoice.handler.ts  | ✅     |
+| SET_SUPPLY_TYPE                         | invoice.handler.ts  | ✅     |
+| RECORD_MIXED_PAYMENT                    | invoice.handler.ts  | ✅     |
+| TOTAL_PENDING_AMOUNT                    | customer.handler.ts | ✅     |
+| LIST_CUSTOMER_BALANCES                  | customer.handler.ts | ✅     |
+| CHECK_BALANCE                           | customer.handler.ts | ✅     |
+| CREATE_CUSTOMER                         | customer.handler.ts | ✅     |
+| UPDATE_CUSTOMER / UPDATE_CUSTOMER_PHONE | customer.handler.ts | ✅     |
+| GET_CUSTOMER_INFO                       | customer.handler.ts | ✅     |
+| DELETE_CUSTOMER_DATA                    | customer.handler.ts | ✅     |
+| RECORD_PAYMENT                          | payment.handler.ts  | ✅     |
+| ADD_CREDIT                              | payment.handler.ts  | ✅     |
+| CREATE_REMINDER                         | reminder.handler.ts | ✅     |
+| CANCEL_REMINDER                         | reminder.handler.ts | ✅     |
+| LIST_REMINDERS                          | reminder.handler.ts | ✅     |
+| MODIFY_REMINDER                         | reminder.handler.ts | ✅     |
+| DAILY_SUMMARY                           | report.handler.ts   | ✅     |
+| CHECK_STOCK                             | report.handler.ts   | ✅     |
+| EXPORT_GSTR1                            | report.handler.ts   | ✅     |
+| EXPORT_PNL                              | report.handler.ts   | ✅     |
+| UPDATE_STOCK                            | product.handler.ts  | ✅     |
 
 **Not yet as voice intents (❌ missing):**
+
 - APPLY_ITEM_DISCOUNT (item-level per-line discount via voice)
 - CREATE_CREDIT_NOTE (no CN/DN model)
 
@@ -834,20 +836,20 @@ All intents route through `packages/modules/src/modules/voice/engine/index.ts`.
 
 ### Supported Languages (Priority Order)
 
-| Language | Script | Speakers | Priority |
-|---|---|---|---|
-| Hindi | Devanagari / Roman | 528M | P0 |
-| Hinglish (Hindi+English mix) | Roman | ~350M | P0 |
-| English | Roman | 125M urban | P0 |
-| Marathi | Devanagari | 83M | P1 |
-| Gujarati | Gujarati script | 57M | P1 |
-| Tamil | Tamil script | 69M | P1 |
-| Telugu | Telugu script | 83M | P1 |
-| Bengali | Bengali script | 97M | P1 |
-| Kannada | Kannada script | 44M | P2 |
-| Malayalam | Malayalam script | 38M | P2 |
-| Punjabi | Gurmukhi | 33M | P2 |
-| Odia | Odia script | 38M | P2 |
+| Language                     | Script             | Speakers   | Priority |
+| ---------------------------- | ------------------ | ---------- | -------- |
+| Hindi                        | Devanagari / Roman | 528M       | P0       |
+| Hinglish (Hindi+English mix) | Roman              | ~350M      | P0       |
+| English                      | Roman              | 125M urban | P0       |
+| Marathi                      | Devanagari         | 83M        | P1       |
+| Gujarati                     | Gujarati script    | 57M        | P1       |
+| Tamil                        | Tamil script       | 69M        | P1       |
+| Telugu                       | Telugu script      | 83M        | P1       |
+| Bengali                      | Bengali script     | 97M        | P1       |
+| Kannada                      | Kannada script     | 44M        | P2       |
+| Malayalam                    | Malayalam script   | 38M        | P2       |
+| Punjabi                      | Gurmukhi           | 33M        | P2       |
+| Odia                         | Odia script        | 38M        | P2       |
 
 ### Hinglish Handling — Real Examples
 
@@ -892,14 +894,14 @@ All intents route through `packages/modules/src/modules/voice/engine/index.ts`.
 
 ### Multi-Language Intent Examples
 
-| Language | User says | Extracted intent |
-|---|---|---|
-| Hindi | "Ramesh ka bill banao — 2 aata" | CREATE_INVOICE |
-| Marathi | "Ramesh cha bill kara — 2 kilo pith" | CREATE_INVOICE |
-| Tamil | "Ramesh bill pottu — 2 kilo maavu" | CREATE_INVOICE |
-| Telugu | "Ramesh bill veyyi — 2 kilo pindi" | CREATE_INVOICE |
-| Gujarati | "Ramesh no bill banavo — 2 kilo lot" | CREATE_INVOICE |
-| Hinglish | "Ramesh ko invoice do 2kg flour" | CREATE_INVOICE |
+| Language | User says                            | Extracted intent |
+| -------- | ------------------------------------ | ---------------- |
+| Hindi    | "Ramesh ka bill banao — 2 aata"      | CREATE_INVOICE   |
+| Marathi  | "Ramesh cha bill kara — 2 kilo pith" | CREATE_INVOICE   |
+| Tamil    | "Ramesh bill pottu — 2 kilo maavu"   | CREATE_INVOICE   |
+| Telugu   | "Ramesh bill veyyi — 2 kilo pindi"   | CREATE_INVOICE   |
+| Gujarati | "Ramesh no bill banavo — 2 kilo lot" | CREATE_INVOICE   |
+| Hinglish | "Ramesh ko invoice do 2kg flour"     | CREATE_INVOICE   |
 
 _The LLM handles all of these with the same prompt + conversation context — no separate parsers needed per language._
 
@@ -924,19 +926,20 @@ OpenAI handles Hinglish natively. All entity values in the JSON response are alw
 
 ### Multi-Language Roadmap
 
-| Language | Priority | Q2 2026 | Q3 2026 | Q4 2026 | Notes |
-|---|---|---|---|---|---|
-| Hindi | P0 | Production | Production | Production | Core language, fully built |
-| Hinglish | P0 | Production | Production | Production | Fully built, primary in practice |
-| English | P0 | Production | Production | Production | Works via GPT-4 |
-| Marathi | P1 | Beta | Production | Production | 83M speakers, Mumbai suburban market |
-| Gujarati | P1 | — | Beta | Production | 57M speakers, key FMCG/textile market |
-| Tamil | P1 | — | Beta | Production | 69M speakers, South India push |
-| Telugu | P1 | — | Beta | Production | 83M speakers, Hyderabad/AP |
-| Bengali | P2 | — | — | Beta | 97M speakers, Kolkata kirana market |
-| Kannada | P2 | — | — | — | 44M speakers, Bangalore secondary |
+| Language | Priority | Q2 2026    | Q3 2026    | Q4 2026    | Notes                                 |
+| -------- | -------- | ---------- | ---------- | ---------- | ------------------------------------- |
+| Hindi    | P0       | Production | Production | Production | Core language, fully built            |
+| Hinglish | P0       | Production | Production | Production | Fully built, primary in practice      |
+| English  | P0       | Production | Production | Production | Works via GPT-4                       |
+| Marathi  | P1       | Beta       | Production | Production | 83M speakers, Mumbai suburban market  |
+| Gujarati | P1       | —          | Beta       | Production | 57M speakers, key FMCG/textile market |
+| Tamil    | P1       | —          | Beta       | Production | 69M speakers, South India push        |
+| Telugu   | P1       | —          | Beta       | Production | 83M speakers, Hyderabad/AP            |
+| Bengali  | P2       | —          | —          | Beta       | 97M speakers, Kolkata kirana market   |
+| Kannada  | P2       | —          | —          | —          | 44M speakers, Bangalore secondary     |
 
 **Technical implementation for new languages:**
+
 1. Update Deepgram STT language parameter (Deepgram supports all major Indian languages)
 2. Add language-specific few-shot examples to the LLM extraction prompt (20 examples per language)
 3. Update TTS provider for appropriate voice (ElevenLabs has Indian language voices)
@@ -952,12 +955,14 @@ OpenAI handles Hinglish natively. All entity values in the JSON response are alw
 Mode 1 is the current production voice system. It works reliably for the 35 defined intents but has structural limitations:
 
 **What it cannot do:**
+
 - Multi-step conditional logic: "If Ramesh's balance is over ₹1,000, don't create a new bill"
 - Chained operations from a single utterance
 - Error recovery with intelligence: if a product not found, Mode 1 returns generic error; Mode 3 would ask "Did you mean 'Ariel' instead of 'Aerial'?"
 - New operations without code changes: adding a new intent requires a new handler, new LLM prompt example, and new switch case
 
 **What it does well (and should remain):**
+
 - Deterministic: zero hallucination in the execution path
 - Fast: 2 LLM calls (extraction + response phrasing), ~800ms total
 - Cheap: minimal LLM tokens
@@ -970,6 +975,7 @@ Mode 1 is the current production voice system. It works reliably for the 35 defi
 ### 11.2 Mode 3 (True Agent) — When to Build, Prerequisites
 
 **Prerequisites before building:**
+
 1. All Mode 1 intents must be stable and tested (currently: 35 intents, all test suites passing)
 2. Tool definitions must be written for all existing business service methods
 3. A sandbox environment for testing agent behavior without affecting production DB
@@ -978,10 +984,12 @@ Mode 1 is the current production voice system. It works reliably for the 35 defi
 **When to build:** Q3 2026, after kirana launch is stable and at least 200 active users are generating real interaction data.
 
 **Architecture:** Two-agent pattern (See Section 8):
+
 - Conversation Agent: manages dialogue, clarifies ambiguity, formats responses for TTS
 - Task Agent (Executor): has all business tools, executes silently, returns structured results
 
 **First use cases for Mode 3 (high value, validates the approach):**
+
 1. "Top 3 udhari wale customers ko aaj reminder bhejo" — list query + 3 parallel reminder schedules
 2. "Is hafte kitna credit nahi aaya — unhe ek ek karke remind karo" — weekly filter + bulk reminders
 3. "Ramesh ka balance check karo, agar 500 se zyada hai toh bill mat banao" — conditional logic
@@ -1033,6 +1041,7 @@ Voice-first as a moat operates on four compounding levels:
 **What they have:** Web app, voice billing, 5 Indian languages, government-backed launch (AP CM), positioned as "accounting agent."
 
 **What they lack vs Execora:**
+
 - Single-intent voice — cannot handle "Ramesh ko 500 ka bill karo aur kal wapas yaad dilao"
 - No multi-turn conversation memory
 - No React Native app
@@ -1042,6 +1051,7 @@ Voice-first as a moat operates on four compounding levels:
 - No production track record (Feb 2026 launch)
 
 **How to beat Pilloo AI:**
+
 1. Multi-turn conversation — Pilloo is single-intent; Execora maintains context across 10 turns
 2. 35 intents vs Pilloo's ~5 — RECORD_PAYMENT, CREATE_REMINDER, CHECK_STOCK, EXPORT_GSTR1, etc.
 3. Full inventory + ledger depth — Pilloo has neither
@@ -1054,25 +1064,25 @@ Voice-first as a moat operates on four compounding levels:
 
 ### Competitive Position Summary
 
-| Feature | Vyapar | myBillBook | Swipe | Pilloo AI | **Execora** |
-|---|---|---|---|---|---|
-| **Voice billing** | ❌ | ❌ | ❌ | ⚠️ Single-intent | **✅ 35 multi-turn intents** |
-| **Multi-turn memory** | ❌ | ❌ | ❌ | ❌ | **✅ Redis-backed** |
-| **Real-time sync (WS)** | ❌ | ❌ | ❌ | ❌ | **✅ WebSocket** |
-| **3 parallel tasks** | ❌ | ❌ | ❌ | ❌ | **✅** |
-| **AI agent mode** | ❌ | ❌ | ❌ | ⚠️ claims | **⚠️ Planned Mode 3** |
-| **Hinglish support** | Partial | ❌ | ❌ | ✅ | **✅** |
-| **Dark mode** | ❌ | ❌ | ❌ | ❌ | **✅** |
-| **WhatsApp auto-send** | Manual | Manual | Manual | ❌ | **✅ Auto** |
-| **GSTR-1 export** | ✅ | ✅ | ✅ | ❌ | **✅** |
-| **Multi-user RBAC** | ✅ paid | ✅ paid | ✅ | ❌ | **✅ 22 permissions** |
-| **Customer portal** | ❌ | ❌ | ✅ | ❌ | **✅** |
-| **9-gateway webhooks** | ❌ | ❌ | Razorpay only | ❌ | **✅ All 9** |
-| **Offline mode** | ✅ Desktop | ✅ Mobile | ❌ | ❌ | ❌ (P0 gap) |
-| **E-invoicing IRN** | ✅ | ✅ | ✅ | ❌ | ❌ (P2) |
+| Feature                 | Vyapar     | myBillBook | Swipe         | Pilloo AI        | **Execora**                  |
+| ----------------------- | ---------- | ---------- | ------------- | ---------------- | ---------------------------- |
+| **Voice billing**       | ❌         | ❌         | ❌            | ⚠️ Single-intent | **✅ 35 multi-turn intents** |
+| **Multi-turn memory**   | ❌         | ❌         | ❌            | ❌               | **✅ Redis-backed**          |
+| **Real-time sync (WS)** | ❌         | ❌         | ❌            | ❌               | **✅ WebSocket**             |
+| **3 parallel tasks**    | ❌         | ❌         | ❌            | ❌               | **✅**                       |
+| **AI agent mode**       | ❌         | ❌         | ❌            | ⚠️ claims        | **⚠️ Planned Mode 3**        |
+| **Hinglish support**    | Partial    | ❌         | ❌            | ✅               | **✅**                       |
+| **Dark mode**           | ❌         | ❌         | ❌            | ❌               | **✅**                       |
+| **WhatsApp auto-send**  | Manual     | Manual     | Manual        | ❌               | **✅ Auto**                  |
+| **GSTR-1 export**       | ✅         | ✅         | ✅            | ❌               | **✅**                       |
+| **Multi-user RBAC**     | ✅ paid    | ✅ paid    | ✅            | ❌               | **✅ 22 permissions**        |
+| **Customer portal**     | ❌         | ❌         | ✅            | ❌               | **✅**                       |
+| **9-gateway webhooks**  | ❌         | ❌         | Razorpay only | ❌               | **✅ All 9**                 |
+| **Offline mode**        | ✅ Desktop | ✅ Mobile  | ❌            | ❌               | ❌ (P0 gap)                  |
+| **E-invoicing IRN**     | ✅         | ✅         | ✅            | ❌               | ❌ (P2)                      |
 
 **Net competitive position:** Execora is the only product in the Indian market with streaming multi-turn Hindi voice billing + real-time WebSocket dashboard + 35 voice intents + Redis conversation memory. This technical moat is 8+ months ahead of Pilloo AI and entirely unchallenged by Vyapar/myBillBook/Swipe. The risk is shipping too slowly and letting Pilloo AI catch up.
 
 ---
 
-*Sources: FEATURES.md (runtime pipeline), PRODUCT_REQUIREMENTS.md (F-06, Section 6, Section 8, Section 13.5), STRATEGY_2026.md (Section 8 Voice Roadmap, Section 10 Competitive Moat), PRODUCT_STRATEGY_2026.md (Voice Mobile UX, Pilloo AI analysis, Section 8 Competitive Matrix)*
+_Sources: FEATURES.md (runtime pipeline), PRODUCT_REQUIREMENTS.md (F-06, Section 6, Section 8, Section 13.5), STRATEGY_2026.md (Section 8 Voice Roadmap, Section 10 Competitive Moat), PRODUCT_STRATEGY_2026.md (Voice Mobile UX, Pilloo AI analysis, Section 8 Competitive Matrix)_
