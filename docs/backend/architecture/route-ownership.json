@@ -1,0 +1,122 @@
+{
+  "version": "1.0.0",
+  "scope": "apps/api/src/api/routes",
+  "description": "Maps each API route file to one backend domain-feature owner.",
+  "routes": {
+    "admin.routes.ts": {
+      "domain": "admin",
+      "feature": "users/user-lifecycle",
+      "owner": "platform-admin-squad"
+    },
+    "ai.routes.ts": {
+      "domain": "ai",
+      "feature": "copilot/request-orchestration",
+      "owner": "ai-platform-squad"
+    },
+    "auth.routes.ts": {
+      "domain": "platform",
+      "feature": "auth/session-auth",
+      "owner": "platform-security-squad"
+    },
+    "credit-note.routes.ts": {
+      "domain": "sales",
+      "feature": "invoicing/credit-notes",
+      "owner": "sales-domain-squad"
+    },
+    "customer.routes.ts": {
+      "domain": "crm",
+      "feature": "parties/customer-profile",
+      "owner": "crm-domain-squad"
+    },
+    "demo.routes.ts": {
+      "domain": "platform",
+      "feature": "demo/demo-data",
+      "owner": "platform-admin-squad"
+    },
+    "draft.routes.ts": {
+      "domain": "sales",
+      "feature": "invoicing/drafts",
+      "owner": "sales-domain-squad"
+    },
+    "expense.routes.ts": {
+      "domain": "finance",
+      "feature": "expenses/expense-entry",
+      "owner": "finance-domain-squad"
+    },
+    "feedback.routes.ts": {
+      "domain": "admin",
+      "feature": "support-ops/feedback-intake",
+      "owner": "platform-admin-squad"
+    },
+    "invoice.routes.ts": {
+      "domain": "sales",
+      "feature": "invoicing/create-invoice",
+      "owner": "sales-domain-squad"
+    },
+    "ledger.routes.ts": {
+      "domain": "finance",
+      "feature": "accounting/ledger-posting",
+      "owner": "finance-domain-squad"
+    },
+    "monitoring.routes.ts": {
+      "domain": "system",
+      "feature": "monitoring/observability-read",
+      "owner": "system-runtime-squad"
+    },
+    "portal.routes.ts": {
+      "domain": "platform",
+      "feature": "portal/customer-portal",
+      "owner": "platform-product-squad"
+    },
+    "product.routes.ts": {
+      "domain": "inventory",
+      "feature": "stock/item-catalog",
+      "owner": "inventory-domain-squad"
+    },
+    "purchase-order.routes.ts": {
+      "domain": "purchases",
+      "feature": "purchase/purchase-order",
+      "owner": "purchases-domain-squad"
+    },
+    "push.routes.ts": {
+      "domain": "platform",
+      "feature": "notifications/push-dispatch",
+      "owner": "platform-product-squad"
+    },
+    "reminder.routes.ts": {
+      "domain": "crm",
+      "feature": "reminders/payment-reminders",
+      "owner": "crm-domain-squad"
+    },
+    "report.routes.ts": {
+      "domain": "reporting",
+      "feature": "sales-reports/summary",
+      "owner": "reporting-domain-squad"
+    },
+    "session.routes.ts": {
+      "domain": "platform",
+      "feature": "session/device-session",
+      "owner": "platform-security-squad"
+    },
+    "summary.routes.ts": {
+      "domain": "reporting",
+      "feature": "dashboard/overview-cards",
+      "owner": "reporting-domain-squad"
+    },
+    "supplier.routes.ts": {
+      "domain": "purchases",
+      "feature": "vendors/vendor-profile",
+      "owner": "purchases-domain-squad"
+    },
+    "users.routes.ts": {
+      "domain": "admin",
+      "feature": "users/user-lifecycle",
+      "owner": "platform-admin-squad"
+    },
+    "webhook.routes.ts": {
+      "domain": "integrations",
+      "feature": "webhook/inbound-events",
+      "owner": "integrations-squad"
+    }
+  }
+}
