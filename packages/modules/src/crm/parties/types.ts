@@ -1,4 +1,4 @@
-import { CustomerSearchResult } from '@execora/types';
+import type { CustomerSearchResult } from "@execora/types";
 
 // ─── Inputs ───────────────────────────────────────────────────────────────────
 
@@ -35,10 +35,24 @@ export interface UpsertCommPrefsInput {
   preferredLanguage?: string;
 }
 
-// ─── Results ──────────────────────────────────────────────────────────────────
+// ─── Result shapes ────────────────────────────────────────────────────────────
 
-export type CustomerResult = CustomerSearchResult;
+/** Minimal result from create/update — does not assume CustomerSearchResult shape */
+export interface CustomerMutationResult {
+  id: string;
+  name: string;
+  [key: string]: unknown;
+}
+
+/** Rich Prisma record returned by getCustomerById (includes invoices/reminders) */
+export interface CustomerDetailRecord {
+  id: string;
+  name: string;
+  [key: string]: unknown;
+}
 
 export interface DeleteCustomerResult {
   success: boolean;
 }
+
+export type { CustomerSearchResult };

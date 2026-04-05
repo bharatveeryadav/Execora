@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest } from "fastify";
 import {
-  createInvoiceCommand,
+  createInvoice,
   invoiceService,
   ledgerService,
 } from "@execora/modules";
@@ -147,7 +147,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
         }
       }
       try {
-        const result = await createInvoiceCommand.execute({
+        const result = await createInvoice({
           customerId,
           items,
           notes,
@@ -279,7 +279,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
           });
         }
       }
-      const result = await createInvoiceCommand.execute({
+      const result = await createInvoice({
         customerId,
         items,
         notes,

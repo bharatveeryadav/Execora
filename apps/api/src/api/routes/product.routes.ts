@@ -1,15 +1,15 @@
 import { FastifyInstance, FastifyRequest } from "fastify";
 import {
   invoiceService,
-  createProductCommand,
-  updateProductCommand,
-  updateStockCommand,
-  writeOffBatchCommand,
-  listProductsQuery,
-  listProductsPaginatedQuery,
-  listLowStockQuery,
-  listExpiringBatchesQuery,
-  getExpiryPageQuery,
+  createProduct,
+  updateProduct,
+  updateProductStock,
+  writeOffBatch,
+  listProducts,
+  listProductsPaginated,
+  listLowStockProducts,
+  listExpiringBatches,
+  getExpiryPage,
 } from "@execora/modules";
 import { broadcaster } from "../../ws/broadcaster";
 import { prisma, minioClient, logger } from "@execora/infrastructure";
@@ -31,16 +31,16 @@ export async function productRoutes(fastify: FastifyInstance) {
           500,
           Math.max(1, parseInt(String(limitParam ?? 50), 10) || 50),
         );
-        const result = await listProductsPaginatedQuery.execute(page, limit);
+        const result = await listProductsPaginated(page, limit);
         return result;
       }
-      const products = await listProductsQuery.execute();
+      const products = await listProducts();
       return { products };
     },
   );
 
   fastify.get("/api/v1/products/low-stock", async () => {
-    const products = await listLowStockQuery.execute();
+    const products = await listLowStockProducts();
     return { products };
   });
 
@@ -52,7 +52,7 @@ export async function productRoutes(fastify: FastifyInstance) {
         parseInt(String(request.query.days ?? 30), 10) || 30,
         365,
       );
-      const batches = await listExpiringBatchesQuery.execute(days);
+      const batches = await listExpiringBatches(days);
       return { batches };
     },
   );
@@ -72,7 +72,7 @@ export async function productRoutes(fastify: FastifyInstance) {
           ? request.query.filter
           : "30d"
       ) as "expired" | "7d" | "30d" | "90d" | "all";
-      return getExpiryPageQuery.execute(filter);
+      return getExpiryPage(filter);
     },
   );
 
@@ -81,7 +81,7 @@ export async function productRoutes(fastify: FastifyInstance) {
     "/api/v1/products/batches/:id/write-off",
     async (request, reply) => {
       try {
-        const result = await writeOffBatchCommand.execute(request.params.id);
+        const result = await writeOffBatch(request.params.id);
         return result;
       } catch (err: any) {
         return reply.code(404).send({ error: err.message });
@@ -344,7 +344,7 @@ export async function productRoutes(fastify: FastifyInstance) {
       }>,
       reply,
     ) => {
-      const product = await createProductCommand.execute(request.body);
+      const product = await createProduct(request.body);
       return reply.code(201).send({ product });
     },
   );
@@ -401,7 +401,7 @@ export async function productRoutes(fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const product = await updateProductCommand.execute(
+      const product = await updateProduct(
         request.params.id,
         request.body,
       );
@@ -434,7 +434,7 @@ export async function productRoutes(fastify: FastifyInstance) {
       },
     },
     async (request) => {
-      const product = await updateStockCommand.execute(
+      const product = await updateProductStock(
         request.params.id,
         request.body,
       );

@@ -40,7 +40,7 @@ export interface UpdateStockInput {
   reason?: string;
 }
 
-// ─── Minimal result shapes ────────────────────────────────────────────────────
+// ─── Result shapes ────────────────────────────────────────────────────────────
 
 export interface ProductRecord {
   id: string;

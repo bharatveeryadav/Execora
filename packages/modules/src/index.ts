@@ -9,7 +9,7 @@ export * from "./modules/reminder/reminder.service";
 export * from "./modules/gst/gst.service";
 export * from "./modules/gst/gstr1.service";
 
-// Phase 1/4 extraction adapters (backend-first modular runtime)
+// Domain modules — flat async functions (Documenso/Cal.com style)
 export * from "./sales/invoicing/create-invoice";
 export * from "./crm/parties/customer-profile";
 export * from "./inventory/stock/item-catalog";
