@@ -8,3 +8,4 @@ export * from "./billing-logic";
 export * from "./api-client";
 export * from "./gstin";
 export * from "./demo-invoices";
+export * from "./entitlements";

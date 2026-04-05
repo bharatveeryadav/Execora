@@ -18,6 +18,9 @@
     "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "@execora/types": "workspace:*"
+  },
   "devDependencies": {
     "@types/node": "^20.11.17",
     "tsup": "^8.0.0",

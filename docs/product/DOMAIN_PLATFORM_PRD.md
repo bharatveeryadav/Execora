@@ -12,6 +12,21 @@
 
 ---
 
+## Modular PRD Navigation
+
+Use the split PRD set below for day-to-day work. Keep this file as the canonical master reference.
+
+- [docs/product/domain-platform/README.md](./domain-platform/README.md) — entry point and document map
+- [docs/product/domain-platform/01-foundation-and-products.md](./domain-platform/01-foundation-and-products.md) — vision, product line, capability map
+- [docs/product/domain-platform/02-domain-modules.md](./domain-platform/02-domain-modules.md) — domain ownership and module breakdown
+- [docs/product/domain-platform/03-platform-packaging-and-entitlements.md](./domain-platform/03-platform-packaging-and-entitlements.md) — plans, packs, pricing, entitlement model
+- [docs/product/domain-platform/04-app-surfaces-web-mobile-desktop.md](./domain-platform/04-app-surfaces-web-mobile-desktop.md) — app composition for web, mobile, and future desktop
+- [docs/product/domain-platform/05-engineering-guardrails-and-events.md](./domain-platform/05-engineering-guardrails-and-events.md) — rules, APIs, events, security, NFRs
+- [docs/product/domain-platform/06-delivery-migration-and-metrics.md](./domain-platform/06-delivery-migration-and-metrics.md) — rollout, ownership, success metrics, risks, next actions
+- [docs/product/domain-platform/07-feature-module-split-guide.md](./domain-platform/07-feature-module-split-guide.md) — how to split large modules into small feature modules safely
+
+---
+
 ## 1. Executive Summary
 
 Execora will be built as a domain-driven business operating platform, not as a single billing app with feature sprawl.

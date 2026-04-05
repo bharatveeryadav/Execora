@@ -1,3 +1,8 @@
+// ── Domain registry, entitlements, and product manifests ─────────────────────
+export * from "./domains";
+export * from "./entitlements";
+export * from "./manifests";
+
 // Intent types
 export enum IntentType {
   CREATE_INVOICE = "CREATE_INVOICE",
@@ -90,37 +95,37 @@ export interface InvoiceItemInput {
 //   Enterprise — + E_INVOICING, E_WAY_BILL, MULTI_BRANCH, BANK_RECONCILIATION, API_ACCESS
 export enum FeatureFlag {
   // Always-on core (no gating needed)
-  WALK_IN_BILLING       = "walk_in_billing",
-  UDHAAR_TRACKING       = "udhaar_tracking",
+  WALK_IN_BILLING = "walk_in_billing",
+  UDHAAR_TRACKING = "udhaar_tracking",
 
   // Starter+
-  GSTR1_EXPORT          = "gstr1_export",
-  EMAIL_DELIVERY        = "email_delivery",
-  UNLIMITED_VOICE       = "unlimited_voice",    // Free = 50/mo cap; Starter+ = unlimited
+  GSTR1_EXPORT = "gstr1_export",
+  EMAIL_DELIVERY = "email_delivery",
+  UNLIMITED_VOICE = "unlimited_voice", // Free = 50/mo cap; Starter+ = unlimited
 
   // Business+
-  BATCH_EXPIRY          = "batch_expiry",
-  PNL_REPORTS           = "pnl_reports",
-  BARCODE_SCAN          = "barcode_scan",
-  OCR_PURCHASE_BILL     = "ocr_purchase_bill",
-  CREDIT_LIMITS         = "credit_limits",
-  MULTI_USER            = "multi_user",         // Free = 1; Starter = 2; Business = 5; Enterprise = unlimited
+  BATCH_EXPIRY = "batch_expiry",
+  PNL_REPORTS = "pnl_reports",
+  BARCODE_SCAN = "barcode_scan",
+  OCR_PURCHASE_BILL = "ocr_purchase_bill",
+  CREDIT_LIMITS = "credit_limits",
+  MULTI_USER = "multi_user", // Free = 1; Starter = 2; Business = 5; Enterprise = unlimited
 
   // Enterprise
-  E_INVOICING           = "e_invoicing",
-  E_WAY_BILL            = "e_way_bill",
-  MULTI_BRANCH          = "multi_branch",
-  BANK_RECONCILIATION   = "bank_reconciliation",
-  API_ACCESS            = "api_access",
-  CA_PARTNER_MODE       = "ca_partner_mode",
+  E_INVOICING = "e_invoicing",
+  E_WAY_BILL = "e_way_bill",
+  MULTI_BRANCH = "multi_branch",
+  BANK_RECONCILIATION = "bank_reconciliation",
+  API_ACCESS = "api_access",
+  CA_PARTNER_MODE = "ca_partner_mode",
 }
 
 // Tier → feature set (used to seed tenant.features on plan change)
-export const TIER_FEATURES: Record<"free" | "starter" | "business" | "enterprise", FeatureFlag[]> = {
-  free: [
-    FeatureFlag.WALK_IN_BILLING,
-    FeatureFlag.UDHAAR_TRACKING,
-  ],
+export const TIER_FEATURES: Record<
+  "free" | "starter" | "business" | "enterprise",
+  FeatureFlag[]
+> = {
+  free: [FeatureFlag.WALK_IN_BILLING, FeatureFlag.UDHAAR_TRACKING],
   starter: [
     FeatureFlag.WALK_IN_BILLING,
     FeatureFlag.UDHAAR_TRACKING,
