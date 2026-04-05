@@ -16,6 +16,8 @@ export * from "./inventory/stock/item-catalog";
 export * from "./finance/payments/ledger";
 export * from "./purchases/vendors/supplier-profile";
 export * from "./purchases/purchase/purchase-order";
+export * from "./finance/expenses/expense";
+export * from "./sales/credit-notes/credit-note";
 
 // Monitoring
 export * from "./modules/monitoring/monitoring.service";
