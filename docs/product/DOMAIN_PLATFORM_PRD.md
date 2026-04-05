@@ -82,6 +82,8 @@ Public competitor positioning (homepage, accounting, inventory, invoicing, POS, 
 - party-wise pricing and retail-vs-wholesale pricing control
 - real-time multi-device sync and mobile-first operator access
 - bulk item maintenance, credit controls, and retail online-store extension
+- grocery-grade batch/expiry operations with fast-moving and slow-moving stock insights
+- weighted-item checkout and offer/loyalty-driven repeat purchase workflows
 
 Implication for Execora:
 
@@ -201,7 +203,9 @@ sales/
     pricing/
     party-pricing/
     channel-pricing/
+    promotions/
     item-calculation/
+    weight-pricing/
     tax-calculation/
     totals/
   returns/
@@ -294,6 +298,7 @@ crm/
     party-ledger/
     credit-limit/
     relationship/
+    loyalty/
   communication/
     history/
     preferences/
@@ -450,6 +455,32 @@ Rules:
 - same manifest semantics must be used by backend, web, and mobile
 - cross-cutting capabilities such as e-invoicing and OCR must be declared as manifest entitlements or add-ons
 
+### 7.1 Industry-specific composition model
+
+Industry needs must be handled through profile manifests, not separate codebases.
+
+Composition layers:
+
+1. Core capabilities: shared workflows used by all businesses (billing, payments, stock, reports).
+2. Industry packs: domain extensions enabled only for relevant industries.
+3. Plan entitlements: commercial access control for enabled industry packs.
+4. Policy gates: validation rules that enforce industry-specific constraints at API boundaries.
+
+Operating rule:
+
+- if an industry pack is disabled, related routes, UI navigation, reports, and automation must stay hidden and non-executable.
+
+Example industry profiles:
+
+- Grocery profile: weighted billing, expiry alerts, fast/slow movement insights, offer engine, high-volume POS flow.
+- Pharmacy profile: medicine batch and expiry strictness, schedule/drug-class controls, prescription workflow, near-expiry disposal controls, substitute-item policy.
+
+Implementation guidance:
+
+- keep one shared data model where possible, but enforce industry behavior through capability flags plus policy guards.
+- avoid hardcoding industry checks in scattered UI screens; bind all checks to manifest capability contracts.
+- expose a resolved-capabilities endpoint so web/mobile render only valid industry flows.
+
 ---
 
 ## 8. Operating Rules and Architecture Guardrails
@@ -494,6 +525,8 @@ Rules:
 - payment reminders and status tracking
 - offline billing continuity
 - party-wise item pricing and retail-vs-wholesale rate handling
+- weighted-item billing and price-by-weight accuracy
+- offer and discount campaign support
 - separate commercial invoice and statutory e-invoice workflows when applicable
 
 ### 9.2 Inventory capabilities
@@ -506,6 +539,7 @@ Rules:
 - bulk item updates and catalog maintenance workflows
 - valuation and ageing reports
 - reserved vs available stock handling
+- fast-moving vs slow-moving inventory insights for grocery decisions
 
 ### 9.3 POS capabilities
 
@@ -516,6 +550,7 @@ Rules:
 - barcode-first and weighing-scale-assisted retail operations
 - offline-first counter operation
 - synchronized sales and stock updates
+- cash-drawer-linked checkout flows for high-volume counters
 
 ### 9.4 Accounting capabilities
 
@@ -541,6 +576,7 @@ Rules:
 - review-and-correct step before posting transactions
 - document attachment to resulting transactions
 - automatic feed into purchase, expense, and GST reporting
+- purchase order and vendor payment visibility as first-class procurement workflow
 
 ### 9.7 Platform and operations capabilities
 
@@ -550,6 +586,267 @@ Rules:
 - real-time multi-device sync and conflict-safe synchronization
 - auto backup and restore posture
 - backup, audit, and observability posture
+
+### 9.8 Invoice capability matrix by industry
+
+Use one invoice engine with profile-driven capabilities.
+
+Default invoice contract (common across all industries):
+
+- header: tenant, invoiceNo, invoiceDate, dueDate, seller, buyer, currency
+- lines: itemRef, description, qty, unit, rate, discount, taxCode, taxAmount, lineTotal
+- totals: subTotal, discountTotal, taxableTotal, taxTotal, roundOff, grandTotal
+- payment: paymentStatus, paidAmount, balanceAmount, paymentTerms, paymentMethods
+- metadata: channel, createdBy, sourceDevice, notes, attachments
+
+Industry profile extension model:
+
+- invoice.common: mandatory contract for all profiles
+- invoice.extensions.<industry>: optional fields and rules for one industry
+- invoice.policy.<industry>: validation gates (required, optional, forbidden)
+- unsupported extension fields are rejected at API boundary and hidden in UI
+
+| Capability / Rule                                                    | Retail                  | Grocery                             | Pharmacy                                  | Restaurant               | Jewellery                         | Clothing/Apparel            |
+| -------------------------------------------------------------------- | ----------------------- | ----------------------------------- | ----------------------------------------- | ------------------------ | --------------------------------- | --------------------------- |
+| Base invoice fields (party, items, qty, rate, tax, totals, due date) | required                | required                            | required                                  | required                 | required                          | required                    |
+| GST tax invoice support                                              | required                | required                            | required                                  | required                 | required                          | required                    |
+| E-invoice (IRP/IRN/QR) when eligible                                 | optional by eligibility | optional by eligibility             | optional by eligibility                   | optional by eligibility  | optional by eligibility           | optional by eligibility     |
+| Multi-rate GST on same invoice                                       | supported               | strongly required                   | strongly required                         | common                   | common                            | common                      |
+| Barcode billing                                                      | common                  | default                             | default                                   | common                   | common                            | common                      |
+| Weighted item billing                                                | optional                | required for produce and bulk goods | not primary                               | optional                 | required for precious metal items | not primary                 |
+| Batch tracking at invoice line                                       | optional                | recommended                         | required                                  | optional                 | optional                          | optional                    |
+| Expiry awareness at billing                                          | optional alert          | required alert                      | strict gate (block or override by policy) | optional                 | optional                          | optional                    |
+| Table and order context on invoice (tableNo, kotRef, serviceMode)    | not required            | not required                        | not required                              | required                 | not required                      | not required                |
+| Kitchen ticket linkage                                               | not required            | not required                        | not required                              | required                 | not required                      | not required                |
+| Regulatory fields (drug license on invoice)                          | not required            | not required                        | required                                  | not required             | not required                      | not required                |
+| Restricted item register (Schedule H/H1 type controls)               | not required            | not required                        | required                                  | not required             | not required                      | not required                |
+| Hallmark and purity metadata                                         | not required            | not required                        | not required                              | not required             | required                          | not required                |
+| Making and labour charges                                            | optional                | optional                            | optional                                  | optional                 | required                          | optional                    |
+| PTR/MRP pricing modes                                                | optional                | optional                            | required for wholesale pharma profiles    | optional                 | optional                          | optional                    |
+| Retail vs wholesale pricing channel                                  | optional                | common                              | common for distributors                   | optional                 | common                            | strongly required           |
+| Variant billing (size, color, style)                                 | optional                | optional                            | not primary                               | optional                 | optional                          | required                    |
+| Offer and discount campaigns                                         | common                  | strongly required                   | policy-controlled                         | strongly required        | common                            | strongly required           |
+| Loyalty mechanics                                                    | optional                | common                              | optional                                  | common                   | common                            | common                      |
+| Payment reminders and outstanding tracking                           | common                  | common                              | common                                    | common                   | common                            | common                      |
+| Audit export depth                                                   | standard                | standard with inventory focus       | strict compliance focus                   | operations and tax focus | valuation and purity focus        | sales and receivables focus |
+
+Policy gate implications:
+
+- retail profile stays closest to common invoice with minimal mandatory extensions.
+- grocery profile enables weighted billing and promotion flows while keeping pharmacy compliance fields hidden.
+- pharmacy profile enforces drug-license, restricted-drug registers, and stricter batch/expiry checks even if base invoice flow is shared.
+- restaurant profile enforces order and table context plus kitchen ticket references on billed lines.
+- jewellery profile enforces purity, hallmark, and making-charge rules with optional EMI and instalment policy.
+- clothing and apparel profile enforces variant-aware lines (size, color, style), retail-vs-wholesale pricing, and promotion-heavy checkout.
+- unsupported capabilities must be hidden in UI and rejected at API validation.
+
+### 9.9 Common and industry invoice implementation pattern
+
+Use this deterministic resolution flow at runtime:
+
+1. Load tenant profile and plan entitlements.
+2. Resolve invoice capability set from invoice.common + invoice.extensions.<industry>.
+3. Build UI schema from resolved capability set (form fields, line editors, totals panel, print template options).
+4. Validate payload with invoice.policy.<industry> before command execution.
+5. Persist one canonical invoice aggregate with optional extension blobs.
+6. Emit domain events with both common payload and typed extension payload.
+
+Data model guidance:
+
+- keep one invoice table or aggregate root for common fields.
+- store industry extensions in typed child tables or typed JSON columns with schema validation.
+- never fork invoice numbering, totals, posting, or payment state machine per industry.
+- extension rules may add required fields, but must not bypass core accounting and stock posting contracts.
+
+### 9.10 Sample industry invoice manifests (starter)
+
+Use these as reference configs for backend validation and UI schema generation.
+
+Common base manifest:
+
+```yaml
+manifestVersion: 1
+manifestType: invoice.common
+fields:
+  header:
+    - tenantId
+    - invoiceNo
+    - invoiceDate
+    - dueDate
+    - seller
+    - buyer
+    - currency
+  lines:
+    - itemRef
+    - description
+    - qty
+    - unit
+    - rate
+    - discount
+    - taxCode
+    - taxAmount
+    - lineTotal
+  totals:
+    - subTotal
+    - discountTotal
+    - taxableTotal
+    - taxTotal
+    - roundOff
+    - grandTotal
+  payment:
+    - paymentStatus
+    - paidAmount
+    - balanceAmount
+    - paymentTerms
+    - paymentMethods
+  metadata:
+    - channel
+    - createdBy
+    - sourceDevice
+    - notes
+    - attachments
+```
+
+Retail profile:
+
+```yaml
+manifestVersion: 1
+manifestType: invoice.profile
+profile: retail
+inherits: invoice.common
+requiredFields: []
+optionalFields:
+  - line.barcode
+  - header.channel
+forbiddenFields:
+  - line.drugLicenseNo
+  - line.scheduleClass
+  - line.tableNo
+policy:
+  weightedBilling: optional
+  discounts: common
+  expiryGate: alert
+```
+
+Grocery profile:
+
+```yaml
+manifestVersion: 1
+manifestType: invoice.profile
+profile: grocery
+inherits: invoice.common
+requiredFields:
+  - line.weightQty
+optionalFields:
+  - line.batchNo
+  - line.expiryDate
+forbiddenFields:
+  - line.drugLicenseNo
+  - line.scheduleClass
+policy:
+  weightedBilling: required
+  promotions: strongly_required
+  expiryGate: required_alert
+```
+
+Pharmacy profile:
+
+```yaml
+manifestVersion: 1
+manifestType: invoice.profile
+profile: pharmacy
+inherits: invoice.common
+requiredFields:
+  - header.drugLicenseNo
+  - line.batchNo
+  - line.expiryDate
+  - line.scheduleClass
+optionalFields:
+  - line.ptr
+  - line.mrp
+forbiddenFields:
+  - line.tableNo
+  - line.kotRef
+policy:
+  restrictedDrugRegister: required
+  expiryGate: strict_block_or_override
+  ptrMrpMode: required_for_wholesale
+  discounts: policy_controlled
+```
+
+Restaurant profile:
+
+```yaml
+manifestVersion: 1
+manifestType: invoice.profile
+profile: restaurant
+inherits: invoice.common
+requiredFields:
+  - header.serviceMode
+  - header.tableNo
+  - line.kotRef
+optionalFields:
+  - header.waiterRef
+forbiddenFields:
+  - header.drugLicenseNo
+  - line.scheduleClass
+  - line.hallmarkId
+policy:
+  kitchenLink: required
+  tableContext: required
+  discounts: strongly_required
+```
+
+Jewellery profile:
+
+```yaml
+manifestVersion: 1
+manifestType: invoice.profile
+profile: jewellery
+inherits: invoice.common
+requiredFields:
+  - line.netWeight
+  - line.purity
+  - line.hallmarkId
+  - line.makingCharges
+optionalFields:
+  - payment.emiPlanRef
+forbiddenFields:
+  - line.scheduleClass
+  - line.tableNo
+policy:
+  weightedBilling: required_for_precious_metals
+  hallmarkValidation: required
+  labourCharges: required
+```
+
+Clothing and apparel profile:
+
+```yaml
+manifestVersion: 1
+manifestType: invoice.profile
+profile: clothing_apparel
+inherits: invoice.common
+requiredFields:
+  - line.size
+  - line.color
+  - line.styleCode
+optionalFields:
+  - line.fit
+  - line.season
+forbiddenFields:
+  - line.drugLicenseNo
+  - line.scheduleClass
+  - line.hallmarkId
+policy:
+  variantBilling: required
+  retailWholesalePricing: strongly_required
+  discounts: strongly_required
+```
+
+Implementation note:
+
+- keep these manifests in one registry (platform/product-config) and expose resolved output via a single capabilities endpoint consumed by API guards and app forms.
 
 ---
 
@@ -784,4 +1081,5 @@ This PRD is based on:
 - existing Execora product and sprint docs in docs/product
 - current repo architecture audit and coupling analysis
 - competitor research from public pages covering homepage, accounting, inventory, invoicing, POS, e-invoicing, OCR, and retail billing
+- competitor research from public pages covering homepage, accounting, inventory, invoicing, POS, e-invoicing, OCR, retail billing, and grocery billing
 - architecture decisions recorded during Core -> Domains -> Platform -> Products -> Apps planning

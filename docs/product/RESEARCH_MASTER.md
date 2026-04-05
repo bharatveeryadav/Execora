@@ -32,12 +32,14 @@ and decision context. Supporting research files remain as domain appendices.
 - Differentiation is strongest where voice workflow, operational trust, and parity converge.
 - Architecture direction is now anchored on a domain-first modular platform with products composed by configuration rather than feature-sprawl modules.
 - Retail billing research adds strong demand for party-wise pricing, retail/wholesale pricing, bulk item operations, multi-device sync, and mobile-first operator access.
+- Grocery billing research reinforces weighted-item billing, batch/expiry vigilance, and high-frequency operator workflows at kirana counters.
 
 ### Invoice and GST
 
 - Core compliance base exists, but advanced parity and edge-case handling remain active.
 - Invoice UX standardization and operator clarity are recurring high-value requirements.
 - External research now confirms e-invoicing needs distinct workflow handling for IRP submission, IRN, QR, eligibility, cancellation window, and audit traceability.
+- Pharmacy research reinforces invoice-level drug license capture, medicine-specific GST slabs, and stricter audit-readiness requirements.
 
 ### Inventory and Retail
 
@@ -45,6 +47,8 @@ and decision context. Supporting research files remain as domain appendices.
 - Bulk operations, discoverability, and scale behavior are critical for real shop usage.
 - Inventory research also confirms the need for reservations, transfer-ledger thinking, multi-store operations, and role-specific stock workflows.
 - Retail billing research also reinforces barcode-first checkout, low-stock automation, catalog bulk maintenance, and hardware-linked store workflows.
+- Grocery page signals also emphasize fast-moving vs slow-moving item insight, expiry-aware stocking, and daily profit visibility.
+- Pharmacy page signals emphasize batch and expiry enforcement, Schedule H/H1 tracking, and compliance-first inventory records.
 
 ### OCR and Procurement Automation
 
@@ -56,6 +60,7 @@ and decision context. Supporting research files remain as domain appendices.
 - Mobile implementation progress is strong, but final parity and release hardening continue.
 - Store compliance work is mostly procedural, with clear pre-submit checklists.
 - Retail positioning in the market assumes real-time access to billing, inventory, and expense visibility from mobile as a default operator workflow.
+- Grocery operations additionally assume mobile-assisted oversight for stock, offers, and payment status across active counters.
 
 ### Production and Launch
 
@@ -135,3 +140,5 @@ and decision context. Supporting research files remain as domain appendices.
 - https://vyaparapp.in/free/invoicing-software/e-invoicing
 - https://vyaparapp.in/ocr-scanner-software
 - https://vyaparapp.in/free/billing-software-for-retail-shop
+- https://vyaparapp.in/free/billing-software-for-retail-shop/grocery-store
+- https://vyaparapp.in/free/billing-software-for-retail-shop/pharmacy
