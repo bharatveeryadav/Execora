@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyRequest } from "fastify";
-import { ledgerService } from "@execora/modules";
+import { recordPayment, addCredit, getCustomerLedger } from "@execora/modules";
 import { broadcaster } from "../../ws/broadcaster";
 
 function parseLimit(raw: unknown, defaultVal: number, maxVal = 100): number {
@@ -42,22 +42,20 @@ export async function ledgerRoutes(fastify: FastifyInstance) {
         };
       }>,
     ) => {
-      const entry = await ledgerService.recordPayment(
+      const entry = await recordPayment(
         request.body.customerId,
         request.body.amount,
         request.body.paymentMode,
         request.body.notes,
         request.body.reference,
-        request.body.paymentDate
-          ? new Date(request.body.paymentDate)
-          : undefined,
+        request.body.paymentDate,
       );
       const tid = request.user!.tenantId;
       if (tid)
         broadcaster.send(tid, "payment:recorded", {
           customerId: request.body.customerId,
           amount: request.body.amount,
-          customerName: entry.customer?.name ?? "",
+          customerName: (entry as any).customer?.name ?? "",
         });
       return { entry };
     },
@@ -84,7 +82,7 @@ export async function ledgerRoutes(fastify: FastifyInstance) {
         Body: { customerId: string; amount: number; description: string };
       }>,
     ) => {
-      const entry = await ledgerService.addCredit(
+      const entry = await addCredit(
         request.body.customerId,
         request.body.amount,
         request.body.description,
@@ -107,7 +105,7 @@ export async function ledgerRoutes(fastify: FastifyInstance) {
         Querystring: { limit?: string };
       }>,
     ) => {
-      const entries = await ledgerService.getCustomerLedger(
+      const entries = await getCustomerLedger(
         request.params.customerId,
         parseLimit(request.query.limit, 50),
       );

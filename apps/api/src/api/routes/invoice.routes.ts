@@ -1,9 +1,5 @@
 import { FastifyInstance, FastifyRequest } from "fastify";
-import {
-  createInvoice,
-  invoiceService,
-  ledgerService,
-} from "@execora/modules";
+import { createInvoice, invoiceService, ledgerService } from "@execora/modules";
 import { getGstinValidationError } from "@execora/shared";
 import { broadcaster } from "../../ws/broadcaster";
 import { makePortalToken } from "@execora/infrastructure";
@@ -168,12 +164,10 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
               "invoice pdf/email dispatch failed",
             ),
           );
-        return reply
-          .code(201)
-          .send({
-            invoice: result.invoice,
-            autoCreatedProducts: result.autoCreatedProducts,
-          });
+        return reply.code(201).send({
+          invoice: result.invoice,
+          autoCreatedProducts: result.autoCreatedProducts,
+        });
       } catch (err: any) {
         if (err?.message?.startsWith("CREDIT_LIMIT_EXCEEDED:")) {
           const [, rest] = err.message.split(":");

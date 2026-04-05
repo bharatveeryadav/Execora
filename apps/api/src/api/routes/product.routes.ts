@@ -401,10 +401,7 @@ export async function productRoutes(fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const product = await updateProduct(
-        request.params.id,
-        request.body,
-      );
+      const product = await updateProduct(request.params.id, request.body);
       if (!product) return reply.code(404).send({ error: "Product not found" });
       const tid = request.user!.tenantId;
       if (tid)
@@ -434,10 +431,7 @@ export async function productRoutes(fastify: FastifyInstance) {
       },
     },
     async (request) => {
-      const product = await updateProductStock(
-        request.params.id,
-        request.body,
-      );
+      const product = await updateProductStock(request.params.id, request.body);
       const tid = request.user!.tenantId;
       if (tid)
         broadcaster.send(tid, "stock:updated", {

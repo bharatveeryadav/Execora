@@ -5,8 +5,11 @@
  * POST /api/v1/suppliers         — create
  */
 import { FastifyInstance, FastifyRequest } from "fastify";
-import { prisma } from "@execora/infrastructure";
-import { Prisma } from "@prisma/client";
+import {
+  listSuppliers,
+  getSupplierById,
+  createSupplier,
+} from "@execora/modules";
 
 function parseLimit(raw: unknown, defaultVal = 50, maxVal = 200): number {
   const n = parseInt(String(raw ?? defaultVal), 10);
@@ -25,21 +28,7 @@ export async function supplierRoutes(fastify: FastifyInstance) {
       const tenantId = request.user!.tenantId;
       const q = (request.query.q ?? "").trim();
       const limit = parseLimit(request.query.limit, 50);
-
-      const where: Prisma.SupplierWhereInput = { tenantId };
-      if (q) {
-        where.OR = [
-          { name: { contains: q, mode: "insensitive" } },
-          { companyName: { contains: q, mode: "insensitive" } },
-          { phone: { contains: q } },
-        ];
-      }
-
-      const suppliers = await prisma.supplier.findMany({
-        where,
-        take: limit,
-        orderBy: { name: "asc" },
-      });
+      const suppliers = await listSuppliers(tenantId, q, limit);
       return { suppliers };
     },
   );
@@ -49,9 +38,7 @@ export async function supplierRoutes(fastify: FastifyInstance) {
     "/api/v1/suppliers/:id",
     async (request, reply) => {
       const tenantId = request.user!.tenantId;
-      const supplier = await prisma.supplier.findFirst({
-        where: { id: request.params.id, tenantId },
-      });
+      const supplier = await getSupplierById(tenantId, request.params.id);
 
       if (!supplier) {
         return reply.code(404).send({ error: "Supplier not found" });
@@ -95,19 +82,7 @@ export async function supplierRoutes(fastify: FastifyInstance) {
       reply,
     ) => {
       const tenantId = request.user!.tenantId;
-      const { name, companyName, phone, email, address, gstin } = request.body;
-
-      const supplier = await prisma.supplier.create({
-        data: {
-          tenantId,
-          name: name.trim(),
-          companyName: companyName?.trim() || null,
-          phone: phone?.trim() || null,
-          email: email?.trim() || null,
-          address: address?.trim() || null,
-          gstin: gstin?.trim() || null,
-        },
-      });
+      const supplier = await createSupplier(tenantId, request.body);
       return reply.code(201).send({ supplier });
     },
   );

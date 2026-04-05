@@ -1,0 +1,35 @@
+{
+  "root": true,
+  "parser": "@typescript-eslint/parser",
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["@prisma/client"],
+            "message": "Route files must not import @prisma/client directly. Use module functions from @execora/modules instead."
+          }
+        ]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["src/api/routes/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@prisma/client", "@prisma/client/runtime/*"],
+                "message": "Route handlers must not import Prisma directly. Use @execora/modules functions."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

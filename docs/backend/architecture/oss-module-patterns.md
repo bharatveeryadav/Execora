@@ -14,6 +14,7 @@ Cal.com · Trigger.dev · Twenty CRM · Hoppscotch · Documenso
 ## 1. Package Structures
 
 ### Cal.com — `@calcom/*`
+
 pnpm monorepo, Next.js + NestJS API v2
 
 ```
@@ -36,6 +37,7 @@ packages/
 ---
 
 ### Trigger.dev — `@trigger.dev/*` + `@internal/*`
+
 pnpm monorepo
 
 ```
@@ -59,6 +61,7 @@ internal-packages/       # Never resolvable externally (bundled via noExternal)
 ---
 
 ### Twenty CRM — `twenty-*` (no scope)
+
 Nx + Yarn 4, NestJS backend
 
 ```
@@ -83,6 +86,7 @@ packages/
 ---
 
 ### Hoppscotch — `hoppscotch-*` (no scope)
+
 pnpm, NestJS backend
 
 ```
@@ -102,6 +106,7 @@ packages/
 ---
 
 ### Documenso — `@documenso/*`
+
 Remix + Hono, most radical pattern
 
 ```
@@ -150,12 +155,12 @@ packages/
 
 **None of the 5 projects use formal CQRS.**
 
-| Approach | Who |
-|----------|-----|
-| NestJS `@Injectable` service classes | Twenty, Hoppscotch, Cal.com API v2 |
-| Framework-agnostic class + DI token symbols | Cal.com features packages |
-| One exported `async function` per file | **Documenso** (strictest, most admired) |
-| Singleton class instances as constants | Trigger.dev |
+| Approach                                    | Who                                     |
+| ------------------------------------------- | --------------------------------------- |
+| NestJS `@Injectable` service classes        | Twenty, Hoppscotch, Cal.com API v2      |
+| Framework-agnostic class + DI token symbols | Cal.com features packages               |
+| One exported `async function` per file      | **Documenso** (strictest, most admired) |
+| Singleton class instances as constants      | Trigger.dev                             |
 
 The `commands/` folder in Twenty = `nest-commander` CLI scripts, not CQRS.
 
@@ -165,13 +170,13 @@ The `commands/` folder in Twenty = `nest-commander` CLI scripts, not CQRS.
 
 ## 3. Boundary Enforcement Mechanisms
 
-| Rank | Mechanism | Project | Level |
-|------|-----------|---------|-------|
-| 1 | NestJS `@Module({ exports: [] })` | Twenty, Hoppscotch | Runtime DI |
-| 2 | tsup `noExternal: [/^@internal/]` | Trigger.dev | Build-time |
-| 3 | Empty `index.ts` + sub-path imports | Documenso | Convention |
-| 4 | Auto-generated explicit named barrels | Twenty | Script-enforced |
-| 5 | ESLint `no-restricted-imports` / `no-restricted-globals` | Hoppscotch, Documenso | Lint-time |
+| Rank | Mechanism                                                | Project               | Level           |
+| ---- | -------------------------------------------------------- | --------------------- | --------------- |
+| 1    | NestJS `@Module({ exports: [] })`                        | Twenty, Hoppscotch    | Runtime DI      |
+| 2    | tsup `noExternal: [/^@internal/]`                        | Trigger.dev           | Build-time      |
+| 3    | Empty `index.ts` + sub-path imports                      | Documenso             | Convention      |
+| 4    | Auto-generated explicit named barrels                    | Twenty                | Script-enforced |
+| 5    | ESLint `no-restricted-imports` / `no-restricted-globals` | Hoppscotch, Documenso | Lint-time       |
 
 ---
 
@@ -195,6 +200,7 @@ hoppscotch-backend  hoppscotch-common
 ## 5. Execora Assessment
 
 ### What Execora Does Well
+
 - `@execora/infrastructure` cleanly separates platform from domain ✅ matches Twenty + Documenso
 - `@execora/modules` as a single import boundary ✅ matches Cal.com's `@calcom/platform-libraries`
 - Scoped package naming ✅ matches Cal.com, Documenso, Trigger.dev
@@ -202,13 +208,13 @@ hoppscotch-backend  hoppscotch-common
 
 ### Gaps vs. Industry
 
-| Gap | Industry Solution | Priority |
-|-----|-------------------|----------|
-| `contracts/dto.ts + commands.ts + queries.ts` — 4-level nesting, no industry precedent | Documenso: `server-only/{domain}/{operation}.ts` flat per function | High |
-| No ESLint import boundary rules | Hoppscotch `no-restricted-imports` banning direct `@prisma/client` in routes | High |
-| No `server-only/` vs `universal/` split inside modules | Documenso's subdirectory split | Medium |
-| Manual barrel (`index.ts export *`) maintenance | Twenty's `generateBarrels.ts` script | Low |
-| No structured BullMQ job registry | Documenso `jobs/client.ts` + `jobs/definitions/` pattern | Medium |
+| Gap                                                                                    | Industry Solution                                                            | Priority |
+| -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | -------- |
+| `contracts/dto.ts + commands.ts + queries.ts` — 4-level nesting, no industry precedent | Documenso: `server-only/{domain}/{operation}.ts` flat per function           | High     |
+| No ESLint import boundary rules                                                        | Hoppscotch `no-restricted-imports` banning direct `@prisma/client` in routes | High     |
+| No `server-only/` vs `universal/` split inside modules                                 | Documenso's subdirectory split                                               | Medium   |
+| Manual barrel (`index.ts export *`) maintenance                                        | Twenty's `generateBarrels.ts` script                                         | Low      |
+| No structured BullMQ job registry                                                      | Documenso `jobs/client.ts` + `jobs/definitions/` pattern                     | Medium   |
 
 ---
 
@@ -247,13 +253,15 @@ packages/modules/src/
 ```
 
 Routes import individual functions, not service class instances:
+
 ```ts
 // invoice.routes.ts
-import { createInvoice } from '@execora/modules';
+import { createInvoice } from "@execora/modules";
 // NOT: import { createInvoiceCommand } from '@execora/modules';
 ```
 
 ### ESLint Rule to Add (Hoppscotch pattern)
+
 ```js
 // root eslint.config.js
 "no-restricted-imports": ["error", {

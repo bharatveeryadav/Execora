@@ -112,10 +112,7 @@ export async function customerRoutes(fastify: FastifyInstance) {
     },
     async (request, reply) => {
       try {
-        const customer = await updateCustomer(
-          request.params.id,
-          request.body,
-        );
+        const customer = await updateCustomer(request.params.id, request.body);
         const tid = request.user!.tenantId;
         broadcaster.send(tid, "customer:updated", { customerId: customer.id });
         return { customer };

@@ -13,6 +13,9 @@ export * from "./modules/gst/gstr1.service";
 export * from "./sales/invoicing/create-invoice";
 export * from "./crm/parties/customer-profile";
 export * from "./inventory/stock/item-catalog";
+export * from "./finance/payments/ledger";
+export * from "./purchases/vendors/supplier-profile";
+export * from "./purchases/purchase/purchase-order";
 
 // Monitoring
 export * from "./modules/monitoring/monitoring.service";
