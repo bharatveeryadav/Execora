@@ -13,6 +13,12 @@ App surfaces do not invent product logic. They consume the same contracts from t
 - mobile does the same with mobile-first UX
 - desktop should reuse the same routes, manifests, and entitlement semantics
 
+Backend-first integration rule:
+
+- app surfaces connect to backend module contracts through API adapters
+- app surfaces must not depend on backend internal service files
+- one backend module can serve many app surfaces without code forks
+
 ## Backend Platform Responsibility
 
 ### API Backend
@@ -98,6 +104,7 @@ src/
 - product navigation belongs to manifests
 - shared calculations belong to domain or shared packages
 - app-specific UI state should never become the source of business truth
+- app-specific workflow customizations should live in app adapters, not in backend domain module internals
 
 ## Multi-Product Example
 

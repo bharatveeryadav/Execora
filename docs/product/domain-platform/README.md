@@ -11,6 +11,7 @@ This folder splits the master PRD into smaller docs that are easier to maintain 
 - Engineering rules, APIs, events, and NFRs: start with [05-engineering-guardrails-and-events.md](./05-engineering-guardrails-and-events.md)
 - Delivery, migration, squad ownership, risks, and KPIs: start with [06-delivery-migration-and-metrics.md](./06-delivery-migration-and-metrics.md)
 - Feature-level module decomposition and migration: start with [07-feature-module-split-guide.md](./07-feature-module-split-guide.md)
+- Backend-first reusable runtime and app integration contract: start with [08-backend-first-modular-runtime.md](./08-backend-first-modular-runtime.md)
 
 ## Recommended Ownership
 
@@ -21,6 +22,7 @@ This folder splits the master PRD into smaller docs that are easier to maintain 
 - Architecture and platform squads own `05`
 - Product operations and architecture own `06`
 - Domain leads and tech leads co-own `07`
+- Platform architecture and backend leads co-own `08`
 
 ## Source of Truth Rules
 

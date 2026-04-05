@@ -15,6 +15,7 @@ This document captures the rules that keep the platform maintainable as product 
 - auth, role, tenant, feature, and quota checks happen at API boundary
 - AI modules must be optional, isolated, and feature-gated independently from core business modules
 - AI modules must never become the system of record for domain state
+- backend feature modules are the only business-rule authority; app shells are consumers
 
 ## Anti-Patterns
 
@@ -33,6 +34,7 @@ This document captures the rules that keep the platform maintainable as product 
 - contract tests for key DTOs and events
 - manifest schema validation in CI
 - AI toggle contract tests and fail-closed behavior tests in CI
+- route-to-feature ownership checks in CI for API endpoints
 
 ## API Direction
 
