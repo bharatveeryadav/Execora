@@ -1,5 +1,17 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
-import { customerService, invoiceService } from '@execora/modules';
+import {
+	invoiceService,
+	createCustomerCommand,
+	updateCustomerCommand,
+	updateBalanceCommand,
+	deleteCustomerCommand,
+	upsertCommPrefsCommand,
+	getCustomerByIdQuery,
+	searchCustomersQuery,
+	listCustomersQuery,
+	listOverdueCustomersQuery,
+	getCommPrefsQuery,
+} from '@execora/modules';
 import { broadcaster } from '../../ws/broadcaster';
 
 export async function customerRoutes(fastify: FastifyInstance) {
@@ -18,11 +30,11 @@ export async function customerRoutes(fastify: FastifyInstance) {
 			const offset = (page - 1) * limit;
 
 			if (q.length > 0) {
-				const customers = await customerService.searchCustomer(q);
+				const customers = await searchCustomersQuery.execute(q);
 				return { customers, total: customers.length, page: 1, limit };
 			}
 
-			const customers = await customerService.listAllCustomers(limit + offset);
+			const customers = await listCustomersQuery.execute(limit + offset);
 			const sliced = customers.slice(offset, offset + limit);
 			return { customers: sliced, total: customers.length, page, limit };
 		}
@@ -30,7 +42,7 @@ export async function customerRoutes(fastify: FastifyInstance) {
 
 	// ── GET /api/v1/customers/overdue — customers with unpaid balance > 0 ───────
 	fastify.get('/api/v1/customers/overdue', async () => {
-		const customers = await customerService.getAllCustomersWithPendingBalance();
+		const customers = await listOverdueCustomersQuery.execute();
 		return { customers };
 	});
 
@@ -45,15 +57,15 @@ export async function customerRoutes(fastify: FastifyInstance) {
 			const q = request.query.q ?? '';
 			const limit = parseInt(request.query.limit ?? '200', 10);
 			const customers = q.trim()
-				? await customerService.searchCustomer(q)
-				: await customerService.listAllCustomers(limit);
+				? await searchCustomersQuery.execute(q)
+				: await listCustomersQuery.execute(limit);
 			return { customers };
 		}
 	);
 
 	// ── GET /api/v1/customers/:id ───────────────────────────────────────────────
 	fastify.get<{ Params: { id: string } }>('/api/v1/customers/:id', async (request, reply) => {
-		const customer = await customerService.getCustomerById(request.params.id);
+		const customer = await getCustomerByIdQuery.execute(request.params.id);
 		if (!customer) return reply.code(404).send({ error: 'Customer not found' });
 		return { customer };
 	});
@@ -93,7 +105,7 @@ export async function customerRoutes(fastify: FastifyInstance) {
 		},
 		async (request, reply) => {
 			try {
-				const customer = await customerService.updateProfile(request.params.id, request.body);
+				const customer = await updateCustomerCommand.execute(request.params.id, request.body);
 				const tid = request.user!.tenantId;
 				broadcaster.send(tid, 'customer:updated', { customerId: customer.id });
 				return { customer };
@@ -116,7 +128,7 @@ export async function customerRoutes(fastify: FastifyInstance) {
 
 	// ── GET /api/v1/customers/:id/communication-prefs ───────────────────────────
 	fastify.get<{ Params: { id: string } }>('/api/v1/customers/:id/communication-prefs', async (request) => {
-		const prefs = await customerService.getCommPrefs(request.params.id);
+		const prefs = await getCommPrefsQuery.execute(request.params.id);
 		// Return empty object (not 404) when prefs don't exist yet — simpler for the UI
 		return { prefs: prefs ?? null };
 	});
@@ -152,7 +164,7 @@ export async function customerRoutes(fastify: FastifyInstance) {
 		},
 		async (request, reply) => {
 			try {
-				const prefs = await customerService.upsertCommPrefs(request.params.id, request.body);
+				const prefs = await upsertCommPrefsCommand.execute(request.params.id, request.body);
 				return { prefs };
 			} catch (err: any) {
 				if (err.message === 'Customer not found') return reply.code(404).send({ error: 'Customer not found' });
@@ -197,22 +209,10 @@ export async function customerRoutes(fastify: FastifyInstance) {
 			},
 		},
 		async (request, reply) => {
-			const { openingBalance, creditLimit, email, tags, ...rest } = request.body;
-			const customer = await customerService.createCustomer(rest);
-
-			// Apply extra fields that createCustomer doesn't handle
-			const extras: { email?: string; tags?: string[]; creditLimit?: number } = {};
-			if (email) extras.email = email;
-			if (tags?.length) extras.tags = tags;
-			if (creditLimit !== undefined && creditLimit > 0) extras.creditLimit = creditLimit;
-			if (Object.keys(extras).length) await customerService.updateProfile(customer.id, extras);
-
-			if (openingBalance && openingBalance > 0) await customerService.updateBalance(customer.id, openingBalance);
-
-			const fresh = await customerService.getCustomerById(customer.id);
+			const customer = await createCustomerCommand.execute(request.body);
 			const tid = request.user!.tenantId;
 			broadcaster.send(tid, 'customer:created', { customerId: customer.id });
-			return reply.code(201).send({ customer: fresh ?? customer });
+			return reply.code(201).send({ customer });
 		}
 	);
 
@@ -225,7 +225,7 @@ export async function customerRoutes(fastify: FastifyInstance) {
 
 	// ── DELETE /api/v1/customers/:id ────────────────────────────────────────────
 	fastify.delete<{ Params: { id: string } }>('/api/v1/customers/:id', async (request, reply) => {
-		const result = await customerService.deleteCustomerAndAllData(request.params.id);
+		const result = await deleteCustomerCommand.execute(request.params.id);
 		if (!result.success) return reply.code(404).send({ error: 'Customer not found or delete failed' });
 		const tid = request.user!.tenantId;
 		broadcaster.send(tid, 'customer:deleted', { customerId: request.params.id });

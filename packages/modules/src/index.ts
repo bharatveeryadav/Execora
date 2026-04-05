@@ -9,8 +9,9 @@ export * from "./modules/reminder/reminder.service";
 export * from "./modules/gst/gst.service";
 export * from "./modules/gst/gstr1.service";
 
-// Phase 1 extraction adapters (backend-first modular runtime)
+// Phase 1/4 extraction adapters (backend-first modular runtime)
 export * from "./sales/invoicing/create-invoice";
+export * from "./crm/parties/customer-profile";
 
 // Monitoring
 export * from "./modules/monitoring/monitoring.service";
