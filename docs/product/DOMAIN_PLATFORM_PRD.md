@@ -25,7 +25,7 @@ This means:
 - Core: system engine (DB, transactions, events, tenancy, observability)
 - Domains: business logic ownership (sales, inventory, finance, purchases, crm, compliance, reporting)
 - Platform: SaaS controls (plans, subscription, feature gates, usage, product configuration)
-- Products: configuration overlays (Billing, Invoicing, POS, Accounting)
+- Products: five standalone software products (Billing, Invoicing, POS, Accounting, Inventory)
 - Apps: web and mobile delivery surfaces
 
 Primary outcomes:
@@ -94,18 +94,23 @@ Implication for Execora:
 
 ## 4. Product Line Strategy
 
-Execora ships four primary products on the same backend:
+Execora is one platform that ships five standalone software products on the same backend:
 
-1. Billing Product
-2. Invoicing Product
-3. POS Product
-4. Accounting Product
+1. Billing Software
+2. Invoicing Software
+3. POS Software
+4. Accounting Software
+5. Inventory Software
+
+Each product is independently usable and marketable as its own software. A business can activate one product or all five — the underlying domain engine is shared, and data flows naturally between them without duplication.
 
 Products are not modules. Products are manifests that enable domain capabilities.
 
 Advanced cross-cutting capabilities such as e-invoicing and OCR-assisted procurement must be attached through manifest entitlements or add-ons, not hardcoded route branching.
 
-### 4.1 Billing Product
+### 4.1 Billing Software
+
+Market position: the fastest way to bill a customer and collect payment.
 
 Core capabilities:
 
@@ -117,7 +122,9 @@ Core capabilities:
 - document share/print
 - multiple invoice templates
 
-### 4.2 Invoicing Product
+### 4.2 Invoicing Software
+
+Market position: complete GST invoicing with lifecycle, compliance, and receivables in one place.
 
 Core capabilities:
 
@@ -126,8 +133,11 @@ Core capabilities:
 - template and print engine
 - GST-compliant invoice outputs
 - invoice status and receivables tracking
+- e-invoice (IRP/IRN) when eligible
 
-### 4.3 POS Product
+### 4.3 POS Software
+
+Market position: fast counter checkout for retail and restaurant with offline confidence.
 
 Core capabilities:
 
@@ -136,8 +146,11 @@ Core capabilities:
 - single-screen multi-payment experience
 - receipt/thermal workflows
 - offline-safe counter operations
+- hardware support: barcode scanner, weighing scale, cash drawer, thermal printer
 
-### 4.4 Accounting Product
+### 4.4 Accounting Software
+
+Market position: automated bookkeeping and GST reporting built from real transactions, no manual entries needed.
 
 Core capabilities:
 
@@ -146,6 +159,26 @@ Core capabilities:
 - P&L, balance sheet, cashbook, daybook
 - GST reporting and finance reporting
 - reconciliation and expense tracking
+- purchase bills, vendor payments, expense tracking
+
+### 4.5 Inventory Software
+
+Market position: complete stock control across locations with alerts, movement tracking, and valuation.
+
+Core capabilities:
+
+- multi-location stock management (godowns and stores)
+- inward and outward stock movement with ledger
+- stock transfers between locations
+- batch tracking and expiry management
+- serial number tracking
+- barcode generation, scanning, and label printing
+- low-stock alerts, overstock alerts, and reorder suggestions
+- bulk item and catalog management
+- stock valuation and ageing reports
+- reserved vs available vs incoming stock visibility
+- fast-moving and slow-moving item analysis
+- purchase order and vendor receipt integration
 
 ---
 
@@ -201,7 +234,9 @@ sales/
     pricing/
     party-pricing/
     channel-pricing/
+    promotions/
     item-calculation/
+    weight-pricing/
     tax-calculation/
     totals/
   returns/
@@ -410,8 +445,9 @@ Products are manifest-driven overlays.
 Example manifest contract:
 
 ```yaml
+# Example: POS Software manifest
 product: pos
-displayName: POS
+displayName: POS Software
 domains:
   - sales.pos
   - sales.billing
@@ -424,6 +460,7 @@ features:
   - thermal_receipt
   - barcode_scan
   - low_stock_alerts
+  - hardware_integration
 limits:
   users: 5
   counters: 3
@@ -438,9 +475,45 @@ navigation:
     - pos_terminal
     - sales
     - reports
-industryPresets:
-  - retail
-  - grocery
+```
+
+```yaml
+# Example: Inventory Software manifest
+product: inventory
+displayName: Inventory Software
+domains:
+  - inventory.stock
+  - inventory.warehouse
+  - inventory.movement
+  - inventory.batch
+  - inventory.barcode
+  - inventory.alerts
+  - purchases.purchase
+  - reporting.inventory-reports
+features:
+  - multi_location_stock
+  - batch_expiry_tracking
+  - serial_number_tracking
+  - barcode_label_printing
+  - low_stock_alerts
+  - reorder_suggestions
+  - stock_valuation
+limits:
+  users: 5
+  locations: 3
+  skus: 10000
+navigation:
+  mobile:
+    - stock_home
+    - movements
+    - alerts
+    - reports
+  web:
+    - items
+    - stock_levels
+    - transfers
+    - batch_tracking
+    - reports
 ```
 
 Rules:
@@ -690,10 +763,11 @@ Ownership model:
 
 ### Phase 3: Product composition rollout (4-6 weeks)
 
-- Billing manifest rollout
-- Invoicing manifest rollout
-- POS manifest rollout
-- Accounting manifest rollout
+- Billing Software manifest rollout
+- Invoicing Software manifest rollout
+- POS Software manifest rollout
+- Accounting Software manifest rollout
+- Inventory Software manifest rollout
 
 ### Phase 4: Platform completion (4-6 weeks)
 
@@ -756,7 +830,7 @@ Reliability metrics:
 ## 19. Decisions Locked
 
 - architecture pattern: modular monolith first
-- product strategy: four products in parallel via shared domains
+- product strategy: five standalone software products via shared domains (Billing, Invoicing, POS, Accounting, Inventory)
 - domain set: fixed 11 top-level domains
 - composition strategy: products are configuration only
 - migration style: incremental with boundary guardrails
@@ -765,7 +839,7 @@ Reliability metrics:
 
 ## 20. Immediate Next Actions
 
-1. Publish manifest schema and initial Billing/Invoicing/POS/Accounting configs.
+1. Publish manifest schema and initial Billing/Invoicing/POS/Accounting/Inventory software configs.
 2. Add CI boundary checks and forbidden import rules.
 3. Create one authoritative payment service contract.
 4. Create one authoritative stock movement contract.
@@ -777,7 +851,359 @@ Reliability metrics:
 
 ---
 
-## 21. Source Basis
+## 21. Execora Pricing Model
+
+### 21.1 Design principles
+
+1. Core operational value is never withheld. Every paid plan includes billing, invoicing, stock, GST basics, and mobile access. Plans differ by depth, scale, and automation — not by blocking daily work.
+2. Industry behavior is purchased as a pack, not a separate product. The same backend serves all industries; the pack unlocks domain-specific fields, validation rules, and reports.
+3. Metering is honest and predictable. Limits are defined upfront per plan. Overages are surfaced in-app before they generate a charge.
+4. Upgrades feel obvious. Each plan level adds a clear operational capability, not just a quota bump.
+
+---
+
+### 21.2 Commercial model structure
+
+```
+Platform Plan
+  └── base limits: businesses, users, devices
+  └── core products included by tier
+  └── support SLA by tier
+
+Add-ons (purchased separately or bundled at discount)
+  ├── Product Packs: Billing, Invoicing, POS, Accounting
+  ├── Industry Packs: Pharmacy, Grocery, Restaurant, Jewellery, Apparel
+  └── Usage Credits: messaging, compliance docs, automation jobs, storage
+```
+
+One entitlement service resolves `plan + addOns + industryPacks` → `resolvedCapabilities`.
+Backend routes, UI forms, and mobile navigation all read only from `resolvedCapabilities`.
+
+---
+
+### 21.3 Plan definitions
+
+#### Plan 1 — Execora Free
+
+**For:** individuals and micro-businesses trying the platform.
+
+**Price:** ₹0 forever
+
+| What is included       | Limit        |
+| ---------------------- | ------------ |
+| Businesses             | 1            |
+| Users                  | 1            |
+| Billing documents      | 50/month     |
+| Stock tracking         | basic        |
+| GST invoice PDF        | yes          |
+| Mobile and web         | yes          |
+| Storage                | 1 GB         |
+| WhatsApp/SMS messaging | not included |
+| Accounting engine      | not included |
+| POS counters           | not included |
+| Industry packs         | not included |
+
+---
+
+#### Plan 2 — Execora Solo
+
+**For:** single-owner businesses needing full billing and invoicing every day.
+
+**Price:** ₹999/month — ₹9,999/year _(save 17%)_
+
+| What is included                      | Limit / detail                 |
+| ------------------------------------- | ------------------------------ |
+| Businesses                            | 1                              |
+| Users                                 | 2 + 1 CA seat                  |
+| Billing documents                     | unlimited                      |
+| Invoicing (quotes, proforma, challan) | yes                            |
+| GST-compliant output + templates      | yes                            |
+| Stock tracking + low-stock alerts     | yes                            |
+| Party ledger and receivables          | basic                          |
+| Barcode scanning                      | yes                            |
+| Payment reminders                     | 300 WhatsApp/SMS credits/month |
+| Mobile and web                        | all devices                    |
+| Storage                               | 5 GB                           |
+| Support                               | email                          |
+| Accounting engine                     | not included                   |
+| POS counters                          | not included                   |
+| Industry packs                        | not included                   |
+
+---
+
+#### Plan 3 — Execora Business _(recommended for most)_
+
+**For:** established single or multi-store SME needing full operations plus accounting.
+
+**Price:** ₹2,499/month — ₹24,999/year _(save 17%)_
+
+| What is included                    | Limit / detail                                                                    |
+| ----------------------------------- | --------------------------------------------------------------------------------- |
+| Businesses                          | 3                                                                                 |
+| Users                               | 5 + 1 CA seat                                                                     |
+| Billing + Invoicing                 | unlimited                                                                         |
+| Full Accounting                     | ledger, journals, CoA, P&L, balance sheet, cashbook, daybook, bank reconciliation |
+| GST reports                         | GSTR-1 and GSTR-3B export                                                         |
+| Purchase bills and expense tracking | yes                                                                               |
+| OCR-assisted purchase entry         | 50 documents/month                                                                |
+| Party management                    | credit limits, ageing, segments                                                   |
+| Bulk item and catalog management    | yes                                                                               |
+| Standard reports                    | sales, inventory, party, finance, GST                                             |
+| WhatsApp/SMS credits                | 1,000/month                                                                       |
+| Storage                             | 15 GB                                                                             |
+| Support                             | email + chat, 24-hour response                                                    |
+| POS counters                        | add-on available                                                                  |
+| Industry packs                      | add-on available                                                                  |
+
+---
+
+#### Plan 4 — Execora Pro
+
+**For:** high-volume businesses needing POS counters and multi-location inventory.
+
+**Price:** ₹4,999/month — ₹49,999/year _(save 17%)_
+
+| What is included            | Limit / detail                                                                                              |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Businesses                  | 10                                                                                                          |
+| Users                       | 15 + 2 CA seats                                                                                             |
+| Everything in Business      | yes                                                                                                         |
+| POS product                 | multi-counter sessions, offline checkout, thermal receipts, hardware (barcode, weighing scale, cash drawer) |
+| Multi-godown inventory      | stock transfers, location valuation, movement ledger                                                        |
+| E-invoice automation        | IRN generation, signed QR, IRP submission, cancellation                                                     |
+| E-way bill generation       | yes                                                                                                         |
+| OCR-assisted purchase entry | 200 documents/month                                                                                         |
+| Advanced automation         | recurring invoices, scheduled reminders, payment follow-up sequences                                        |
+| Advanced analytics          | SKU movement, party performance, DSO, margin by category                                                    |
+| WhatsApp/SMS credits        | 3,000/month                                                                                                 |
+| Audit trail retention       | 3 years                                                                                                     |
+| Storage                     | 50 GB                                                                                                       |
+| Support                     | priority, 4-hour response SLA                                                                               |
+| Industry packs              | add-on available                                                                                            |
+
+---
+
+#### Plan 5 — Execora Scale
+
+**For:** distributors, chains, and businesses with 25+ outlets and deep compliance needs.
+
+**Price:** ₹8,999/month — ₹89,999/year _(save 17%)_
+
+| What is included            | Limit / detail                                                                  |
+| --------------------------- | ------------------------------------------------------------------------------- |
+| Businesses                  | 25                                                                              |
+| Users                       | 40 + 3 CA seats                                                                 |
+| Everything in Pro           | yes                                                                             |
+| Deep automation engine      | workflow rules, trigger-based actions, approval chains for purchases and credit |
+| Advanced sync governance    | multi-device conflict policy, offline replay, audit                             |
+| Custom report builder       | with scheduled delivery                                                         |
+| OCR-assisted purchase entry | 500 documents/month                                                             |
+| Audit trail retention       | 7 years with export pack                                                        |
+| WhatsApp/SMS credits        | 8,000/month                                                                     |
+| Storage                     | 200 GB                                                                          |
+| Onboarding                  | dedicated onboarding manager for first 60 days                                  |
+| Support                     | phone support during business hours                                             |
+
+---
+
+#### Plan 6 — Execora Enterprise
+
+**For:** large businesses, enterprise chains, and platforms requiring governance, custom integrations, and committed SLA.
+
+**Price:** Custom annual contract
+
+| What is included                        | Detail                                   |
+| --------------------------------------- | ---------------------------------------- |
+| Businesses and users                    | unlimited within contract scope          |
+| Everything in Scale                     | yes                                      |
+| SSO                                     | SAML/OIDC                                |
+| Custom data retention and export policy | yes                                      |
+| Custom domain and white-label kit       | yes                                      |
+| Dedicated integration support           | ERP, payment gateway, logistics          |
+| Role and permission customization       | beyond standard model                    |
+| Quarterly compliance readiness review   | yes                                      |
+| Named support engineer                  | yes                                      |
+| Private SLA                             | uptime guarantee and response commitment |
+| Custom security and audit review        | yes                                      |
+
+---
+
+### 21.4 Industry packs
+
+Each pack attaches to any paid plan. It enables industry-specific manifest fields, API validation rules, reports, and automation from the domain profile layer.
+
+| Pack            | Price                   | What it unlocks                                                                                                                      |
+| --------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Pharmacy Pack   | ₹999/month per business | drug-license fields on invoices, batch/expiry strict gate, Schedule H/H1 controls, restricted-drug register, compliance audit depth  |
+| Grocery Pack    | ₹799/month per business | weighted billing, expiry-first checkout, fast/slow movement reports, offer and loyalty engine, high-volume POS flow                  |
+| Restaurant Pack | ₹799/month per business | table and order management, KOT and service-mode billing, kitchen-linked receipt, cover and tip handling                             |
+| Jewellery Pack  | ₹999/month per business | purity and hallmark fields, net-weight billing, making and labour charges, EMI plan reference                                        |
+| Apparel Pack    | ₹799/month per business | size/color/style variant billing at line level, season and fit metadata, wholesale and retail channel pricing, variant-level returns |
+
+All packs include a 14-day free trial on first activation.
+
+---
+
+### 21.5 Usage add-ons
+
+| Unit                    | Included                   | Overage rate                      |
+| ----------------------- | -------------------------- | --------------------------------- |
+| Extra business          | per plan limit             | ₹999/business/month               |
+| Extra user              | per plan limit             | ₹399/user/month                   |
+| Extra POS counter       | included in Pro and above  | ₹999/counter/month on Business    |
+| WhatsApp messages       | per plan bundle            | ₹0.50 per message beyond bundle   |
+| SMS                     | per plan bundle            | ₹0.20 per message beyond bundle   |
+| OCR documents           | per plan monthly cap       | ₹5 per document beyond cap        |
+| E-invoice (IRN)         | unlimited in Pro and above | ₹3 per IRN beyond cap on Business |
+| Storage                 | per plan limit             | ₹99/10 GB/month                   |
+| Audit retention upgrade | standard per plan          | ₹999/month for 10-year retention  |
+
+All overage charges are displayed in-app with projection before the billing cycle closes.
+
+---
+
+### 21.6 Annual plan incentives
+
+- 17% cost saving on all plans when billed annually
+- first 2 months of one industry pack included free with annual Business and above
+- free onboarding session (1 hour video call) with annual Pro and above
+- 1,000 bonus WhatsApp/SMS credits at activation with annual Solo and above
+- price locked for 12 months from annual plan activation date
+
+---
+
+### 21.7 Entitlement schema (engineering reference)
+
+Every tenant session resolves one entitlement object used by all route guards, UI forms, and mobile navigation:
+
+```typescript
+interface TenantEntitlements {
+  planId: "free" | "solo" | "business" | "pro" | "scale" | "enterprise";
+  businesses: number;
+  users: number;
+  caUsers: number;
+  counters: number;
+  products: {
+    billing: boolean;
+    invoicing: boolean;
+    pos: boolean;
+    accounting: boolean;
+    inventory: boolean;
+  };
+  industryPacks: {
+    pharmacy: boolean;
+    grocery: boolean;
+    restaurant: boolean;
+    jewellery: boolean;
+    apparel: boolean;
+  };
+  limits: {
+    documentsPerMonth: number | "unlimited";
+    ocrDocumentsPerMonth: number;
+    messagingCredits: number;
+    storageGB: number;
+    auditRetentionYears: number;
+    automationJobsPerMonth: number | "unlimited";
+    eInvoicePerMonth: number | "unlimited";
+  };
+  features: {
+    eInvoice: boolean;
+    eWayBill: boolean;
+    multiGodown: boolean;
+    recurringBilling: boolean;
+    customReports: boolean;
+    approvalChains: boolean;
+    sso: boolean;
+    whiteLabel: boolean;
+  };
+  support: {
+    tier: "email" | "chat" | "priority" | "phone" | "dedicated";
+    responseSLAHours: number | "custom";
+  };
+  addOns: string[];
+}
+```
+
+Resolution order:
+
+1. Read `planId` from subscription record.
+2. Merge `addOns` overrides (extra users, counters, packs).
+3. Apply active promotional credits if a valid promo record exists.
+4. Return final `TenantEntitlements`.
+5. Cache per tenant per session; invalidate on `SubscriptionChanged` event.
+
+---
+
+### 21.8 Pricing governance rules
+
+- plan controls access depth, automation quotas, and limits only.
+- core invoice aggregation, stock movement, and ledger posting run on the same engine for all plans.
+- industry pack flags are checked at API boundary on every write route; not cached on client.
+- all plan upgrades and downgrades must emit a `SubscriptionChanged` domain event.
+- downgrade enforcement: resources above new limit go read-only until resolved; users see a grace-period warning before effective date.
+- all promotional overrides must be time-boxed and stored in auditable promo records with a clear expiry.
+
+---
+
+## 22. Legacy Switch and User Acquisition Strategy
+
+Objective: attract users migrating from legacy billing and accounting tools by removing switching risk, reducing setup effort, and proving better day-1 outcomes.
+
+### 22.1 Switch-from-old-software playbook
+
+1. Zero-friction import: one-click import for parties, items, opening stock, ledgers, and pending receivables from CSV/Excel and common legacy exports.
+2. Parallel-run confidence: support 14–30 day dual-run mode with variance checks between old system and Execora outputs.
+3. Assisted onboarding: guided setup wizard by business type (retail, restaurant, pharmacy, distributor, service).
+4. Migration assurance: backup-first import flow, rollback option, and migration success checklist.
+5. Time-to-value proof: show first invoice, first payment reminder, and first stock alert within first session.
+
+### 22.2 Pricing and offer strategy for conversions
+
+- Solo plan trial with migration credits (messaging and automation jobs) for first 30 days.
+- Business plan discount for switchers with annual prepay and verified data import.
+- Industry pack trial unlock for 14 days so users can test domain-specific behavior before upgrading.
+- CA and reseller referral incentives tied to successful migrations, not just signups.
+
+### 22.3 Product hooks that improve conversion
+
+- Smart importer that maps old field names to Execora manifest contracts.
+- Onboarding dashboard with migration progress, pending tasks, and parity checks.
+- Template and print cloning so invoice look-and-feel matches what users are familiar with.
+- Automatic policy validation so users see compliance safety early.
+- In-product guided tours for first bill, first return, first GST report, and first reconciliation.
+
+### 22.4 Trust and risk-reduction signals
+
+- Visible data ownership and export guarantee.
+- Transparent audit trail for all imported and edited records.
+- Support SLA by plan with fast migration help during first week.
+- Plain-language fallback steps when import rows fail validation.
+
+### 22.5 Distribution and acquisition channels
+
+- CA channel program with migration toolkit.
+- Retailer and distributor referral loops with account credits.
+- Product landing pages for each software (Billing, Invoicing, POS, Accounting, Inventory).
+- Webinar and demo tracks: "switch in 1 day", "GST safe migration", and "multi-branch setup".
+
+### 22.6 Success KPIs for switch motion
+
+- Import completion rate by source system.
+- Time from signup to first successful invoice.
+- First-week activation: invoices + reminders + stock updates + reports viewed.
+- Trial-to-paid conversion for switchers.
+- 30-day retention of migrated accounts.
+- Support tickets per migration and first-response resolution time.
+
+### 22.7 Operating rules
+
+- Migration tooling must use same domain contracts as normal app flows.
+- No migration bypass around accounting, stock, or compliance posting rules.
+- All switch offers must be controlled through the entitlement service and auditable promo records.
+
+---
+
+## 23. Source Basis
 
 This PRD is based on:
 
