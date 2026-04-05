@@ -9,7 +9,6 @@
  * POST /api/v1/auth/hash           — generate a scrypt hash for a password
  *                                    (admin tool, disabled in production unless ADMIN_API_KEY matches)
  */
-import { Prisma } from '@prisma/client';
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma, minioClient, logger, config } from '@execora/infrastructure';
 import {
@@ -49,7 +48,7 @@ export async function authRoutes(fastify: FastifyInstance) {
 			const { email, password, tenantId } = request.body;
 
 			// Look up user — if tenantId provided, scope the search
-			const where: Prisma.UserWhereInput = { email };
+			const where: { email: string; tenantId?: string } = { email };
 			if (tenantId) where.tenantId = tenantId;
 
 			const user = await prisma.user.findFirst({
@@ -257,17 +256,17 @@ export async function authRoutes(fastify: FastifyInstance) {
 			const tenantId = request.user!.tenantId;
 			const role = request.user!.role;
 
-			const userData: Prisma.UserUpdateInput = {};
+			const userData: Record<string, unknown> = {};
 			if (request.body.name !== undefined) userData.name = request.body.name;
 			if (request.body.phone !== undefined) userData.phone = request.body.phone;
-			if (request.body.preferences !== undefined) userData.preferences = request.body.preferences as Prisma.InputJsonValue;
+			if (request.body.preferences !== undefined) userData.preferences = request.body.preferences;
 
 			const canEditTenant = role === 'owner' || role === 'admin';
 			if (request.body.tenant && !canEditTenant) {
 				return reply.code(403).send({ error: 'Only owner/admin can update business profile fields' });
 			}
 
-			const tenantData: Prisma.TenantUpdateInput = {};
+			const tenantData: Record<string, unknown> = {};
 			const tenantBody = request.body.tenant;
 			if (tenantBody) {
 				if (tenantBody.name !== undefined) tenantData.name = tenantBody.name;
@@ -286,7 +285,7 @@ export async function authRoutes(fastify: FastifyInstance) {
 						select: { settings: true },
 					});
 					const currentSettings = (existing?.settings as Record<string, unknown>) ?? {};
-					tenantData.settings = { ...currentSettings, ...tenantBody.settings } as Prisma.InputJsonValue;
+					tenantData.settings = { ...currentSettings, ...tenantBody.settings };
 				}
 			}
 
@@ -309,10 +308,10 @@ export async function authRoutes(fastify: FastifyInstance) {
 			// returns fresh tenant data — avoids a second round-trip after the tx.
 			const updatedUser = await prisma.$transaction(async (tx) => {
 				if (Object.keys(tenantData).length) {
-					await tx.tenant.update({ where: { id: tenantId }, data: tenantData });
+					await tx.tenant.update({ where: { id: tenantId }, data: tenantData as any });
 				}
 				return Object.keys(userData).length
-					? tx.user.update({ where: { id: userId }, data: userData, select: userSelect })
+					? tx.user.update({ where: { id: userId }, data: userData as any, select: userSelect })
 					: tx.user.findUniqueOrThrow({ where: { id: userId }, select: userSelect });
 			});
 

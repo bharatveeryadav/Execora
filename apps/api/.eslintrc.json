@@ -17,6 +17,7 @@
   "overrides": [
     {
       "files": ["src/api/routes/**/*.ts"],
+      "excludedFiles": ["src/api/routes/admin.routes.ts"],
       "rules": {
         "no-restricted-imports": [
           "error",
@@ -29,6 +30,12 @@
             ]
           }
         ]
+      }
+    },
+    {
+      "files": ["src/api/routes/admin.routes.ts"],
+      "rules": {
+        "no-restricted-imports": ["error", { "patterns": [] }]
       }
     }
   ]

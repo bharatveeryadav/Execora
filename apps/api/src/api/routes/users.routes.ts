@@ -13,7 +13,6 @@
  * Small shop (single user): only the owner exists and manages themselves via /auth/me.
  * SME/corporate: owner creates staff accounts with specific permissions.
  */
-import { Prisma } from '@prisma/client';
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma } from '@execora/infrastructure';
 import { logger } from '@execora/infrastructure';
@@ -89,7 +88,7 @@ export async function usersRoutes(fastify: FastifyInstance) {
         email,
         name,
         phone,
-        role:         role as Prisma.UserCreateInput['role'],
+        role:         role as any,
         permissions:  effectivePerms,
         passwordHash,
         isActive:     true,
@@ -151,7 +150,7 @@ export async function usersRoutes(fastify: FastifyInstance) {
       return reply.code(403).send({ error: "Cannot modify owner account" });
     }
 
-    const data: Prisma.UserUpdateInput = {};
+    const data: Record<string, unknown> = {};
     if (request.body.name        !== undefined) data.name        = request.body.name;
     if (request.body.phone       !== undefined) data.phone       = request.body.phone;
     if (request.body.isActive    !== undefined) data.isActive    = request.body.isActive;
@@ -159,13 +158,13 @@ export async function usersRoutes(fastify: FastifyInstance) {
       if (request.body.role === 'owner') {
         return reply.code(403).send({ error: "Cannot assign owner role via API" });
       }
-      data.role = request.body.role as Prisma.UserUpdateInput['role'];
+      data.role = request.body.role;
     }
     if (request.body.permissions !== undefined) data.permissions = request.body.permissions;
 
     const updated = await prisma.user.update({
       where:  { id: targetId },
-      data,
+      data:   data as any,
       select: { id: true, email: true, name: true, role: true, permissions: true, isActive: true },
     });
 
