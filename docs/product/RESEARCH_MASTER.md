@@ -1,7 +1,7 @@
 # Research Master
 
 **Owner:** Product team  
-**Last updated:** March 2026  
+**Last updated:** April 2026  
 **Key source files:** `docs/product/` folder — all product strategy, PRD, and market research docs
 
 ---
@@ -17,6 +17,7 @@ and decision context. Supporting research files remain as domain appendices.
 
 - Product and market strategy research
 - User pain-point and competitor analysis
+- Domain-platform architecture and product composition strategy
 - Invoice and GST compliance research
 - Inventory and retail operations research
 - Mobile parity and store readiness research
@@ -29,21 +30,32 @@ and decision context. Supporting research files remain as domain appendices.
 - Billing speed, low-friction UX, and reliability are the strongest adoption drivers.
 - Network instability risk remains high for broad SME coverage and retention.
 - Differentiation is strongest where voice workflow, operational trust, and parity converge.
+- Architecture direction is now anchored on a domain-first modular platform with products composed by configuration rather than feature-sprawl modules.
+- Retail billing research adds strong demand for party-wise pricing, retail/wholesale pricing, bulk item operations, multi-device sync, and mobile-first operator access.
 
 ### Invoice and GST
 
 - Core compliance base exists, but advanced parity and edge-case handling remain active.
 - Invoice UX standardization and operator clarity are recurring high-value requirements.
+- External research now confirms e-invoicing needs distinct workflow handling for IRP submission, IRN, QR, eligibility, cancellation window, and audit traceability.
 
 ### Inventory and Retail
 
 - Competitor research maps directly to sprint plans for inventory workflow quality.
 - Bulk operations, discoverability, and scale behavior are critical for real shop usage.
+- Inventory research also confirms the need for reservations, transfer-ledger thinking, multi-store operations, and role-specific stock workflows.
+- Retail billing research also reinforces barcode-first checkout, low-stock automation, catalog bulk maintenance, and hardware-linked store workflows.
+
+### OCR and Procurement Automation
+
+- OCR is best treated as a staged purchase and expense ingestion workflow, not as a generic utility.
+- Review/correction before posting and document attachment after posting are essential workflow requirements.
 
 ### Mobile and Parity
 
 - Mobile implementation progress is strong, but final parity and release hardening continue.
 - Store compliance work is mostly procedural, with clear pre-submit checklists.
+- Retail positioning in the market assumes real-time access to billing, inventory, and expense visibility from mobile as a default operator workflow.
 
 ### Production and Launch
 
@@ -96,6 +108,7 @@ and decision context. Supporting research files remain as domain appendices.
 - INVOICE_REQUIREMENTS.md
 - KIRANA_RETAIL_AUDIT.md
 - PRODUCT_REQUIREMENTS.md
+- DOMAIN_PLATFORM_PRD.md
 - PRODUCT_STRATEGY_2026.md
 - STRATEGY_2026.md
 - MOBILE_APP_PLAN.md
@@ -114,3 +127,11 @@ and decision context. Supporting research files remain as domain appendices.
 - https://getswipe.in/pricing
 - https://play.google.com/store/apps/details?id=in.swipe.app
 - https://www.trustpilot.com/review/getswipe.in
+- https://vyaparapp.in/
+- https://vyaparapp.in/free/small-business-accounting-software
+- https://vyaparapp.in/free/inventory-management-software
+- https://vyaparapp.in/free/invoicing-software
+- https://vyaparapp.in/free/pos-billing-software
+- https://vyaparapp.in/free/invoicing-software/e-invoicing
+- https://vyaparapp.in/ocr-scanner-software
+- https://vyaparapp.in/free/billing-software-for-retail-shop
