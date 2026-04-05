@@ -12,6 +12,7 @@ This folder splits the master PRD into smaller docs that are easier to maintain 
 - Delivery, migration, squad ownership, risks, and KPIs: start with [06-delivery-migration-and-metrics.md](./06-delivery-migration-and-metrics.md)
 - Feature-level module decomposition and migration: start with [07-feature-module-split-guide.md](./07-feature-module-split-guide.md)
 - Backend-first reusable runtime and app integration contract: start with [08-backend-first-modular-runtime.md](./08-backend-first-modular-runtime.md)
+- Complete backend implementation phases and release gates: start with [09-complete-backend-implementation-phases.md](./09-complete-backend-implementation-phases.md)
 
 ## Recommended Ownership
 
@@ -23,6 +24,7 @@ This folder splits the master PRD into smaller docs that are easier to maintain 
 - Product operations and architecture own `06`
 - Domain leads and tech leads co-own `07`
 - Platform architecture and backend leads co-own `08`
+- Backend program lead and architecture council co-own `09`
 
 ## Source of Truth Rules
 

@@ -25,6 +25,7 @@ Use the split PRD set below for day-to-day work. Keep this file as the canonical
 - [docs/product/domain-platform/06-delivery-migration-and-metrics.md](./domain-platform/06-delivery-migration-and-metrics.md) — rollout, ownership, success metrics, risks, next actions
 - [docs/product/domain-platform/07-feature-module-split-guide.md](./domain-platform/07-feature-module-split-guide.md) — how to split large modules into small feature modules safely
 - [docs/product/domain-platform/08-backend-first-modular-runtime.md](./domain-platform/08-backend-first-modular-runtime.md) — backend-first module runtime for web, desktop, mobile, and partner apps
+- [docs/product/domain-platform/09-complete-backend-implementation-phases.md](./domain-platform/09-complete-backend-implementation-phases.md) — full backend implementation phases from legacy extraction to production hardening
 
 ---
 
