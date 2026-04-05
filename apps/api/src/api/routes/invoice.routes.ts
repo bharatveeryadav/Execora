@@ -1,5 +1,10 @@
 import { FastifyInstance, FastifyRequest } from "fastify";
-import { createInvoice, invoiceService, ledgerService } from "@execora/modules";
+import {
+  createInvoice,
+  invoiceService,
+  reversePayment,
+  recordMixedPayment,
+} from "@execora/modules";
 import { getGstinValidationError } from "@execora/shared";
 import { broadcaster } from "../../ws/broadcaster";
 import { makePortalToken } from "@execora/infrastructure";
@@ -446,7 +451,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
           .code(403)
           .send({ error: "Only owner or admin can reverse payments" });
       }
-      const result = await ledgerService.reversePayment(
+      const result = await reversePayment(
         request.params.id,
         request.body.amount,
       );
@@ -526,7 +531,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
       }>,
       reply,
     ) => {
-      const result = await ledgerService.recordMixedPayment(
+      const result = await recordMixedPayment(
         request.body.customerId,
         request.body.splits,
         request.body.notes,

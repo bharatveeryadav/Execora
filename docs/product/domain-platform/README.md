@@ -26,6 +26,26 @@ This folder splits the master PRD into smaller docs that are easier to maintain 
 - Platform architecture and backend leads co-own `08`
 - Backend program lead and architecture council co-own `09`
 
+## Domain Files (Odoo-style — one file per business domain)
+
+> Modelled after Odoo's `addons/<domain>/` pattern. Each file is the self-contained PRD for one business domain: mission, sub-modules, events, API contracts, backend package, and current status.
+
+| Domain       | File                                                 | Odoo equivalent                                      | Squad                     |
+| ------------ | ---------------------------------------------------- | ---------------------------------------------------- | ------------------------- |
+| Sales        | [domains/sales.md](./domains/sales.md)               | `addons/sale` + `addons/point_of_sale`               | Sales Domain              |
+| Inventory    | [domains/inventory.md](./domains/inventory.md)       | `addons/stock` + `addons/product`                    | Inventory + Purchases     |
+| Finance      | [domains/finance.md](./domains/finance.md)           | `addons/account` (payments + bookkeeping)            | Finance + Compliance      |
+| Purchases    | [domains/purchases.md](./domains/purchases.md)       | `addons/purchase`                                    | Inventory + Purchases     |
+| CRM          | [domains/crm.md](./domains/crm.md)                   | `addons/crm` + `addons/contacts`                     | Sales Domain              |
+| Compliance   | [domains/compliance.md](./domains/compliance.md)     | `addons/l10n_in_edi` + `addons/l10n_in_edi_ewaybill` | Finance + Compliance      |
+| Reporting    | [domains/reporting.md](./domains/reporting.md)       | `addons/account_reports`                             | Sales Domain (read)       |
+| Platform     | [domains/platform.md](./domains/platform.md)         | `addons/saas_*` + `addons/iap`                       | Platform + Admin + System |
+| Admin        | [domains/admin.md](./domains/admin.md)               | `addons/base` (res.users, res.groups)                | Platform + Admin + System |
+| Integrations | [domains/integrations.md](./domains/integrations.md) | `addons/payment_*` + `addons/hw_*`                   | App Composition           |
+| System       | [domains/system.md](./domains/system.md)             | `addons/base` (ir.logging) + `addons/document`       | Platform + Admin + System |
+
+---
+
 ## Source of Truth Rules
 
 - The master source remains [docs/product/DOMAIN_PLATFORM_PRD.md](../DOMAIN_PLATFORM_PRD.md)

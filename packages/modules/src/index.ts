@@ -3,7 +3,6 @@
 // Business services
 export * from "./modules/customer/customer.service";
 export * from "./modules/invoice/invoice.service";
-export * from "./modules/ledger/ledger.service";
 export * from "./modules/product/product.service";
 export * from "./modules/reminder/reminder.service";
 export * from "./modules/gst/gst.service";
