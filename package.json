@@ -29,6 +29,7 @@
     "migrate:prod": "prisma migrate deploy",
     "seed": "tsx prisma/seed.ts",
     "validate:route-ownership": "node scripts/testing/validate-route-ownership.mjs",
+    "validate:import-boundaries": "node scripts/testing/validate-import-boundaries.mjs",
     "mobile": "pnpm --filter @execora/mobile start",
     "mobile:android": "pnpm --filter @execora/mobile android",
     "mobile:build:android": "pnpm --filter @execora/mobile build:android",
