@@ -1,5 +1,16 @@
 import { FastifyInstance, FastifyRequest } from "fastify";
-import { productService, invoiceService } from "@execora/modules";
+import {
+  invoiceService,
+  createProductCommand,
+  updateProductCommand,
+  updateStockCommand,
+  writeOffBatchCommand,
+  listProductsQuery,
+  listProductsPaginatedQuery,
+  listLowStockQuery,
+  listExpiringBatchesQuery,
+  getExpiryPageQuery,
+} from "@execora/modules";
 import { broadcaster } from "../../ws/broadcaster";
 import { prisma, minioClient, logger } from "@execora/infrastructure";
 
@@ -7,22 +18,29 @@ export async function productRoutes(fastify: FastifyInstance) {
   // ── GET /api/v1/products — list products (paginated when page/limit provided) ─
   fastify.get(
     "/api/v1/products",
-    async (request: FastifyRequest<{ Querystring: { page?: string; limit?: string } }>) => {
+    async (
+      request: FastifyRequest<{
+        Querystring: { page?: string; limit?: string };
+      }>,
+    ) => {
       const pageParam = request.query.page;
       const limitParam = request.query.limit;
       if (pageParam != null || limitParam != null) {
         const page = Math.max(1, parseInt(String(pageParam ?? 1), 10) || 1);
-        const limit = Math.min(500, Math.max(1, parseInt(String(limitParam ?? 50), 10) || 50));
-        const result = await productService.getProductsPaginated(page, limit);
+        const limit = Math.min(
+          500,
+          Math.max(1, parseInt(String(limitParam ?? 50), 10) || 50),
+        );
+        const result = await listProductsPaginatedQuery.execute(page, limit);
         return result;
       }
-      const products = await productService.getAllProducts();
+      const products = await listProductsQuery.execute();
       return { products };
     },
   );
 
   fastify.get("/api/v1/products/low-stock", async () => {
-    const products = await productService.getLowStockProducts();
+    const products = await listLowStockQuery.execute();
     return { products };
   });
 
@@ -34,7 +52,7 @@ export async function productRoutes(fastify: FastifyInstance) {
         parseInt(String(request.query.days ?? 30), 10) || 30,
         365,
       );
-      const batches = await productService.getExpiringBatches(days);
+      const batches = await listExpiringBatchesQuery.execute(days);
       return { batches };
     },
   );
@@ -54,7 +72,7 @@ export async function productRoutes(fastify: FastifyInstance) {
           ? request.query.filter
           : "30d"
       ) as "expired" | "7d" | "30d" | "90d" | "all";
-      return productService.getExpiryPage(filter);
+      return getExpiryPageQuery.execute(filter);
     },
   );
 
@@ -63,7 +81,7 @@ export async function productRoutes(fastify: FastifyInstance) {
     "/api/v1/products/batches/:id/write-off",
     async (request, reply) => {
       try {
-        const result = await productService.writeOffBatch(request.params.id);
+        const result = await writeOffBatchCommand.execute(request.params.id);
         return result;
       } catch (err: any) {
         return reply.code(404).send({ error: err.message });
@@ -169,8 +187,7 @@ export async function productRoutes(fastify: FastifyInstance) {
   // CSV columns: name, sku, barcode, category, price, stock, unit, minStock
   fastify.post("/api/v1/products/import", async (request, reply) => {
     const data = await (request as any).file();
-    if (!data)
-      return reply.code(400).send({ error: "No file provided" });
+    if (!data) return reply.code(400).send({ error: "No file provided" });
     const contentType = (data.mimetype as string) || "";
     if (
       !contentType.includes("text/csv") &&
@@ -186,20 +203,35 @@ export async function productRoutes(fastify: FastifyInstance) {
     const text = Buffer.concat(chunks).toString("utf-8");
     const lines = text.split(/\r?\n/).filter((l) => l.trim());
     if (lines.length < 2)
-      return reply.code(400).send({ error: "CSV must have header + at least 1 row" });
+      return reply
+        .code(400)
+        .send({ error: "CSV must have header + at least 1 row" });
 
-    const header = lines[0].toLowerCase().split(",").map((h) => h.trim());
-    const nameIdx = header.findIndex((h) => h === "name" || h === "item" || h === "product");
-    const priceIdx = header.findIndex((h) => h === "price" || h === "sale price" || h === "selling price");
-    const stockIdx = header.findIndex((h) => h === "stock" || h === "quantity" || h === "qty");
+    const header = lines[0]
+      .toLowerCase()
+      .split(",")
+      .map((h) => h.trim());
+    const nameIdx = header.findIndex(
+      (h) => h === "name" || h === "item" || h === "product",
+    );
+    const priceIdx = header.findIndex(
+      (h) => h === "price" || h === "sale price" || h === "selling price",
+    );
+    const stockIdx = header.findIndex(
+      (h) => h === "stock" || h === "quantity" || h === "qty",
+    );
     const skuIdx = header.findIndex((h) => h === "sku" || h === "code");
     const barcodeIdx = header.findIndex((h) => h === "barcode" || h === "ean");
     const categoryIdx = header.findIndex((h) => h === "category");
     const unitIdx = header.findIndex((h) => h === "unit");
-    const minStockIdx = header.findIndex((h) => h === "minstock" || h === "min stock" || h === "reorder");
+    const minStockIdx = header.findIndex(
+      (h) => h === "minstock" || h === "min stock" || h === "reorder",
+    );
 
     if (nameIdx < 0 || priceIdx < 0)
-      return reply.code(400).send({ error: "CSV must have 'name' and 'price' columns" });
+      return reply
+        .code(400)
+        .send({ error: "CSV must have 'name' and 'price' columns" });
 
     const parseRow = (line: string): string[] => {
       const result: string[] = [];
@@ -226,7 +258,8 @@ export async function productRoutes(fastify: FastifyInstance) {
       const name = row[nameIdx]?.trim();
       const priceStr = row[priceIdx] ?? "0";
       const price = parseFloat(priceStr.replace(/[^0-9.]/g, "")) || 0;
-      const stock = parseInt(String(row[stockIdx] ?? "0").replace(/\D/g, ""), 10) || 0;
+      const stock =
+        parseInt(String(row[stockIdx] ?? "0").replace(/\D/g, ""), 10) || 0;
       if (!name) {
         errors.push({ row: i + 1, message: "Missing name" });
         continue;
@@ -242,7 +275,13 @@ export async function productRoutes(fastify: FastifyInstance) {
             category: (row[categoryIdx] ?? "general").trim() || "general",
             sku: row[skuIdx]?.trim() || null,
             barcode: row[barcodeIdx]?.trim() || null,
-            minStock: minStockIdx >= 0 ? parseInt(String(row[minStockIdx] ?? "5").replace(/\D/g, ""), 10) || 5 : 5,
+            minStock:
+              minStockIdx >= 0
+                ? parseInt(
+                    String(row[minStockIdx] ?? "5").replace(/\D/g, ""),
+                    10,
+                  ) || 5
+                : 5,
           },
         });
         imported++;
@@ -251,9 +290,16 @@ export async function productRoutes(fastify: FastifyInstance) {
       }
     }
 
-    logger.info({ tenantId, imported, errors: errors.length }, "Product import completed");
+    logger.info(
+      { tenantId, imported, errors: errors.length },
+      "Product import completed",
+    );
     broadcaster.send(tenantId, "product:updated", { productId: "import" });
-    return reply.send({ imported, failed: errors.length, errors: errors.slice(0, 20) });
+    return reply.send({
+      imported,
+      failed: errors.length,
+      errors: errors.slice(0, 20),
+    });
   });
 
   fastify.post(
@@ -298,7 +344,7 @@ export async function productRoutes(fastify: FastifyInstance) {
       }>,
       reply,
     ) => {
-      const product = await productService.createProduct(request.body);
+      const product = await createProductCommand.execute(request.body);
       return reply.code(201).send({ product });
     },
   );
@@ -355,7 +401,7 @@ export async function productRoutes(fastify: FastifyInstance) {
       },
     },
     async (request, reply) => {
-      const product = await productService.updateProduct(
+      const product = await updateProductCommand.execute(
         request.params.id,
         request.body,
       );
@@ -388,10 +434,9 @@ export async function productRoutes(fastify: FastifyInstance) {
       },
     },
     async (request) => {
-      const product = await productService.updateStock(
+      const product = await updateStockCommand.execute(
         request.params.id,
-        request.body.quantity,
-        request.body.operation,
+        request.body,
       );
       const tid = request.user!.tenantId;
       if (tid)
@@ -414,8 +459,7 @@ export async function productRoutes(fastify: FastifyInstance) {
         where: { id, tenantId },
         select: { id: true, imageUrl: true },
       });
-      if (!product)
-        return reply.code(404).send({ error: "Product not found" });
+      if (!product) return reply.code(404).send({ error: "Product not found" });
 
       const data = await (request as any).file();
       if (!data)
@@ -458,7 +502,11 @@ export async function productRoutes(fastify: FastifyInstance) {
     "/api/v1/products/image-urls",
     async (request, reply) => {
       const idsParam = request.query.ids ?? "";
-      const ids = idsParam.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 50);
+      const ids = idsParam
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .slice(0, 50);
       if (ids.length === 0) return reply.send({});
       const tenantId = request.user!.tenantId;
       const products = await prisma.product.findMany({
@@ -470,7 +518,10 @@ export async function productRoutes(fastify: FastifyInstance) {
         products.map(async (p) => {
           const imageUrl = p.imageUrl;
           if (!imageUrl) return;
-          if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+          if (
+            imageUrl.startsWith("http://") ||
+            imageUrl.startsWith("https://")
+          ) {
             result[p.id] = imageUrl;
             return;
           }
@@ -493,8 +544,7 @@ export async function productRoutes(fastify: FastifyInstance) {
         where: { id, tenantId },
         select: { imageUrl: true },
       });
-      if (!product)
-        return reply.code(404).send({ error: "Product not found" });
+      if (!product) return reply.code(404).send({ error: "Product not found" });
       const imageUrl = product.imageUrl;
       if (!imageUrl)
         return reply.code(404).send({ error: "Product has no image" });
@@ -516,8 +566,7 @@ export async function productRoutes(fastify: FastifyInstance) {
         where: { id, tenantId },
         select: { id: true, imageUrl: true },
       });
-      if (!product)
-        return reply.code(404).send({ error: "Product not found" });
+      if (!product) return reply.code(404).send({ error: "Product not found" });
       const imageUrl = product.imageUrl;
       if (!imageUrl)
         return reply.code(404).send({ error: "Product has no image" });
@@ -532,7 +581,10 @@ export async function productRoutes(fastify: FastifyInstance) {
       try {
         await minioClient.deleteFile(imageUrl);
       } catch {
-        logger.warn({ imageKey: imageUrl }, "Failed to delete image from MinIO");
+        logger.warn(
+          { imageKey: imageUrl },
+          "Failed to delete image from MinIO",
+        );
       }
       await prisma.product.update({
         where: { id },

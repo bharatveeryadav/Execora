@@ -12,6 +12,7 @@ export * from "./modules/gst/gstr1.service";
 // Phase 1/4 extraction adapters (backend-first modular runtime)
 export * from "./sales/invoicing/create-invoice";
 export * from "./crm/parties/customer-profile";
+export * from "./inventory/stock/item-catalog";
 
 // Monitoring
 export * from "./modules/monitoring/monitoring.service";
