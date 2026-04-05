@@ -14,7 +14,6 @@
  */
 import crypto from "crypto";
 import { FastifyInstance, FastifyRequest } from "fastify";
-import { Prisma } from "@prisma/client";
 import { whatsappService, logger } from "@execora/infrastructure";
 import { prisma } from "@execora/infrastructure";
 import { ledgerService } from "@execora/modules";
@@ -120,7 +119,7 @@ async function storeEvent(
       tenantId,
       provider,
       eventType,
-      payload: payload as Prisma.InputJsonValue,
+      payload: payload as unknown as import("@prisma/client").Prisma.InputJsonValue,
       processed: false,
     },
   });
@@ -193,8 +192,7 @@ export async function webhookRoutes(fastify: FastifyInstance) {
               prisma.messageLog.updateMany({
                 where: { providerMessageId: s.id },
                 data: {
-                  status:
-                    s.status as Prisma.MessageLogUpdateManyMutationInput["status"],
+                  status: s.status as import("@prisma/client").$Enums.MessageStatus,
                   deliveredAt:
                     s.status === "delivered" ? new Date() : undefined,
                   readAt: s.status === "read" ? new Date() : undefined,

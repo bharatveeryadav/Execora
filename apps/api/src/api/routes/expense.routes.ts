@@ -39,7 +39,14 @@ export async function expenseRoutes(fastify: FastifyInstance) {
         parseInt(request.query.limit ?? "200", 10) || 200,
         500,
       );
-      return listExpenses(tenantId, { from, to, category, type: typeFilter, supplier, limit });
+      return listExpenses(tenantId, {
+        from,
+        to,
+        category,
+        type: typeFilter,
+        supplier,
+        limit,
+      });
     },
   );
 
@@ -180,7 +187,9 @@ export async function expenseRoutes(fastify: FastifyInstance) {
     ) => {
       const tenantId = request.user!.tenantId;
       const purchase = await createPurchase(tenantId, request.body);
-      broadcaster.send(tenantId, "purchase:created", { purchaseId: purchase.id });
+      broadcaster.send(tenantId, "purchase:created", {
+        purchaseId: purchase.id,
+      });
       return reply.code(201).send({ purchase });
     },
   );

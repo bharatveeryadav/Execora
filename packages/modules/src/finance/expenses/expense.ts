@@ -22,7 +22,10 @@ function parseDateRange(from?: string, to?: string) {
 
 // ─── Expenses ─────────────────────────────────────────────────────────────────
 
-export async function listExpenses(tenantId: string, opts: ListExpensesInput = {}) {
+export async function listExpenses(
+  tenantId: string,
+  opts: ListExpensesInput = {},
+) {
   const { from, to, category, type: typeFilter, supplier, limit = 200 } = opts;
   const take = Math.min(limit, 500);
   const { f, t } = parseDateRange(from, to);
@@ -34,7 +37,9 @@ export async function listExpenses(tenantId: string, opts: ListExpensesInput = {
       type: expenseType,
       date: { gte: f, lte: t },
       ...(category ? { category } : {}),
-      ...(supplier ? { supplier: { contains: supplier, mode: "insensitive" } } : {}),
+      ...(supplier
+        ? { supplier: { contains: supplier, mode: "insensitive" } }
+        : {}),
     },
     orderBy: { date: "desc" },
     take,
@@ -43,7 +48,10 @@ export async function listExpenses(tenantId: string, opts: ListExpensesInput = {
   return { expenses, total, count: expenses.length };
 }
 
-export async function createExpense(tenantId: string, body: CreateExpenseInput) {
+export async function createExpense(
+  tenantId: string,
+  body: CreateExpenseInput,
+) {
   return prisma.expense.create({
     data: {
       tenantId,
@@ -58,7 +66,10 @@ export async function createExpense(tenantId: string, body: CreateExpenseInput) 
 }
 
 /** Returns the deleted id, or null if not found. */
-export async function deleteExpense(tenantId: string, id: string): Promise<string | null> {
+export async function deleteExpense(
+  tenantId: string,
+  id: string,
+): Promise<string | null> {
   const row = await prisma.expense.findFirst({
     where: { id, tenantId, type: { in: ["expense", "income"] } },
   });
@@ -89,7 +100,10 @@ export async function getExpenseSummary(
 
 // ─── Purchases ────────────────────────────────────────────────────────────────
 
-export async function listPurchases(tenantId: string, opts: ListPurchasesInput = {}) {
+export async function listPurchases(
+  tenantId: string,
+  opts: ListPurchasesInput = {},
+) {
   const { from, to, supplier, limit = 200 } = opts;
   const take = Math.min(limit, 500);
   const sup = (supplier ?? "").trim();
@@ -109,7 +123,10 @@ export async function listPurchases(tenantId: string, opts: ListPurchasesInput =
   return { purchases, total, count: purchases.length };
 }
 
-export async function createPurchase(tenantId: string, body: CreatePurchaseInput) {
+export async function createPurchase(
+  tenantId: string,
+  body: CreatePurchaseInput,
+) {
   return prisma.expense.create({
     data: {
       tenantId,
@@ -118,9 +135,11 @@ export async function createPurchase(tenantId: string, body: CreatePurchaseInput
       amount: new Prisma.Decimal(body.amount),
       itemName: body.itemName || null,
       supplier: body.supplier || null,
-      quantity: body.quantity != null ? new Prisma.Decimal(body.quantity) : null,
+      quantity:
+        body.quantity != null ? new Prisma.Decimal(body.quantity) : null,
       unit: body.unit || null,
-      ratePerUnit: body.ratePerUnit != null ? new Prisma.Decimal(body.ratePerUnit) : null,
+      ratePerUnit:
+        body.ratePerUnit != null ? new Prisma.Decimal(body.ratePerUnit) : null,
       note: body.note || null,
       batchNo: body.batchNo || null,
       expiryDate: body.expiryDate ? new Date(body.expiryDate) : null,
@@ -130,7 +149,10 @@ export async function createPurchase(tenantId: string, body: CreatePurchaseInput
 }
 
 /** Returns the deleted id, or null if not found. */
-export async function deletePurchase(tenantId: string, id: string): Promise<string | null> {
+export async function deletePurchase(
+  tenantId: string,
+  id: string,
+): Promise<string | null> {
   const row = await prisma.expense.findFirst({
     where: { id, tenantId, type: "purchase" },
   });

@@ -58,7 +58,9 @@ export async function getCreditNoteById(
     include: {
       customer: true,
       invoice: { select: { id: true, invoiceNo: true, invoiceDate: true } },
-      items: { include: { product: { select: { id: true, name: true, sku: true } } } },
+      items: {
+        include: { product: { select: { id: true, name: true, sku: true } } },
+      },
     },
   }) as Promise<CreditNoteRecord | null>;
 }
@@ -71,17 +73,22 @@ export async function createCreditNote(
   body: CreateCreditNoteInput,
 ): Promise<CreditNoteRecord> {
   if (body.invoiceId) {
-    const inv = await prisma.invoice.findFirst({ where: { id: body.invoiceId, tenantId } });
+    const inv = await prisma.invoice.findFirst({
+      where: { id: body.invoiceId, tenantId },
+    });
     if (!inv) throw new Error("Invoice not found");
   }
   if (body.customerId) {
-    const cust = await prisma.customer.findFirst({ where: { id: body.customerId, tenantId } });
+    const cust = await prisma.customer.findFirst({
+      where: { id: body.customerId, tenantId },
+    });
     if (!cust) throw new Error("Customer not found");
   }
 
   const lineItems = body.items.map((item) => {
     const gstRate = item.gstRate ?? 0;
-    const discountAmt = item.unitPrice * item.quantity * ((item.discount ?? 0) / 100);
+    const discountAmt =
+      item.unitPrice * item.quantity * ((item.discount ?? 0) / 100);
     const subtotal = item.unitPrice * item.quantity - discountAmt;
     const taxAmt = subtotal * (gstRate / 100);
     const total = subtotal + taxAmt;
@@ -179,7 +186,10 @@ export async function cancelCreditNote(
 }
 
 /** Soft-delete a draft credit note. Throws if not found or already issued. */
-export async function deleteCreditNote(tenantId: string, id: string): Promise<void> {
+export async function deleteCreditNote(
+  tenantId: string,
+  id: string,
+): Promise<void> {
   const cn = await prisma.creditNote.findFirst({
     where: { id, tenantId, deletedAt: null },
   });
