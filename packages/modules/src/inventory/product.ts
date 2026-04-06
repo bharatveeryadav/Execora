@@ -46,7 +46,13 @@ export async function listProductsPaginated(page = 1, limit = 50) {
     }),
     prisma.product.count({ where: { tenantId, isActive: true } }),
   ]);
-  return { products, total, page, limit: take, hasMore: skip + products.length < total };
+  return {
+    products,
+    total,
+    page,
+    limit: take,
+    hasMore: skip + products.length < total,
+  };
 }
 
 export async function getLowStockProducts() {
@@ -104,7 +110,9 @@ export async function getExpiringBatches(days = 30) {
   });
 }
 
-export async function getExpiryPage(filter: "expired" | "7d" | "30d" | "90d" | "all" = "30d") {
+export async function getExpiryPage(
+  filter: "expired" | "7d" | "30d" | "90d" | "all" = "30d",
+) {
   const { tenantId } = tenantContext.get();
   const now = new Date();
   const days = (n: number) => new Date(now.getTime() + n * 24 * 60 * 60 * 1000);
@@ -127,7 +135,9 @@ export async function getExpiryPage(filter: "expired" | "7d" | "30d" | "90d" | "
 
   const batches = await prisma.productBatch.findMany({
     where,
-    include: { product: { select: { name: true, unit: true, category: true } } },
+    include: {
+      product: { select: { name: true, unit: true, category: true } },
+    },
     orderBy: { expiryDate: "asc" },
   });
 
@@ -136,16 +146,31 @@ export async function getExpiryPage(filter: "expired" | "7d" | "30d" | "90d" | "
     select: { expiryDate: true, quantity: true, purchasePrice: true },
   });
 
-  const expiredCount = all.filter((b) => b.expiryDate < now && b.quantity > 0).length;
-  const expiringIn7 = all.filter((b) => b.expiryDate >= now && b.expiryDate <= days(7) && b.quantity > 0).length;
-  const expiringIn30 = all.filter((b) => b.expiryDate >= now && b.expiryDate <= days(30) && b.quantity > 0).length;
+  const expiredCount = all.filter(
+    (b) => b.expiryDate < now && b.quantity > 0,
+  ).length;
+  const expiringIn7 = all.filter(
+    (b) => b.expiryDate >= now && b.expiryDate <= days(7) && b.quantity > 0,
+  ).length;
+  const expiringIn30 = all.filter(
+    (b) => b.expiryDate >= now && b.expiryDate <= days(30) && b.quantity > 0,
+  ).length;
   const totalValue = all
     .filter((b) => b.expiryDate < now && b.quantity > 0)
-    .reduce((s, b) => s + parseFloat(String(b.purchasePrice ?? 0)) * b.quantity, 0);
+    .reduce(
+      (s, b) => s + parseFloat(String(b.purchasePrice ?? 0)) * b.quantity,
+      0,
+    );
 
   return {
     batches,
-    summary: { expiredCount, expiringIn7, expiringIn30, totalExpiredValue: totalValue, filter },
+    summary: {
+      expiredCount,
+      expiringIn7,
+      expiringIn30,
+      totalExpiredValue: totalValue,
+      filter,
+    },
   };
 }
 
@@ -165,8 +190,10 @@ export async function createProduct(data: {
   priceTier3?: number;
 }) {
   if (!data.name?.trim()) throw new Error("Product name is required");
-  if (typeof data.price !== "number" || data.price < 0) throw new Error("Price must be a non-negative number");
-  if (!Number.isInteger(data.stock) || data.stock < 0) throw new Error("Stock must be a non-negative integer");
+  if (typeof data.price !== "number" || data.price < 0)
+    throw new Error("Price must be a non-negative number");
+  if (!Number.isInteger(data.stock) || data.stock < 0)
+    throw new Error("Stock must be a non-negative integer");
 
   const product = await prisma.product.create({
     data: {
@@ -179,7 +206,8 @@ export async function createProduct(data: {
       unit: data.unit ?? "piece",
       barcode: data.barcode ?? null,
       sku: data.sku ?? null,
-      wholesalePrice: data.wholesalePrice != null ? new Decimal(data.wholesalePrice) : null,
+      wholesalePrice:
+        data.wholesalePrice != null ? new Decimal(data.wholesalePrice) : null,
       priceTier2: data.priceTier2 != null ? new Decimal(data.priceTier2) : null,
       priceTier3: data.priceTier3 != null ? new Decimal(data.priceTier3) : null,
     },
@@ -212,7 +240,9 @@ export async function updateProduct(
   },
 ) {
   const { tenantId } = tenantContext.get();
-  const existing = await prisma.product.findFirst({ where: { id: productId, tenantId } });
+  const existing = await prisma.product.findFirst({
+    where: { id: productId, tenantId },
+  });
   if (!existing) throw new Error("Product not found");
 
   const updateData: Record<string, unknown> = {};
@@ -225,25 +255,41 @@ export async function updateProduct(
   if (data.barcode !== undefined) updateData.barcode = data.barcode || null;
   if (data.sku !== undefined) updateData.sku = data.sku || null;
   if (data.minStock !== undefined) updateData.minStock = data.minStock;
-  if (data.wholesalePrice !== undefined) updateData.wholesalePrice = data.wholesalePrice != null ? new Decimal(data.wholesalePrice) : null;
-  if (data.priceTier2 !== undefined) updateData.priceTier2 = data.priceTier2 != null ? new Decimal(data.priceTier2) : null;
-  if (data.priceTier3 !== undefined) updateData.priceTier3 = data.priceTier3 != null ? new Decimal(data.priceTier3) : null;
+  if (data.wholesalePrice !== undefined)
+    updateData.wholesalePrice =
+      data.wholesalePrice != null ? new Decimal(data.wholesalePrice) : null;
+  if (data.priceTier2 !== undefined)
+    updateData.priceTier2 =
+      data.priceTier2 != null ? new Decimal(data.priceTier2) : null;
+  if (data.priceTier3 !== undefined)
+    updateData.priceTier3 =
+      data.priceTier3 != null ? new Decimal(data.priceTier3) : null;
   if (data.isFeatured !== undefined) updateData.isFeatured = data.isFeatured;
-  if (data.gstRate !== undefined) updateData.gstRate = new Decimal(data.gstRate);
+  if (data.gstRate !== undefined)
+    updateData.gstRate = new Decimal(data.gstRate);
   if (data.hsnCode !== undefined) updateData.hsnCode = data.hsnCode || null;
-  if (data.cost !== undefined) updateData.cost = data.cost != null ? new Decimal(data.cost) : null;
-  if (data.mrp !== undefined) updateData.mrp = data.mrp != null ? new Decimal(data.mrp) : null;
+  if (data.cost !== undefined)
+    updateData.cost = data.cost != null ? new Decimal(data.cost) : null;
+  if (data.mrp !== undefined)
+    updateData.mrp = data.mrp != null ? new Decimal(data.mrp) : null;
 
   const product = await prisma.product.update({
     where: { id: productId },
     data: updateData as Parameters<typeof prisma.product.update>[0]["data"],
   });
 
-  logger.info({ productId, fields: Object.keys(updateData) }, "Product updated");
+  logger.info(
+    { productId, fields: Object.keys(updateData) },
+    "Product updated",
+  );
   return product;
 }
 
-export async function updateProductStock(productId: string, quantity: number, operation: "add" | "subtract") {
+export async function updateProductStock(
+  productId: string,
+  quantity: number,
+  operation: "add" | "subtract",
+) {
   const { tenantId } = tenantContext.get();
   if (operation === "subtract") {
     const current = await prisma.product.findFirst({
@@ -251,11 +297,17 @@ export async function updateProductStock(productId: string, quantity: number, op
       select: { stock: true, name: true },
     });
     if (!current) throw new Error("Product not found");
-    if (current.stock < quantity) throw new Error(`Insufficient stock: ${current.stock} available for "${current.name}"`);
+    if (current.stock < quantity)
+      throw new Error(
+        `Insufficient stock: ${current.stock} available for "${current.name}"`,
+      );
   }
   const product = await prisma.product.update({
     where: { id: productId },
-    data: { stock: operation === "add" ? { increment: quantity } : { decrement: quantity } },
+    data: {
+      stock:
+        operation === "add" ? { increment: quantity } : { decrement: quantity },
+    },
   });
   logger.info({ productId, quantity, operation }, "Stock updated");
   return product;
@@ -263,7 +315,9 @@ export async function updateProductStock(productId: string, quantity: number, op
 
 export async function writeOffBatch(batchId: string) {
   const { tenantId } = tenantContext.get();
-  const batch = await prisma.productBatch.findFirst({ where: { id: batchId, tenantId } });
+  const batch = await prisma.productBatch.findFirst({
+    where: { id: batchId, tenantId },
+  });
   if (!batch) throw new Error("Batch not found");
 
   await prisma.productBatch.update({
@@ -271,7 +325,10 @@ export async function writeOffBatch(batchId: string) {
     data: { quantity: 0, status: "written_off" },
   });
 
-  const prod = await prisma.product.findUnique({ where: { id: batch.productId }, select: { stock: true } });
+  const prod = await prisma.product.findUnique({
+    where: { id: batch.productId },
+    select: { stock: true },
+  });
   const prevStock = prod?.stock ?? 0;
 
   await prisma.stockMovement

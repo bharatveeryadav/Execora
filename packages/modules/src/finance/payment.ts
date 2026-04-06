@@ -5,12 +5,21 @@
  * Auto-applies payments to oldest unpaid invoices (khata-style settlement).
  */
 
-import { prisma, logger, tenantContext, paymentProcessing, paymentAmount } from "@execora/infrastructure";
+import {
+  prisma,
+  logger,
+  tenantContext,
+  paymentProcessing,
+  paymentAmount,
+} from "@execora/infrastructure";
 import { Decimal } from "@prisma/client/runtime/library";
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
-const METHOD_MAP: Record<string, "cash" | "upi" | "card" | "bank" | "credit" | "mixed"> = {
+const METHOD_MAP: Record<
+  string,
+  "cash" | "upi" | "card" | "bank" | "credit" | "mixed"
+> = {
   cash: "cash",
   upi: "upi",
   card: "card",
@@ -49,13 +58,20 @@ async function settleInvoices(
     if (remaining >= invDue) {
       await tx.invoice.update({
         where: { id: inv.id },
-        data: { status: "paid", paidAmount: new Decimal(invTotal), paidAt: new Date() },
+        data: {
+          status: "paid",
+          paidAmount: new Decimal(invTotal),
+          paidAt: new Date(),
+        },
       });
       remaining = Math.round((remaining - invDue) * 100) / 100;
     } else {
       await tx.invoice.update({
         where: { id: inv.id },
-        data: { status: "partial", paidAmount: new Decimal(invPaid + remaining) },
+        data: {
+          status: "partial",
+          paidAmount: new Decimal(invPaid + remaining),
+        },
       });
       remaining = 0;
     }
@@ -132,7 +148,8 @@ export async function recordMixedPayment(
     throw new Error("At least one payment split is required");
 
   const totalAmount = splits.reduce((s, p) => s + p.amount, 0);
-  if (totalAmount <= 0) throw new Error("Total payment amount must be positive");
+  if (totalAmount <= 0)
+    throw new Error("Total payment amount must be positive");
 
   try {
     const { tenantId } = tenantContext.get();
@@ -169,7 +186,10 @@ export async function recordMixedPayment(
 
       await settleInvoices(tx, customerId, totalAmount);
 
-      logger.info({ customerId, totalAmount, splits: splits.length }, "Mixed payment recorded");
+      logger.info(
+        { customerId, totalAmount, splits: splits.length },
+        "Mixed payment recorded",
+      );
       paymentProcessing.inc({ status: "success" });
       paymentAmount.observe({ customer_id: customerId }, totalAmount);
 
@@ -181,14 +201,22 @@ export async function recordMixedPayment(
   }
 }
 
-export async function addCredit(customerId: string, amount: number, description: string) {
+export async function addCredit(
+  customerId: string,
+  amount: number,
+  description: string,
+) {
   if (!customerId?.trim()) throw new Error("Customer ID is required");
-  if (typeof amount !== "number" || amount <= 0) throw new Error("Amount must be positive");
+  if (typeof amount !== "number" || amount <= 0)
+    throw new Error("Amount must be positive");
   if (!description?.trim()) throw new Error("Description is required");
 
   const customer = await prisma.customer.update({
     where: { id: customerId },
-    data: { balance: { increment: amount }, totalPurchases: { increment: amount } },
+    data: {
+      balance: { increment: amount },
+      totalPurchases: { increment: amount },
+    },
   });
 
   logger.info({ customerId, amount, description }, "Credit added");
@@ -197,7 +225,8 @@ export async function addCredit(customerId: string, amount: number, description:
 
 export async function reversePayment(invoiceId: string, amount: number) {
   if (!invoiceId?.trim()) throw new Error("Invoice ID is required");
-  if (typeof amount !== "number" || amount <= 0) throw new Error("Amount must be positive");
+  if (typeof amount !== "number" || amount <= 0)
+    throw new Error("Amount must be positive");
 
   return prisma.$transaction(async (tx) => {
     const invoice = await tx.invoice.findFirst({
@@ -208,11 +237,13 @@ export async function reversePayment(invoiceId: string, amount: number) {
     if (!invoice.customerId) throw new Error("Invoice has no customer");
 
     const paid = parseFloat(String(invoice.paidAmount ?? 0));
-    if (amount > paid) throw new Error(`Cannot reverse more than paid amount (${paid})`);
+    if (amount > paid)
+      throw new Error(`Cannot reverse more than paid amount (${paid})`);
 
     const newPaid = Math.round((paid - amount) * 100) / 100;
     const invTotal = parseFloat(String(invoice.total));
-    const newStatus = newPaid <= 0 ? "pending" : newPaid >= invTotal ? "paid" : "partial";
+    const newStatus =
+      newPaid <= 0 ? "pending" : newPaid >= invTotal ? "paid" : "partial";
 
     await tx.invoice.update({
       where: { id: invoiceId },
@@ -225,7 +256,10 @@ export async function reversePayment(invoiceId: string, amount: number) {
 
     await tx.customer.update({
       where: { id: invoice.customerId },
-      data: { balance: { increment: amount }, totalPayments: { decrement: amount } },
+      data: {
+        balance: { increment: amount },
+        totalPayments: { decrement: amount },
+      },
     });
 
     await tx.payment.create({
@@ -241,7 +275,10 @@ export async function reversePayment(invoiceId: string, amount: number) {
       },
     });
 
-    logger.info({ invoiceId, amount, customerId: invoice.customerId }, "Payment reversed");
+    logger.info(
+      { invoiceId, amount, customerId: invoice.customerId },
+      "Payment reversed",
+    );
     return { ok: true, newPaid, newStatus };
   });
 }

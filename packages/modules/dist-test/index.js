@@ -18,11 +18,20 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // Business services
 __exportStar(require("./modules/customer/customer.service"), exports);
 __exportStar(require("./modules/invoice/invoice.service"), exports);
-__exportStar(require("./modules/ledger/ledger.service"), exports);
 __exportStar(require("./modules/product/product.service"), exports);
 __exportStar(require("./modules/reminder/reminder.service"), exports);
 __exportStar(require("./modules/gst/gst.service"), exports);
 __exportStar(require("./modules/gst/gstr1.service"), exports);
+// Domain modules — flat async functions (Documenso/Cal.com style)
+__exportStar(require("./sales/invoicing/create-invoice"), exports);
+__exportStar(require("./crm/parties/customer-profile"), exports);
+__exportStar(require("./inventory/stock/item-catalog"), exports);
+__exportStar(require("./finance/payments/ledger"), exports);
+__exportStar(require("./purchases/vendors/supplier-profile"), exports);
+__exportStar(require("./purchases/purchase/purchase-order"), exports);
+__exportStar(require("./finance/expenses/expense"), exports);
+__exportStar(require("./sales/credit-notes/credit-note"), exports);
+__exportStar(require("./operations/drafts/draft"), exports);
 // Monitoring
 __exportStar(require("./modules/monitoring/monitoring.service"), exports);
 // Sprint 2 — AI Differentiators

@@ -1,14 +1,14 @@
 import { FastifyInstance, FastifyRequest } from "fastify";
 import {
-  invoiceService,
+  getTopSelling,
   createProduct,
   updateProduct,
   updateProductStock,
   writeOffBatch,
   listProducts,
   listProductsPaginated,
-  listLowStockProducts,
-  listExpiringBatches,
+  getLowStockProducts,
+  getExpiringBatches,
   getExpiryPage,
 } from "@execora/modules";
 import { broadcaster } from "../../ws/broadcaster";
@@ -40,7 +40,7 @@ export async function productRoutes(fastify: FastifyInstance) {
   );
 
   fastify.get("/api/v1/products/low-stock", async () => {
-    const products = await listLowStockProducts();
+    const products = await getLowStockProducts();
     return { products };
   });
 
@@ -52,7 +52,7 @@ export async function productRoutes(fastify: FastifyInstance) {
         parseInt(String(request.query.days ?? 30), 10) || 30,
         365,
       );
-      const batches = await listExpiringBatches(days);
+      const batches = await getExpiringBatches(days);
       return { batches };
     },
   );
@@ -178,7 +178,7 @@ export async function productRoutes(fastify: FastifyInstance) {
         parseInt(String(request.query.days ?? 30), 10) || 30,
         365,
       );
-      const products = await invoiceService.getTopSelling(limit, days);
+      const products = await getTopSelling(limit, days);
       return { products };
     },
   );
@@ -431,7 +431,11 @@ export async function productRoutes(fastify: FastifyInstance) {
       },
     },
     async (request) => {
-      const product = await updateProductStock(request.params.id, request.body);
+      const product = await updateProductStock(
+        request.params.id,
+        request.body.quantity,
+        request.body.operation,
+      );
       const tid = request.user!.tenantId;
       if (tid)
         broadcaster.send(tid, "stock:updated", {

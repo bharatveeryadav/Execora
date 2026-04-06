@@ -19,6 +19,7 @@ import {
   revokeRefreshToken,
   isPasswordSet,
 } from "@execora/infrastructure";
+import { getGstinValidationError } from "@execora/shared";
 import { requireAuth } from "../middleware/require-auth";
 
 export async function authRoutes(fastify: FastifyInstance) {
@@ -276,11 +277,9 @@ export async function authRoutes(fastify: FastifyInstance) {
 
       const canEditTenant = role === "owner" || role === "admin";
       if (request.body.tenant && !canEditTenant) {
-        return reply
-          .code(403)
-          .send({
-            error: "Only owner/admin can update business profile fields",
-          });
+        return reply.code(403).send({
+          error: "Only owner/admin can update business profile fields",
+        });
       }
 
       const tenantData: Record<string, unknown> = {};
@@ -291,8 +290,17 @@ export async function authRoutes(fastify: FastifyInstance) {
           tenantData.legalName = tenantBody.legalName;
         if (tenantBody.tradeName !== undefined)
           tenantData.tradeName = tenantBody.tradeName;
-        if (tenantBody.gstin !== undefined)
-          tenantData.gstin = tenantBody.gstin || null;
+        if (tenantBody.gstin !== undefined) {
+          const gstin = tenantBody.gstin || null;
+          if (gstin) {
+            const gstinErr = getGstinValidationError(gstin.trim());
+            if (gstinErr)
+              return reply
+                .code(400)
+                .send({ error: "INVALID_GSTIN", message: gstinErr });
+          }
+          tenantData.gstin = gstin ? gstin.trim().toUpperCase() : null;
+        }
         if (tenantBody.currency !== undefined)
           tenantData.currency = tenantBody.currency;
         if (tenantBody.timezone !== undefined)
@@ -500,11 +508,9 @@ export async function authRoutes(fastify: FastifyInstance) {
       if (!user) return reply.code(404).send({ error: "User not found" });
 
       if (!isPasswordSet(user.passwordHash)) {
-        return reply
-          .code(400)
-          .send({
-            error: "Cannot verify current password — account not activated",
-          });
+        return reply.code(400).send({
+          error: "Cannot verify current password — account not activated",
+        });
       }
 
       const valid = await verifyPassword(currentPassword, user.passwordHash);

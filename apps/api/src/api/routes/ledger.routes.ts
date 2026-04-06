@@ -48,7 +48,9 @@ export async function ledgerRoutes(fastify: FastifyInstance) {
         request.body.paymentMode,
         request.body.notes,
         request.body.reference,
-        request.body.paymentDate,
+        request.body.paymentDate
+          ? new Date(request.body.paymentDate)
+          : undefined,
       );
       const tid = request.user!.tenantId;
       if (tid)

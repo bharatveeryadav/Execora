@@ -10,6 +10,7 @@ import {
   getSupplierById,
   createSupplier,
 } from "@execora/modules";
+import { getGstinValidationError } from "@execora/shared";
 
 function parseLimit(raw: unknown, defaultVal = 50, maxVal = 200): number {
   const n = parseInt(String(raw ?? defaultVal), 10);
@@ -82,6 +83,14 @@ export async function supplierRoutes(fastify: FastifyInstance) {
       reply,
     ) => {
       const tenantId = request.user!.tenantId;
+      const { gstin } = request.body;
+      if (gstin) {
+        const gstinErr = getGstinValidationError(gstin.trim());
+        if (gstinErr)
+          return reply
+            .code(400)
+            .send({ error: "INVALID_GSTIN", message: gstinErr });
+      }
       const supplier = await createSupplier(tenantId, request.body);
       return reply.code(201).send({ supplier });
     },

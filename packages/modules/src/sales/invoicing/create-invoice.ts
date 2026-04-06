@@ -1,15 +1,27 @@
-import { invoiceService } from "../../modules/invoice/invoice.service";
-import type { CreateInvoiceInput, CreateInvoiceResult } from "./types";
+/**
+ * Sales / Invoicing — invoice operations.
+ * Re-exports from the canonical flat domain file (sales/invoice.ts).
+ * Kept for backwards-compatibility with any existing imports.
+ */
 
-export async function createInvoice(
-  input: CreateInvoiceInput,
-): Promise<CreateInvoiceResult> {
-  return invoiceService.createInvoice(
-    input.customerId,
-    input.items,
-    input.notes,
-    input.options ?? {},
-  );
-}
+export {
+  createInvoice,
+  previewInvoice,
+  confirmInvoice,
+  convertProformaToInvoice,
+  updateInvoice,
+  cancelInvoice,
+  savePdfUrl,
+  dispatchInvoicePdfEmail,
+  getInvoiceById,
+  getRecentInvoices,
+  getCustomerInvoices,
+  getLastInvoice,
+  getLastOrder,
+  getTopSelling,
+  getSummaryRange,
+  getDailySummary,
+} from "../invoice";
 
+export type { InvoiceOptions } from "../invoice";
 export type { CreateInvoiceInput, CreateInvoiceResult } from "./types";

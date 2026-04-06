@@ -15,8 +15,24 @@ import type { CustomerSearchResult } from "@execora/types";
 
 function parseTokens(query: string): string[] {
   const stopWords = new Set([
-    "ka", "ki", "ke", "ko", "se", "me", "hai", "wala", "wali", "customer",
-    "bhai", "ji", "mr", "mrs", "ms", "the", "a", "an",
+    "ka",
+    "ki",
+    "ke",
+    "ko",
+    "se",
+    "me",
+    "hai",
+    "wala",
+    "wali",
+    "customer",
+    "bhai",
+    "ji",
+    "mr",
+    "mrs",
+    "ms",
+    "the",
+    "a",
+    "an",
   ]);
   return query
     .toLowerCase()
@@ -90,7 +106,9 @@ export async function getCustomerBalance(customerId: string): Promise<number> {
   return customer ? parseFloat(String(customer.balance)) : 0;
 }
 
-export async function searchCustomers(query: string): Promise<CustomerSearchResult[]> {
+export async function searchCustomers(
+  query: string,
+): Promise<CustomerSearchResult[]> {
   const tokens = parseTokens(query);
   const q = query.toLowerCase().trim();
 
@@ -117,8 +135,15 @@ export async function searchCustomers(query: string): Promise<CustomerSearchResu
                   OR: [
                     { name: { contains: token, mode: "insensitive" as const } },
                     { nickname: { has: token } },
-                    { landmark: { contains: token, mode: "insensitive" as const } },
-                    { notes: { contains: token, mode: "insensitive" as const } },
+                    {
+                      landmark: {
+                        contains: token,
+                        mode: "insensitive" as const,
+                      },
+                    },
+                    {
+                      notes: { contains: token, mode: "insensitive" as const },
+                    },
                   ],
                 })),
               },
@@ -132,17 +157,31 @@ export async function searchCustomers(query: string): Promise<CustomerSearchResu
   return customers.map(toSearchResult);
 }
 
-export async function listCustomers(limit = 200): Promise<CustomerSearchResult[]> {
+export async function listCustomers(
+  limit = 200,
+): Promise<CustomerSearchResult[]> {
   const { tenantId } = tenantContext.get();
   const customers = await prisma.customer.findMany({
     where: { tenantId },
     orderBy: { balance: "desc" },
     take: limit,
     select: {
-      id: true, name: true, phone: true, email: true, nickname: true,
-      landmark: true, balance: true, tags: true, notes: true, gstin: true,
-      creditLimit: true, addressLine1: true, addressLine2: true,
-      city: true, state: true, pincode: true,
+      id: true,
+      name: true,
+      phone: true,
+      email: true,
+      nickname: true,
+      landmark: true,
+      balance: true,
+      tags: true,
+      notes: true,
+      gstin: true,
+      creditLimit: true,
+      addressLine1: true,
+      addressLine2: true,
+      city: true,
+      state: true,
+      pincode: true,
     },
   });
   return customers.map(toSearchResult);
@@ -152,7 +191,13 @@ export async function listOverdueCustomers() {
   const { tenantId } = tenantContext.get();
   const customers = await prisma.customer.findMany({
     where: { tenantId, balance: { gt: 0 } },
-    select: { id: true, name: true, balance: true, landmark: true, phone: true },
+    select: {
+      id: true,
+      name: true,
+      balance: true,
+      landmark: true,
+      phone: true,
+    },
     orderBy: { balance: "desc" },
   });
   return customers.map((c) => ({
@@ -174,7 +219,9 @@ export async function getTotalPending(): Promise<number> {
 }
 
 export async function getCustomerCommPrefs(customerId: string) {
-  return prisma.customerCommunicationPrefs.findUnique({ where: { customerId } });
+  return prisma.customerCommunicationPrefs.findUnique({
+    where: { customerId },
+  });
 }
 
 // ─── Commands ─────────────────────────────────────────────────────────────────
@@ -189,8 +236,20 @@ export async function createCustomer(data: {
   openingBalance?: number;
   creditLimit?: number;
   tags?: string[];
+  gstin?: string;
 }) {
-  const { name, phone, email, nickname, landmark, notes, openingBalance, creditLimit, tags } = data;
+  const {
+    name,
+    phone,
+    email,
+    nickname,
+    landmark,
+    notes,
+    openingBalance,
+    creditLimit,
+    tags,
+    gstin,
+  } = data;
 
   if (!name?.trim()) throw new Error("Customer name is required");
 
@@ -212,6 +271,7 @@ export async function createCustomer(data: {
       balance: openingBalance ?? 0,
       creditLimit: creditLimit != null ? new Decimal(creditLimit) : null,
       tags: tags ?? [],
+      gstin: gstin ? gstin.trim().toUpperCase() : null,
       alternatePhone: [],
       preferredPaymentMethod: [],
       preferredDays: [],
@@ -219,7 +279,10 @@ export async function createCustomer(data: {
     } as Parameters<typeof prisma.customer.create>[0]["data"],
   });
 
-  logger.info({ customerId: customer.id, name: customer.name }, "Customer created");
+  logger.info(
+    { customerId: customer.id, name: customer.name },
+    "Customer created",
+  );
   return customer;
 }
 
@@ -234,26 +297,41 @@ export async function updateCustomer(
     creditLimit?: number;
     tags?: string[];
     notes?: string;
+    gstin?: string | null;
   },
 ) {
   const updateData: Record<string, unknown> = {};
   if (data.name !== undefined) updateData.name = data.name.trim();
   if (data.phone !== undefined) updateData.phone = data.phone || null;
   if (data.email !== undefined) updateData.email = data.email || null;
-  if (data.nickname !== undefined) updateData.nickname = data.nickname ? [data.nickname] : [];
+  if (data.nickname !== undefined)
+    updateData.nickname = data.nickname ? [data.nickname] : [];
   if (data.landmark !== undefined) updateData.landmark = data.landmark || null;
   if (data.tags !== undefined) updateData.tags = data.tags;
-  if (data.creditLimit !== undefined) updateData.creditLimit = new Decimal(data.creditLimit);
+  if (data.creditLimit !== undefined)
+    updateData.creditLimit = new Decimal(data.creditLimit);
   if (data.notes !== undefined) updateData.notes = data.notes || null;
+  if (data.gstin !== undefined)
+    updateData.gstin = data.gstin ? data.gstin.trim().toUpperCase() : null;
 
-  if (Object.keys(updateData).length === 0) throw new Error("No fields to update");
+  if (Object.keys(updateData).length === 0)
+    throw new Error("No fields to update");
 
-  const updated = await prisma.customer.update({ where: { id }, data: updateData });
-  logger.info({ customerId: id, fields: Object.keys(updateData) }, "Customer updated");
+  const updated = await prisma.customer.update({
+    where: { id },
+    data: updateData,
+  });
+  logger.info(
+    { customerId: id, fields: Object.keys(updateData) },
+    "Customer updated",
+  );
   return updated;
 }
 
-export async function updateCustomerBalance(customerId: string, amount: number) {
+export async function updateCustomerBalance(
+  customerId: string,
+  amount: number,
+) {
   if (!isFinite(amount)) throw new Error("Amount must be a finite number");
   return prisma.customer.update({
     where: { id: customerId },
@@ -283,7 +361,9 @@ export async function upsertCustomerCommPrefs(
     create: { tenantId: customer.tenantId, customerId, ...data } as Parameters<
       typeof prisma.customerCommunicationPrefs.upsert
     >[0]["create"],
-    update: data as Parameters<typeof prisma.customerCommunicationPrefs.upsert>[0]["update"],
+    update: data as Parameters<
+      typeof prisma.customerCommunicationPrefs.upsert
+    >[0]["update"],
   });
 }
 
@@ -302,21 +382,33 @@ export async function deleteCustomer(customerId: string) {
         });
         messageLogs += r.count;
       }
-      messageLogs += (await tx.messageLog.deleteMany({ where: { customerId } })).count;
+      messageLogs += (await tx.messageLog.deleteMany({ where: { customerId } }))
+        .count;
 
-      const remindersDeleted = await tx.reminder.deleteMany({ where: { customerId } });
+      const remindersDeleted = await tx.reminder.deleteMany({
+        where: { customerId },
+      });
 
       const invoiceIds = (
-        await tx.invoice.findMany({ where: { customerId }, select: { id: true } })
+        await tx.invoice.findMany({
+          where: { customerId },
+          select: { id: true },
+        })
       ).map((i) => i.id);
 
       let invoiceItems = 0;
       if (invoiceIds.length > 0) {
-        invoiceItems = (await tx.invoiceItem.deleteMany({ where: { invoiceId: { in: invoiceIds } } })).count;
+        invoiceItems = (
+          await tx.invoiceItem.deleteMany({
+            where: { invoiceId: { in: invoiceIds } },
+          })
+        ).count;
       }
       const invoices = await tx.invoice.deleteMany({ where: { customerId } });
       const payments = await tx.payment.deleteMany({ where: { customerId } });
-      const customer = await tx.customer.deleteMany({ where: { id: customerId } });
+      const customer = await tx.customer.deleteMany({
+        where: { id: customerId },
+      });
 
       return {
         invoices: invoices.count,
@@ -335,7 +427,14 @@ export async function deleteCustomer(customerId: string) {
     return {
       success: false,
       error: msg,
-      deletedRecords: { invoices: 0, payments: 0, reminders: 0, messageLogs: 0, invoiceItems: 0, customer: 0 },
+      deletedRecords: {
+        invoices: 0,
+        payments: 0,
+        reminders: 0,
+        messageLogs: 0,
+        invoiceItems: 0,
+        customer: 0,
+      },
     };
   }
 }

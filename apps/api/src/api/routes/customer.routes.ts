@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest } from "fastify";
 import {
-  invoiceService,
+  getCustomerInvoices,
+  getLastOrder,
   createCustomer,
   updateCustomer,
   updateCustomerBalance,
@@ -12,6 +13,7 @@ import {
   listOverdueCustomers,
   getCustomerCommPrefs,
 } from "@execora/modules";
+import { getGstinValidationError } from "@execora/shared";
 import { broadcaster } from "../../ws/broadcaster";
 
 export async function customerRoutes(fastify: FastifyInstance) {
@@ -89,6 +91,7 @@ export async function customerRoutes(fastify: FastifyInstance) {
       creditLimit?: number;
       tags?: string[];
       notes?: string;
+      gstin?: string | null;
     };
   }>(
     "/api/v1/customers/:id",
@@ -105,12 +108,19 @@ export async function customerRoutes(fastify: FastifyInstance) {
             creditLimit: { type: "number", minimum: 0 },
             tags: { type: "array", items: { type: "string" } },
             notes: { type: "string", maxLength: 2000 },
+            gstin: { type: "string", maxLength: 15, nullable: true },
           },
           additionalProperties: false,
         },
       },
     },
     async (request, reply) => {
+      const { gstin } = request.body;
+      if (gstin) {
+        const err = getGstinValidationError(gstin.trim());
+        if (err)
+          return reply.code(400).send({ error: "INVALID_GSTIN", message: err });
+      }
       try {
         const customer = await updateCustomer(request.params.id, request.body);
         const tid = request.user!.tenantId;
@@ -132,10 +142,7 @@ export async function customerRoutes(fastify: FastifyInstance) {
         parseInt(request.query.limit ?? "50", 10) || 50,
         200,
       );
-      const invoices = await invoiceService.getCustomerInvoices(
-        request.params.id,
-        limit,
-      );
+      const invoices = await getCustomerInvoices(request.params.id, limit);
       return { invoices };
     },
   );
@@ -206,6 +213,7 @@ export async function customerRoutes(fastify: FastifyInstance) {
       openingBalance?: number;
       creditLimit?: number;
       tags?: string[];
+      gstin?: string;
     };
   }>(
     "/api/v1/customers",
@@ -224,12 +232,19 @@ export async function customerRoutes(fastify: FastifyInstance) {
             openingBalance: { type: "number" },
             creditLimit: { type: "number", minimum: 0 },
             tags: { type: "array", items: { type: "string" } },
+            gstin: { type: "string", maxLength: 15 },
           },
           additionalProperties: false,
         },
       },
     },
     async (request, reply) => {
+      const { gstin } = request.body;
+      if (gstin) {
+        const err = getGstinValidationError(gstin.trim());
+        if (err)
+          return reply.code(400).send({ error: "INVALID_GSTIN", message: err });
+      }
       const customer = await createCustomer(request.body);
       const tid = request.user!.tenantId;
       broadcaster.send(tid, "customer:created", { customerId: customer.id });
@@ -241,7 +256,7 @@ export async function customerRoutes(fastify: FastifyInstance) {
   fastify.get<{ Params: { id: string } }>(
     "/api/v1/customers/:id/last-order",
     async (request, reply) => {
-      const invoice = await invoiceService.getLastOrder(request.params.id);
+      const invoice = await getLastOrder(request.params.id);
       if (!invoice)
         return reply.code(404).send({ error: "No previous order found" });
       return { invoice };

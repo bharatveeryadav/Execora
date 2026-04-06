@@ -1,7 +1,12 @@
 import { FastifyInstance, FastifyRequest } from "fastify";
 import {
   createInvoice,
-  invoiceService,
+  getRecentInvoices,
+  getInvoiceById,
+  convertProformaToInvoice,
+  updateInvoice,
+  cancelInvoice,
+  dispatchInvoicePdfEmail,
   reversePayment,
   recordMixedPayment,
 } from "@execora/modules";
@@ -23,7 +28,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
         Querystring: { limit?: string };
       }>,
     ) => {
-      const invoices = await invoiceService.getRecentInvoices(
+      const invoices = await getRecentInvoices(
         parseLimit(request.query.limit, 20),
       );
       return { invoices };
@@ -34,7 +39,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
   fastify.get<{ Params: { id: string } }>(
     "/api/v1/invoices/:id",
     async (request, reply) => {
-      const invoice = await invoiceService.getInvoiceById(request.params.id);
+      const invoice = await getInvoiceById(request.params.id);
       if (!invoice) return reply.code(404).send({ error: "Invoice not found" });
       return { invoice };
     },
@@ -148,12 +153,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
         }
       }
       try {
-        const result = await createInvoice({
-          customerId,
-          items,
-          notes,
-          options: opts,
-        });
+        const result = await createInvoice(customerId, items, notes, opts);
         const tid = request.user!.tenantId;
         if (tid)
           broadcaster.send(tid, "invoice:created", {
@@ -161,14 +161,12 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
             invoiceNo: result.invoice.invoiceNo,
           });
         // Fire-and-forget: generate PDF (with UPI QR) + send email to customer
-        invoiceService
-          .dispatchInvoicePdfEmail(result.invoice.id)
-          .catch((err) =>
-            fastify.log.error(
-              { err, invoiceId: result.invoice.id },
-              "invoice pdf/email dispatch failed",
-            ),
-          );
+        dispatchInvoicePdfEmail(result.invoice.id).catch((err) =>
+          fastify.log.error(
+            { err, invoiceId: result.invoice.id },
+            "invoice pdf/email dispatch failed",
+          ),
+        );
         return reply.code(201).send({
           invoice: result.invoice,
           autoCreatedProducts: result.autoCreatedProducts,
@@ -278,11 +276,9 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
           });
         }
       }
-      const result = await createInvoice({
-        customerId,
-        items,
-        notes,
-        options: { ...opts, isProforma: true },
+      const result = await createInvoice(customerId, items, notes, {
+        ...opts,
+        isProforma: true,
       });
       return reply.code(201).send({ invoice: result.invoice });
     },
@@ -303,7 +299,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
             | "other",
         }
       : undefined;
-    const invoice = await invoiceService.convertProformaToInvoice(
+    const invoice = await convertProformaToInvoice(
       request.params.id,
       initialPayment,
     );
@@ -314,14 +310,12 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
         invoiceNo: invoice.invoiceNo,
       });
     // Fire-and-forget: re-generate PDF (confirmed, not proforma) + send email
-    invoiceService
-      .dispatchInvoicePdfEmail(invoice.id)
-      .catch((err) =>
-        fastify.log.error(
-          { err, invoiceId: invoice.id },
-          "invoice pdf/email dispatch failed on convert",
-        ),
-      );
+    dispatchInvoicePdfEmail(invoice.id).catch((err) =>
+      fastify.log.error(
+        { err, invoiceId: invoice.id },
+        "invoice pdf/email dispatch failed on convert",
+      ),
+    );
     return { invoice };
   });
 
@@ -397,7 +391,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
           });
         }
       }
-      const invoice = await invoiceService.updateInvoice(request.params.id, {
+      const invoice = await updateInvoice(request.params.id, {
         items,
         notes,
         opts: optsRaw,
@@ -417,7 +411,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
         Params: { id: string };
       }>,
     ) => {
-      const invoice = await invoiceService.cancelInvoice(request.params.id);
+      const invoice = await cancelInvoice(request.params.id);
       const tid = request.user!.tenantId;
       if (tid)
         broadcaster.send(tid, "invoice:cancelled", { invoiceId: invoice.id });
@@ -468,7 +462,7 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
   fastify.get<{ Params: { id: string } }>(
     "/api/v1/invoices/:id/portal-token",
     async (request, reply) => {
-      const invoice = await invoiceService.getInvoiceById(request.params.id);
+      const invoice = await getInvoiceById(request.params.id);
       if (!invoice) return reply.code(404).send({ error: "Invoice not found" });
       return { token: makePortalToken(request.params.id) };
     },
@@ -478,10 +472,10 @@ export async function invoiceRoutes(fastify: FastifyInstance) {
   fastify.post<{ Params: { id: string } }>(
     "/api/v1/invoices/:id/send-email",
     async (request, reply) => {
-      const invoice = await invoiceService.getInvoiceById(request.params.id);
+      const invoice = await getInvoiceById(request.params.id);
       if (!invoice) return reply.code(404).send({ error: "Invoice not found" });
       // Fire synchronously so the caller knows if it succeeded
-      await invoiceService.dispatchInvoicePdfEmail(request.params.id);
+      await dispatchInvoicePdfEmail(request.params.id);
       return { ok: true, invoiceId: request.params.id };
     },
   );
