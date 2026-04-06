@@ -5,7 +5,7 @@
 import { logger, tenantContext } from '@execora/core';
 import { invoiceService } from '../../invoice/invoice.service';
 import { productService } from '../../product/product.service';
-import { emailService } from '@execora/core';
+import { emailService } from '../../../infra/email';
 import { gstr1Service, getIndianFY, indianFYRange } from '../../gst/gstr1.service';
 import type { ExecutionResult } from '@execora/types';
 

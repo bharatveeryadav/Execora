@@ -1,10 +1,10 @@
 import { prisma } from "@execora/core";
 import { logger } from "@execora/core";
 import { tenantContext } from "@execora/core";
-import { emailService } from "@execora/core";
-import { generateInvoicePdf } from "@execora/core";
+import { emailService } from '../../infra/email';
+import { generateInvoicePdf } from '../../utils/pdf';
 import { minioClient } from "@execora/core";
-import { whatsappService } from "@execora/core";
+import { whatsappService } from '../../infra/whatsapp-service';
 import { InvoiceItemInput } from "@execora/types";
 import { Decimal } from "@prisma/client/runtime/library";
 import { invoiceOperations } from "@execora/core";

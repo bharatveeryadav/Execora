@@ -6,8 +6,8 @@
  * src/integrations/whatsapp.ts is now a thin re-export shim.
  */
 import axios from 'axios';
-import { config } from './config';
-import { logger } from './logger';
+import { config } from '@execora/core';
+import { logger } from '@execora/core';
 
 export interface WhatsAppMessageResponse {
 	messageId: string;

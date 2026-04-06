@@ -12,7 +12,7 @@ import { disconnectDB, ensureVoiceSchemaReady } from "@execora/core";
 import { bootstrapSystem } from "@execora/core";
 import { closeQueues } from "@execora/core";
 import { minioClient } from "@execora/core";
-import { llmCache } from "@execora/core";
+import { llmCache } from "@execora/modules";
 import {
   getRuntimeConfig,
   initRuntimeConfig,
@@ -29,8 +29,8 @@ import {
   AppError,
   setupGlobalErrorHandlers,
 } from "@execora/core";
-import { emailService } from "@execora/core";
-import { startWorkers, closeWorkers } from "@execora/core";
+import { emailService } from "@execora/modules";
+import { startWorkers, closeWorkers } from "@execora/modules";
 import { tenantContext } from "@execora/core";
 import { SYSTEM_TENANT_ID, SYSTEM_USER_ID } from "@execora/core";
 import { verifyAccessToken } from "@execora/core";

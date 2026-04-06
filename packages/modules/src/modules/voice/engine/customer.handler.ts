@@ -7,7 +7,7 @@
 import { logger } from '@execora/core';
 import { customerService } from '../../customer/customer.service';
 import { conversationMemory } from '../conversation';
-import { emailService } from '@execora/core';
+import { emailService } from '../../../infra/email';
 import { openaiService } from '../../../integrations/openai';
 import { resolveCustomer } from './shared';
 import type { ExecutionResult } from '@execora/types';

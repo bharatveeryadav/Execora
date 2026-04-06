@@ -1,6 +1,6 @@
 import { Redis } from 'ioredis';
-import { config } from './config';
-import { logger } from './logger';
+import { config } from '@execora/core';
+import { logger } from '@execora/core';
 
 const isTest = process.env.NODE_TEST === '1' || process.env.NODE_TEST === 'true';
 

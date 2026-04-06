@@ -7,20 +7,20 @@ import {
   ocrJobQueue,
   eventsQueue,
   checkRedisHealth,
-} from "./queue";
+} from "@execora/core";
 import {
   scheduleNextReminderOccurrence,
   markReminderSent,
   markReminderFailed,
-} from "./reminder-ops";
-import { emailService } from "./email";
-import { prisma } from "./database";
-import { logger } from "./logger";
-import { config } from "./config";
-import { minioClient } from "./storage";
+} from "./infra/reminder-ops";
+import { emailService } from "./infra/email";
+import { prisma } from "@execora/core";
+import { logger } from "@execora/core";
+import { config } from "@execora/core";
+import { minioClient } from "@execora/core";
 import { ReminderJobData, WhatsAppJobData } from "@execora/types";
 import type { DomainEvent } from "@execora/types";
-import { eventBus } from "./event-bus";
+import { eventBus } from "@execora/core";
 import {
   queueDepth,
   queueJobsProcessed,
@@ -28,9 +28,9 @@ import {
   errorCounter,
   ocrJobsTotal,
   ocrJobDuration,
-} from "./metrics";
-import { whatsappService } from "./whatsapp";
-import { SYSTEM_TENANT_ID } from "./bootstrap";
+} from "@execora/core";
+import { whatsappService } from "./infra/whatsapp-service";
+import { SYSTEM_TENANT_ID } from "@execora/core";
 import { Decimal } from "@prisma/client/runtime/library";
 import { MessageChannel, MessageStatus, Prisma } from "@prisma/client";
 

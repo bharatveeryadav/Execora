@@ -14,9 +14,9 @@ import {
   addMinutes, addHours, addMonths, addDays,
   setHours, setMinutes, setSeconds, setMilliseconds,
 } from 'date-fns';
-import { prisma } from './database';
-import { reminderQueue } from './queue';
-import { logger } from './logger';
+import { prisma } from '@execora/core';
+import { reminderQueue } from '@execora/core';
+import { logger } from '@execora/core';
 import { ReminderJobData } from '@execora/types';
 
 // Kept internal — callers never need to touch the recurrence structure directly.

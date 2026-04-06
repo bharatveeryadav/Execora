@@ -3,7 +3,7 @@ import { logger } from '@execora/core';
 import { Prisma } from '@prisma/client';
 import { reminderQueue } from '@execora/core';
 import { tenantContext } from '@execora/core';
-import { scheduleNextReminderOccurrence, markReminderSent, markReminderFailed } from '@execora/core';
+import { scheduleNextReminderOccurrence, markReminderSent, markReminderFailed } from '../../infra/reminder-ops';
 import { ReminderJobData } from '@execora/types';
 import { addDays, addHours, addMinutes, addMonths, setHours, setMinutes, setSeconds, setMilliseconds } from 'date-fns';
 import { fromZonedTime } from 'date-fns-tz';

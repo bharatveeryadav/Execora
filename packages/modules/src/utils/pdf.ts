@@ -1,6 +1,6 @@
 import PDFDocument from 'pdfkit';
 import QRCode from 'qrcode';
-import { logger } from './logger';
+import { logger } from '@execora/core';
 
 // ── Types for GSTR-1 and P&L PDF generation ──────────────────────────────────
 

@@ -8,7 +8,7 @@ import { logger } from '@execora/core';
 import { invoiceService } from '../../invoice/invoice.service';
 import { customerService } from '../../customer/customer.service';
 import { ledgerService } from '../../ledger/ledger.service';
-import { emailService } from '@execora/core';
+import { emailService } from '../../../infra/email';
 import { minioClient } from '@execora/core';
 import { conversationMemory } from '../conversation';
 import { resolveCustomer, formatItemsSummary, sendConfirmedInvoiceEmail } from './shared';

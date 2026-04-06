@@ -6,7 +6,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { matchIndianName, findBestMatch, isSamePerson, findAllMatches } from '@execora/core';
+import { matchIndianName, findBestMatch, isSamePerson, findAllMatches } from '../utils/fuzzy-match';
 
 // ── matchIndianName — should match ──────────────────────────────────────────
 

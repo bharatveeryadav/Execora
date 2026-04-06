@@ -7,9 +7,9 @@ import { prisma } from "@execora/core";
 import { conversationMemory } from "../conversation";
 import { customerService } from "../../customer/customer.service";
 import { invoiceService } from "../../invoice/invoice.service";
-import { emailService } from "@execora/core";
-import { whatsappService } from "@execora/core";
-import { generateInvoicePdf } from "@execora/core";
+import { emailService } from "../../../infra/email";
+import { whatsappService } from "../../../infra/whatsapp-service";
+import { generateInvoicePdf } from "../../../utils/pdf";
 import { minioClient } from "@execora/core";
 import type { CustomerSearchResult, ExecutionResult } from "@execora/types";
 

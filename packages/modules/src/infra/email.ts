@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { logger } from './logger';
+import { logger } from '@execora/core';
 
 interface EmailConfig {
     host: string;

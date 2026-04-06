@@ -13,12 +13,12 @@ import {
   prisma,
   logger,
   tenantContext,
-  emailService,
-  generateInvoicePdf,
   minioClient,
-  whatsappService,
   invoiceOperations,
 } from "@execora/core";
+import { emailService } from '../infra/email';
+import { generateInvoicePdf } from '../utils/pdf';
+import { whatsappService } from '../infra/whatsapp-service';
 import { InvoiceItemInput } from "@execora/types";
 import { Decimal } from "@prisma/client/runtime/library";
 import { gstService, type SupplyType } from "../modules/gst/gst.service";

@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { config } from '@execora/core';
 import { logger } from '@execora/core';
-import { llmCache } from '@execora/core';
+import { llmCache } from '../../utils/llm-cache';
 import { llmRequestsTotal, llmTokensTotal, llmCostUsdTotal } from '@execora/core';
 import { getRuntimeConfig } from '@execora/core';
 import { IntentType, IntentExtraction, ExecutionResult } from '@execora/types';

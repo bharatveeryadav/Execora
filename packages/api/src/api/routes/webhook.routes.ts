@@ -14,7 +14,8 @@
  */
 import crypto from "crypto";
 import { FastifyInstance, FastifyRequest } from "fastify";
-import { whatsappService, logger } from "@execora/core";
+import { whatsappService } from "@execora/modules";
+import { logger } from "@execora/core";
 import { prisma } from "@execora/core";
 import { recordPayment } from "@execora/modules";
 import { broadcaster } from "../../ws/broadcaster";

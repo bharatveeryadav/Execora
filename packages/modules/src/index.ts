@@ -42,3 +42,12 @@ export * from "./providers/tts/index";
 // ── Cross-cutting: monitoring & utilities ────────────────────────────────────
 export * from "./modules/monitoring/monitoring.service";
 export * from "./utils/devanagari";
+export * from "./utils/pdf";
+export * from "./utils/fuzzy-match";
+export * from "./utils/llm-cache";
+
+// ── Infrastructure helpers (moved from @execora/core) ────────────────────────
+export * from "./infra/email";
+export * from "./infra/whatsapp-service";
+export * from "./infra/reminder-ops";
+export * from "./workers";

@@ -15,7 +15,8 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { startWorkers, closeWorkers, logger } from '@execora/core';
+import { startWorkers, closeWorkers } from '@execora/modules';
+import { logger } from '@execora/core';
 
 startWorkers();
 logger.info('Standalone worker process ready');

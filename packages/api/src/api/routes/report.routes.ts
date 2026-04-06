@@ -14,7 +14,8 @@
  */
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { gstr1Service, getIndianFY, indianFYRange } from '@execora/modules';
-import { generateGstr1Pdf, generatePnlPdf, emailService, prisma } from '@execora/core';
+import { generateGstr1Pdf, generatePnlPdf, emailService } from '@execora/modules';
+import { prisma } from '@execora/core';
 import { logger } from '@execora/core';
 
 interface ReportQuerystring {
