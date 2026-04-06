@@ -1,43 +1,44 @@
-// @execora/modules — barrel exports
+/**
+ * @execora/modules — six domain module platform
+ *
+ * All business logic is organised into six canonical modules:
+ *
+ *  1. accounting  — ledger, payments, expenses, P&L
+ *  2. inventory   — products, stock, batches, expiry
+ *  3. pos         — draft bills, voice billing, real-time session
+ *  4. invoicing   — sales invoices, credit notes, purchase orders, customers
+ *  5. e-invoice   — GST compliance, GSTR-1 filing, e-way bill
+ *  6. ocr         — document scanning, AI image processing, predictive analytics
+ *
+ * All six modules re-export from this root barrel so existing imports
+ * from "@execora/modules" continue to work without change.
+ */
 
-// Business services
-export * from "./modules/customer/customer.service";
-export * from "./modules/invoice/invoice.service";
-export * from "./modules/product/product.service";
-export * from "./modules/reminder/reminder.service";
-export * from "./modules/gst/gst.service";
-export * from "./modules/gst/gstr1.service";
+// ── 1. Accounting ─────────────────────────────────────────────────────────────
+export * from "./accounting";
 
-// Domain modules — flat async functions (Documenso/Cal.com style)
-export * from "./sales/invoicing/create-invoice";
-export * from "./crm/parties/customer-profile";
-export * from "./inventory/stock/item-catalog";
-export * from "./finance/payments/ledger";
-export * from "./purchases/vendors/supplier-profile";
-export * from "./purchases/purchase/purchase-order";
-export * from "./finance/expenses/expense";
-export * from "./sales/credit-notes/credit-note";
-export * from "./operations/drafts/draft";
+// ── 2. Inventory ─────────────────────────────────────────────────────────────
+export * from "./inventory";
 
-// Monitoring
-export * from "./modules/monitoring/monitoring.service";
+// ── 3. POS ───────────────────────────────────────────────────────────────────
+export * from "./pos";
 
-// Sprint 2 — AI Differentiators
-export * from "./modules/ai/ai.service";
+// ── 4. Invoicing ─────────────────────────────────────────────────────────────
+export * from "./invoicing";
 
-// Voice engine
-export * from "./modules/voice/conversation";
-export * from "./modules/voice/engine";
-export * from "./modules/voice/session.service";
-export * from "./modules/voice/task-queue";
-export * from "./modules/voice/response-template";
+// ── 5. E-Invoice ─────────────────────────────────────────────────────────────
+export * from "./e-invoice";
 
-// LLM / STT / TTS providers
+// ── 6. OCR ───────────────────────────────────────────────────────────────────
+export * from "./ocr";
+
+// ── Cross-cutting: LLM / STT / TTS providers ──────────────────────────────────
 export * from "./providers/types";
 export * from "./providers/errors";
 export * from "./providers/llm/index";
 export * from "./providers/stt/index";
 export * from "./providers/tts/index";
 
-// Utilities
+// ── Cross-cutting: monitoring & utilities ────────────────────────────────────
+export * from "./modules/monitoring/monitoring.service";
 export * from "./utils/devanagari";

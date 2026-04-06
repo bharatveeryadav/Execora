@@ -36,7 +36,6 @@ declare class MonitoringService {
             tenantId: string;
             id: string;
             createdAt: Date;
-            userId: string | null;
             amount: Decimal | null;
             description: string;
             eventType: string;
@@ -46,6 +45,7 @@ declare class MonitoringService {
             snapKey: string | null;
             severity: string;
             isRead: boolean;
+            userId: string | null;
         })[];
         total: number;
     }>;
@@ -80,7 +80,6 @@ declare class MonitoringService {
         tenantId: string;
         id: string;
         createdAt: Date;
-        userId: string | null;
         amount: Decimal | null;
         description: string;
         eventType: string;
@@ -90,6 +89,7 @@ declare class MonitoringService {
         snapKey: string | null;
         severity: string;
         isRead: boolean;
+        userId: string | null;
     } | null>;
     getConfig(tenantId: string): Promise<{
         tenantId: string;

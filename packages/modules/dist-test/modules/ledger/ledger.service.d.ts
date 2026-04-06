@@ -6,20 +6,13 @@ declare class LedgerService {
     recordPayment(customerId: string, amount: number, paymentMode: 'cash' | 'upi' | 'card' | 'other', notes?: string, reference?: string, receivedAt?: Date): Promise<{
         customer: {
             tenantId: string;
-            balance: Decimal;
-            creditLimit: Decimal;
-            totalPurchases: Decimal;
-            totalPayments: Decimal;
-            lastPaymentAmount: Decimal | null;
-            averagePaymentDays: number | null;
-            loyaltyPoints: number;
-            visitCount: number;
-            averageBasketSize: Decimal | null;
-            frequencyScore: Decimal;
-            recencyScore: Decimal;
-            monetaryScore: Decimal;
-            overallScore: Decimal | null;
             id: string;
+            notes: string | null;
+            tags: string[];
+            createdBy: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            deletedAt: Date | null;
             name: string;
             phone: string | null;
             alternatePhone: string[];
@@ -38,38 +31,45 @@ declare class LedgerService {
             gstin: string | null;
             pan: string | null;
             businessType: string | null;
+            creditLimit: Decimal;
+            balance: Decimal;
+            totalPurchases: Decimal;
+            totalPayments: Decimal;
+            lastPaymentAmount: Decimal | null;
             lastPaymentDate: Date | null;
+            averagePaymentDays: number | null;
+            loyaltyPoints: number;
             loyaltyTier: string;
+            visitCount: number;
             firstVisit: Date | null;
             lastVisit: Date | null;
+            averageBasketSize: Decimal | null;
             preferredPaymentMethod: import(".prisma/client").$Enums.PaymentMethod[];
             preferredTimeOfDay: Date | null;
             preferredDays: string[];
-            tags: string[];
-            notes: string | null;
+            frequencyScore: Decimal;
+            recencyScore: Decimal;
+            monetaryScore: Decimal;
+            overallScore: Decimal | null;
             metadata: import("@prisma/client/runtime/library").JsonValue;
             voiceFingerprint: string | null;
             commonPhrases: string[];
-            createdBy: string | null;
             updatedBy: string | null;
-            createdAt: Date;
-            updatedAt: Date;
-            deletedAt: Date | null;
         };
     } & {
         tenantId: string;
         id: string;
+        customerId: string;
+        status: import(".prisma/client").$Enums.PaymentStatus;
         notes: string | null;
         createdBy: string | null;
         createdAt: Date;
-        status: import(".prisma/client").$Enums.PaymentStatus;
-        customerId: string;
-        invoiceId: string | null;
-        amount: Decimal;
         paymentNo: string;
+        amount: Decimal;
         method: import(".prisma/client").$Enums.PaymentMethod;
         reference: string | null;
         receivedAt: Date;
+        invoiceId: string | null;
     }>;
     /**
      * Record a split (mixed) payment — e.g. ₹500 cash + ₹300 UPI.
@@ -82,17 +82,17 @@ declare class LedgerService {
         payments: {
             tenantId: string;
             id: string;
+            customerId: string;
+            status: import(".prisma/client").$Enums.PaymentStatus;
             notes: string | null;
             createdBy: string | null;
             createdAt: Date;
-            status: import(".prisma/client").$Enums.PaymentStatus;
-            customerId: string;
-            invoiceId: string | null;
-            amount: Decimal;
             paymentNo: string;
+            amount: Decimal;
             method: import(".prisma/client").$Enums.PaymentMethod;
             reference: string | null;
             receivedAt: Date;
+            invoiceId: string | null;
         }[];
         totalAmount: number;
     }>;
@@ -102,20 +102,13 @@ declare class LedgerService {
      */
     addCredit(customerId: string, amount: number, description: string): Promise<{} & {
         tenantId: string;
-        balance: Decimal;
-        creditLimit: Decimal;
-        totalPurchases: Decimal;
-        totalPayments: Decimal;
-        lastPaymentAmount: Decimal | null;
-        averagePaymentDays: number | null;
-        loyaltyPoints: number;
-        visitCount: number;
-        averageBasketSize: Decimal | null;
-        frequencyScore: Decimal;
-        recencyScore: Decimal;
-        monetaryScore: Decimal;
-        overallScore: Decimal | null;
         id: string;
+        notes: string | null;
+        tags: string[];
+        createdBy: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
         name: string;
         phone: string | null;
         alternatePhone: string[];
@@ -134,43 +127,43 @@ declare class LedgerService {
         gstin: string | null;
         pan: string | null;
         businessType: string | null;
+        creditLimit: Decimal;
+        balance: Decimal;
+        totalPurchases: Decimal;
+        totalPayments: Decimal;
+        lastPaymentAmount: Decimal | null;
         lastPaymentDate: Date | null;
+        averagePaymentDays: number | null;
+        loyaltyPoints: number;
         loyaltyTier: string;
+        visitCount: number;
         firstVisit: Date | null;
         lastVisit: Date | null;
+        averageBasketSize: Decimal | null;
         preferredPaymentMethod: import(".prisma/client").$Enums.PaymentMethod[];
         preferredTimeOfDay: Date | null;
         preferredDays: string[];
-        tags: string[];
-        notes: string | null;
+        frequencyScore: Decimal;
+        recencyScore: Decimal;
+        monetaryScore: Decimal;
+        overallScore: Decimal | null;
         metadata: import("@prisma/client/runtime/library").JsonValue;
         voiceFingerprint: string | null;
         commonPhrases: string[];
-        createdBy: string | null;
         updatedBy: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
     }>;
     /**
      * Set opening balance for a customer.
      */
     setOpeningBalance(customerId: string, amount: number): Promise<{
         tenantId: string;
-        balance: Decimal;
-        creditLimit: Decimal;
-        totalPurchases: Decimal;
-        totalPayments: Decimal;
-        lastPaymentAmount: Decimal | null;
-        averagePaymentDays: number | null;
-        loyaltyPoints: number;
-        visitCount: number;
-        averageBasketSize: Decimal | null;
-        frequencyScore: Decimal;
-        recencyScore: Decimal;
-        monetaryScore: Decimal;
-        overallScore: Decimal | null;
         id: string;
+        notes: string | null;
+        tags: string[];
+        createdBy: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
         name: string;
         phone: string | null;
         alternatePhone: string[];
@@ -189,23 +182,30 @@ declare class LedgerService {
         gstin: string | null;
         pan: string | null;
         businessType: string | null;
+        creditLimit: Decimal;
+        balance: Decimal;
+        totalPurchases: Decimal;
+        totalPayments: Decimal;
+        lastPaymentAmount: Decimal | null;
         lastPaymentDate: Date | null;
+        averagePaymentDays: number | null;
+        loyaltyPoints: number;
         loyaltyTier: string;
+        visitCount: number;
         firstVisit: Date | null;
         lastVisit: Date | null;
+        averageBasketSize: Decimal | null;
         preferredPaymentMethod: import(".prisma/client").$Enums.PaymentMethod[];
         preferredTimeOfDay: Date | null;
         preferredDays: string[];
-        tags: string[];
-        notes: string | null;
+        frequencyScore: Decimal;
+        recencyScore: Decimal;
+        monetaryScore: Decimal;
+        overallScore: Decimal | null;
         metadata: import("@prisma/client/runtime/library").JsonValue;
         voiceFingerprint: string | null;
         commonPhrases: string[];
-        createdBy: string | null;
         updatedBy: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
     }>;
     /**
      * Get payments received from a customer (replaces ledger query).
@@ -218,17 +218,17 @@ declare class LedgerService {
     } & {
         tenantId: string;
         id: string;
+        customerId: string;
+        status: import(".prisma/client").$Enums.PaymentStatus;
         notes: string | null;
         createdBy: string | null;
         createdAt: Date;
-        status: import(".prisma/client").$Enums.PaymentStatus;
-        customerId: string;
-        invoiceId: string | null;
-        amount: Decimal;
         paymentNo: string;
+        amount: Decimal;
         method: import(".prisma/client").$Enums.PaymentMethod;
         reference: string | null;
         receivedAt: Date;
+        invoiceId: string | null;
     })[]>;
     /**
      * Summarise payments for a date range.
@@ -261,17 +261,17 @@ declare class LedgerService {
     } & {
         tenantId: string;
         id: string;
+        customerId: string;
+        status: import(".prisma/client").$Enums.PaymentStatus;
         notes: string | null;
         createdBy: string | null;
         createdAt: Date;
-        status: import(".prisma/client").$Enums.PaymentStatus;
-        customerId: string;
-        invoiceId: string | null;
-        amount: Decimal;
         paymentNo: string;
+        amount: Decimal;
         method: import(".prisma/client").$Enums.PaymentMethod;
         reference: string | null;
         receivedAt: Date;
+        invoiceId: string | null;
     })[]>;
 }
 export declare const ledgerService: LedgerService;

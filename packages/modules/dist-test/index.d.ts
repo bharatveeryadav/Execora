@@ -1,29 +1,29 @@
-export * from "./modules/customer/customer.service";
-export * from "./modules/invoice/invoice.service";
-export * from "./modules/product/product.service";
-export * from "./modules/reminder/reminder.service";
-export * from "./modules/gst/gst.service";
-export * from "./modules/gst/gstr1.service";
-export * from "./sales/invoicing/create-invoice";
-export * from "./crm/parties/customer-profile";
-export * from "./inventory/stock/item-catalog";
-export * from "./finance/payments/ledger";
-export * from "./purchases/vendors/supplier-profile";
-export * from "./purchases/purchase/purchase-order";
-export * from "./finance/expenses/expense";
-export * from "./sales/credit-notes/credit-note";
-export * from "./operations/drafts/draft";
-export * from "./modules/monitoring/monitoring.service";
-export * from "./modules/ai/ai.service";
-export * from "./modules/voice/conversation";
-export * from "./modules/voice/engine";
-export * from "./modules/voice/session.service";
-export * from "./modules/voice/task-queue";
-export * from "./modules/voice/response-template";
+/**
+ * @execora/modules — six domain module platform
+ *
+ * All business logic is organised into six canonical modules:
+ *
+ *  1. accounting  — ledger, payments, expenses, P&L
+ *  2. inventory   — products, stock, batches, expiry
+ *  3. pos         — draft bills, voice billing, real-time session
+ *  4. invoicing   — sales invoices, credit notes, purchase orders, customers
+ *  5. e-invoice   — GST compliance, GSTR-1 filing, e-way bill
+ *  6. ocr         — document scanning, AI image processing, predictive analytics
+ *
+ * All six modules re-export from this root barrel so existing imports
+ * from "@execora/modules" continue to work without change.
+ */
+export * from "./accounting";
+export * from "./inventory";
+export * from "./pos";
+export * from "./invoicing";
+export * from "./e-invoice";
+export * from "./ocr";
 export * from "./providers/types";
 export * from "./providers/errors";
 export * from "./providers/llm/index";
 export * from "./providers/stt/index";
 export * from "./providers/tts/index";
+export * from "./modules/monitoring/monitoring.service";
 export * from "./utils/devanagari";
 //# sourceMappingURL=index.d.ts.map

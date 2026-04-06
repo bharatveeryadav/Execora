@@ -6,10 +6,10 @@ declare class VoiceSessionService {
     createSession(metadata?: any): Promise<{
         tenantId: string;
         id: string;
+        customerId: string | null;
+        status: import(".prisma/client").$Enums.SessionStatus;
         createdAt: Date;
         updatedAt: Date;
-        status: import(".prisma/client").$Enums.SessionStatus;
-        customerId: string | null;
         userId: string;
         priority: import(".prisma/client").$Enums.ConversationPriority;
         sessionKey: string | null;
@@ -30,10 +30,10 @@ declare class VoiceSessionService {
     endSession(sessionId: string, duration?: number): Promise<{
         tenantId: string;
         id: string;
+        customerId: string | null;
+        status: import(".prisma/client").$Enums.SessionStatus;
         createdAt: Date;
         updatedAt: Date;
-        status: import(".prisma/client").$Enums.SessionStatus;
-        customerId: string | null;
         userId: string;
         priority: import(".prisma/client").$Enums.ConversationPriority;
         sessionKey: string | null;
@@ -58,11 +58,11 @@ declare class VoiceSessionService {
     }): Promise<{
         tenantId: string;
         id: string;
-        metadata: Prisma.JsonValue;
-        createdAt: Date;
         customerId: string | null;
-        expiresAt: Date | null;
+        createdAt: Date;
+        metadata: Prisma.JsonValue;
         retentionDays: number;
+        expiresAt: Date | null;
         sessionId: string | null;
         recordingUrl: string;
         recordingFormat: string;
@@ -90,11 +90,11 @@ declare class VoiceSessionService {
     getSessionRecordings(sessionId: string): Promise<{
         tenantId: string;
         id: string;
-        metadata: Prisma.JsonValue;
-        createdAt: Date;
         customerId: string | null;
-        expiresAt: Date | null;
+        createdAt: Date;
+        metadata: Prisma.JsonValue;
         retentionDays: number;
+        expiresAt: Date | null;
         sessionId: string | null;
         recordingUrl: string;
         recordingFormat: string;
@@ -125,10 +125,10 @@ declare class VoiceSessionService {
     } & {
         tenantId: string;
         id: string;
+        customerId: string | null;
+        status: import(".prisma/client").$Enums.SessionStatus;
         createdAt: Date;
         updatedAt: Date;
-        status: import(".prisma/client").$Enums.SessionStatus;
-        customerId: string | null;
         userId: string;
         priority: import(".prisma/client").$Enums.ConversationPriority;
         sessionKey: string | null;

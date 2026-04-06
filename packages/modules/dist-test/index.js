@@ -1,5 +1,19 @@
 "use strict";
-// @execora/modules — barrel exports
+/**
+ * @execora/modules — six domain module platform
+ *
+ * All business logic is organised into six canonical modules:
+ *
+ *  1. accounting  — ledger, payments, expenses, P&L
+ *  2. inventory   — products, stock, batches, expiry
+ *  3. pos         — draft bills, voice billing, real-time session
+ *  4. invoicing   — sales invoices, credit notes, purchase orders, customers
+ *  5. e-invoice   — GST compliance, GSTR-1 filing, e-way bill
+ *  6. ocr         — document scanning, AI image processing, predictive analytics
+ *
+ * All six modules re-export from this root barrel so existing imports
+ * from "@execora/modules" continue to work without change.
+ */
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -15,39 +29,25 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// Business services
-__exportStar(require("./modules/customer/customer.service"), exports);
-__exportStar(require("./modules/invoice/invoice.service"), exports);
-__exportStar(require("./modules/product/product.service"), exports);
-__exportStar(require("./modules/reminder/reminder.service"), exports);
-__exportStar(require("./modules/gst/gst.service"), exports);
-__exportStar(require("./modules/gst/gstr1.service"), exports);
-// Domain modules — flat async functions (Documenso/Cal.com style)
-__exportStar(require("./sales/invoicing/create-invoice"), exports);
-__exportStar(require("./crm/parties/customer-profile"), exports);
-__exportStar(require("./inventory/stock/item-catalog"), exports);
-__exportStar(require("./finance/payments/ledger"), exports);
-__exportStar(require("./purchases/vendors/supplier-profile"), exports);
-__exportStar(require("./purchases/purchase/purchase-order"), exports);
-__exportStar(require("./finance/expenses/expense"), exports);
-__exportStar(require("./sales/credit-notes/credit-note"), exports);
-__exportStar(require("./operations/drafts/draft"), exports);
-// Monitoring
-__exportStar(require("./modules/monitoring/monitoring.service"), exports);
-// Sprint 2 — AI Differentiators
-__exportStar(require("./modules/ai/ai.service"), exports);
-// Voice engine
-__exportStar(require("./modules/voice/conversation"), exports);
-__exportStar(require("./modules/voice/engine"), exports);
-__exportStar(require("./modules/voice/session.service"), exports);
-__exportStar(require("./modules/voice/task-queue"), exports);
-__exportStar(require("./modules/voice/response-template"), exports);
-// LLM / STT / TTS providers
+// ── 1. Accounting ─────────────────────────────────────────────────────────────
+__exportStar(require("./accounting"), exports);
+// ── 2. Inventory ─────────────────────────────────────────────────────────────
+__exportStar(require("./inventory"), exports);
+// ── 3. POS ───────────────────────────────────────────────────────────────────
+__exportStar(require("./pos"), exports);
+// ── 4. Invoicing ─────────────────────────────────────────────────────────────
+__exportStar(require("./invoicing"), exports);
+// ── 5. E-Invoice ─────────────────────────────────────────────────────────────
+__exportStar(require("./e-invoice"), exports);
+// ── 6. OCR ───────────────────────────────────────────────────────────────────
+__exportStar(require("./ocr"), exports);
+// ── Cross-cutting: LLM / STT / TTS providers ──────────────────────────────────
 __exportStar(require("./providers/types"), exports);
 __exportStar(require("./providers/errors"), exports);
 __exportStar(require("./providers/llm/index"), exports);
 __exportStar(require("./providers/stt/index"), exports);
 __exportStar(require("./providers/tts/index"), exports);
-// Utilities
+// ── Cross-cutting: monitoring & utilities ────────────────────────────────────
+__exportStar(require("./modules/monitoring/monitoring.service"), exports);
 __exportStar(require("./utils/devanagari"), exports);
 //# sourceMappingURL=index.js.map
