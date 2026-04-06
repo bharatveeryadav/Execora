@@ -80,7 +80,10 @@ export async function retryOcrJob(
       errorMessage: null,
     },
   });
-  logger.info({ jobId: id, retryCount: updated.retryCount }, "ocr_job_retry_queued");
+  logger.info(
+    { jobId: id, retryCount: updated.retryCount },
+    "ocr_job_retry_queued",
+  );
   return updated as OcrJobRecord;
 }
 
