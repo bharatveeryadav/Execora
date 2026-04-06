@@ -1,7 +1,7 @@
 # =============================================================================
 # Execora API — Multi-stage Docker build
 # Context: workspace root (execora/)
-# Build:   docker build -f apps/api/Dockerfile .
+# Build:   docker build -f packages/api/Dockerfile .
 # =============================================================================
 
 FROM node:20-bullseye-slim AS builder
@@ -20,10 +20,10 @@ WORKDIR /app
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY packages/types/package.json       ./packages/types/package.json
 COPY packages/shared/package.json      ./packages/shared/package.json
-COPY packages/infrastructure/package.json ./packages/infrastructure/package.json
+COPY packages/core/package.json        ./packages/core/package.json
 COPY packages/db/package.json          ./packages/db/package.json
 COPY packages/modules/package.json     ./packages/modules/package.json
-COPY apps/api/package.json             ./apps/api/package.json
+COPY packages/api/package.json         ./packages/api/package.json
 
 # Install all workspace dependencies
 RUN pnpm install --frozen-lockfile --ignore-scripts
@@ -39,14 +39,14 @@ COPY packages/types/tsconfig.json ./packages/types/tsconfig.json
 COPY packages/shared/src       ./packages/shared/src
 COPY packages/shared/tsconfig.json ./packages/shared/tsconfig.json
 
-COPY packages/infrastructure/src       ./packages/infrastructure/src
-COPY packages/infrastructure/tsconfig.json ./packages/infrastructure/tsconfig.json
+COPY packages/core/src         ./packages/core/src
+COPY packages/core/tsconfig.json ./packages/core/tsconfig.json
 
 COPY packages/modules/src      ./packages/modules/src
 COPY packages/modules/tsconfig.json ./packages/modules/tsconfig.json
 
-COPY apps/api/src              ./apps/api/src
-COPY apps/api/tsconfig.json    ./apps/api/tsconfig.json
+COPY packages/api/src          ./packages/api/src
+COPY packages/api/tsconfig.json ./packages/api/tsconfig.json
 COPY turbo.json                ./turbo.json
 
 # Build all packages in dependency order via Turborepo
@@ -67,10 +67,10 @@ WORKDIR /app
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY packages/types/package.json       ./packages/types/package.json
 COPY packages/shared/package.json      ./packages/shared/package.json
-COPY packages/infrastructure/package.json ./packages/infrastructure/package.json
+COPY packages/core/package.json        ./packages/core/package.json
 COPY packages/db/package.json          ./packages/db/package.json
 COPY packages/modules/package.json     ./packages/modules/package.json
-COPY apps/api/package.json             ./apps/api/package.json
+COPY packages/api/package.json         ./packages/api/package.json
 COPY --from=builder /app/packages/db   ./packages/db
 
 # Install production dependencies only
@@ -80,17 +80,17 @@ RUN pnpm db:generate
 # Copy compiled artifacts
 COPY --from=builder /app/packages/types/dist        ./packages/types/dist
 COPY --from=builder /app/packages/shared/dist       ./packages/shared/dist
-COPY --from=builder /app/packages/infrastructure/dist ./packages/infrastructure/dist
+COPY --from=builder /app/packages/core/dist         ./packages/core/dist
 COPY --from=builder /app/packages/modules/dist      ./packages/modules/dist
-COPY --from=builder /app/apps/api/dist              ./apps/api/dist
+COPY --from=builder /app/packages/api/dist          ./packages/api/dist
 
 # Copy static assets
-COPY apps/api/public ./apps/api/public
+COPY packages/api/public ./packages/api/public
 
 RUN mkdir -p /app/logs
 
 EXPOSE 3006
 
-WORKDIR /app/apps/api
+WORKDIR /app/packages/api
 
 CMD ["sh", "-c", "pnpm exec prisma migrate deploy --schema ../../packages/db/schema.prisma && node dist/index.js"]

@@ -10,7 +10,7 @@ This is the fastest way to understand and run the current backend.
 
 ## 2. Current Backend Topology
 
-- API app: `apps/api`
+- API app: `packages/api`
 - Worker app: `apps/worker`
 - Shared backend libraries:
   - `packages/infrastructure`
@@ -20,9 +20,9 @@ This is the fastest way to understand and run the current backend.
 
 Core API wiring is in:
 
-- `apps/api/src/index.ts`
-- `apps/api/src/api/index.ts`
-- `apps/api/src/ws/enhanced-handler.ts`
+- `packages/api/src/index.ts`
+- `packages/api/src/api/index.ts`
+- `packages/api/src/ws/enhanced-handler.ts`
 
 ## 3. Runtime Behavior (Current)
 
@@ -67,7 +67,7 @@ pnpm docker:seed
 
 ## 6. Documentation Policy
 
-- Keep active docs aligned with current backend code under `apps/api` and `packages/*`.
+- Keep active docs aligned with current backend code under `packages/api` and `packages/*`.
 - Keep historical material in `docs/archive/**` unchanged.
 - Update canonical docs first (`README.md`, `docs/README.md`, section READMEs).
 

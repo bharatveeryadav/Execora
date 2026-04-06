@@ -1,7 +1,7 @@
 > Research Consolidation: This file is a detailed appendix under docs/RESEARCH_MASTER.md.
 > Update cross-domain research summary and priorities in docs/RESEARCH_MASTER.md first.
 
-> Backend Truth: Active runtime behavior is defined by apps/api/src/index.ts, apps/api/src/api/index.ts, and apps/api/src/ws/enhanced-handler.ts.\n> Canonical refs: docs/README.md, docs/features/README.md, docs/api/API.md, docs/AUTH.md.\n\n
+> Backend Truth: Active runtime behavior is defined by packages/api/src/index.ts, packages/api/src/api/index.ts, and packages/api/src/ws/enhanced-handler.ts.\n> Canonical refs: docs/README.md, docs/features/README.md, docs/api/API.md, docs/AUTH.md.\n\n
 
 # Execora — Product Strategy & Competitive Analysis
 ## Senior PM + Architecture Document | March 2026
@@ -626,7 +626,7 @@ export async function hasFeature(tenantId: string, flag: FeatureFlag): Promise<b
 Route-level gating (call this before expensive operations):
 
 ```typescript
-// apps/api/src/api/middleware/require-feature.ts
+// packages/api/src/api/middleware/require-feature.ts
 export function requireFeature(flag: FeatureFlag) {
   return async (request: FastifyRequest, reply: FastifyReply) => {
     const { tenantId } = getTenantContext();
@@ -645,7 +645,7 @@ export function requireFeature(flag: FeatureFlag) {
 Admin endpoint to toggle features without deploy:
 
 ```typescript
-// apps/api/src/api/routes/admin.routes.ts
+// packages/api/src/api/routes/admin.routes.ts
 fastify.patch('/admin/tenants/:id/features', {
   preHandler: [requireAdminKey]
 }, async (req) => {
@@ -842,7 +842,7 @@ Meta WhatsApp Cloud API requires pre-approved message templates for outbound (bu
 
 Based on directory listing and Sprint audit documentation:
 
-**API Routes** (`apps/api/src/api/routes/`): admin, ai, auth, customer, draft, expense, invoice, ledger, product, reminder, report, session, summary, users, webhook — comprehensive REST surface
+**API Routes** (`packages/api/src/api/routes/`): admin, ai, auth, customer, draft, expense, invoice, ledger, product, reminder, report, session, summary, users, webhook — comprehensive REST surface
 
 **Business Modules** (`packages/modules/src/modules/`): ai, customer, gst, invoice, ledger, product, reminder, voice — all core domains covered
 

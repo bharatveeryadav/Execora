@@ -1,7 +1,7 @@
 > Research Consolidation: This file is a detailed appendix under docs/RESEARCH_MASTER.md.
 > Update cross-domain research summary and priorities in docs/RESEARCH_MASTER.md first.
 
-> Backend Truth: Active runtime behavior is defined by apps/api/src/index.ts, apps/api/src/api/index.ts, and apps/api/src/ws/enhanced-handler.ts.\n> Canonical refs: docs/README.md, docs/features/README.md, docs/api/API.md, docs/AUTH.md.\n\n
+> Backend Truth: Active runtime behavior is defined by packages/api/src/index.ts, packages/api/src/api/index.ts, and packages/api/src/ws/enhanced-handler.ts.\n> Canonical refs: docs/README.md, docs/features/README.md, docs/api/API.md, docs/AUTH.md.\n\n
 
 # Execora — Production Readiness SOP & Architecture Contract
 
@@ -104,7 +104,7 @@ Rule 3: Cross-package imports use barrel only — no deep imports
   INCORRECT: import { invoiceApi } from '@execora/shared/src/api-client'
 
 Rule 4: infrastructure and modules are backend-only
-  apps/api and apps/worker: may import from @execora/infrastructure and @execora/modules
+  packages/api and apps/worker: may import from @execora/infrastructure and @execora/modules
   apps/web and apps/mobile: NEVER import from @execora/infrastructure or @execora/modules
 
 Rule 5: types package is safe everywhere
@@ -510,7 +510,7 @@ git clone <repo-url> execora && cd execora
 pnpm install
 
 # 3. Copy all environment files
-cp apps/api/.env.example    apps/api/.env
+cp packages/api/.env.example    packages/api/.env
 cp apps/web/.env.example    apps/web/.env
 cp apps/mobile/.env.example apps/mobile/.env
 
@@ -534,7 +534,7 @@ pnpm dev:all
 
 ### Environment Variables — Complete Reference
 
-**`apps/api/.env`**
+**`packages/api/.env`**
 ```bash
 DATABASE_URL=postgresql://execora:execora@localhost:5432/execora_dev
 REDIS_URL=redis://localhost:6379
@@ -1061,7 +1061,7 @@ Play Store:
 ```
 HTTP Request arrives at Fastify
          ↓
-Route Handler (apps/api/src/api/routes/*.ts)
+Route Handler (packages/api/src/api/routes/*.ts)
   • Parse and validate request body/params with JSON Schema or Zod
   • Call ONE service function
   • Format and send response
@@ -1095,7 +1095,7 @@ PostgreSQL
 ### Route Pattern (Correct)
 
 ```typescript
-// apps/api/src/api/routes/invoices.ts
+// packages/api/src/api/routes/invoices.ts
 fastify.post<{ Body: CreateInvoicePayload }>(
   '/api/v1/invoices',
   {
@@ -1498,7 +1498,7 @@ packages/types/               @execora/shared-architecture
 packages/infrastructure/      @execora/backend @execora/devops
 packages/modules/             @execora/backend
 
-apps/api/                     @execora/backend
+packages/api/                     @execora/backend
 apps/worker/                  @execora/backend
 apps/web/                     @execora/web
 apps/mobile/                  @execora/mobile
@@ -1857,7 +1857,7 @@ Review focus by package:
     □ New type has JSDoc explaining each field
     □ Test added for new business logic function
 
-  apps/api:
+  packages/api:
     □ Layer separation: no business logic in route, no prisma in route
     □ tenantId filter on every query
     □ Body validation schema present on POST/PATCH/PUT
@@ -1931,7 +1931,7 @@ STEP 6: POST-MERGE
 │                        │ (all business services)    │ (service interface       │
 │                        │                            │  design review)          │
 ├────────────────────────┼────────────────────────────┼──────────────────────────┤
-│ apps/api               │ Backend                    │ Platform-DevOps          │
+│ packages/api               │ Backend                    │ Platform-DevOps          │
 │                        │ (routes, middleware,       │ (deploy, Docker,         │
 │                        │  WebSocket, auth)          │  load balancer)          │
 ├────────────────────────┼────────────────────────────┼──────────────────────────┤
@@ -2106,7 +2106,7 @@ react-native-safe-area-context 4.12        — safe area handling
 react-native-gesture-handler 2.20          — gesture recognition
 ```
 
-**Backend (`apps/api`, `apps/worker`, `packages/*`)**
+**Backend (`packages/api`, `apps/worker`, `packages/*`)**
 ```
 Fastify 4.x                — HTTP server (type-safe routes)
 Prisma 5.9                 — ORM + migrations

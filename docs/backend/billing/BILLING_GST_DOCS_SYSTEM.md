@@ -11,9 +11,9 @@ This file defines where truth lives in code, where truth lives in docs, and how 
 Use these files as implementation source of truth before updating docs:
 
 - API route surface:
-  - `apps/api/src/api/routes/invoice.routes.ts`
-  - `apps/api/src/api/routes/report.routes.ts`
-  - `apps/api/src/api/index.ts`
+  - `packages/api/src/api/routes/invoice.routes.ts`
+  - `packages/api/src/api/routes/report.routes.ts`
+  - `packages/api/src/api/index.ts`
 - Business logic:
   - `packages/modules/src/modules/invoice/invoice.service.ts`
   - `packages/modules/src/modules/gst/gst.service.ts`

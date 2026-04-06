@@ -94,7 +94,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
+      dockerfile: packages/api/Dockerfile
     container_name: execora-app
     restart: unless-stopped
     env_file:
@@ -124,7 +124,7 @@ services:
       retries: 5
       start_period: 40s
     volumes:
-      - ./logs:/app/apps/api/logs
+      - ./logs:/app/packages/api/logs
     networks:
       - execora-network
 

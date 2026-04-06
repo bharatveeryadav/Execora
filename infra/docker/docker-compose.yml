@@ -85,7 +85,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
+      dockerfile: packages/api/Dockerfile
     container_name: execora-app
     restart: unless-stopped
     env_file:
@@ -120,8 +120,8 @@ services:
       retries: 5
       start_period: 30s
     volumes:
-      # WORKDIR is /app/apps/api — logger writes to logs/app.log relative to cwd
-      - ./logs:/app/apps/api/logs
+      # WORKDIR is /app/packages/api — logger writes to logs/app.log relative to cwd
+      - ./logs:/app/packages/api/logs
     networks:
       - execora-network
 

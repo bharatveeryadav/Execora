@@ -160,7 +160,7 @@ packages/integrations/src/                (or packages/modules/src/integrations/
 └── types.ts
 ```
 
-Hardware adapters are in `apps/api/src/hardware/` (device-local, not modules).
+Hardware adapters are in `packages/api/src/hardware/` (device-local, not modules).
 
 ---
 

@@ -4,10 +4,10 @@
 **Last updated:** March 2026  
 **Key source files:**
 
-- `apps/api/src/api/index.ts` — route registration (23 route files)
-- `apps/api/src/api/routes/` — all REST handlers
-- `apps/api/src/ws/enhanced-handler.ts` — WebSocket events (default)
-- `apps/api/src/ws/handler.ts` — original WS handler (fallback)
+- `packages/api/src/api/index.ts` — route registration (23 route files)
+- `packages/api/src/api/routes/` — all REST handlers
+- `packages/api/src/ws/enhanced-handler.ts` — WebSocket events (default)
+- `packages/api/src/ws/handler.ts` — original WS handler (fallback)
 - `packages/modules/src/modules/` — business services
 - `packages/infrastructure/src/` — DB, Redis, queue, auth, metrics
 - `packages/db/schema.prisma` — data model (28 models)
@@ -54,7 +54,7 @@ Single consolidated backend reference for current runtime behavior.
 - `GET /api/v1/demo-invoices|purchases|quotations`
 - `GET /health`
 
-**Middleware files** (`apps/api/src/api/middleware/`):
+**Middleware files** (`packages/api/src/api/middleware/`):
 
 - `require-auth.ts` — JWT verification, sets tenant context
 - `admin-auth.ts` — `x-admin-api-key` check
@@ -65,7 +65,7 @@ Single consolidated backend reference for current runtime behavior.
 
 ## API Routes (23 route files)
 
-All registered in `apps/api/src/api/index.ts`:
+All registered in `packages/api/src/api/index.ts`:
 
 | Route file                 | Prefix                    | Auth                 |
 | -------------------------- | ------------------------- | -------------------- |

@@ -1,4 +1,4 @@
-> Backend Truth: Active runtime behavior is defined by apps/api/src/index.ts, apps/api/src/api/index.ts, and apps/api/src/ws/enhanced-handler.ts.\n> Canonical refs: docs/README.md, docs/features/README.md, docs/api/API.md, docs/AUTH.md.\n\n
+> Backend Truth: Active runtime behavior is defined by packages/api/src/index.ts, packages/api/src/api/index.ts, and packages/api/src/ws/enhanced-handler.ts.\n> Canonical refs: docs/README.md, docs/features/README.md, docs/api/API.md, docs/AUTH.md.\n\n
 
 # Features (Canonical)
 
@@ -6,7 +6,7 @@ This file is the single active feature reference for the current backend.
 
 ## Backend Feature Surface
 
-Current feature routes are wired in `apps/api/src/api/index.ts` and grouped as:
+Current feature routes are wired in `packages/api/src/api/index.ts` and grouped as:
 
 - Public:
   - auth (`/api/v1/auth/*`)
@@ -25,8 +25,8 @@ Admin queue dashboard exists at `/admin/queues` and is protected via admin middl
 
 Source of truth:
 
-- `apps/api/src/ws/enhanced-handler.ts`
-- `apps/api/src/ws/rtc-relay.ts`
+- `packages/api/src/ws/enhanced-handler.ts`
+- `packages/api/src/ws/rtc-relay.ts`
 
 Capabilities:
 
@@ -45,9 +45,9 @@ Notes:
 
 Source of truth:
 
-- `apps/api/src/index.ts`
-- `apps/api/src/api/middleware/require-auth.ts`
-- `apps/api/src/api/middleware/admin-auth.ts`
+- `packages/api/src/index.ts`
+- `packages/api/src/api/middleware/require-auth.ts`
+- `packages/api/src/api/middleware/admin-auth.ts`
 
 Capabilities:
 
@@ -59,8 +59,8 @@ Capabilities:
 
 Source of truth:
 
-- `apps/api/src/index.ts`
-- `apps/api/src/api/index.ts`
+- `packages/api/src/index.ts`
+- `packages/api/src/api/index.ts`
 
 Capabilities:
 
@@ -88,8 +88,8 @@ Primary backend domains:
 
 Source of truth:
 
-- Queue adapters are mounted in `apps/api/src/api/index.ts`
-- Workers are started in `apps/api/src/index.ts` via infrastructure bootstrap
+- Queue adapters are mounted in `packages/api/src/api/index.ts`
+- Workers are started in `packages/api/src/index.ts` via infrastructure bootstrap
 
 Capabilities:
 

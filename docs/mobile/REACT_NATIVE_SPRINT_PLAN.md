@@ -1,7 +1,7 @@
 > Research Consolidation: This file is a detailed appendix under docs/RESEARCH_MASTER.md.
 > Update cross-domain research summary and priorities in docs/RESEARCH_MASTER.md first.
 
-> Backend Truth: Active runtime behavior is defined by apps/api/src/index.ts, apps/api/src/api/index.ts, and apps/api/src/ws/enhanced-handler.ts.\n> Canonical refs: docs/README.md, docs/features/README.md, docs/api/API.md, docs/AUTH.md.\n\n
+> Backend Truth: Active runtime behavior is defined by packages/api/src/index.ts, packages/api/src/api/index.ts, and packages/api/src/ws/enhanced-handler.ts.\n> Canonical refs: docs/README.md, docs/features/README.md, docs/api/API.md, docs/AUTH.md.\n\n
 
 # Execora — React Native App
 ## Complete Sprint Plan: End to End (All 53 Routes + All Features)
@@ -1590,7 +1590,7 @@ All Coming Soon screens share one `ComingSoon` component: icon + title + "Notify
 
 ## API REUSE STRATEGY
 
-All existing `apps/api` backend endpoints are reused as-is. Zero changes needed on the backend.
+All existing `packages/api` backend endpoints are reused as-is. Zero changes needed on the backend.
 
 Only change in `apps/native/src/lib/api.ts`:
 - `localStorage.getItem(TOKEN_KEY)` → `await storage.get(TOKEN_KEY)` (AsyncStorage)
@@ -1601,7 +1601,7 @@ Only change in `apps/native/src/lib/api.ts`:
 
 ### Complete Backend Endpoint Inventory (80 endpoints)
 
-> Audited from all 21 route files in `apps/api/src/api/routes/`. Every endpoint below must be covered in `apps/native/src/lib/api.ts`.
+> Audited from all 21 route files in `packages/api/src/api/routes/`. Every endpoint below must be covered in `apps/native/src/lib/api.ts`.
 
 #### AUTH (`auth.routes.ts`) — 6 endpoints
 | Method | Path | Used in Sprint |

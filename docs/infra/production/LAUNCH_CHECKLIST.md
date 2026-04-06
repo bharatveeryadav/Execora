@@ -1,7 +1,7 @@
 > Research Consolidation: This file is a detailed appendix under docs/RESEARCH_MASTER.md.
 > Update cross-domain research summary and priorities in docs/RESEARCH_MASTER.md first.
 
-> Backend Truth: Active runtime behavior is defined by apps/api/src/index.ts, apps/api/src/api/index.ts, and apps/api/src/ws/enhanced-handler.ts.\n> Canonical refs: docs/README.md, docs/features/README.md, docs/api/API.md, docs/AUTH.md.\n\n
+> Backend Truth: Active runtime behavior is defined by packages/api/src/index.ts, packages/api/src/api/index.ts, and packages/api/src/ws/enhanced-handler.ts.\n> Canonical refs: docs/README.md, docs/features/README.md, docs/api/API.md, docs/AUTH.md.\n\n
 
 # Execora — Launch Checklist
 ## Last Updated: March 17, 2026
@@ -15,7 +15,7 @@
 - [x] ~~Fix IDOR~~ **FIXED 2026-03-13**: `getCustomerById()` + `getInvoiceById()` now use `findFirst({ where: { id, tenantId } })` — Tenant A cannot fetch Tenant B's data
 - [x] ~~Fix InvoiceCounter~~ **FIXED 2026-03-13**: `InvoiceCounter` model updated with `tenantId` field + composite `@@id([fy, tenantId])`; `generateInvoiceNo()` now inserts/upserts with `tenant_id`; migration `20260313000001_invoice_counter_tenant_scope` created — run `pnpm db:generate && pnpm db:migrate` to apply
 - [x] ~~Fix MinIO~~ **FIXED 2026-03-13**: `mc anonymous set download local/execora` removed from `docker-compose.yml`; bucket is now private; PDFs accessed via presigned URLs / email only
-- [x] ~~Fix WebSocket~~ **FIXED 2026-03-13**: `/ws` endpoint in `apps/api/src/index.ts` now validates JWT from `?token=` query param; closes with code 4001 if missing, expired, or invalid; `tenantContext` updated from JWT payload
+- [x] ~~Fix WebSocket~~ **FIXED 2026-03-13**: `/ws` endpoint in `packages/api/src/index.ts` now validates JWT from `?token=` query param; closes with code 4001 if missing, expired, or invalid; `tenantContext` updated from JWT payload
 
 ---
 

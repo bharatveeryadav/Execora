@@ -5,7 +5,7 @@
  * Results are cached in Redis for CACHE_TTL seconds.
  * Cache is invalidated on SubscriptionChanged domain event.
  *
- * Only import this in backend code (apps/api, apps/worker).
+ * Only import this in backend code (packages/api, apps/worker).
  * For client-side checks, use the pure helpers in @execora/shared.
  *
  * Usage:

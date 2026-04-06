@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "scope": "apps/api/src/api/routes",
+  "scope": "packages/api/src/api/routes",
   "description": "Maps each API route file to one backend domain-feature owner.",
   "routes": {
     "admin.routes.ts": {

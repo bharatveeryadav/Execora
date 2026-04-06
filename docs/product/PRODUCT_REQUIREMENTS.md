@@ -1,7 +1,7 @@
 > Research Consolidation: This file is a detailed appendix under docs/RESEARCH_MASTER.md.
 > Update cross-domain research summary and priorities in docs/RESEARCH_MASTER.md first.
 
-> Backend Truth: Active runtime behavior is defined by apps/api/src/index.ts, apps/api/src/api/index.ts, and apps/api/src/ws/enhanced-handler.ts.\n> Canonical refs: docs/README.md, docs/features/README.md, docs/api/API.md, docs/AUTH.md.\n\n
+> Backend Truth: Active runtime behavior is defined by packages/api/src/index.ts, packages/api/src/api/index.ts, and packages/api/src/ws/enhanced-handler.ts.\n> Canonical refs: docs/README.md, docs/features/README.md, docs/api/API.md, docs/AUTH.md.\n\n
 
 # Execora — Master Product Requirements & Context Document
 
@@ -1195,7 +1195,7 @@ Mutation tools (write operations — require conversation agent confirmation):
 async function newBusinessFunction(params): Promise<Result> { ... }
 
 // Step 2: Add REST route (Form/Dashboard mode works immediately)
-// apps/api/src/api/routes/x.routes.ts
+// packages/api/src/api/routes/x.routes.ts
 fastify.post('/api/v1/x/new-thing', async (req) => {
   const result = await xService.newBusinessFunction(req.body);
   return { result };
@@ -1557,10 +1557,10 @@ Khatabook has basic WhatsApp reminders. Execora has:
 ┌────────────────────────▼───────────────────────────────────────┐
 │                        API LAYER                               │
 │  Fastify 4 (HTTP server, WebSocket handler)                    │
-│  @execora/api — apps/api/src/                                  │
+│  @execora/api — packages/api/src/                                  │
 │  Routes: customer, invoice, product, ledger, reminder, summary │
 │  Middleware: JWT auth, RBAC, rate limit                        │
-│  WebSocket: apps/api/src/ws/enhanced-handler.ts               │
+│  WebSocket: packages/api/src/ws/enhanced-handler.ts               │
 └────────────────────────┬───────────────────────────────────────┘
                          │ imports
 ┌────────────────────────▼───────────────────────────────────────┐
@@ -1612,7 +1612,7 @@ execora/
 | `packages/modules/src/modules/ledger/ledger.service.ts`         | Payment recording, auto-settlement                     |
 | `packages/modules/src/modules/product/product.service.ts`       | Stock management, low-stock query                      |
 | `packages/modules/src/modules/reminder/reminder.service.ts`     | Scheduling, WhatsApp delivery                          |
-| `apps/api/src/ws/enhanced-handler.ts`                           | WebSocket message routing, multi-task                  |
+| `packages/api/src/ws/enhanced-handler.ts`                           | WebSocket message routing, multi-task                  |
 | `apps/web/src/contexts/WSContext.tsx`                           | WebSocket → React Query invalidation                   |
 | `apps/web/src/hooks/useQueries.ts`                              | All React Query hooks                                  |
 | `apps/web/src/lib/api.ts`                                       | All API types + fetch helpers                          |
@@ -2219,7 +2219,7 @@ All intents route through `packages/modules/src/modules/voice/engine/index.ts`.
 
 Features completed across Sprints 8–10 (February–March 2026) that are new since the last documentation update:
 
-**Customer Portal** (`apps/api/src/api/routes/portal.routes.ts`, `apps/web/src/pages/InvoicePortal.tsx`)
+**Customer Portal** (`packages/api/src/api/routes/portal.routes.ts`, `apps/web/src/pages/InvoicePortal.tsx`)
 - Public invoice view at `/pub/invoice/:id/:token` — no auth required, HMAC-SHA256 token, sanitised JSON (no tenant IDs)
 - PDF redirect via fresh 1-hour presigned MinIO URL at `/pub/invoice/:id/:token/pdf`
 - `GET /api/v1/invoices/:id/portal-token` endpoint generates the token
@@ -2249,7 +2249,7 @@ Features completed across Sprints 8–10 (February–March 2026) that are new si
 - Accepts optional `initialPayment` (amount + method) for partial payment at time of conversion
 - Fires PDF/email job; broadcasts `invoice:confirmed` WS event
 
-**9-Aggregator UPI Webhook System** (`apps/api/src/api/routes/webhook.routes.ts`)
+**9-Aggregator UPI Webhook System** (`packages/api/src/api/routes/webhook.routes.ts`)
 - Razorpay, PhonePe, Cashfree, PayU, Paytm, Instamojo, Stripe, EaseBuzz, BharatPe
 - Each has its own HMAC/signature verification, duplicate-payment guard, `WebhookEvent` store
 - Auto-records ledger payment + fires `payment:recorded` WS event for Sound Box
@@ -2315,7 +2315,7 @@ These 4 issues are **ship-blocking**. Production must not serve real customer da
 #### Blocker 4 — WebSocket Unauthenticated Voice Commands
 
 **Severity:** High (unauthenticated voice command execution)
-**Location:** `apps/api/src/ws/enhanced-handler.ts`
+**Location:** `packages/api/src/ws/enhanced-handler.ts`
 **Problem:** The WebSocket endpoint at `/ws` may not verify JWT before accepting voice audio streams. If unauthenticated connections are accepted, an attacker could send fabricated voice intent payloads and execute business operations (create invoices, record payments) on any tenant's account.
 **Fix:** On WebSocket upgrade request, extract and verify the JWT (passed as `?token=` query param or `Authorization` header). Close the connection with code 4001 if the JWT is missing, expired, or invalid. Set `request.user` on the connection for downstream use.
 **Test:** Open a raw WebSocket connection to `/ws` without a token — should be rejected with close code 4001.
@@ -2402,7 +2402,7 @@ Features that are critical for the kirana/SME launch but are missing or unwired:
 - `POST /api/v1/auth/hash`
 - `GET/POST/PATCH /api/v1/users` — user management with RBAC
 
-**Invoices** (`apps/api/src/api/routes/invoice.routes.ts`)
+**Invoices** (`packages/api/src/api/routes/invoice.routes.ts`)
 - `GET /api/v1/invoices` — list with limit
 - `GET /api/v1/invoices/:id` — invoice detail
 - `POST /api/v1/invoices` — create invoice (GST/non-GST, B2B/B2C, INTRASTATE/INTERSTATE, initial payment, bill-level discount, walk-in)
@@ -2414,7 +2414,7 @@ Features that are critical for the kirana/SME launch but are missing or unwired:
 - `POST /api/v1/invoices/:id/send-email` — (re-)send invoice PDF to customer
 - `POST /api/v1/ledger/mixed-payment` — record split cash+UPI payment (also in invoice.routes.ts)
 
-**Customers** (`apps/api/src/api/routes/customer.routes.ts`)
+**Customers** (`packages/api/src/api/routes/customer.routes.ts`)
 - `GET /api/v1/customers` — list/paginate/search
 - `GET /api/v1/customers/overdue` — customers with positive balance
 - `GET /api/v1/customers/search` — fuzzy name/phone search
@@ -2426,7 +2426,7 @@ Features that are critical for the kirana/SME launch but are missing or unwired:
 - `GET /api/v1/customers/:id/last-order` — for Repeat Last Bill
 - `GET/PUT /api/v1/customers/:id/communication-prefs`
 
-**Ledger** (`apps/api/src/api/routes/ledger.routes.ts`)
+**Ledger** (`packages/api/src/api/routes/ledger.routes.ts`)
 - `POST /api/v1/ledger/payment` — record payment (cash/upi/card/other, date, reference)
 - `POST /api/v1/ledger/credit` — add credit to customer account
 - `GET /api/v1/ledger/:customerId` — full ledger history
@@ -2602,7 +2602,7 @@ The UI already has a `discount` (%) column per item. Three places need to change
 
 ```typescript
 // Service layer (packages/modules): all business logic
-// Route layer (apps/api/src/api/routes): thin HTTP/WS adapter
+// Route layer (packages/api/src/api/routes): thin HTTP/WS adapter
 // UI layer (apps/web/src): React components consuming REST + WebSocket
 
 // Cross-package imports: always use barrel imports
@@ -2629,7 +2629,7 @@ Mode 1 — Intent-Based (current voice): STT → LLM extracts JSON → switch(in
   Fixed, deterministic, LLM is NOT in execution path
 
 Mode 2 — Form/Dashboard (UI): React form → REST API → service → WebSocket broadcast
-  Files: apps/web/src/pages/*.tsx → apps/api/src/api/routes/*.ts
+  Files: apps/web/src/pages/*.tsx → packages/api/src/api/routes/*.ts
   No AI in execution
 
 Mode 3 — True Agent (planned): STT → LLM with tool definitions → tool calls → LLM response
@@ -2642,7 +2642,7 @@ Mode 3 — True Agent (planned): STT → LLM with tool definitions → tool call
 **Add to all three modes in order:**
 
 1. **Service layer** — implement in `packages/modules/src/modules/X/x.service.ts`
-2. **REST route** — thin wrapper in `apps/api/src/api/routes/x.routes.ts` (Form/Dashboard mode ✅)
+2. **REST route** — thin wrapper in `packages/api/src/api/routes/x.routes.ts` (Form/Dashboard mode ✅)
 3. **Intent handler** — add to `packages/modules/src/modules/voice/engine/x.handler.ts`
    - Add case to `engine/index.ts` switch statement
    - Add to LLM extraction prompt with Hindi few-shot examples (Intent-Based mode ✅)

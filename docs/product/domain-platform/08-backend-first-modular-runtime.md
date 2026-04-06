@@ -15,7 +15,7 @@ Backend is the business engine. Applications are consumers.
 ## Architecture Shape
 
 ```text
-apps/api/
+packages/api/
   routes/
   middleware/
 

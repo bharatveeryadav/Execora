@@ -8,7 +8,7 @@ import path from "node:path";
 import process from "node:process";
 
 const repoRoot = process.cwd();
-const routesDir = path.join(repoRoot, "apps/api/src/api/routes");
+const routesDir = path.join(repoRoot, "packages/api/src/api/routes");
 const ownershipFile = path.join(
     repoRoot,
     "docs/backend/architecture/route-ownership.json",

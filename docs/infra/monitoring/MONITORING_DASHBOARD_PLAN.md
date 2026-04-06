@@ -1,7 +1,7 @@
 > Research Consolidation: This file is a detailed appendix under docs/RESEARCH_MASTER.md.
 > Update cross-domain research summary and priorities in docs/RESEARCH_MASTER.md first.
 
-> Backend Truth: Active runtime behavior is defined by apps/api/src/index.ts, apps/api/src/api/index.ts, and apps/api/src/ws/enhanced-handler.ts.\n> Canonical refs: docs/README.md, docs/features/README.md, docs/api/API.md, docs/AUTH.md.\n\n
+> Backend Truth: Active runtime behavior is defined by packages/api/src/index.ts, packages/api/src/api/index.ts, and packages/api/src/ws/enhanced-handler.ts.\n> Canonical refs: docs/README.md, docs/features/README.md, docs/api/API.md, docs/AUTH.md.\n\n
 
 # Execora — Owner Monitoring Dashboard
 ## Business Security & Transaction Surveillance
@@ -77,8 +77,8 @@ A real-time **owner-only monitoring panel** that:
 | File | What it does |
 |------|-------------|
 | `packages/modules/src/modules/monitoring/monitoring.service.ts` | recordEvent, getStats (with footfall/hourly/byEmployee), recordCashReconciliation, getCashReconciliation |
-| `apps/api/src/api/routes/monitoring.routes.ts` | All /api/v1/monitoring/* routes |
-| `apps/api/src/api/routes/rtc-relay.ts` | WebRTC signalling relay for peer-to-peer video |
+| `packages/api/src/api/routes/monitoring.routes.ts` | All /api/v1/monitoring/* routes |
+| `packages/api/src/api/routes/rtc-relay.ts` | WebRTC signalling relay for peer-to-peer video |
 | `packages/db/schema.prisma` | MonitoringEvent model, MonitoringConfig model |
 
 ### Frontend Components

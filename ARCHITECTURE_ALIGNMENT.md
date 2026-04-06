@@ -165,7 +165,7 @@ features/
 
 ---
 
-### Backend (`apps/api/src/api/routes/`) ✅ **ALIGNED**
+### Backend (`packages/api/src/api/routes/`) ✅ **ALIGNED**
 
 **Domain-separated routes (already implemented):**
 

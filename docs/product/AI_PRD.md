@@ -741,7 +741,7 @@ Mutation tools (write operations — require conversation agent confirmation):
 async function newBusinessFunction(params): Promise<Result> { ... }
 
 // Step 2: Add REST route (Form/Dashboard mode works immediately)
-// apps/api/src/api/routes/x.routes.ts
+// packages/api/src/api/routes/x.routes.ts
 fastify.post('/api/v1/x/new-thing', async (req) => {
   const result = await xService.newBusinessFunction(req.body);
   return { result };

@@ -2,7 +2,7 @@
  * @execora/types — Tenant entitlement model
  *
  * TenantEntitlements is the single resolved capability object read by:
- * - backend route guards (apps/api, apps/worker)
+ * - backend route guards (packages/api, apps/worker)
  * - web UI conditionals (apps/web)
  * - mobile navigation and feature gates (apps/mobile)
  *

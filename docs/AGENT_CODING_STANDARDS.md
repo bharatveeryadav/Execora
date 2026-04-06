@@ -1,4 +1,4 @@
-> Backend Truth: Active runtime behavior is defined by apps/api/src/index.ts, apps/api/src/api/index.ts, and apps/api/src/ws/enhanced-handler.ts.\n> Canonical refs: docs/README.md, docs/features/README.md, docs/api/API.md, docs/AUTH.md.\n\n
+> Backend Truth: Active runtime behavior is defined by packages/api/src/index.ts, packages/api/src/api/index.ts, and packages/api/src/ws/enhanced-handler.ts.\n> Canonical refs: docs/README.md, docs/features/README.md, docs/api/API.md, docs/AUTH.md.\n\n
 
 # Execora — Agent Coding Standards & Production Engineering Guide
 
@@ -542,7 +542,7 @@ if (!result.ok) {
 Every Fastify route must follow this exact structure:
 
 ```typescript
-// apps/api/src/api/routes/example.routes.ts
+// packages/api/src/api/routes/example.routes.ts
 
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';

@@ -4,7 +4,7 @@
 **Last updated:** March 2026  
 **Key source files:**
 - `docker-compose.yml` · `docker-compose.prod.yml`
-- `apps/api/Dockerfile` · `apps/worker/Dockerfile`
+- `packages/api/Dockerfile` · `apps/worker/Dockerfile`
 - `monitoring/prometheus.yml` · `monitoring/loki-config.yml`
 - `monitoring/promtail-config.yml`
 
@@ -47,8 +47,8 @@
 # Production stack
 docker compose -f docker-compose.prod.yml up -d
 
-# Build context is workspace root (not apps/api)
-# Dockerfiles: apps/api/Dockerfile, apps/worker/Dockerfile
+# Build context is workspace root (not packages/api)
+# Dockerfiles: packages/api/Dockerfile, apps/worker/Dockerfile
 ```
 
 ### Key Compose Files

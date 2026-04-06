@@ -3,7 +3,7 @@
 /**
  * Phase 2 CI guardrail — forbidden-import boundary check
  *
- * Routes in apps/api/src/api/routes/ must NOT import from the legacy internal
+ * Routes in packages/api/src/api/routes/ must NOT import from the legacy internal
  * service paths (packages/modules/src/modules/**), only from the public barrel
  * or extracted domain module paths.
  *
@@ -23,7 +23,7 @@ import path from 'node:path';
 import process from 'node:process';
 
 const repoRoot = process.cwd();
-const routesDir = path.join(repoRoot, 'apps/api/src/api/routes');
+const routesDir = path.join(repoRoot, 'packages/api/src/api/routes');
 
 // Pattern: import anything from the legacy internal modules path
 // e.g. '@execora/modules/src/modules/...' or relative '../../modules/...'

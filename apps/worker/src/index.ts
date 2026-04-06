@@ -9,7 +9,7 @@
  * (container / Kubernetes pod) for horizontal scaling.
  *
  * WARNING: DO NOT run this simultaneously with the embedded workers started
- * by the main API server (apps/api → startWorkers()), as both consume
+ * by the main API server (packages/api → startWorkers()), as both consume
  * from the same BullMQ queues and will double-process jobs.
  */
 import dotenv from 'dotenv';

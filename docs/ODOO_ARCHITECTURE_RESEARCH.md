@@ -164,7 +164,7 @@ NOT in a top-level `__tests__/` folder.
 | `models/account_move.py`        | `src/invoice.ts` (flat functions)       | `invoice.service.ts` (god class)  | one file per entity               |
 | `models/account_payment.py`     | `src/payment.ts` (flat functions)       | `ledger.service.ts` (god class)   | ✅ done for ledger                |
 | `models/res_partner.py`         | `src/customer.ts` (flat functions)      | `customer.service.ts` (god class) | pending                           |
-| `controllers/portal.py`         | `apps/api/src/routes/invoice.routes.ts` | imports `invoiceService` class    | should call functions directly    |
+| `controllers/portal.py`         | `packages/api/src/routes/invoice.routes.ts` | imports `invoiceService` class    | should call functions directly    |
 | `tests/test_account_move.py`    | `src/__tests__/invoice.test.ts`         | top-level `__tests__/` ✅         | move inside domain module         |
 | `__manifest__.py` declares deps | `package.json` `dependencies`           | single monolithic package         | split packages with explicit deps |
 | `security/` access rules        | `middleware/require-auth.ts`            | ✅ exists                         | keep as-is                        |
@@ -270,7 +270,7 @@ export async function getInvoice(invoiceId: string) { ... }
 export async function listInvoices(businessId: string, filters: InvoiceFilters) { ... }
 ```
 
-### Execora `apps/api/src/routes/invoice.routes.ts` (controller = Odoo's controller):
+### Execora `packages/api/src/routes/invoice.routes.ts` (controller = Odoo's controller):
 
 ```typescript
 import { createInvoice, confirmInvoice, cancelInvoice } from "@execora/sales";

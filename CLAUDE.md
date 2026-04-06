@@ -7,9 +7,9 @@ TypeScript monorepo. Package manager: pnpm. Build: Turborepo.
 ## Structure
 
 ```
-apps/api/       @execora/api     — Fastify server, WebSocket, REST routes
 apps/worker/    @execora/worker  — BullMQ job processor
 packages/
+  api/      @execora/api     — Fastify server, WebSocket, REST routes
   types/    @execora/types   — shared TS types
   core/     @execora/core    — config, logger, DB, Redis, queue, auth, metrics, event bus
   modules/  @execora/modules — business services, voice engine, STT/TTS
@@ -44,7 +44,7 @@ fastify.get<{ Params: { id: string } }>('/x/:id', { preHandler: [...] }, handler
 **Invoice status** — valid: `draft | pending | partial | paid | cancelled`. Never use `issued` (legacy).
 
 **Auth** — platform admin: `x-admin-api-key` → `/admin/*`. Business users: JWT → `/api/v1/*`.
-Roles: owner > admin > manager > staff > viewer. Middleware: `apps/api/src/api/middleware/require-auth.ts`.
+Roles: owner > admin > manager > staff > viewer. Middleware: `packages/api/src/api/middleware/require-auth.ts`.
 
 **Prisma Product fields** — use `cost` not `costPrice`. `gstRate`, `hsnCode`, `mrp`, `cost` all exist.
 
@@ -52,7 +52,7 @@ Roles: owner > admin > manager > staff > viewer. Middleware: `apps/api/src/api/m
 
 - API port: 3006
 - DB: PostgreSQL (Prisma). Queue: BullMQ + Redis. Storage: MinIO. Metrics: Prometheus.
-- Dockerfiles: `apps/api/Dockerfile`, `apps/worker/Dockerfile` (build context: workspace root)
+- Dockerfiles: `packages/api/Dockerfile`, `apps/worker/Dockerfile` (build context: workspace root)
 - Prod overlay: `docker-compose.prod.yml`
 
 ## Tests (packages/modules)

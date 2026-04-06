@@ -292,20 +292,20 @@ cat > packages/infrastructure/package.json << 'EOF'
 EOF
 ```
 
-### 2.4 — `apps/api` and `apps/worker`
+### 2.4 — `packages/api` and `apps/worker`
 
 ```bash
-mkdir -p apps/api/src apps/worker/src
+mkdir -p packages/api/src apps/worker/src
 
 # API app — everything except src/worker/
-cp -r src/api   apps/api/src/
-cp -r src/ws    apps/api/src/
-cp src/index.ts apps/api/src/
+cp -r src/api   packages/api/src/
+cp -r src/ws    packages/api/src/
+cp src/index.ts packages/api/src/
 
 # Worker app
 cp src/worker/index.ts apps/worker/src/
 
-cat > apps/api/package.json << 'EOF'
+cat > packages/api/package.json << 'EOF'
 {
   "name": "@execora/api",
   "version": "0.1.0",
@@ -338,7 +338,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
+      dockerfile: packages/api/Dockerfile
     ...
   worker:
     build:

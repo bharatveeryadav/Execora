@@ -675,7 +675,7 @@ const user = (data as { user: User }).user;  // correct
 1. Create `src/screens/FooScreen.tsx` with named export
 2. Add to correct stack in `src/navigation/index.tsx` (add to `FooStackParams` type + `Stack.Screen`)
 3. Add tab or deep link if needed
-4. Add route to `apps/api/src/api/routes/` if new API endpoint required
+4. Add route to `packages/api/src/api/routes/` if new API endpoint required
 5. If complex form: create `src/hooks/useFooForm.ts` + `src/lib/fooReducer.ts`
 6. Add to `docs/mobile/MASTER.md` sprint tracker
 
@@ -683,12 +683,12 @@ const user = (data as { user: User }).user;  // correct
 
 ## 21. Adding a New API Endpoint — Checklist
 
-Backend (`apps/api/src/api/routes/`):
+Backend (`packages/api/src/api/routes/`):
 
 1. Create `foo.routes.ts` with typed Fastify route
 2. Define JSON schema for request/response
 3. Add `preHandler: [requireAuth]` (or `requireAdminKey` for admin routes)
-4. Register in `apps/api/src/index.ts`
+4. Register in `packages/api/src/index.ts`
 
 Mobile (`apps/mobile/src/lib/api.ts`):
 
