@@ -6,14 +6,14 @@ exports.createCreditNote = createCreditNote;
 exports.issueCreditNote = issueCreditNote;
 exports.cancelCreditNote = cancelCreditNote;
 exports.deleteCreditNote = deleteCreditNote;
-const infrastructure_1 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
 const client_1 = require("@prisma/client");
 // ─── Internal helper ──────────────────────────────────────────────────────────
 async function generateCreditNoteNo(tenantId) {
     const now = new Date();
     const fy = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
     const fyLabel = `${fy}-${String(fy + 1).slice(2)}`;
-    const last = await infrastructure_1.prisma.creditNote.findFirst({
+    const last = await core_1.prisma.creditNote.findFirst({
         where: { tenantId, creditNoteNo: { startsWith: `CN/${fyLabel}/` } },
         orderBy: { createdAt: "desc" },
         select: { creditNoteNo: true },
@@ -39,7 +39,7 @@ async function listCreditNotes(tenantId, opts = {}) {
         where.invoiceId = opts.invoiceId;
     if (opts.status)
         where.status = opts.status;
-    return infrastructure_1.prisma.creditNote.findMany({
+    return core_1.prisma.creditNote.findMany({
         where,
         take: Math.min(opts.limit ?? 20, 100),
         orderBy: { createdAt: "desc" },
@@ -47,7 +47,7 @@ async function listCreditNotes(tenantId, opts = {}) {
     });
 }
 async function getCreditNoteById(tenantId, id) {
-    return infrastructure_1.prisma.creditNote.findFirst({
+    return core_1.prisma.creditNote.findFirst({
         where: { id, tenantId, deletedAt: null },
         include: {
             customer: true,
@@ -61,14 +61,14 @@ async function getCreditNoteById(tenantId, id) {
 // ─── Commands ─────────────────────────────────────────────────────────────────
 async function createCreditNote(tenantId, userId, body) {
     if (body.invoiceId) {
-        const inv = await infrastructure_1.prisma.invoice.findFirst({
+        const inv = await core_1.prisma.invoice.findFirst({
             where: { id: body.invoiceId, tenantId },
         });
         if (!inv)
             throw new Error("Invoice not found");
     }
     if (body.customerId) {
-        const cust = await infrastructure_1.prisma.customer.findFirst({
+        const cust = await core_1.prisma.customer.findFirst({
             where: { id: body.customerId, tenantId },
         });
         if (!cust)
@@ -107,7 +107,7 @@ async function createCreditNote(tenantId, userId, body) {
     const igst = lineItems.reduce((s, i) => s + Number(i.igst), 0);
     const total = subtotal + tax;
     const creditNoteNo = await generateCreditNoteNo(tenantId);
-    const cn = await infrastructure_1.prisma.creditNote.create({
+    const cn = await core_1.prisma.creditNote.create({
         data: {
             tenantId,
             creditNoteNo,
@@ -134,27 +134,27 @@ async function createCreditNote(tenantId, userId, body) {
     return cn;
 }
 async function issueCreditNote(tenantId, id) {
-    const cn = await infrastructure_1.prisma.creditNote.findFirst({
+    const cn = await core_1.prisma.creditNote.findFirst({
         where: { id, tenantId, deletedAt: null },
     });
     if (!cn)
         throw new Error("Credit note not found");
     if (cn.status !== "draft")
         throw new Error(`Cannot issue a credit note in status: ${cn.status}`);
-    return infrastructure_1.prisma.creditNote.update({
+    return core_1.prisma.creditNote.update({
         where: { id: cn.id },
         data: { status: "issued", issuedAt: new Date() },
     });
 }
 async function cancelCreditNote(tenantId, id, reason) {
-    const cn = await infrastructure_1.prisma.creditNote.findFirst({
+    const cn = await core_1.prisma.creditNote.findFirst({
         where: { id, tenantId, deletedAt: null },
     });
     if (!cn)
         throw new Error("Credit note not found");
     if (cn.status === "cancelled")
         throw new Error("Already cancelled");
-    return infrastructure_1.prisma.creditNote.update({
+    return core_1.prisma.creditNote.update({
         where: { id: cn.id },
         data: {
             status: "cancelled",
@@ -165,14 +165,14 @@ async function cancelCreditNote(tenantId, id, reason) {
 }
 /** Soft-delete a draft credit note. Throws if not found or already issued. */
 async function deleteCreditNote(tenantId, id) {
-    const cn = await infrastructure_1.prisma.creditNote.findFirst({
+    const cn = await core_1.prisma.creditNote.findFirst({
         where: { id, tenantId, deletedAt: null },
     });
     if (!cn)
         throw new Error("Credit note not found");
     if (cn.status === "issued")
         throw new Error("Cannot delete an issued credit note — cancel it first");
-    await infrastructure_1.prisma.creditNote.update({
+    await core_1.prisma.creditNote.update({
         where: { id: cn.id },
         data: { deletedAt: new Date() },
     });

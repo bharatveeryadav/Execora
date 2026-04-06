@@ -6,14 +6,14 @@ exports.createPurchaseOrder = createPurchaseOrder;
 exports.updatePurchaseOrder = updatePurchaseOrder;
 exports.receivePurchaseOrder = receivePurchaseOrder;
 exports.cancelPurchaseOrder = cancelPurchaseOrder;
-const infrastructure_1 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
 const library_1 = require("@prisma/client/runtime/library");
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 async function generatePoNo(tenantId) {
     const now = new Date();
     const fy = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
     const fyLabel = `${fy}-${String(fy + 1).slice(2)}`;
-    const last = await infrastructure_1.prisma.purchaseOrder.findFirst({
+    const last = await core_1.prisma.purchaseOrder.findFirst({
         where: { tenantId, poNo: { startsWith: `PO/${fyLabel}/` } },
         orderBy: { createdAt: "desc" },
         select: { poNo: true },
@@ -40,7 +40,7 @@ async function listPurchaseOrders(tenantId, opts = {}) {
         where.status = opts.status;
     if (opts.supplierId)
         where.supplierId = opts.supplierId;
-    return infrastructure_1.prisma.purchaseOrder.findMany({
+    return core_1.prisma.purchaseOrder.findMany({
         where,
         take: Math.min(opts.limit ?? 50, 100),
         orderBy: { orderDate: "desc" },
@@ -48,7 +48,7 @@ async function listPurchaseOrders(tenantId, opts = {}) {
     });
 }
 async function getPurchaseOrderById(tenantId, id) {
-    return infrastructure_1.prisma.purchaseOrder.findFirst({
+    return core_1.prisma.purchaseOrder.findFirst({
         where: { id, tenantId },
         include: PO_INCLUDE,
     });
@@ -70,7 +70,7 @@ async function createPurchaseOrder(tenantId, userId, input) {
         };
     });
     const poNo = await generatePoNo(tenantId);
-    return infrastructure_1.prisma.purchaseOrder.create({
+    return core_1.prisma.purchaseOrder.create({
         data: {
             tenantId,
             poNo,
@@ -88,7 +88,7 @@ async function createPurchaseOrder(tenantId, userId, input) {
     });
 }
 async function updatePurchaseOrder(tenantId, id, input) {
-    const existing = await infrastructure_1.prisma.purchaseOrder.findFirst({
+    const existing = await core_1.prisma.purchaseOrder.findFirst({
         where: { id, tenantId },
         include: { items: true },
     });
@@ -130,14 +130,14 @@ async function updatePurchaseOrder(tenantId, id, input) {
         updates.total = new library_1.Decimal(subtotal);
         updates.items = { deleteMany: {}, create: itemData };
     }
-    return infrastructure_1.prisma.purchaseOrder.update({
+    return core_1.prisma.purchaseOrder.update({
         where: { id },
         data: updates,
         include: PO_INCLUDE,
     });
 }
 async function receivePurchaseOrder(tenantId, id, receipts) {
-    const po = await infrastructure_1.prisma.purchaseOrder.findFirst({
+    const po = await core_1.prisma.purchaseOrder.findFirst({
         where: { id, tenantId },
         include: { items: { include: { product: true } } },
     });
@@ -145,7 +145,7 @@ async function receivePurchaseOrder(tenantId, id, receipts) {
         return null;
     if (po.status === "cancelled")
         throw new Error("Cannot receive cancelled PO");
-    await infrastructure_1.prisma.$transaction(async (tx) => {
+    await core_1.prisma.$transaction(async (tx) => {
         for (const r of receipts) {
             const item = po.items.find((i) => i.id === r.itemId);
             if (!item)
@@ -215,22 +215,22 @@ async function receivePurchaseOrder(tenantId, id, receipts) {
             },
         });
     });
-    return infrastructure_1.prisma.purchaseOrder.findFirst({
+    return core_1.prisma.purchaseOrder.findFirst({
         where: { id, tenantId },
         include: PO_INCLUDE,
     });
 }
 async function cancelPurchaseOrder(tenantId, id) {
-    const po = await infrastructure_1.prisma.purchaseOrder.findFirst({ where: { id, tenantId } });
+    const po = await core_1.prisma.purchaseOrder.findFirst({ where: { id, tenantId } });
     if (!po)
         return null;
     if (po.status === "received")
         throw new Error("Cannot cancel fully received PO");
-    await infrastructure_1.prisma.purchaseOrder.update({
+    await core_1.prisma.purchaseOrder.update({
         where: { id },
         data: { status: "cancelled" },
     });
-    return infrastructure_1.prisma.purchaseOrder.findFirst({
+    return core_1.prisma.purchaseOrder.findFirst({
         where: { id, tenantId },
         include: PO_INCLUDE,
     });

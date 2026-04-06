@@ -13,10 +13,10 @@ exports.executeDeleteCustomerData = executeDeleteCustomerData;
  *         GET_CUSTOMER_INFO, DELETE_CUSTOMER_DATA, CHECK_BALANCE,
  *         LIST_CUSTOMER_BALANCES, TOTAL_PENDING_AMOUNT
  */
-const infrastructure_1 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
 const customer_service_1 = require("../../customer/customer.service");
 const conversation_1 = require("../conversation");
-const infrastructure_2 = require("@execora/infrastructure");
+const core_2 = require("@execora/core");
 const openai_1 = require("../../../integrations/openai");
 const shared_1 = require("./shared");
 // ── TOTAL_PENDING_AMOUNT ─────────────────────────────────────────────────────
@@ -148,7 +148,7 @@ async function executeUpdateCustomer(entities, conversationId) {
         };
     }
     catch (error) {
-        infrastructure_1.logger.error({ error, entities, conversationId }, 'Update customer execution failed');
+        core_1.logger.error({ error, entities, conversationId }, 'Update customer execution failed');
         return { success: false, message: 'Customer update nahi ho saka.', error: error.message };
     }
 }
@@ -172,7 +172,7 @@ async function executeGetCustomerInfo(entities, conversationId) {
                 phoneWords = openai_1.openaiService.phoneToWords(customer.phone);
             }
             catch (err) {
-                infrastructure_1.logger.error({ err, phone: customer.phone }, 'Phone conversion failed');
+                core_1.logger.error({ err, phone: customer.phone }, 'Phone conversion failed');
                 phoneWords = customer.phone;
             }
         }
@@ -192,7 +192,7 @@ async function executeGetCustomerInfo(entities, conversationId) {
         };
     }
     catch (error) {
-        infrastructure_1.logger.error({ error, entities, conversationId }, 'Get customer info execution failed');
+        core_1.logger.error({ error, entities, conversationId }, 'Get customer info execution failed');
         return { success: false, message: 'Failed to retrieve customer information', error: error.message };
     }
 }
@@ -211,25 +211,25 @@ async function executeDeleteCustomerData(entities, conversationId) {
         // Step 1: Send OTP if not yet provided
         if (!confirmPhrase.match(/\d{6}/)) {
             const otp = Math.floor(100000 + Math.random() * 900000).toString();
-            infrastructure_1.logger.info({ customerId: customer.id, adminEmail, otp }, 'Delete: Sending OTP');
+            core_1.logger.info({ customerId: customer.id, adminEmail, otp }, 'Delete: Sending OTP');
             try {
-                await infrastructure_2.emailService.sendAdminDeletionOtpEmail(adminEmail, customer.name, otp);
+                await core_2.emailService.sendAdminDeletionOtpEmail(adminEmail, customer.name, otp);
             }
             catch (e) {
-                infrastructure_1.logger.error({ error: e.message }, 'Delete: OTP email failed');
+                core_1.logger.error({ error: e.message }, 'Delete: OTP email failed');
             }
             return { success: false, message: `OTP sent to ${adminEmail}`, error: 'OTP_SENT', data: { otp, adminEmail } };
         }
         // Step 2: Delete after OTP confirmed
-        infrastructure_1.logger.info({ customerId: customer.id }, 'Delete: OTP confirmed, deleting');
+        core_1.logger.info({ customerId: customer.id }, 'Delete: OTP confirmed, deleting');
         const result = await customer_service_1.customerService.deleteCustomerAndAllData(customer.id);
         if (!result.success)
             return { success: false, message: 'Delete failed', error: result.error };
-        infrastructure_1.logger.info({ customerId: customer.id, adminEmail }, 'Delete: Customer data deleted by admin');
+        core_1.logger.info({ customerId: customer.id, adminEmail }, 'Delete: Customer data deleted by admin');
         return { success: true, message: `${customer.name} ke data permanently delete ho gaye`, data: result };
     }
     catch (error) {
-        infrastructure_1.logger.error({ error }, 'Delete: Exception');
+        core_1.logger.error({ error }, 'Delete: Exception');
         return { success: false, message: 'Delete operation failed', error: error.message };
     }
 }

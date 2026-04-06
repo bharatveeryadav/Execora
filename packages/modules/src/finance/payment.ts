@@ -11,7 +11,7 @@ import {
   tenantContext,
   paymentProcessing,
   paymentAmount,
-} from "@execora/infrastructure";
+} from "@execora/core";
 import { Decimal } from "@prisma/client/runtime/library";
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────

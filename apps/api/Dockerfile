@@ -21,6 +21,7 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY packages/types/package.json       ./packages/types/package.json
 COPY packages/shared/package.json      ./packages/shared/package.json
 COPY packages/infrastructure/package.json ./packages/infrastructure/package.json
+COPY packages/db/package.json          ./packages/db/package.json
 COPY packages/modules/package.json     ./packages/modules/package.json
 COPY apps/api/package.json             ./apps/api/package.json
 
@@ -28,7 +29,7 @@ COPY apps/api/package.json             ./apps/api/package.json
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # Copy Prisma schema and generate client
-COPY prisma ./prisma/
+COPY packages/db ./packages/db/
 RUN pnpm db:generate
 
 # Copy all source files
@@ -67,9 +68,10 @@ COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY packages/types/package.json       ./packages/types/package.json
 COPY packages/shared/package.json      ./packages/shared/package.json
 COPY packages/infrastructure/package.json ./packages/infrastructure/package.json
+COPY packages/db/package.json          ./packages/db/package.json
 COPY packages/modules/package.json     ./packages/modules/package.json
 COPY apps/api/package.json             ./apps/api/package.json
-COPY --from=builder /app/prisma        ./prisma
+COPY --from=builder /app/packages/db   ./packages/db
 
 # Install production dependencies only
 RUN pnpm install --frozen-lockfile --prod
@@ -91,4 +93,4 @@ EXPOSE 3006
 
 WORKDIR /app/apps/api
 
-CMD ["sh", "-c", "pnpm exec prisma migrate deploy --schema ../../prisma/schema.prisma && node dist/index.js"]
+CMD ["sh", "-c", "pnpm exec prisma migrate deploy --schema ../../packages/db/schema.prisma && node dist/index.js"]

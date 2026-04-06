@@ -5,8 +5,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.elevenLabsTTSAdapter = exports.ElevenLabsTTSAdapter = void 0;
 const axios_1 = __importDefault(require("axios"));
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
 /**
  * ElevenLabs TTS adapter — supports both buffer and streaming synthesis.
  * Preferred provider: higher quality, native Hindi support.
@@ -23,13 +23,13 @@ class ElevenLabsTTSAdapter {
     voiceId;
     baseUrl = 'https://api.elevenlabs.io/v1';
     constructor() {
-        this.apiKey = infrastructure_1.config.tts.elevenlabs.apiKey ?? '';
-        this.voiceId = infrastructure_1.config.tts.elevenlabs.voiceId ?? '21m00Tcm4TlvDq8ikWAM'; // Default Rachel
+        this.apiKey = core_1.config.tts.elevenlabs.apiKey ?? '';
+        this.voiceId = core_1.config.tts.elevenlabs.voiceId ?? '21m00Tcm4TlvDq8ikWAM'; // Default Rachel
         if (this.apiKey) {
-            infrastructure_2.logger.info('ElevenLabs TTS adapter initialized');
+            core_2.logger.info('ElevenLabs TTS adapter initialized');
         }
         else {
-            infrastructure_2.logger.warn('ELEVENLABS_API_KEY not set — ElevenLabs TTS unavailable');
+            core_2.logger.warn('ELEVENLABS_API_KEY not set — ElevenLabs TTS unavailable');
         }
     }
     isAvailable() {
@@ -47,7 +47,7 @@ class ElevenLabsTTSAdapter {
             responseType: 'arraybuffer',
         });
         const buffer = Buffer.from(response.data);
-        infrastructure_2.logger.info({ textLength: text.length, audioSize: buffer.length }, 'ElevenLabs TTS generated');
+        core_2.logger.info({ textLength: text.length, audioSize: buffer.length }, 'ElevenLabs TTS generated');
         return buffer;
     }
     async generateSpeechStream(text) {
@@ -61,9 +61,9 @@ class ElevenLabsTTSAdapter {
             headers: { 'xi-api-key': this.apiKey, 'Content-Type': 'application/json' },
             responseType: 'stream',
         });
-        infrastructure_2.logger.info({ textLength: text.length }, 'ElevenLabs TTS stream started');
+        core_2.logger.info({ textLength: text.length }, 'ElevenLabs TTS stream started');
         response.data.on('error', (err) => {
-            infrastructure_2.logger.error({ error: err.message }, 'ElevenLabs TTS stream error');
+            core_2.logger.error({ error: err.message }, 'ElevenLabs TTS stream error');
         });
         return response.data;
     }

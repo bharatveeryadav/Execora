@@ -1616,7 +1616,7 @@ execora/
 | `apps/web/src/contexts/WSContext.tsx`                           | WebSocket → React Query invalidation                   |
 | `apps/web/src/hooks/useQueries.ts`                              | All React Query hooks                                  |
 | `apps/web/src/lib/api.ts`                                       | All API types + fetch helpers                          |
-| `prisma/schema.prisma`                                          | Source of truth for all DB models                      |
+| `packages/db/schema.prisma`                                          | Source of truth for all DB models                      |
 
 ### Database Models (Key)
 

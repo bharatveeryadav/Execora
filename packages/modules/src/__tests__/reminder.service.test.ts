@@ -7,8 +7,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { reminderService } from '../modules/reminder/reminder.service';
-import { prisma } from '@execora/infrastructure';
-import { reminderQueue } from '@execora/infrastructure';
+import { prisma } from '@execora/core';
+import { reminderQueue } from '@execora/core';
 import { patchMethod, restoreAll, makeReminder, makeCustomer } from './helpers/fixtures';
 import type { RestoreFn } from './helpers/fixtures';
 

@@ -11,8 +11,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = __importDefault(require("node:test"));
 const strict_1 = __importDefault(require("node:assert/strict"));
 const reminder_service_1 = require("../modules/reminder/reminder.service");
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
 const fixtures_1 = require("./helpers/fixtures");
 // ── scheduleReminder ───────────────────────────────────────────────────────────
 (0, node_test_1.default)('scheduleReminder: creates reminder and enqueues job', async () => {
@@ -20,9 +20,9 @@ const fixtures_1 = require("./helpers/fixtures");
     try {
         const customer = (0, fixtures_1.makeCustomer)({ phone: '9876543210' });
         const reminder = (0, fixtures_1.makeReminder)({ customer });
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'findUnique', async () => customer));
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.reminder, 'create', async () => reminder));
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_2.reminderQueue, 'add', async () => ({ id: 'job-1' })));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'findUnique', async () => customer));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.reminder, 'create', async () => reminder));
+        restores.push((0, fixtures_1.patchMethod)(core_2.reminderQueue, 'add', async () => ({ id: 'job-1' })));
         const result = await reminder_service_1.reminderService.scheduleReminder('cust-001', 500, 'kal 5 baje');
         strict_1.default.equal(result.status, 'SCHEDULED');
         strict_1.default.equal(result.customerId, 'cust-test-001');
@@ -37,12 +37,12 @@ const fixtures_1 = require("./helpers/fixtures");
         const customer = (0, fixtures_1.makeCustomer)({ phone: '9876543210' });
         const reminder = (0, fixtures_1.makeReminder)({ customer, status: 'pending' });
         const capturedCreateArgs = [];
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'findUnique', async () => customer));
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.reminder, 'create', async (args) => {
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'findUnique', async () => customer));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.reminder, 'create', async (args) => {
             capturedCreateArgs.push(args);
             return reminder;
         }));
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_2.reminderQueue, 'add', async () => ({ id: 'job-rec-1' })));
+        restores.push((0, fixtures_1.patchMethod)(core_2.reminderQueue, 'add', async () => ({ id: 'job-rec-1' })));
         await reminder_service_1.reminderService.scheduleReminder('cust-001', 500, 'har 5 minute bad');
         const data = capturedCreateArgs[0]?.data;
         strict_1.default.equal(data.recurringPattern.type, 'interval_minutes');
@@ -58,12 +58,12 @@ const fixtures_1 = require("./helpers/fixtures");
         const customer = (0, fixtures_1.makeCustomer)({ phone: '9876543210' });
         const reminder = (0, fixtures_1.makeReminder)({ customer, status: 'pending' });
         const capturedCreateArgs = [];
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'findUnique', async () => customer));
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.reminder, 'create', async (args) => {
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'findUnique', async () => customer));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.reminder, 'create', async (args) => {
             capturedCreateArgs.push(args);
             return reminder;
         }));
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_2.reminderQueue, 'add', async () => ({ id: 'job-rec-2' })));
+        restores.push((0, fixtures_1.patchMethod)(core_2.reminderQueue, 'add', async () => ({ id: 'job-rec-2' })));
         await reminder_service_1.reminderService.scheduleReminder('cust-001', 500, 'daily 3 baje');
         const recurring = capturedCreateArgs[0]?.data?.recurringPattern;
         strict_1.default.equal(recurring.type, 'daily_time');
@@ -80,12 +80,12 @@ const fixtures_1 = require("./helpers/fixtures");
         const customer = (0, fixtures_1.makeCustomer)({ phone: '9876543210' });
         const reminder = (0, fixtures_1.makeReminder)({ customer, status: 'pending' });
         const capturedCreateArgs = [];
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'findUnique', async () => customer));
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.reminder, 'create', async (args) => {
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'findUnique', async () => customer));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.reminder, 'create', async (args) => {
             capturedCreateArgs.push(args);
             return reminder;
         }));
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_2.reminderQueue, 'add', async () => ({ id: 'job-rec-3' })));
+        restores.push((0, fixtures_1.patchMethod)(core_2.reminderQueue, 'add', async () => ({ id: 'job-rec-3' })));
         await reminder_service_1.reminderService.scheduleReminder('cust-001', 500, 'har mhine 1 date ko');
         const recurring = capturedCreateArgs[0]?.data?.recurringPattern;
         strict_1.default.equal(recurring.type, 'monthly_date');
@@ -101,12 +101,12 @@ const fixtures_1 = require("./helpers/fixtures");
         const customer = (0, fixtures_1.makeCustomer)({ phone: '9876543210' });
         const reminder = (0, fixtures_1.makeReminder)({ customer, status: 'pending' });
         const capturedCreateArgs = [];
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'findUnique', async () => customer));
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.reminder, 'create', async (args) => {
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'findUnique', async () => customer));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.reminder, 'create', async (args) => {
             capturedCreateArgs.push(args);
             return reminder;
         }));
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_2.reminderQueue, 'add', async () => ({ id: 'job-rec-4' })));
+        restores.push((0, fixtures_1.patchMethod)(core_2.reminderQueue, 'add', async () => ({ id: 'job-rec-4' })));
         await reminder_service_1.reminderService.scheduleReminder('cust-001', 500, 'every 6 month');
         const recurring = capturedCreateArgs[0]?.data?.recurringPattern;
         strict_1.default.equal(recurring.type, 'every_n_months');
@@ -122,12 +122,12 @@ const fixtures_1 = require("./helpers/fixtures");
         const customer = (0, fixtures_1.makeCustomer)({ phone: '9876543210' });
         const reminder = (0, fixtures_1.makeReminder)({ customer, status: 'pending' });
         const capturedCreateArgs = [];
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'findUnique', async () => customer));
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.reminder, 'create', async (args) => {
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'findUnique', async () => customer));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.reminder, 'create', async (args) => {
             capturedCreateArgs.push(args);
             return reminder;
         }));
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_2.reminderQueue, 'add', async () => ({ id: 'job-5min' })));
+        restores.push((0, fixtures_1.patchMethod)(core_2.reminderQueue, 'add', async () => ({ id: 'job-5min' })));
         await reminder_service_1.reminderService.scheduleReminder('cust-001', 500, '5 minute me');
         const recurring = capturedCreateArgs[0]?.data?.recurringPattern;
         strict_1.default.equal(recurring, undefined);
@@ -151,7 +151,7 @@ const fixtures_1 = require("./helpers/fixtures");
 (0, node_test_1.default)('scheduleReminder: throws when customer not found', async () => {
     const restores = [];
     try {
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'findUnique', async () => null));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'findUnique', async () => null));
         await strict_1.default.rejects(() => reminder_service_1.reminderService.scheduleReminder('cust-nonexistent', 500, 'kal'), /Customer not found/i);
     }
     finally {
@@ -166,12 +166,12 @@ const fixtures_1 = require("./helpers/fixtures");
         const customerNoPhone = (0, fixtures_1.makeCustomer)({ phone: null });
         const capturedCreateArgs = [];
         const reminder = (0, fixtures_1.makeReminder)({ customer: customerNoPhone });
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'findUnique', async () => customerNoPhone));
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.reminder, 'create', async (args) => {
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'findUnique', async () => customerNoPhone));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.reminder, 'create', async (args) => {
             capturedCreateArgs.push(args);
             return reminder;
         }));
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_2.reminderQueue, 'add', async () => ({ id: 'job-nophone' })));
+        restores.push((0, fixtures_1.patchMethod)(core_2.reminderQueue, 'add', async () => ({ id: 'job-nophone' })));
         const result = await reminder_service_1.reminderService.scheduleReminder('cust-001', 500, 'kal');
         strict_1.default.equal(result.status, 'SCHEDULED');
         // Both channels scheduled when no contact info — will be delivered when added
@@ -187,13 +187,13 @@ const fixtures_1 = require("./helpers/fixtures");
     try {
         const customer = (0, fixtures_1.makeCustomer)({ phone: '9876543210' });
         const reminder = (0, fixtures_1.makeReminder)({ id: 'rem-fail-test', customer });
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'findUnique', async () => customer));
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.reminder, 'create', async () => reminder));
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_2.reminderQueue, 'add', async () => {
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'findUnique', async () => customer));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.reminder, 'create', async () => reminder));
+        restores.push((0, fixtures_1.patchMethod)(core_2.reminderQueue, 'add', async () => {
             throw new Error('Redis unavailable');
         }));
         // The service tries to update status to FAILED when queue fails
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.reminder, 'update', async () => ({ ...reminder, status: 'FAILED' })));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.reminder, 'update', async () => ({ ...reminder, status: 'FAILED' })));
         await strict_1.default.rejects(() => reminder_service_1.reminderService.scheduleReminder('cust-001', 500, 'kal'), /Redis unavailable/i);
     }
     finally {
@@ -205,8 +205,8 @@ const fixtures_1 = require("./helpers/fixtures");
     const restores = [];
     try {
         const cancelled = (0, fixtures_1.makeReminder)({ status: 'CANCELLED' });
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.reminder, 'update', async () => cancelled));
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_2.reminderQueue, 'getJob', async () => null));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.reminder, 'update', async () => cancelled));
+        restores.push((0, fixtures_1.patchMethod)(core_2.reminderQueue, 'getJob', async () => null));
         const result = await reminder_service_1.reminderService.cancelReminder('reminder-test-001');
         strict_1.default.equal(result.status, 'CANCELLED');
     }
@@ -219,8 +219,8 @@ const fixtures_1 = require("./helpers/fixtures");
     try {
         let removed = false;
         const mockJob = { remove: async () => { removed = true; } };
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.reminder, 'update', async () => (0, fixtures_1.makeReminder)({ status: 'CANCELLED' })));
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_2.reminderQueue, 'getJob', async () => mockJob));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.reminder, 'update', async () => (0, fixtures_1.makeReminder)({ status: 'CANCELLED' })));
+        restores.push((0, fixtures_1.patchMethod)(core_2.reminderQueue, 'getJob', async () => mockJob));
         await reminder_service_1.reminderService.cancelReminder('reminder-test-001');
         strict_1.default.equal(removed, true);
     }
@@ -233,7 +233,7 @@ const fixtures_1 = require("./helpers/fixtures");
     const restores = [];
     try {
         const pending = [(0, fixtures_1.makeReminder)(), (0, fixtures_1.makeReminder)({ id: 'rem-2', customerId: 'cust-002' })];
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.reminder, 'findMany', async () => pending));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.reminder, 'findMany', async () => pending));
         const results = await reminder_service_1.reminderService.getPendingReminders();
         strict_1.default.equal(results.length, 2);
     }
@@ -245,7 +245,7 @@ const fixtures_1 = require("./helpers/fixtures");
     const restores = [];
     try {
         const captured = [];
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.reminder, 'findMany', async (args) => {
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.reminder, 'findMany', async (args) => {
             captured.push(args);
             return [(0, fixtures_1.makeReminder)()];
         }));
@@ -261,7 +261,7 @@ const fixtures_1 = require("./helpers/fixtures");
 (0, node_test_1.default)('markAsSent: updates reminder status to sent (completes without error)', async () => {
     const restores = [];
     try {
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.reminder, 'update', async () => ({})));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.reminder, 'update', async () => ({})));
         // markAsSent returns void — just verify it does not throw
         await strict_1.default.doesNotReject(() => reminder_service_1.reminderService.markAsSent('reminder-test-001'));
     }
@@ -274,7 +274,7 @@ const fixtures_1 = require("./helpers/fixtures");
 (0, node_test_1.default)('markAsFailed: updates reminder status to failed (completes without error)', async () => {
     const restores = [];
     try {
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.reminder, 'update', async () => ({})));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.reminder, 'update', async () => ({})));
         // markAsFailed returns void — just verify it does not throw
         await strict_1.default.doesNotReject(() => reminder_service_1.reminderService.markAsFailed('reminder-test-001'));
     }
@@ -287,7 +287,7 @@ const fixtures_1 = require("./helpers/fixtures");
     const restores = [];
     try {
         const dueReminder = (0, fixtures_1.makeReminder)({ sendAt: new Date(Date.now() - 1000) }); // 1 second ago
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.reminder, 'findMany', async () => [dueReminder]));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.reminder, 'findMany', async () => [dueReminder]));
         const results = await reminder_service_1.reminderService.getDueReminders();
         strict_1.default.equal(results.length, 1);
     }

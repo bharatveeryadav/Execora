@@ -19,7 +19,7 @@ The codebase already has a clean layered architecture that maps naturally to mon
 | Separate entry points | ✓ | `src/index.ts` (API) and `src/worker/index.ts` (worker) |
 | Docker already multi-container | ✓ | `app` and `worker` are separate containers today |
 | Shared types already centralized | ✓ | `src/types.ts` — ideal candidate for `@execora/types` package |
-| Prisma schema self-contained | ✓ | `prisma/` is a clean boundary for `@execora/db` |
+| Prisma schema self-contained | ✓ | `packages/db/` is a clean boundary for `@execora/db` |
 | No path aliases yet | ⚠ | Relative imports throughout — add aliases before splitting |
 | Single `package.json` | ⚠ | Needs to become workspace root + sub-packages |
 
@@ -51,7 +51,7 @@ execora/                          ← workspace root
 │   │   └── tsconfig.json
 │   │
 │   ├── db/                       ← @execora/db
-│   │   ├── prisma/               ← prisma/schema.prisma today
+│   │   ├── prisma/               ← packages/db/schema.prisma today
 │   │   ├── src/
 │   │   │   ├── client.ts         ← database.ts (Prisma client + audit middleware)
 │   │   │   └── index.ts
@@ -355,7 +355,7 @@ services:
 |---|---|---|
 | Source structure | `src/infrastructure/*` | `packages/infrastructure/src/*` |
 | Imports | `../../infrastructure/logger` | `@execora/infrastructure/logger` |
-| Prisma | `prisma/` at repo root | `packages/db/prisma/` |
+| Prisma | `packages/db/` at repo root | `packages/db/prisma/` |
 | DB commands | `npm run db:push` | `pnpm --filter @execora/db db:push` |
 | Dev server | `npm run dev` | `pnpm dev` (from root) |
 | Worker | `npm run worker` | `pnpm --filter @execora/worker dev` |

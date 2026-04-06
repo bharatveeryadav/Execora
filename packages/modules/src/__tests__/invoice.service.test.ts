@@ -7,7 +7,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { invoiceService } from '../modules/invoice/invoice.service';
-import { prisma } from '@execora/infrastructure';
+import { prisma } from '@execora/core';
 import { patchMethod, restoreAll, makeInvoice, makeProduct, makeCustomer, dec, makePrismaTransaction } from './helpers/fixtures';
 import type { RestoreFn } from './helpers/fixtures';
 

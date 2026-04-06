@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ttsService = void 0;
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
-const infrastructure_3 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
+const core_3 = require("@execora/core");
 const errors_1 = require("../errors");
 const middleware_1 = require("../middleware");
 const elevenlabs_adapter_1 = require("./elevenlabs.adapter");
@@ -37,26 +37,26 @@ const ADAPTERS = {
 class TTSService {
     adapter = null;
     constructor() {
-        const preferred = infrastructure_1.config.tts.provider;
+        const preferred = core_1.config.tts.provider;
         const primary = ADAPTERS[preferred];
         if (primary?.isAvailable()) {
             this.adapter = primary;
         }
         else {
             if (primary)
-                infrastructure_2.logger.warn({ preferred }, 'Preferred TTS provider not available — trying fallback');
+                core_2.logger.warn({ preferred }, 'Preferred TTS provider not available — trying fallback');
             const fallback = Object.values(ADAPTERS).find((a) => a.name !== preferred && a.isAvailable()) ?? null;
             if (fallback)
-                infrastructure_2.logger.warn({ fallback: fallback.name }, 'Using fallback TTS provider');
+                core_2.logger.warn({ fallback: fallback.name }, 'Using fallback TTS provider');
             this.adapter = fallback;
         }
         if (!this.adapter)
-            infrastructure_2.logger.error('No TTS provider available — TTS disabled');
+            core_2.logger.error('No TTS provider available — TTS disabled');
         // Report availability of all adapters to Prometheus at startup
         for (const a of Object.values(ADAPTERS)) {
             (0, middleware_1.reportProviderAvailability)(a.name, 'tts', a.isAvailable());
         }
-        infrastructure_2.logger.info({ provider: this.adapter?.name ?? 'none' }, 'TTS service initialized');
+        core_2.logger.info({ provider: this.adapter?.name ?? 'none' }, 'TTS service initialized');
     }
     isAvailable() {
         return this.adapter !== null;
@@ -72,12 +72,12 @@ class TTSService {
         const adapter = this.adapter;
         if (!adapter)
             throw new errors_1.ProviderUnavailableError('tts', 'generateSpeech');
-        infrastructure_2.logger.info({ provider: adapter.name, textLength: text.length }, 'Generating speech');
+        core_2.logger.info({ provider: adapter.name, textLength: text.length }, 'Generating speech');
         return (0, middleware_1.withProvider)({
             provider: adapter.name,
             providerType: 'tts',
             operation: 'generateSpeech',
-            histogram: infrastructure_3.ttsProcessingTime,
+            histogram: core_3.ttsProcessingTime,
             maxRetries: 1,
         }, () => adapter.generateSpeech(text));
     }
@@ -91,12 +91,12 @@ class TTSService {
             : this.adapter;
         if (!adapter)
             throw new errors_1.ProviderUnavailableError('tts', 'generateSpeechStream');
-        infrastructure_2.logger.info({ provider: adapter.name, textLength: text.length, isOverride: !!overrideProvider }, 'Generating speech stream');
+        core_2.logger.info({ provider: adapter.name, textLength: text.length, isOverride: !!overrideProvider }, 'Generating speech stream');
         return (0, middleware_1.withProvider)({
             provider: adapter.name,
             providerType: 'tts',
             operation: 'generateSpeechStream',
-            histogram: infrastructure_3.ttsProcessingTime,
+            histogram: core_3.ttsProcessingTime,
             maxRetries: 1,
         }, () => adapter.generateSpeechStream(text));
     }
@@ -111,11 +111,11 @@ class TTSService {
             for await (const chunk of stream)
                 chunks.push(Buffer.from(chunk));
             const result = Buffer.concat(chunks);
-            infrastructure_2.logger.info({ bufferSize: result.length, chunkCount: chunks.length }, 'Stream to buffer complete');
+            core_2.logger.info({ bufferSize: result.length, chunkCount: chunks.length }, 'Stream to buffer complete');
             return result;
         }
         catch (err) {
-            infrastructure_2.logger.error({ error: err.message, chunksReceived: chunks.length }, 'Stream to buffer failed');
+            core_2.logger.error({ error: err.message, chunksReceived: chunks.length }, 'Stream to buffer failed');
             throw err;
         }
     }

@@ -10,14 +10,14 @@
  */
 
 import type promClient from 'prom-client';
-import { logger } from '@execora/infrastructure';
+import { logger } from '@execora/core';
 import {
   errorCounter,
   sttRequestsTotal,
   ttsRequestsTotal,
   llmRequestsTotal,
   providerAvailability,
-} from '@execora/infrastructure';
+} from '@execora/core';
 import { ProviderError, ProviderUnavailableError } from './errors';
 
 // ─── Types ────────────────────────────────────────────────────────────────────

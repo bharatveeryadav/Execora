@@ -5,8 +5,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.openaiLLMAdapter = exports.OpenAIAdapter = void 0;
 const openai_1 = __importDefault(require("openai"));
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
 /**
  * OpenAI adapter — used for intent extraction (gpt-4o-mini, JSON mode)
  * and as the response-generation fallback when Groq is unavailable.
@@ -21,11 +21,11 @@ class OpenAIAdapter {
     };
     client;
     constructor() {
-        this.client = new openai_1.default({ apiKey: infrastructure_1.config.openai.apiKey });
-        infrastructure_2.logger.info('OpenAI LLM adapter initialized');
+        this.client = new openai_1.default({ apiKey: core_1.config.openai.apiKey });
+        core_2.logger.info('OpenAI LLM adapter initialized');
     }
     isAvailable() {
-        return !!infrastructure_1.config.openai.apiKey;
+        return !!core_1.config.openai.apiKey;
     }
     async extractIntent(transcript, systemPrompt) {
         const response = await this.client.chat.completions.create({

@@ -1,13 +1,13 @@
-import { prisma } from '@execora/infrastructure';
-import { logger } from '@execora/infrastructure';
+import { prisma } from '@execora/core';
+import { logger } from '@execora/core';
 import { Prisma } from '@prisma/client';
-import { reminderQueue } from '@execora/infrastructure';
-import { tenantContext } from '@execora/infrastructure';
-import { scheduleNextReminderOccurrence, markReminderSent, markReminderFailed } from '@execora/infrastructure';
+import { reminderQueue } from '@execora/core';
+import { tenantContext } from '@execora/core';
+import { scheduleNextReminderOccurrence, markReminderSent, markReminderFailed } from '@execora/core';
 import { ReminderJobData } from '@execora/types';
 import { addDays, addHours, addMinutes, addMonths, setHours, setMinutes, setSeconds, setMilliseconds } from 'date-fns';
 import { fromZonedTime } from 'date-fns-tz';
-import { config } from '@execora/infrastructure';
+import { config } from '@execora/core';
 
 type RecurringPattern =
 	| { type: 'interval_minutes'; value: number }

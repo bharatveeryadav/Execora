@@ -11,7 +11,7 @@
     "test":      "NODE_TEST=true tsc -p tsconfig.test.json && NODE_TEST=true node --test dist-test/__tests__/**/*.test.js"
   },
   "dependencies": {
-    "@execora/infrastructure": "workspace:*",
+    "@execora/core": "workspace:*",
     "@execora/types":          "workspace:*",
     "@deepgram/sdk":           "^3.4.0",
     "@prisma/client":          "^5.9.1",

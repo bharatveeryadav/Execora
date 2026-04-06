@@ -21,7 +21,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from './database';
 import { logger } from './logger';
 
-// Re-export for consumers that import from @execora/infrastructure
+// Re-export for consumers that import from @execora/core
 export { FeatureFlag, TIER_FEATURES };
 
 // ── Core evaluation ───────────────────────────────────────────────────────────

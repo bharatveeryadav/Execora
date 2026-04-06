@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.productService = void 0;
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
-const infrastructure_3 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
+const core_3 = require("@execora/core");
 const library_1 = require("@prisma/client/runtime/library");
 class ProductService {
     /**
@@ -20,9 +20,9 @@ class ProductService {
             if (!Number.isInteger(data.stock) || data.stock < 0) {
                 throw new Error('Product stock must be a non-negative integer');
             }
-            const product = await infrastructure_1.prisma.product.create({
+            const product = await core_1.prisma.product.create({
                 data: {
-                    tenantId: infrastructure_3.tenantContext.get().tenantId,
+                    tenantId: core_3.tenantContext.get().tenantId,
                     name: data.name,
                     description: data.description,
                     category: data.category || 'general',
@@ -36,11 +36,11 @@ class ProductService {
                     priceTier3: data.priceTier3 != null ? new library_1.Decimal(data.priceTier3) : null,
                 },
             });
-            infrastructure_2.logger.info({ productId: product.id, name: product.name }, 'Product created');
+            core_2.logger.info({ productId: product.id, name: product.name }, 'Product created');
             return product;
         }
         catch (error) {
-            infrastructure_2.logger.error({ error, data }, 'Product creation failed');
+            core_2.logger.error({ error, data }, 'Product creation failed');
             throw error;
         }
     }
@@ -48,8 +48,8 @@ class ProductService {
      * Search products by name — scoped to current tenant
      */
     async searchProducts(query) {
-        const { tenantId } = infrastructure_3.tenantContext.get();
-        return await infrastructure_1.prisma.product.findMany({
+        const { tenantId } = core_3.tenantContext.get();
+        return await core_1.prisma.product.findMany({
             where: {
                 tenantId,
                 isActive: true,
@@ -65,8 +65,8 @@ class ProductService {
      * Get product by ID — scoped to current tenant to prevent cross-tenant reads
      */
     async getProductById(id) {
-        const { tenantId } = infrastructure_3.tenantContext.get();
-        return await infrastructure_1.prisma.product.findFirst({
+        const { tenantId } = core_3.tenantContext.get();
+        return await core_1.prisma.product.findFirst({
             where: { id, tenantId },
         });
     }
@@ -74,10 +74,10 @@ class ProductService {
      * Update product stock — scoped to current tenant
      */
     async updateStock(productId, quantity, operation) {
-        const { tenantId } = infrastructure_3.tenantContext.get();
+        const { tenantId } = core_3.tenantContext.get();
         try {
             if (operation === 'subtract') {
-                const current = await infrastructure_1.prisma.product.findFirst({
+                const current = await core_1.prisma.product.findFirst({
                     where: { id: productId, tenantId },
                     select: { stock: true, name: true },
                 });
@@ -87,17 +87,17 @@ class ProductService {
                     throw new Error(`Insufficient stock: only ${current.stock} available for "${current.name}"`);
                 }
             }
-            const product = await infrastructure_1.prisma.product.update({
+            const product = await core_1.prisma.product.update({
                 where: { id: productId },
                 data: {
                     stock: operation === 'add' ? { increment: quantity } : { decrement: quantity },
                 },
             });
-            infrastructure_2.logger.info({ productId, quantity, operation }, 'Stock updated');
+            core_2.logger.info({ productId, quantity, operation }, 'Stock updated');
             return product;
         }
         catch (error) {
-            infrastructure_2.logger.error({ error, productId, quantity }, 'Stock update failed');
+            core_2.logger.error({ error, productId, quantity }, 'Stock update failed');
             throw error;
         }
     }
@@ -106,9 +106,9 @@ class ProductService {
      * A product is considered low-stock when its stock is at or below its minStock threshold.
      */
     async getLowStockProducts() {
-        const { tenantId } = infrastructure_3.tenantContext.get();
+        const { tenantId } = core_3.tenantContext.get();
         // Use a raw query so we can compare stock against the per-product minStock column
-        const products = await infrastructure_1.prisma.$queryRaw `
+        const products = await core_1.prisma.$queryRaw `
       SELECT id, name, category, description, price::text, unit, stock, min_stock, is_active, created_at, updated_at
       FROM products
       WHERE tenant_id = ${tenantId}
@@ -134,8 +134,8 @@ class ProductService {
      * Get all active products for the current tenant.
      */
     async getAllProducts() {
-        return await infrastructure_1.prisma.product.findMany({
-            where: { tenantId: infrastructure_3.tenantContext.get().tenantId, isActive: true },
+        return await core_1.prisma.product.findMany({
+            where: { tenantId: core_3.tenantContext.get().tenantId, isActive: true },
             orderBy: { name: 'asc' },
         });
     }
@@ -143,17 +143,17 @@ class ProductService {
      * Get products with pagination (Sprint 27).
      */
     async getProductsPaginated(page = 1, limit = 50) {
-        const tenantId = infrastructure_3.tenantContext.get().tenantId;
+        const tenantId = core_3.tenantContext.get().tenantId;
         const skip = Math.max(0, (page - 1) * limit);
         const take = Math.min(Math.max(1, limit), 500);
         const [products, total] = await Promise.all([
-            infrastructure_1.prisma.product.findMany({
+            core_1.prisma.product.findMany({
                 where: { tenantId, isActive: true },
                 orderBy: { name: 'asc' },
                 skip,
                 take,
             }),
-            infrastructure_1.prisma.product.count({ where: { tenantId, isActive: true } }),
+            core_1.prisma.product.count({ where: { tenantId, isActive: true } }),
         ]);
         return {
             products,
@@ -167,11 +167,11 @@ class ProductService {
      * Update product price — scoped to current tenant
      */
     async updatePrice(productId, newPrice) {
-        const { tenantId } = infrastructure_3.tenantContext.get();
-        const existing = await infrastructure_1.prisma.product.findFirst({ where: { id: productId, tenantId } });
+        const { tenantId } = core_3.tenantContext.get();
+        const existing = await core_1.prisma.product.findFirst({ where: { id: productId, tenantId } });
         if (!existing)
             throw new Error('Product not found');
-        return await infrastructure_1.prisma.product.update({
+        return await core_1.prisma.product.update({
             where: { id: productId },
             data: {
                 price: new library_1.Decimal(newPrice),
@@ -219,23 +219,23 @@ class ProductService {
             updateData.cost = data.cost != null ? new library_1.Decimal(data.cost) : null;
         if (data.mrp !== undefined)
             updateData.mrp = data.mrp != null ? new library_1.Decimal(data.mrp) : null;
-        const { tenantId } = infrastructure_3.tenantContext.get();
-        const existing = await infrastructure_1.prisma.product.findFirst({ where: { id: productId, tenantId } });
+        const { tenantId } = core_3.tenantContext.get();
+        const existing = await core_1.prisma.product.findFirst({ where: { id: productId, tenantId } });
         if (!existing)
             throw new Error('Product not found');
-        const product = await infrastructure_1.prisma.product.update({
+        const product = await core_1.prisma.product.update({
             where: { id: productId },
             data: updateData,
         });
-        infrastructure_2.logger.info({ productId, fields: Object.keys(updateData) }, 'Product updated');
+        core_2.logger.info({ productId, fields: Object.keys(updateData) }, 'Product updated');
         return product;
     }
     /**
      * Get product stock — scoped to current tenant
      */
     async getStock(productName) {
-        const { tenantId } = infrastructure_3.tenantContext.get();
-        const product = await infrastructure_1.prisma.product.findFirst({
+        const { tenantId } = core_3.tenantContext.get();
+        const product = await core_1.prisma.product.findFirst({
             where: {
                 tenantId,
                 name: {
@@ -254,9 +254,9 @@ class ProductService {
     async getExpiringBatches(days = 30) {
         const now = new Date();
         const future = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
-        return infrastructure_1.prisma.productBatch.findMany({
+        return core_1.prisma.productBatch.findMany({
             where: {
-                tenantId: infrastructure_3.tenantContext.get().tenantId,
+                tenantId: core_3.tenantContext.get().tenantId,
                 expiryDate: { gte: now, lte: future },
                 quantity: { gt: 0 },
             },
@@ -270,7 +270,7 @@ class ProductService {
      * filter: 'expired' | '7d' | '30d' | '90d' | 'all'
      */
     async getExpiryPage(filter = '30d') {
-        const { tenantId } = infrastructure_3.tenantContext.get();
+        const { tenantId } = core_3.tenantContext.get();
         const now = new Date();
         const days = (n) => new Date(now.getTime() + n * 24 * 60 * 60 * 1000);
         let where = { tenantId };
@@ -293,7 +293,7 @@ class ProductService {
             // all — still only show batches with stock
             where.quantity = { gt: 0 };
         }
-        const batches = await infrastructure_1.prisma.productBatch.findMany({
+        const batches = await core_1.prisma.productBatch.findMany({
             where,
             include: {
                 product: { select: { name: true, unit: true, category: true } },
@@ -301,7 +301,7 @@ class ProductService {
             orderBy: { expiryDate: 'asc' },
         });
         // Summary stats (always computed across all batches)
-        const all = await infrastructure_1.prisma.productBatch.findMany({
+        const all = await core_1.prisma.productBatch.findMany({
             where: { tenantId },
             select: { expiryDate: true, quantity: true, purchasePrice: true },
         });
@@ -320,21 +320,21 @@ class ProductService {
      * Write off a batch (mark qty = 0, status = written_off).
      */
     async writeOffBatch(batchId) {
-        const { tenantId } = infrastructure_3.tenantContext.get();
-        const batch = await infrastructure_1.prisma.productBatch.findFirst({ where: { id: batchId, tenantId } });
+        const { tenantId } = core_3.tenantContext.get();
+        const batch = await core_1.prisma.productBatch.findFirst({ where: { id: batchId, tenantId } });
         if (!batch)
             throw new Error('Batch not found');
-        await infrastructure_1.prisma.productBatch.update({
+        await core_1.prisma.productBatch.update({
             where: { id: batchId },
             data: { quantity: 0, status: 'written_off' },
         });
         // Log stock movement
-        const productData = await infrastructure_1.prisma.product.findUnique({
+        const productData = await core_1.prisma.product.findUnique({
             where: { id: batch.productId },
             select: { stock: true },
         });
         const prevStock = productData?.stock ?? 0;
-        await infrastructure_1.prisma.stockMovement
+        await core_1.prisma.stockMovement
             .create({
             data: {
                 tenantId,

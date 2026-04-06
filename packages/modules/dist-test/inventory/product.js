@@ -16,16 +16,16 @@ exports.createProduct = createProduct;
 exports.updateProduct = updateProduct;
 exports.updateProductStock = updateProductStock;
 exports.writeOffBatch = writeOffBatch;
-const infrastructure_1 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
 const library_1 = require("@prisma/client/runtime/library");
 // ─── Queries ──────────────────────────────────────────────────────────────────
 async function getProductById(id) {
-    const { tenantId } = infrastructure_1.tenantContext.get();
-    return infrastructure_1.prisma.product.findFirst({ where: { id, tenantId } });
+    const { tenantId } = core_1.tenantContext.get();
+    return core_1.prisma.product.findFirst({ where: { id, tenantId } });
 }
 async function searchProducts(query) {
-    const { tenantId } = infrastructure_1.tenantContext.get();
-    return infrastructure_1.prisma.product.findMany({
+    const { tenantId } = core_1.tenantContext.get();
+    return core_1.prisma.product.findMany({
         where: {
             tenantId,
             isActive: true,
@@ -35,23 +35,23 @@ async function searchProducts(query) {
     });
 }
 async function listProducts() {
-    return infrastructure_1.prisma.product.findMany({
-        where: { tenantId: infrastructure_1.tenantContext.get().tenantId, isActive: true },
+    return core_1.prisma.product.findMany({
+        where: { tenantId: core_1.tenantContext.get().tenantId, isActive: true },
         orderBy: { name: "asc" },
     });
 }
 async function listProductsPaginated(page = 1, limit = 50) {
-    const tenantId = infrastructure_1.tenantContext.get().tenantId;
+    const tenantId = core_1.tenantContext.get().tenantId;
     const skip = Math.max(0, (page - 1) * limit);
     const take = Math.min(Math.max(1, limit), 500);
     const [products, total] = await Promise.all([
-        infrastructure_1.prisma.product.findMany({
+        core_1.prisma.product.findMany({
             where: { tenantId, isActive: true },
             orderBy: { name: "asc" },
             skip,
             take,
         }),
-        infrastructure_1.prisma.product.count({ where: { tenantId, isActive: true } }),
+        core_1.prisma.product.count({ where: { tenantId, isActive: true } }),
     ]);
     return {
         products,
@@ -62,8 +62,8 @@ async function listProductsPaginated(page = 1, limit = 50) {
     };
 }
 async function getLowStockProducts() {
-    const { tenantId } = infrastructure_1.tenantContext.get();
-    const products = await infrastructure_1.prisma.$queryRaw `
+    const { tenantId } = core_1.tenantContext.get();
+    const products = await core_1.prisma.$queryRaw `
     SELECT id, name, category, description, price::text, unit, stock, min_stock,
            is_active, created_at, updated_at
     FROM products
@@ -89,9 +89,9 @@ async function getLowStockProducts() {
 async function getExpiringBatches(days = 30) {
     const now = new Date();
     const future = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
-    return infrastructure_1.prisma.productBatch.findMany({
+    return core_1.prisma.productBatch.findMany({
         where: {
-            tenantId: infrastructure_1.tenantContext.get().tenantId,
+            tenantId: core_1.tenantContext.get().tenantId,
             expiryDate: { gte: now, lte: future },
             quantity: { gt: 0 },
         },
@@ -101,7 +101,7 @@ async function getExpiringBatches(days = 30) {
     });
 }
 async function getExpiryPage(filter = "30d") {
-    const { tenantId } = infrastructure_1.tenantContext.get();
+    const { tenantId } = core_1.tenantContext.get();
     const now = new Date();
     const days = (n) => new Date(now.getTime() + n * 24 * 60 * 60 * 1000);
     const where = { tenantId };
@@ -123,14 +123,14 @@ async function getExpiryPage(filter = "30d") {
     else {
         where.quantity = { gt: 0 };
     }
-    const batches = await infrastructure_1.prisma.productBatch.findMany({
+    const batches = await core_1.prisma.productBatch.findMany({
         where,
         include: {
             product: { select: { name: true, unit: true, category: true } },
         },
         orderBy: { expiryDate: "asc" },
     });
-    const all = await infrastructure_1.prisma.productBatch.findMany({
+    const all = await core_1.prisma.productBatch.findMany({
         where: { tenantId },
         select: { expiryDate: true, quantity: true, purchasePrice: true },
     });
@@ -159,9 +159,9 @@ async function createProduct(data) {
         throw new Error("Price must be a non-negative number");
     if (!Number.isInteger(data.stock) || data.stock < 0)
         throw new Error("Stock must be a non-negative integer");
-    const product = await infrastructure_1.prisma.product.create({
+    const product = await core_1.prisma.product.create({
         data: {
-            tenantId: infrastructure_1.tenantContext.get().tenantId,
+            tenantId: core_1.tenantContext.get().tenantId,
             name: data.name,
             description: data.description,
             category: data.category ?? "general",
@@ -175,12 +175,12 @@ async function createProduct(data) {
             priceTier3: data.priceTier3 != null ? new library_1.Decimal(data.priceTier3) : null,
         },
     });
-    infrastructure_1.logger.info({ productId: product.id, name: product.name }, "Product created");
+    core_1.logger.info({ productId: product.id, name: product.name }, "Product created");
     return product;
 }
 async function updateProduct(productId, data) {
-    const { tenantId } = infrastructure_1.tenantContext.get();
-    const existing = await infrastructure_1.prisma.product.findFirst({
+    const { tenantId } = core_1.tenantContext.get();
+    const existing = await core_1.prisma.product.findFirst({
         where: { id: productId, tenantId },
     });
     if (!existing)
@@ -223,17 +223,17 @@ async function updateProduct(productId, data) {
         updateData.cost = data.cost != null ? new library_1.Decimal(data.cost) : null;
     if (data.mrp !== undefined)
         updateData.mrp = data.mrp != null ? new library_1.Decimal(data.mrp) : null;
-    const product = await infrastructure_1.prisma.product.update({
+    const product = await core_1.prisma.product.update({
         where: { id: productId },
         data: updateData,
     });
-    infrastructure_1.logger.info({ productId, fields: Object.keys(updateData) }, "Product updated");
+    core_1.logger.info({ productId, fields: Object.keys(updateData) }, "Product updated");
     return product;
 }
 async function updateProductStock(productId, quantity, operation) {
-    const { tenantId } = infrastructure_1.tenantContext.get();
+    const { tenantId } = core_1.tenantContext.get();
     if (operation === "subtract") {
-        const current = await infrastructure_1.prisma.product.findFirst({
+        const current = await core_1.prisma.product.findFirst({
             where: { id: productId, tenantId },
             select: { stock: true, name: true },
         });
@@ -242,32 +242,32 @@ async function updateProductStock(productId, quantity, operation) {
         if (current.stock < quantity)
             throw new Error(`Insufficient stock: ${current.stock} available for "${current.name}"`);
     }
-    const product = await infrastructure_1.prisma.product.update({
+    const product = await core_1.prisma.product.update({
         where: { id: productId },
         data: {
             stock: operation === "add" ? { increment: quantity } : { decrement: quantity },
         },
     });
-    infrastructure_1.logger.info({ productId, quantity, operation }, "Stock updated");
+    core_1.logger.info({ productId, quantity, operation }, "Stock updated");
     return product;
 }
 async function writeOffBatch(batchId) {
-    const { tenantId } = infrastructure_1.tenantContext.get();
-    const batch = await infrastructure_1.prisma.productBatch.findFirst({
+    const { tenantId } = core_1.tenantContext.get();
+    const batch = await core_1.prisma.productBatch.findFirst({
         where: { id: batchId, tenantId },
     });
     if (!batch)
         throw new Error("Batch not found");
-    await infrastructure_1.prisma.productBatch.update({
+    await core_1.prisma.productBatch.update({
         where: { id: batchId },
         data: { quantity: 0, status: "written_off" },
     });
-    const prod = await infrastructure_1.prisma.product.findUnique({
+    const prod = await core_1.prisma.product.findUnique({
         where: { id: batch.productId },
         select: { stock: true },
     });
     const prevStock = prod?.stock ?? 0;
-    await infrastructure_1.prisma.stockMovement
+    await core_1.prisma.stockMovement
         .create({
         data: {
             tenantId,
@@ -283,7 +283,7 @@ async function writeOffBatch(batchId) {
         .catch(() => {
         /* stockMovement table may not exist yet */
     });
-    infrastructure_1.logger.info({ batchId, productId: batch.productId }, "Batch written off");
+    core_1.logger.info({ batchId, productId: batch.productId }, "Batch written off");
     return { ok: true, batchId };
 }
 //# sourceMappingURL=product.js.map

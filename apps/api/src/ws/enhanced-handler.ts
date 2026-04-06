@@ -1,7 +1,7 @@
 import { FastifyRequest } from 'fastify';
 import { WebSocket, type RawData } from 'ws';
-import { logger } from '@execora/infrastructure';
-import { verifyAccessToken } from '@execora/infrastructure';
+import { logger } from '@execora/core';
+import { verifyAccessToken } from '@execora/core';
 import { broadcaster } from './broadcaster';
 import { openaiService } from '@execora/modules';
 import { businessEngine } from '@execora/modules';
@@ -10,7 +10,7 @@ import { ttsService } from '@execora/modules';
 import { voiceSessionService } from '@execora/modules';
 import { conversationMemory } from '@execora/modules';
 import { WSMessage, WSMessageType, IntentExtraction, IntentType } from '@execora/types';
-import { websocketConnections, voiceCommandsProcessed } from '@execora/infrastructure';
+import { websocketConnections, voiceCommandsProcessed } from '@execora/core';
 import { responseTemplateService } from '@execora/modules';
 import { LiveTranscriptionSession } from '@execora/modules';
 

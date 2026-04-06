@@ -120,7 +120,7 @@ This starts in order (respecting `depends_on` + health checks):
 ### Step 4 — Seed product catalog (first time only)
 
 ```bash
-docker compose exec app npx ts-node prisma/seed.ts
+docker compose exec app npx ts-node packages/db/seed.ts
 # OR if dist is built:
 docker compose exec app node -e "require('./dist/prisma/seed')"
 ```
@@ -128,7 +128,7 @@ docker compose exec app node -e "require('./dist/prisma/seed')"
 Or run seed locally pointing at the container DB:
 
 ```bash
-DATABASE_URL=postgresql://execora:execora@localhost:5432/execora npx tsx prisma/seed.ts
+DATABASE_URL=postgresql://execora:execora@localhost:5432/execora npx tsx packages/db/seed.ts
 ```
 
 ### Step 5 — Verify
@@ -337,8 +337,8 @@ Login: `minioadmin` / `minioadmin`
 ### On First Deploy (Automated)
 
 The `app` container runs `prisma migrate deploy` on startup, which:
-1. Creates all tables defined in `prisma/schema.prisma`
-2. Applies any pending migrations from `prisma/migrations/`
+1. Creates all tables defined in `packages/db/schema.prisma`
+2. Applies any pending migrations from `packages/db/migrations/`
 3. Runs `bootstrap.ts` on app start — creates default Tenant + User if missing
 
 ### Manual Migration Commands
@@ -737,7 +737,7 @@ npm run build       # full build
 | `npm run build` | `tsc` | Compile TypeScript |
 | `npm run start` | `node dist/index.js` | Run compiled server |
 | `npm run start:worker` | `node dist/worker/index.js` | Run compiled worker |
-| `npm run seed` | `tsx prisma/seed.ts` | Seed product catalog |
+| `npm run seed` | `tsx packages/db/seed.ts` | Seed product catalog |
 | `npm run db:generate` | `prisma generate` | Regenerate Prisma client |
 | `npm run db:push` | `prisma db push` | Push schema (dev, no migration) |
 | `npm run db:migrate` | `prisma migrate dev` | Create + apply migration |

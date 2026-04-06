@@ -16,12 +16,12 @@ exports.executeRecordMixedPayment = executeRecordMixedPayment;
  *         SHOW_PENDING_INVOICE, TOGGLE_GST, PROVIDE_EMAIL / SEND_INVOICE,
  *         ADD_DISCOUNT, SET_SUPPLY_TYPE, SET_PRICE_TIER
  */
-const infrastructure_1 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
 const invoice_service_1 = require("../../invoice/invoice.service");
 const customer_service_1 = require("../../customer/customer.service");
 const ledger_service_1 = require("../../ledger/ledger.service");
-const infrastructure_2 = require("@execora/infrastructure");
-const infrastructure_3 = require("@execora/infrastructure");
+const core_2 = require("@execora/core");
+const core_3 = require("@execora/core");
 const conversation_1 = require("../conversation");
 const shared_1 = require("./shared");
 // ── CREATE_INVOICE ───────────────────────────────────────────────────────────
@@ -335,19 +335,19 @@ async function executeProvideEmail(entities, conversationId) {
     let freshPdfUrl = pending.pdfUrl || undefined;
     if (pending.pdfObjectKey) {
         try {
-            freshPdfUrl = await infrastructure_3.minioClient.getPresignedUrl(pending.pdfObjectKey, 7 * 24 * 60 * 60);
+            freshPdfUrl = await core_3.minioClient.getPresignedUrl(pending.pdfObjectKey, 7 * 24 * 60 * 60);
             await invoice_service_1.invoiceService.savePdfUrl(pending.invoiceId, pending.pdfObjectKey, freshPdfUrl);
         }
         catch (err) {
-            infrastructure_1.logger.error({ err, invoiceId: pending.invoiceId }, 'Failed to refresh invoice PDF presigned URL');
+            core_1.logger.error({ err, invoiceId: pending.invoiceId }, 'Failed to refresh invoice PDF presigned URL');
         }
     }
     const shopName = process.env.SHOP_NAME || 'Execora Shop';
-    await infrastructure_2.emailService.sendInvoiceEmail(rawEmail, pending.customerName, pending.invoiceId, pending.items, pending.total, shopName, undefined, freshPdfUrl, pending.invoiceNo || pending.invoiceId);
+    await core_2.emailService.sendInvoiceEmail(rawEmail, pending.customerName, pending.invoiceId, pending.items, pending.total, shopName, undefined, freshPdfUrl, pending.invoiceNo || pending.invoiceId);
     if (conversationId)
         await conversation_1.conversationMemory.setContext(conversationId, 'pendingInvoiceEmail', null);
     await conversation_1.conversationMemory.setShopPendingEmail(null);
-    infrastructure_1.logger.info({ conversationId, customerId: pending.customerId, email: rawEmail }, 'Invoice email sent after PROVIDE_EMAIL turn');
+    core_1.logger.info({ conversationId, customerId: pending.customerId, email: rawEmail }, 'Invoice email sent after PROVIDE_EMAIL turn');
     return {
         success: true,
         message: `Invoice email ${rawEmail} par bhej diya gaya. ${pending.customerName} ka email bhi save ho gaya.`,

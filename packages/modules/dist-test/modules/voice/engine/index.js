@@ -16,7 +16,7 @@ exports.businessEngine = void 0;
  *   product.handler.ts  — UPDATE_STOCK
  *   shared.ts           — resolveCustomer, formatItemsSummary, buildAndStoreInvoicePdf, sendConfirmedInvoiceEmail
  */
-const infrastructure_1 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
 const types_1 = require("@execora/types");
 const invoice_handler_1 = require("./invoice.handler");
 const customer_handler_1 = require("./customer.handler");
@@ -27,7 +27,7 @@ const product_handler_1 = require("./product.handler");
 class BusinessEngine {
     async execute(intent, conversationId) {
         try {
-            infrastructure_1.logger.info({ intent: intent.intent, entities: intent.entities, conversationId }, "Executing intent");
+            core_1.logger.info({ intent: intent.intent, entities: intent.entities, conversationId }, "Executing intent");
             const e = intent.entities;
             const id = conversationId;
             switch (intent.intent) {
@@ -122,7 +122,7 @@ class BusinessEngine {
             }
         }
         catch (error) {
-            infrastructure_1.logger.error({ error, intent, conversationId }, "Business execution failed");
+            core_1.logger.error({ error, intent, conversationId }, "Business execution failed");
             return {
                 success: false,
                 message: "Execution failed",

@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
-import { prisma } from '@execora/infrastructure';
-import { checkRedisHealth, reminderQueue, whatsappQueue, mediaQueue, ocrJobQueue } from '@execora/infrastructure';
+import { prisma } from '@execora/core';
+import { checkRedisHealth, reminderQueue, whatsappQueue, mediaQueue, ocrJobQueue } from '@execora/core';
 import { createBullBoard } from '@bull-board/api';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { FastifyAdapter } from '@bull-board/fastify';

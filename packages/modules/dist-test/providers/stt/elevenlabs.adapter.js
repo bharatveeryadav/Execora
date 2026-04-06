@@ -7,8 +7,8 @@ exports.elevenLabsSTTAdapter = exports.ElevenLabsSTTAdapter = void 0;
 const axios_1 = __importDefault(require("axios"));
 const form_data_1 = __importDefault(require("form-data"));
 const ws_1 = __importDefault(require("ws"));
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
 /**
  * ElevenLabs STT adapter.
  * Supports both live transcription (WebSocket) and batch transcription (REST).
@@ -24,12 +24,12 @@ class ElevenLabsSTTAdapter {
     apiKey;
     baseUrl = 'https://api.elevenlabs.io/v1';
     constructor() {
-        this.apiKey = infrastructure_1.config.stt.elevenlabs.apiKey ?? '';
+        this.apiKey = core_1.config.stt.elevenlabs.apiKey ?? '';
         if (this.apiKey) {
-            infrastructure_2.logger.info('ElevenLabs STT adapter initialized');
+            core_2.logger.info('ElevenLabs STT adapter initialized');
         }
         else {
-            infrastructure_2.logger.warn('ELEVENLABS_API_KEY not set — ElevenLabs STT unavailable');
+            core_2.logger.warn('ELEVENLABS_API_KEY not set — ElevenLabs STT unavailable');
         }
     }
     isAvailable() {
@@ -39,18 +39,18 @@ class ElevenLabsSTTAdapter {
         if (!this.apiKey)
             throw new Error('ElevenLabs API key not configured');
         const url = new URL('wss://api.elevenlabs.io/v1/speech-to-text/realtime');
-        url.searchParams.set('model_id', infrastructure_1.config.stt.elevenlabs.realtimeModelId);
+        url.searchParams.set('model_id', core_1.config.stt.elevenlabs.realtimeModelId);
         url.searchParams.set('audio_format', 'pcm_16000');
         url.searchParams.set('commit_strategy', 'vad');
-        if (infrastructure_1.config.stt.elevenlabs.languageCode) {
-            url.searchParams.set('language_code', infrastructure_1.config.stt.elevenlabs.languageCode);
+        if (core_1.config.stt.elevenlabs.languageCode) {
+            url.searchParams.set('language_code', core_1.config.stt.elevenlabs.languageCode);
         }
         const ws = new ws_1.default(url.toString(), { headers: { 'xi-api-key': this.apiKey } });
         let isFinishing = false;
         let closeTimeout = null;
-        ws.on('open', () => infrastructure_2.logger.info('ElevenLabs realtime STT connected'));
+        ws.on('open', () => core_2.logger.info('ElevenLabs realtime STT connected'));
         ws.on('close', (code, reason) => {
-            infrastructure_2.logger.warn({ code, reason: reason?.toString() }, 'ElevenLabs realtime STT connection closed');
+            core_2.logger.warn({ code, reason: reason?.toString() }, 'ElevenLabs realtime STT connection closed');
             if (closeTimeout)
                 clearTimeout(closeTimeout);
         });
@@ -59,7 +59,7 @@ class ElevenLabsSTTAdapter {
                 const payload = JSON.parse(data.toString());
                 const messageType = payload?.message_type;
                 if (messageType === 'session_started') {
-                    infrastructure_2.logger.info({ sessionId: payload?.session_id }, 'ElevenLabs STT session started');
+                    core_2.logger.info({ sessionId: payload?.session_id }, 'ElevenLabs STT session started');
                     return;
                 }
                 if (messageType === 'partial_transcript') {
@@ -69,7 +69,7 @@ class ElevenLabsSTTAdapter {
                 }
                 if (messageType === 'committed_transcript' || messageType === 'committed_transcript_with_timestamps') {
                     if (payload.text) {
-                        infrastructure_2.logger.info({ text: payload.text }, 'ElevenLabs final transcript received');
+                        core_2.logger.info({ text: payload.text }, 'ElevenLabs final transcript received');
                         onTranscript(payload.text, true);
                     }
                     if (isFinishing) {
@@ -89,7 +89,7 @@ class ElevenLabsSTTAdapter {
             }
         });
         ws.on('error', (err) => {
-            infrastructure_2.logger.error({ error: err }, 'ElevenLabs realtime STT socket error');
+            core_2.logger.error({ error: err }, 'ElevenLabs realtime STT socket error');
             onError(err);
         });
         return {
@@ -104,7 +104,7 @@ class ElevenLabsSTTAdapter {
             },
             finish: () => {
                 if (ws.readyState !== ws_1.default.OPEN) {
-                    infrastructure_2.logger.warn('ElevenLabs STT connection not open, cannot finish');
+                    core_2.logger.warn('ElevenLabs STT connection not open, cannot finish');
                     return;
                 }
                 isFinishing = true;
@@ -117,7 +117,7 @@ class ElevenLabsSTTAdapter {
                 if (closeTimeout)
                     clearTimeout(closeTimeout);
                 closeTimeout = setTimeout(() => {
-                    infrastructure_2.logger.warn('Timeout waiting for final transcript, closing ElevenLabs STT connection');
+                    core_2.logger.warn('Timeout waiting for final transcript, closing ElevenLabs STT connection');
                     if (ws.readyState !== ws_1.default.CLOSED)
                         ws.close();
                 }, 5000);
@@ -128,9 +128,9 @@ class ElevenLabsSTTAdapter {
         if (!this.apiKey)
             throw new Error('ElevenLabs API key not configured');
         const form = new form_data_1.default();
-        form.append('model_id', infrastructure_1.config.stt.elevenlabs.modelId);
-        if (infrastructure_1.config.stt.elevenlabs.languageCode) {
-            form.append('language_code', infrastructure_1.config.stt.elevenlabs.languageCode);
+        form.append('model_id', core_1.config.stt.elevenlabs.modelId);
+        if (core_1.config.stt.elevenlabs.languageCode) {
+            form.append('language_code', core_1.config.stt.elevenlabs.languageCode);
         }
         form.append('file', audioBuffer, { filename: 'audio.webm', contentType: mimeType });
         const response = await axios_1.default.post(`${this.baseUrl}/speech-to-text`, form, {
@@ -139,7 +139,7 @@ class ElevenLabsSTTAdapter {
             maxContentLength: Infinity,
         });
         const transcript = response.data?.text ?? '';
-        infrastructure_2.logger.info({ length: transcript.length }, 'ElevenLabs transcription complete');
+        core_2.logger.info({ length: transcript.length }, 'ElevenLabs transcription complete');
         return transcript;
     }
 }

@@ -9,7 +9,7 @@ const engine_1 = require("../modules/voice/engine");
 const customer_service_1 = require("../modules/customer/customer.service");
 const ledger_service_1 = require("../modules/ledger/ledger.service");
 const types_1 = require("@execora/types");
-const infrastructure_1 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
 function patchMethod(obj, key, value) {
     const original = obj[key];
     obj[key] = value;
@@ -173,7 +173,7 @@ function buildIntent(intent, entities) {
 node_test_1.default.after(async () => {
     try {
         // Force exit after tests to avoid hanging promises
-        await (0, infrastructure_1.disconnectDB)();
+        await (0, core_1.disconnectDB)();
     }
     catch (error) {
         console.error('Error during cleanup:', error);

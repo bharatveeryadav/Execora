@@ -24,9 +24,9 @@ import { invoiceService } from '../modules/invoice/invoice.service';
 import { reminderService } from '../modules/reminder/reminder.service';
 import { productService } from '../modules/product/product.service';
 import { conversationMemory } from '../modules/voice/conversation';
-import { emailService } from '@execora/infrastructure';
+import { emailService } from '@execora/core';
 import { IntentType, type IntentExtraction } from '@execora/types';
-import { disconnectDB } from '@execora/infrastructure';
+import { disconnectDB } from '@execora/core';
 import { patchMethod, restoreAll, type RestoreFn } from './helpers/fixtures';
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────

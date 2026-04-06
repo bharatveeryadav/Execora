@@ -8,7 +8,7 @@ exports.listPurchases = listPurchases;
 exports.createPurchase = createPurchase;
 exports.deletePurchase = deletePurchase;
 exports.getCashbook = getCashbook;
-const infrastructure_1 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
 const client_1 = require("@prisma/client");
 // ─── Internal helper ──────────────────────────────────────────────────────────
 function parseDateRange(from, to) {
@@ -25,7 +25,7 @@ async function listExpenses(tenantId, opts = {}) {
     const take = Math.min(limit, 500);
     const { f, t } = parseDateRange(from, to);
     const expenseType = typeFilter === "income" ? "income" : "expense";
-    const expenses = await infrastructure_1.prisma.expense.findMany({
+    const expenses = await core_1.prisma.expense.findMany({
         where: {
             tenantId,
             type: expenseType,
@@ -42,7 +42,7 @@ async function listExpenses(tenantId, opts = {}) {
     return { expenses, total, count: expenses.length };
 }
 async function createExpense(tenantId, body) {
-    return infrastructure_1.prisma.expense.create({
+    return core_1.prisma.expense.create({
         data: {
             tenantId,
             type: body.type ?? "expense",
@@ -56,17 +56,17 @@ async function createExpense(tenantId, body) {
 }
 /** Returns the deleted id, or null if not found. */
 async function deleteExpense(tenantId, id) {
-    const row = await infrastructure_1.prisma.expense.findFirst({
+    const row = await core_1.prisma.expense.findFirst({
         where: { id, tenantId, type: { in: ["expense", "income"] } },
     });
     if (!row)
         return null;
-    await infrastructure_1.prisma.expense.delete({ where: { id: row.id } });
+    await core_1.prisma.expense.delete({ where: { id: row.id } });
     return row.id;
 }
 async function getExpenseSummary(tenantId, from, to) {
     const { f, t } = parseDateRange(from, to);
-    const rows = await infrastructure_1.prisma.expense.findMany({
+    const rows = await core_1.prisma.expense.findMany({
         where: { tenantId, type: "expense", date: { gte: f, lte: t } },
         select: { category: true, amount: true },
     });
@@ -85,7 +85,7 @@ async function listPurchases(tenantId, opts = {}) {
     const take = Math.min(limit, 500);
     const sup = (supplier ?? "").trim();
     const { f, t } = parseDateRange(from, to);
-    const purchases = await infrastructure_1.prisma.expense.findMany({
+    const purchases = await core_1.prisma.expense.findMany({
         where: {
             tenantId,
             type: "purchase",
@@ -99,7 +99,7 @@ async function listPurchases(tenantId, opts = {}) {
     return { purchases, total, count: purchases.length };
 }
 async function createPurchase(tenantId, body) {
-    return infrastructure_1.prisma.expense.create({
+    return core_1.prisma.expense.create({
         data: {
             tenantId,
             type: "purchase",
@@ -119,24 +119,24 @@ async function createPurchase(tenantId, body) {
 }
 /** Returns the deleted id, or null if not found. */
 async function deletePurchase(tenantId, id) {
-    const row = await infrastructure_1.prisma.expense.findFirst({
+    const row = await core_1.prisma.expense.findFirst({
         where: { id, tenantId, type: "purchase" },
     });
     if (!row)
         return null;
-    await infrastructure_1.prisma.expense.delete({ where: { id: row.id } });
+    await core_1.prisma.expense.delete({ where: { id: row.id } });
     return row.id;
 }
 // ─── Cashbook ─────────────────────────────────────────────────────────────────
 async function getCashbook(tenantId, from, to) {
     const { f, t } = parseDateRange(from, to);
     const [payments, expenses] = await Promise.all([
-        infrastructure_1.prisma.payment.findMany({
+        core_1.prisma.payment.findMany({
             where: { tenantId, receivedAt: { gte: f, lte: t } },
             include: { customer: { select: { name: true } } },
             orderBy: { receivedAt: "desc" },
         }),
-        infrastructure_1.prisma.expense.findMany({
+        core_1.prisma.expense.findMany({
             where: { tenantId, date: { gte: f, lte: t } },
             orderBy: { date: "desc" },
         }),

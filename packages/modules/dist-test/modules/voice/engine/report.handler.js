@@ -8,25 +8,25 @@ exports.executeExportPnl = executeExportPnl;
  * Report and query intent handlers.
  * Covers: DAILY_SUMMARY, CHECK_STOCK, EXPORT_GSTR1, EXPORT_PNL
  */
-const infrastructure_1 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
 const invoice_service_1 = require("../../invoice/invoice.service");
 const product_service_1 = require("../../product/product.service");
-const infrastructure_2 = require("@execora/infrastructure");
+const core_2 = require("@execora/core");
 const gstr1_service_1 = require("../../gst/gstr1.service");
 // ── DAILY_SUMMARY ────────────────────────────────────────────────────────────
 async function executeDailySummary() {
     const summary = await invoice_service_1.invoiceService.getDailySummary();
     const adminEmail = process.env.ADMIN_EMAIL;
-    if (adminEmail && infrastructure_2.emailService.isEnabled()) {
+    if (adminEmail && core_2.emailService.isEnabled()) {
         const today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-        infrastructure_2.emailService.sendDailySummaryEmail(adminEmail, {
+        core_2.emailService.sendDailySummaryEmail(adminEmail, {
             date: today,
             totalSales: Number(summary.totalSales ?? 0),
             invoiceCount: Number(summary.invoiceCount ?? 0),
             paymentsReceived: Number(summary.totalPayments ?? 0),
             pendingAmount: Number(summary.pendingAmount ?? 0),
             newCustomers: 0,
-        }).catch((err) => infrastructure_1.logger.error({ err }, 'Failed to send daily summary email'));
+        }).catch((err) => core_1.logger.error({ err }, 'Failed to send daily summary email'));
     }
     const extraPayments = summary.extraPayments ?? 0;
     const summaryMsg = [
@@ -56,7 +56,7 @@ async function executeCheckStock(entities) {
 }
 // ── EXPORT_GSTR1 ──────────────────────────────────────────────────────────────
 async function executeExportGstr1(entities) {
-    const { tenantId } = infrastructure_1.tenantContext.get();
+    const { tenantId } = core_1.tenantContext.get();
     // Resolve date range: FY from entities or default to current FY
     let from, to;
     if (entities.fy) {
@@ -75,7 +75,7 @@ async function executeExportGstr1(entities) {
     }
     const report = await gstr1_service_1.gstr1Service.getGstr1Report(tenantId, from, to);
     const { totals } = report;
-    const canEmail = infrastructure_2.emailService.isEnabled();
+    const canEmail = core_2.emailService.isEnabled();
     const adminEmail = entities.email ?? process.env.ADMIN_EMAIL;
     const msg = [
         `GSTR-1 FY ${report.fy}: ${totals.invoiceCount} invoices,`,
@@ -85,7 +85,7 @@ async function executeExportGstr1(entities) {
             ? `Reports tab se email karo ya PDF download karo.`
             : 'Reports tab se PDF download karo.',
     ].join(' ');
-    infrastructure_1.logger.info({ tenantId, fy: report.fy, invoiceCount: totals.invoiceCount }, 'EXPORT_GSTR1 intent executed');
+    core_1.logger.info({ tenantId, fy: report.fy, invoiceCount: totals.invoiceCount }, 'EXPORT_GSTR1 intent executed');
     return {
         success: true,
         message: msg,
@@ -101,7 +101,7 @@ async function executeExportGstr1(entities) {
 }
 // ── EXPORT_PNL ────────────────────────────────────────────────────────────────
 async function executeExportPnl(entities) {
-    const { tenantId } = infrastructure_1.tenantContext.get();
+    const { tenantId } = core_1.tenantContext.get();
     // Resolve date range — supports "month" entity or explicit from/to
     let from, to;
     const monthNames = {
@@ -133,7 +133,7 @@ async function executeExportPnl(entities) {
     const { totals } = report;
     const collectionRate = totals.collectionRate.toFixed(1);
     const monthLabel = from.toLocaleString('en-IN', { month: 'short', year: 'numeric' });
-    const canEmail = infrastructure_2.emailService.isEnabled();
+    const canEmail = core_2.emailService.isEnabled();
     const msg = [
         `P&L ${monthLabel}:`,
         `Revenue ₹${totals.revenue.toLocaleString('en-IN')},`,
@@ -141,7 +141,7 @@ async function executeExportPnl(entities) {
         totals.outstanding > 0 ? `₹${totals.outstanding.toLocaleString('en-IN')} baki hai.` : 'Sab clear hai.',
         canEmail ? 'Reports tab se email ya PDF download karo.' : 'Reports tab se download karo.',
     ].join(' ');
-    infrastructure_1.logger.info({ tenantId, from: from.toISOString(), totals }, 'EXPORT_PNL intent executed');
+    core_1.logger.info({ tenantId, from: from.toISOString(), totals }, 'EXPORT_PNL intent executed');
     return {
         success: true,
         message: msg,

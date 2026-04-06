@@ -1,2 +1,2 @@
-export { whatsappService, WhatsAppMessageResponse } from '@execora/infrastructure';
+export { whatsappService, WhatsAppMessageResponse } from '@execora/core';
 //# sourceMappingURL=whatsapp.d.ts.map

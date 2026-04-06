@@ -17,12 +17,13 @@ WORKDIR /app
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY packages/types/package.json           ./packages/types/package.json
 COPY packages/infrastructure/package.json  ./packages/infrastructure/package.json
+COPY packages/db/package.json              ./packages/db/package.json
 COPY packages/modules/package.json         ./packages/modules/package.json
 COPY apps/worker/package.json              ./apps/worker/package.json
 
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
-COPY prisma ./prisma/
+COPY packages/db ./packages/db/
 RUN pnpm db:generate
 
 COPY packages/types/src           ./packages/types/src
@@ -54,9 +55,10 @@ WORKDIR /app
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY packages/types/package.json           ./packages/types/package.json
 COPY packages/infrastructure/package.json  ./packages/infrastructure/package.json
+COPY packages/db/package.json              ./packages/db/package.json
 COPY packages/modules/package.json         ./packages/modules/package.json
 COPY apps/worker/package.json              ./apps/worker/package.json
-COPY --from=builder /app/prisma            ./prisma
+COPY --from=builder /app/packages/db       ./packages/db
 
 RUN pnpm install --frozen-lockfile --prod
 RUN pnpm db:generate

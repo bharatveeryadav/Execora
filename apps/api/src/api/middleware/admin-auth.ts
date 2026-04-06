@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { config } from '@execora/infrastructure';
-import { logger } from '@execora/infrastructure';
+import { config } from '@execora/core';
+import { logger } from '@execora/core';
 
 /**
  * Admin API-key preHandler.

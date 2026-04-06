@@ -7,20 +7,20 @@ exports.elevenLabsSTTService = void 0;
 const axios_1 = __importDefault(require("axios"));
 const form_data_1 = __importDefault(require("form-data"));
 const ws_1 = __importDefault(require("ws"));
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
 class ElevenLabsSTTService {
     apiKey;
     isAvailable = false;
     baseUrl = 'https://api.elevenlabs.io/v1';
     constructor() {
-        this.apiKey = infrastructure_1.config.stt.elevenlabs.apiKey || '';
+        this.apiKey = core_1.config.stt.elevenlabs.apiKey || '';
         this.isAvailable = !!this.apiKey;
         if (this.isAvailable) {
-            infrastructure_2.logger.info('ElevenLabs STT initialized');
+            core_2.logger.info('ElevenLabs STT initialized');
         }
         else {
-            infrastructure_2.logger.warn('ElevenLabs API key not provided - STT disabled');
+            core_2.logger.warn('ElevenLabs API key not provided - STT disabled');
         }
     }
     /**
@@ -37,11 +37,11 @@ class ElevenLabsSTTService {
             throw new Error('ElevenLabs STT service not available');
         }
         const url = new URL('wss://api.elevenlabs.io/v1/speech-to-text/realtime');
-        url.searchParams.set('model_id', infrastructure_1.config.stt.elevenlabs.realtimeModelId);
+        url.searchParams.set('model_id', core_1.config.stt.elevenlabs.realtimeModelId);
         url.searchParams.set('audio_format', 'pcm_16000');
         url.searchParams.set('commit_strategy', 'vad');
-        if (infrastructure_1.config.stt.elevenlabs.languageCode) {
-            url.searchParams.set('language_code', infrastructure_1.config.stt.elevenlabs.languageCode);
+        if (core_1.config.stt.elevenlabs.languageCode) {
+            url.searchParams.set('language_code', core_1.config.stt.elevenlabs.languageCode);
         }
         const ws = new ws_1.default(url.toString(), {
             headers: {
@@ -51,10 +51,10 @@ class ElevenLabsSTTService {
         let isFinishing = false;
         let closeTimeout = null;
         ws.on('open', () => {
-            infrastructure_2.logger.info('🎤 ElevenLabs realtime STT connected');
+            core_2.logger.info('🎤 ElevenLabs realtime STT connected');
         });
         ws.on('close', (code, reason) => {
-            infrastructure_2.logger.warn({ code, reason: reason?.toString() }, '❌ ElevenLabs realtime STT connection closed');
+            core_2.logger.warn({ code, reason: reason?.toString() }, '❌ ElevenLabs realtime STT connection closed');
             if (closeTimeout) {
                 clearTimeout(closeTimeout);
             }
@@ -64,19 +64,19 @@ class ElevenLabsSTTService {
                 const payload = JSON.parse(data.toString());
                 const messageType = payload?.message_type;
                 if (messageType === 'session_started') {
-                    infrastructure_2.logger.info({ sessionId: payload?.session_id }, '✅ ElevenLabs STT session started');
+                    core_2.logger.info({ sessionId: payload?.session_id }, '✅ ElevenLabs STT session started');
                     return;
                 }
                 if (messageType === 'partial_transcript') {
                     if (payload.text) {
-                        infrastructure_2.logger.debug({ text: payload.text.substring(0, 50) }, '📝 ElevenLabs partial transcript');
+                        core_2.logger.debug({ text: payload.text.substring(0, 50) }, '📝 ElevenLabs partial transcript');
                         onTranscript(payload.text, false);
                     }
                     return;
                 }
                 if (messageType === 'committed_transcript' || messageType === 'committed_transcript_with_timestamps') {
                     if (payload.text) {
-                        infrastructure_2.logger.info({ text: payload.text }, '✅ ElevenLabs FINAL transcript received');
+                        core_2.logger.info({ text: payload.text }, '✅ ElevenLabs FINAL transcript received');
                         onTranscript(payload.text, true);
                     }
                     if (isFinishing) {
@@ -93,7 +93,7 @@ class ElevenLabsSTTService {
                 }
                 if (messageType && messageType.endsWith('_error')) {
                     const errorMessage = payload?.message || 'ElevenLabs realtime STT error';
-                    infrastructure_2.logger.error({ error: errorMessage }, '❌ ElevenLabs STT error');
+                    core_2.logger.error({ error: errorMessage }, '❌ ElevenLabs STT error');
                     onError(new Error(errorMessage));
                 }
             }
@@ -102,7 +102,7 @@ class ElevenLabsSTTService {
             }
         });
         ws.on('error', (error) => {
-            infrastructure_2.logger.error({ error }, '❌ ElevenLabs realtime STT socket error');
+            core_2.logger.error({ error }, '❌ ElevenLabs realtime STT socket error');
             onError(error);
         });
         return {
@@ -119,10 +119,10 @@ class ElevenLabsSTTService {
             },
             finish: () => {
                 if (ws.readyState !== ws_1.default.OPEN) {
-                    infrastructure_2.logger.warn('❌ STT connection not open, cannot finish');
+                    core_2.logger.warn('❌ STT connection not open, cannot finish');
                     return;
                 }
-                infrastructure_2.logger.info('📤 Sending commit signal to ElevenLabs STT');
+                core_2.logger.info('📤 Sending commit signal to ElevenLabs STT');
                 isFinishing = true;
                 // Send commit signal
                 ws.send(JSON.stringify({
@@ -136,7 +136,7 @@ class ElevenLabsSTTService {
                     clearTimeout(closeTimeout);
                 }
                 closeTimeout = setTimeout(() => {
-                    infrastructure_2.logger.warn('⏱️ Timeout waiting for final transcript, closing connection');
+                    core_2.logger.warn('⏱️ Timeout waiting for final transcript, closing connection');
                     if (ws.readyState !== ws_1.default.CLOSED) {
                         ws.close();
                     }
@@ -153,9 +153,9 @@ class ElevenLabsSTTService {
         }
         try {
             const form = new form_data_1.default();
-            form.append('model_id', infrastructure_1.config.stt.elevenlabs.modelId);
-            if (infrastructure_1.config.stt.elevenlabs.languageCode) {
-                form.append('language_code', infrastructure_1.config.stt.elevenlabs.languageCode);
+            form.append('model_id', core_1.config.stt.elevenlabs.modelId);
+            if (core_1.config.stt.elevenlabs.languageCode) {
+                form.append('language_code', core_1.config.stt.elevenlabs.languageCode);
             }
             form.append('file', audioBuffer, {
                 filename: 'audio.webm',
@@ -170,11 +170,11 @@ class ElevenLabsSTTService {
                 maxContentLength: Infinity,
             });
             const transcript = response.data?.text || '';
-            infrastructure_2.logger.info({ length: transcript.length }, 'ElevenLabs transcription complete');
+            core_2.logger.info({ length: transcript.length }, 'ElevenLabs transcription complete');
             return transcript;
         }
         catch (error) {
-            infrastructure_2.logger.error({ error }, 'ElevenLabs STT failed');
+            core_2.logger.error({ error }, 'ElevenLabs STT failed');
             throw error;
         }
     }

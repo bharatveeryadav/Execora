@@ -18,7 +18,7 @@ import {
   minioClient,
   whatsappService,
   invoiceOperations,
-} from "@execora/infrastructure";
+} from "@execora/core";
 import { InvoiceItemInput } from "@execora/types";
 import { Decimal } from "@prisma/client/runtime/library";
 import { gstService, type SupplyType } from "../modules/gst/gst.service";

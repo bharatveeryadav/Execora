@@ -11,7 +11,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = __importDefault(require("node:test"));
 const strict_1 = __importDefault(require("node:assert/strict"));
 const customer_service_1 = require("../modules/customer/customer.service");
-const infrastructure_1 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
 const fixtures_1 = require("./helpers/fixtures");
 // ── createCustomer ─────────────────────────────────────────────────────────────
 (0, node_test_1.default)('createCustomer: creates a customer when name is unique', async () => {
@@ -19,8 +19,8 @@ const fixtures_1 = require("./helpers/fixtures");
     try {
         const mockCustomer = (0, fixtures_1.makeCustomer)();
         // No existing customer with that name
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'findMany', async () => []));
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'create', async () => mockCustomer));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'findMany', async () => []));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'create', async () => mockCustomer));
         const result = await customer_service_1.customerService.createCustomer({ name: 'Bharat Kumar' });
         strict_1.default.equal(result.name, 'Bharat Kumar');
         strict_1.default.equal(result.id, 'cust-test-001');
@@ -38,7 +38,7 @@ const fixtures_1 = require("./helpers/fixtures");
 (0, node_test_1.default)('createCustomer: throws when duplicate name exists', async () => {
     const restores = [];
     try {
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'findMany', async () => [{ id: 'cust-existing', name: 'Bharat Kumar' }]));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'findMany', async () => [{ id: 'cust-existing', name: 'Bharat Kumar' }]));
         await strict_1.default.rejects(() => customer_service_1.customerService.createCustomer({ name: 'Bharat Kumar' }), /already exists/i);
     }
     finally {
@@ -50,7 +50,7 @@ const fixtures_1 = require("./helpers/fixtures");
     const restores = [];
     try {
         const mockCustomer = (0, fixtures_1.makeCustomer)({ invoices: [{ id: 'inv-1' }], reminders: [] });
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'findFirst', async () => mockCustomer));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'findFirst', async () => mockCustomer));
         const result = await customer_service_1.customerService.getCustomerById('cust-test-001');
         strict_1.default.ok(result !== null);
         strict_1.default.equal(result.id, 'cust-test-001');
@@ -63,7 +63,7 @@ const fixtures_1 = require("./helpers/fixtures");
 (0, node_test_1.default)('getCustomerById: returns null when not found', async () => {
     const restores = [];
     try {
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'findFirst', async () => null));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'findFirst', async () => null));
         const result = await customer_service_1.customerService.getCustomerById('nonexistent');
         strict_1.default.equal(result, null);
     }
@@ -76,7 +76,7 @@ const fixtures_1 = require("./helpers/fixtures");
     const restores = [];
     try {
         const updated = (0, fixtures_1.makeCustomer)({ balance: (0, fixtures_1.dec)(700) });
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'update', async () => updated));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'update', async () => updated));
         const result = await customer_service_1.customerService.updateBalance('cust-test-001', 200);
         strict_1.default.ok(result !== null);
         strict_1.default.equal(result.id, 'cust-test-001');
@@ -95,7 +95,7 @@ const fixtures_1 = require("./helpers/fixtures");
 (0, node_test_1.default)('getBalance: returns numeric balance from prisma', async () => {
     const restores = [];
     try {
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'findUnique', async () => ({ balance: (0, fixtures_1.dec)(450) })));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'findUnique', async () => ({ balance: (0, fixtures_1.dec)(450) })));
         const balance = await customer_service_1.customerService.getBalance('cust-test-001');
         strict_1.default.equal(balance, 450);
     }
@@ -106,7 +106,7 @@ const fixtures_1 = require("./helpers/fixtures");
 (0, node_test_1.default)('getBalance: returns 0 when customer not found', async () => {
     const restores = [];
     try {
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'findUnique', async () => null));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'findUnique', async () => null));
         const balance = await customer_service_1.customerService.getBalance('nonexistent');
         strict_1.default.equal(balance, 0);
     }
@@ -118,7 +118,7 @@ const fixtures_1 = require("./helpers/fixtures");
 (0, node_test_1.default)('searchCustomer: returns empty array on prisma error', async () => {
     const restores = [];
     try {
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'findMany', async () => {
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'findMany', async () => {
             throw new Error('DB error');
         }));
         const results = await customer_service_1.customerService.searchCustomer('Bharat');
@@ -137,7 +137,7 @@ const fixtures_1 = require("./helpers/fixtures");
             (0, fixtures_1.makeCustomer)({ id: 'c1', name: 'Bharat Kumar', phone: null }),
             (0, fixtures_1.makeCustomer)({ id: 'c2', name: 'Bharat Singh', phone: null }),
         ];
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'findMany', async () => raw));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'findMany', async () => raw));
         const results = await customer_service_1.customerService.searchCustomer('Bharat');
         strict_1.default.ok(results.length >= 1);
         strict_1.default.ok(results[0].matchScore >= results[results.length - 1].matchScore, 'should be sorted desc');
@@ -150,7 +150,7 @@ const fixtures_1 = require("./helpers/fixtures");
 (0, node_test_1.default)('updateCustomer: returns true on successful update', async () => {
     const restores = [];
     try {
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'update', async () => (0, fixtures_1.makeCustomer)({ phone: '9876543210' })));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'update', async () => (0, fixtures_1.makeCustomer)({ phone: '9876543210' })));
         const ok = await customer_service_1.customerService.updateCustomer('cust-test-001', { phone: '9876543210' });
         strict_1.default.equal(ok, true);
     }
@@ -171,10 +171,10 @@ const fixtures_1 = require("./helpers/fixtures");
 (0, node_test_1.default)('calculateBalanceFromLedger: returns invoiced amount minus payments', async () => {
     const restores = [];
     try {
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.invoice, 'aggregate', async () => ({
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.invoice, 'aggregate', async () => ({
             _sum: { total: (0, fixtures_1.dec)(1500) },
         })));
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.payment, 'aggregate', async () => ({
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.payment, 'aggregate', async () => ({
             _sum: { amount: (0, fixtures_1.dec)(300) },
         })));
         const balance = await customer_service_1.customerService.calculateBalanceFromLedger('cust-001');
@@ -188,10 +188,10 @@ const fixtures_1 = require("./helpers/fixtures");
 (0, node_test_1.default)('calculateBalanceFromLedger: returns 0 when no invoices or payments', async () => {
     const restores = [];
     try {
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.invoice, 'aggregate', async () => ({
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.invoice, 'aggregate', async () => ({
             _sum: { total: null },
         })));
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.payment, 'aggregate', async () => ({
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.payment, 'aggregate', async () => ({
             _sum: { amount: null },
         })));
         const balance = await customer_service_1.customerService.calculateBalanceFromLedger('cust-001');
@@ -209,7 +209,7 @@ const fixtures_1 = require("./helpers/fixtures");
             (0, fixtures_1.makeCustomer)({ id: 'c1', name: 'Amit', balance: (0, fixtures_1.dec)(500) }),
             (0, fixtures_1.makeCustomer)({ id: 'c2', name: 'Rina', balance: (0, fixtures_1.dec)(200) }),
         ];
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'findMany', async () => customers));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'findMany', async () => customers));
         const result = await customer_service_1.customerService.getAllCustomersWithPendingBalance();
         strict_1.default.ok(Array.isArray(result));
         strict_1.default.equal(result.length, 2);
@@ -223,7 +223,7 @@ const fixtures_1 = require("./helpers/fixtures");
 (0, node_test_1.default)('getTotalPendingAmount: sums all positive balances', async () => {
     const restores = [];
     try {
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'aggregate', async () => ({ _sum: { balance: (0, fixtures_1.dec)(700) } })));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'aggregate', async () => ({ _sum: { balance: (0, fixtures_1.dec)(700) } })));
         const total = await customer_service_1.customerService.getTotalPendingAmount();
         strict_1.default.equal(total, 700);
     }

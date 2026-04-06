@@ -12,8 +12,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.withProvider = withProvider;
 exports.reportProviderAvailability = reportProviderAvailability;
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
 const errors_1 = require("./errors");
 // ─── Default retry predicate ──────────────────────────────────────────────────
 const RETRYABLE_CODES = new Set(['ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND']);
@@ -34,9 +34,9 @@ function defaultIsRetryable(err) {
 // ─── Request counter map ──────────────────────────────────────────────────────
 function getRequestCounter(type) {
     if (type === 'stt')
-        return infrastructure_2.sttRequestsTotal;
+        return core_2.sttRequestsTotal;
     if (type === 'tts')
-        return infrastructure_2.ttsRequestsTotal;
+        return core_2.ttsRequestsTotal;
     // LLM requests are recorded at the model+intent level in llmRequestsTotal — not duplicated here
     return null;
 }
@@ -61,7 +61,7 @@ async function withProvider(opts, fn) {
     for (let attempt = 0; attempt < totalAttempts; attempt++) {
         if (attempt > 0) {
             const delayMs = Math.min(200 * Math.pow(2, attempt - 1), 5_000);
-            infrastructure_1.logger.warn({ provider, operation, attempt, delayMs }, 'Provider call failed — retrying');
+            core_1.logger.warn({ provider, operation, attempt, delayMs }, 'Provider call failed — retrying');
             await sleep(delayMs);
         }
         try {
@@ -70,9 +70,9 @@ async function withProvider(opts, fn) {
             // ── Success metrics ──
             histogram?.observe({ provider }, durationSec);
             counter?.inc({ provider, operation, status: 'success' });
-            infrastructure_2.providerAvailability.set({ provider, type: providerType }, 1);
+            core_2.providerAvailability.set({ provider, type: providerType }, 1);
             if (attempt > 0) {
-                infrastructure_1.logger.info({ provider, operation, attempt }, 'Provider call succeeded after retry');
+                core_1.logger.info({ provider, operation, attempt }, 'Provider call succeeded after retry');
             }
             return result;
         }
@@ -87,8 +87,8 @@ async function withProvider(opts, fn) {
     const durationSec = (Date.now() - startMs) / 1000;
     histogram?.observe({ provider }, durationSec);
     counter?.inc({ provider, operation, status: 'error' });
-    infrastructure_2.errorCounter.inc({ service: provider, type: operation });
-    infrastructure_1.logger.error({ provider, operation, error: lastErr instanceof Error ? lastErr.message : String(lastErr) }, 'Provider call failed');
+    core_2.errorCounter.inc({ service: provider, type: operation });
+    core_1.logger.error({ provider, operation, error: lastErr instanceof Error ? lastErr.message : String(lastErr) }, 'Provider call failed');
     // Normalise into ProviderError (pass through if already one)
     throw lastErr instanceof errors_1.ProviderError || lastErr instanceof errors_1.ProviderUnavailableError
         ? lastErr
@@ -103,6 +103,6 @@ function sleep(ms) {
  * Call once per provider when the service is initialized.
  */
 function reportProviderAvailability(provider, type, available) {
-    infrastructure_2.providerAvailability.set({ provider, type }, available ? 1 : 0);
+    core_2.providerAvailability.set({ provider, type }, available ? 1 : 0);
 }
 //# sourceMappingURL=middleware.js.map

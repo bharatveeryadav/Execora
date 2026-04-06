@@ -1,6 +1,6 @@
-import { prisma } from '@execora/infrastructure';
-import { logger } from '@execora/infrastructure';
-import { tenantContext } from '@execora/infrastructure';
+import { prisma } from '@execora/core';
+import { logger } from '@execora/core';
+import { tenantContext } from '@execora/core';
 import { Decimal } from '@prisma/client/runtime/library';
 
 class ProductService {

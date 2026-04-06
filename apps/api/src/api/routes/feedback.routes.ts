@@ -4,7 +4,7 @@
  * POST /api/v1/feedback — submit NPS score (0-10) and optional text
  */
 import { FastifyInstance, FastifyRequest } from 'fastify';
-import { prisma } from '@execora/infrastructure';
+import { prisma } from '@execora/core';
 
 export async function feedbackRoutes(fastify: FastifyInstance) {
 	fastify.post(

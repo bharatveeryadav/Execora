@@ -1,6 +1,6 @@
-import { logger } from '@execora/infrastructure';
-import { redisClient, CONV_TTL_SECONDS } from '@execora/infrastructure';
-import { matchIndianName, findBestMatch, isSamePerson } from '@execora/infrastructure';
+import { logger } from '@execora/core';
+import { redisClient, CONV_TTL_SECONDS } from '@execora/core';
+import { matchIndianName, findBestMatch, isSamePerson } from '@execora/core';
 
 const SHOP_TENANT = process.env.SYSTEM_TENANT_ID || 'system-tenant-001';
 

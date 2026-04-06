@@ -2,10 +2,10 @@
  * Report and query intent handlers.
  * Covers: DAILY_SUMMARY, CHECK_STOCK, EXPORT_GSTR1, EXPORT_PNL
  */
-import { logger, tenantContext } from '@execora/infrastructure';
+import { logger, tenantContext } from '@execora/core';
 import { invoiceService } from '../../invoice/invoice.service';
 import { productService } from '../../product/product.service';
-import { emailService } from '@execora/infrastructure';
+import { emailService } from '@execora/core';
 import { gstr1Service, getIndianFY, indianFYRange } from '../../gst/gstr1.service';
 import type { ExecutionResult } from '@execora/types';
 

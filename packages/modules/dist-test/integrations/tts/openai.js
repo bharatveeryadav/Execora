@@ -5,19 +5,19 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.openaiTTSService = void 0;
 const openai_1 = __importDefault(require("openai"));
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
 class OpenAITTSService {
     client = null;
     isAvailable = false;
     constructor() {
-        if (infrastructure_1.config.openai.apiKey) {
-            this.client = new openai_1.default({ apiKey: infrastructure_1.config.openai.apiKey });
+        if (core_1.config.openai.apiKey) {
+            this.client = new openai_1.default({ apiKey: core_1.config.openai.apiKey });
             this.isAvailable = true;
-            infrastructure_2.logger.info('OpenAI TTS initialized');
+            core_2.logger.info('OpenAI TTS initialized');
         }
         else {
-            infrastructure_2.logger.warn('OpenAI API key not provided - TTS disabled');
+            core_2.logger.warn('OpenAI API key not provided - TTS disabled');
         }
     }
     /**
@@ -45,11 +45,11 @@ class OpenAITTSService {
                 speed: 1.0,
             });
             const buffer = Buffer.from(await mp3.arrayBuffer());
-            infrastructure_2.logger.info({ textLength: text.length, audioSize: buffer.length }, 'OpenAI TTS generated');
+            core_2.logger.info({ textLength: text.length, audioSize: buffer.length }, 'OpenAI TTS generated');
             return buffer;
         }
         catch (error) {
-            infrastructure_2.logger.error({ error }, 'OpenAI TTS failed');
+            core_2.logger.error({ error }, 'OpenAI TTS failed');
             throw error;
         }
     }
@@ -72,11 +72,11 @@ class OpenAITTSService {
                 speed: 1.0,
             });
             const buffer = Buffer.from(await mp3.arrayBuffer());
-            infrastructure_2.logger.info({ textLength: text.length, audioSize: buffer.length }, 'OpenAI TTS HD generated');
+            core_2.logger.info({ textLength: text.length, audioSize: buffer.length }, 'OpenAI TTS HD generated');
             return buffer;
         }
         catch (error) {
-            infrastructure_2.logger.error({ error }, 'OpenAI TTS HD failed');
+            core_2.logger.error({ error }, 'OpenAI TTS HD failed');
             throw error;
         }
     }

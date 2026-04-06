@@ -7,7 +7,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { productService } from '../modules/product/product.service';
-import { prisma } from '@execora/infrastructure';
+import { prisma } from '@execora/core';
 import { patchMethod, restoreAll, makeProduct } from './helpers/fixtures';
 import type { RestoreFn } from './helpers/fixtures';
 

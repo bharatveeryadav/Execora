@@ -12,7 +12,7 @@ import {
   getExpiryPage,
 } from "@execora/modules";
 import { broadcaster } from "../../ws/broadcaster";
-import { prisma, minioClient, logger } from "@execora/infrastructure";
+import { prisma, minioClient, logger } from "@execora/core";
 
 export async function productRoutes(fastify: FastifyInstance) {
   // ── GET /api/v1/products — list products (paginated when page/limit provided) ─

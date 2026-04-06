@@ -305,7 +305,7 @@ All products in the default catalog have correct HSN codes and GST rates as per 
 
 ### Key Files
 - `src/modules/gst/gst.service.ts` — `GstService` class, `KIRANA_GST_RATES`, `GST_SLABS`
-- `prisma/seed.ts` — 88 products with HSN + GST data
+- `packages/db/seed.ts` — 88 products with HSN + GST data
 - `src/modules/invoice/invoice.service.ts` — integration point
 
 ---
@@ -686,14 +686,14 @@ model Product {
 
 ### Default Catalog
 
-88 kirana products seeded via `prisma/seed.ts` with:
+88 kirana products seeded via `packages/db/seed.ts` with:
 - Correct HSN codes (from GST Council rate schedule 2025)
 - GST rates (0% / 5% / 12% / 18% / 28%)
 - Exempt flag for grains, dal, fresh milk, salt, eggs
 
 **Re-run seed anytime** — it upserts (updates existing, creates missing):
 ```bash
-npx ts-node prisma/seed.ts
+npx ts-node packages/db/seed.ts
 ```
 
 ---
@@ -988,8 +988,8 @@ model InvoiceItem {
 | `src/infrastructure/redis-client.ts` | Redis singleton, `CONV_TTL_SECONDS` |
 | `src/modules/customer/customer.service.ts` | Customer CRUD, fuzzy search, balance |
 | `src/types.ts` | `IntentType` enum, `IntentExtraction`, `ExecutionResult` interfaces |
-| `prisma/schema.prisma` | Full database schema (36 models, 18 enums) |
-| `prisma/seed.ts` | 88 kirana products with HSN codes and GST rates |
+| `packages/db/schema.prisma` | Full database schema (36 models, 18 enums) |
+| `packages/db/seed.ts` | 88 kirana products with HSN codes and GST rates |
 | `src/config.ts` | All environment variable definitions and defaults |
 
 ---

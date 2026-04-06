@@ -208,7 +208,7 @@ src/
     ├── helpers/          # Test fixtures & mocking
     └── *.test.ts         # Unit tests
 
-prisma/
+packages/db/
 ├── schema.prisma         # Database schema
 ├── migrations/           # Migration files
 └── seed.ts               # Seed data script
@@ -369,7 +369,7 @@ NODE_TEST_COVERAGE=1 npm test
 - `conversation_sessions` - Voice session metadata
 - `conversation_recordings` - Audio file references
 
-Full schema: [prisma/schema.prisma](prisma/schema.prisma)
+Full schema: [packages/db/schema.prisma](packages/db/schema.prisma)
 
 ---
 

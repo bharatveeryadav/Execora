@@ -15,11 +15,11 @@
 
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { aiService } from '@execora/modules';
-import { minioClient, logger, prisma, tenantContext } from '@execora/infrastructure';
-import { ocrJobQueue } from '@execora/infrastructure';
-import { ocrJobsTotal, anomalyDetectionsTotal } from '@execora/infrastructure';
+import { minioClient, logger, prisma, tenantContext } from '@execora/core';
+import { ocrJobQueue } from '@execora/core';
+import { ocrJobsTotal, anomalyDetectionsTotal } from '@execora/core';
 import { broadcaster } from '../../ws/broadcaster';
-import { OcrJobData } from '@execora/infrastructure';
+import { OcrJobData } from '@execora/core';
 
 export async function aiRoutes(fastify: FastifyInstance) {
 	// ── POST /api/v1/ai/purchase-bill/ocr ──────────────────────────────────────

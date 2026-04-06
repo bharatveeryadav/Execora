@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sttService = void 0;
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
-const infrastructure_3 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
+const core_3 = require("@execora/core");
 const errors_1 = require("../errors");
 const middleware_1 = require("../middleware");
 const deepgram_adapter_1 = require("./deepgram.adapter");
@@ -38,26 +38,26 @@ const ADAPTERS = {
 class STTService {
     adapter = null;
     constructor() {
-        const preferred = infrastructure_1.config.stt.provider;
+        const preferred = core_1.config.stt.provider;
         const primary = ADAPTERS[preferred];
         if (primary?.isAvailable()) {
             this.adapter = primary;
         }
         else {
             if (primary)
-                infrastructure_2.logger.warn({ preferred }, 'Preferred STT provider not available — trying fallback');
+                core_2.logger.warn({ preferred }, 'Preferred STT provider not available — trying fallback');
             const fallback = Object.values(ADAPTERS).find((a) => a.name !== preferred && a.isAvailable()) ?? null;
             if (fallback)
-                infrastructure_2.logger.warn({ fallback: fallback.name }, 'Using fallback STT provider');
+                core_2.logger.warn({ fallback: fallback.name }, 'Using fallback STT provider');
             this.adapter = fallback;
         }
         if (!this.adapter)
-            infrastructure_2.logger.error('No STT provider available — STT disabled');
+            core_2.logger.error('No STT provider available — STT disabled');
         // Report availability of all adapters to Prometheus at startup
         for (const a of Object.values(ADAPTERS)) {
             (0, middleware_1.reportProviderAvailability)(a.name, 'stt', a.isAvailable());
         }
-        infrastructure_2.logger.info({ provider: this.adapter?.name ?? 'none' }, 'STT service initialized');
+        core_2.logger.info({ provider: this.adapter?.name ?? 'none' }, 'STT service initialized');
     }
     isAvailable() {
         return this.adapter !== null;
@@ -87,12 +87,12 @@ class STTService {
         const adapter = this.adapter;
         if (!adapter)
             throw new errors_1.ProviderUnavailableError('stt', 'transcribeAudio');
-        infrastructure_2.logger.info({ provider: adapter.name, size: audioBuffer.length }, 'Transcribing audio');
+        core_2.logger.info({ provider: adapter.name, size: audioBuffer.length }, 'Transcribing audio');
         return (0, middleware_1.withProvider)({
             provider: adapter.name,
             providerType: 'stt',
             operation: 'transcribeAudio',
-            histogram: infrastructure_3.sttProcessingTime,
+            histogram: core_3.sttProcessingTime,
             maxRetries: 1,
         }, () => adapter.transcribeAudio(audioBuffer, mimeType));
     }

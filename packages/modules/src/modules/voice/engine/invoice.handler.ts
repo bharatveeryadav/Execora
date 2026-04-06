@@ -4,12 +4,12 @@
  *         SHOW_PENDING_INVOICE, TOGGLE_GST, PROVIDE_EMAIL / SEND_INVOICE,
  *         ADD_DISCOUNT, SET_SUPPLY_TYPE, SET_PRICE_TIER
  */
-import { logger } from '@execora/infrastructure';
+import { logger } from '@execora/core';
 import { invoiceService } from '../../invoice/invoice.service';
 import { customerService } from '../../customer/customer.service';
 import { ledgerService } from '../../ledger/ledger.service';
-import { emailService } from '@execora/infrastructure';
-import { minioClient } from '@execora/infrastructure';
+import { emailService } from '@execora/core';
+import { minioClient } from '@execora/core';
 import { conversationMemory } from '../conversation';
 import { resolveCustomer, formatItemsSummary, sendConfirmedInvoiceEmail } from './shared';
 import type { ExecutionResult } from '@execora/types';

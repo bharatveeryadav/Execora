@@ -1,6 +1,6 @@
 import { createClient, LiveTranscriptionEvents } from '@deepgram/sdk';
-import { config } from '@execora/infrastructure';
-import { logger } from '@execora/infrastructure';
+import { config } from '@execora/core';
+import { logger } from '@execora/core';
 import { STTAdapter, LiveTranscriptionSession, LiveTranscriptionOptions, ProviderCapabilities } from '../types';
 
 /**

@@ -1,8 +1,8 @@
 import axios from 'axios';
 import FormData from 'form-data';
 import WebSocket from 'ws';
-import { config } from '@execora/infrastructure';
-import { logger } from '@execora/infrastructure';
+import { config } from '@execora/core';
+import { logger } from '@execora/core';
 
 class ElevenLabsSTTService {
   private apiKey: string;

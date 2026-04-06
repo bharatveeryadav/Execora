@@ -5,8 +5,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.piperAdapter = exports.PiperAdapter = void 0;
 const axios_1 = __importDefault(require("axios"));
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
 const errors_1 = require("../errors");
 /**
  * Piper TTS adapter — local/self-hosted text-to-speech.
@@ -50,17 +50,17 @@ class PiperAdapter {
     baseUrl;
     voice;
     constructor() {
-        this.baseUrl = infrastructure_1.config.tts.piper.baseUrl;
-        this.voice = infrastructure_1.config.tts.piper.voice;
-        if (infrastructure_1.config.tts.piper.enabled) {
-            infrastructure_2.logger.info({ baseUrl: this.baseUrl, voice: this.voice }, 'Piper TTS adapter initialized');
+        this.baseUrl = core_1.config.tts.piper.baseUrl;
+        this.voice = core_1.config.tts.piper.voice;
+        if (core_1.config.tts.piper.enabled) {
+            core_2.logger.info({ baseUrl: this.baseUrl, voice: this.voice }, 'Piper TTS adapter initialized');
         }
         else {
-            infrastructure_2.logger.debug('Piper not configured — set PIPER_BASE_URL to enable local TTS');
+            core_2.logger.debug('Piper not configured — set PIPER_BASE_URL to enable local TTS');
         }
     }
     isAvailable() {
-        return infrastructure_1.config.tts.piper.enabled;
+        return core_1.config.tts.piper.enabled;
     }
     async generateSpeech(text) {
         if (!this.isAvailable()) {
@@ -73,7 +73,7 @@ class PiperAdapter {
             timeout: 30_000,
         });
         const buffer = Buffer.from(response.data);
-        infrastructure_2.logger.info({ textLength: text.length, audioSize: buffer.length, voice: this.voice }, 'Piper TTS generated');
+        core_2.logger.info({ textLength: text.length, audioSize: buffer.length, voice: this.voice }, 'Piper TTS generated');
         return buffer;
     }
     /** Piper does not stream — returns the full buffer wrapped in a Readable. */

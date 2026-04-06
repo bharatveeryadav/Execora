@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ledgerService = void 0;
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
-const infrastructure_3 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
+const core_3 = require("@execora/core");
 const library_1 = require("@prisma/client/runtime/library");
-const infrastructure_4 = require("@execora/infrastructure");
+const core_4 = require("@execora/core");
 // Map old payment mode strings to the PaymentMethod enum
 const methodMap = {
     cash: 'cash',
@@ -36,11 +36,11 @@ class LedgerService {
                 throw new Error(`Payment mode must be one of: ${validModes.join(', ')}`);
             }
             const method = methodMap[paymentMode] ?? 'bank';
-            return await infrastructure_1.prisma.$transaction(async (tx) => {
+            return await core_1.prisma.$transaction(async (tx) => {
                 const payment = await tx.payment.create({
                     data: {
                         paymentNo: generatePaymentNo(),
-                        tenantId: infrastructure_3.tenantContext.get().tenantId,
+                        tenantId: core_3.tenantContext.get().tenantId,
                         customerId,
                         amount: new library_1.Decimal(amount),
                         method,
@@ -65,7 +65,7 @@ class LedgerService {
                 const pendingInvoices = await tx.invoice.findMany({
                     where: {
                         customerId,
-                        tenantId: infrastructure_3.tenantContext.get().tenantId,
+                        tenantId: core_3.tenantContext.get().tenantId,
                         status: { in: ['pending', 'partial'] },
                     },
                     orderBy: { invoiceDate: 'asc' },
@@ -95,15 +95,15 @@ class LedgerService {
                         remaining = 0;
                     }
                 }
-                infrastructure_2.logger.info({ customerId, amount, paymentMode, reference, receivedAt }, 'Payment recorded');
-                infrastructure_4.paymentProcessing.inc({ status: 'success' });
-                infrastructure_4.paymentAmount.observe({ customer_id: customerId }, amount);
+                core_2.logger.info({ customerId, amount, paymentMode, reference, receivedAt }, 'Payment recorded');
+                core_4.paymentProcessing.inc({ status: 'success' });
+                core_4.paymentAmount.observe({ customer_id: customerId }, amount);
                 return payment;
             });
         }
         catch (error) {
-            infrastructure_2.logger.error({ error, customerId, amount }, 'Payment recording failed');
-            infrastructure_4.paymentProcessing.inc({ status: 'error' });
+            core_2.logger.error({ error, customerId, amount }, 'Payment recording failed');
+            core_4.paymentProcessing.inc({ status: 'error' });
             throw error;
         }
     }
@@ -129,7 +129,7 @@ class LedgerService {
                     throw new Error(`Payment mode must be one of: ${validModes.join(', ')}`);
                 }
             }
-            return await infrastructure_1.prisma.$transaction(async (tx) => {
+            return await core_1.prisma.$transaction(async (tx) => {
                 const payments = [];
                 for (const split of splits) {
                     const method = methodMap[split.method] ?? 'bank';
@@ -137,7 +137,7 @@ class LedgerService {
                     const payment = await tx.payment.create({
                         data: {
                             paymentNo: payNo,
-                            tenantId: infrastructure_3.tenantContext.get().tenantId,
+                            tenantId: core_3.tenantContext.get().tenantId,
                             customerId,
                             amount: new library_1.Decimal(split.amount),
                             method,
@@ -162,7 +162,7 @@ class LedgerService {
                 const pendingInvoices = await tx.invoice.findMany({
                     where: {
                         customerId,
-                        tenantId: infrastructure_3.tenantContext.get().tenantId,
+                        tenantId: core_3.tenantContext.get().tenantId,
                         status: { in: ['pending', 'partial'] },
                     },
                     orderBy: { invoiceDate: 'asc' },
@@ -192,15 +192,15 @@ class LedgerService {
                         remaining = 0;
                     }
                 }
-                infrastructure_2.logger.info({ customerId, totalAmount, splits, notes }, 'Mixed payment recorded');
-                infrastructure_4.paymentProcessing.inc({ status: 'success' });
-                infrastructure_4.paymentAmount.observe({ customer_id: customerId }, totalAmount);
+                core_2.logger.info({ customerId, totalAmount, splits, notes }, 'Mixed payment recorded');
+                core_4.paymentProcessing.inc({ status: 'success' });
+                core_4.paymentAmount.observe({ customer_id: customerId }, totalAmount);
                 return { payments, totalAmount };
             });
         }
         catch (error) {
-            infrastructure_2.logger.error({ error, customerId, splits }, 'Mixed payment recording failed');
-            infrastructure_4.paymentProcessing.inc({ status: 'error' });
+            core_2.logger.error({ error, customerId, splits }, 'Mixed payment recording failed');
+            core_4.paymentProcessing.inc({ status: 'error' });
             throw error;
         }
     }
@@ -217,7 +217,7 @@ class LedgerService {
             }
             if (!description?.trim())
                 throw new Error('Description is required');
-            const customer = await infrastructure_1.prisma.customer.update({
+            const customer = await core_1.prisma.customer.update({
                 where: { id: customerId },
                 data: {
                     balance: { increment: amount },
@@ -225,11 +225,11 @@ class LedgerService {
                 },
                 include: { invoices: false },
             });
-            infrastructure_2.logger.info({ customerId, amount, description }, 'Manual debit added');
+            core_2.logger.info({ customerId, amount, description }, 'Manual debit added');
             return customer;
         }
         catch (error) {
-            infrastructure_2.logger.error({ error, customerId, amount }, 'Add credit failed');
+            core_2.logger.error({ error, customerId, amount }, 'Add credit failed');
             throw error;
         }
     }
@@ -243,15 +243,15 @@ class LedgerService {
             if (typeof amount !== 'number' || amount < 0 || !isFinite(amount)) {
                 throw new Error('Opening balance must be a non-negative number');
             }
-            const customer = await infrastructure_1.prisma.customer.update({
+            const customer = await core_1.prisma.customer.update({
                 where: { id: customerId },
                 data: { balance: new library_1.Decimal(amount) },
             });
-            infrastructure_2.logger.info({ customerId, amount }, 'Opening balance set');
+            core_2.logger.info({ customerId, amount }, 'Opening balance set');
             return customer;
         }
         catch (error) {
-            infrastructure_2.logger.error({ error, customerId, amount }, 'Set opening balance failed');
+            core_2.logger.error({ error, customerId, amount }, 'Set opening balance failed');
             throw error;
         }
     }
@@ -259,8 +259,8 @@ class LedgerService {
      * Get payments received from a customer (replaces ledger query).
      */
     async getCustomerLedger(customerId, limit = 50) {
-        return await infrastructure_1.prisma.payment.findMany({
-            where: { tenantId: infrastructure_3.tenantContext.get().tenantId, customerId },
+        return await core_1.prisma.payment.findMany({
+            where: { tenantId: core_3.tenantContext.get().tenantId, customerId },
             orderBy: { receivedAt: 'desc' },
             take: limit,
             include: {
@@ -272,9 +272,9 @@ class LedgerService {
      * Summarise payments for a date range.
      */
     async getLedgerSummary(startDate, endDate) {
-        const payments = await infrastructure_1.prisma.payment.findMany({
+        const payments = await core_1.prisma.payment.findMany({
             where: {
-                tenantId: infrastructure_3.tenantContext.get().tenantId,
+                tenantId: core_3.tenantContext.get().tenantId,
                 receivedAt: { gte: startDate, lte: endDate },
                 status: 'completed',
             },
@@ -310,9 +310,9 @@ class LedgerService {
         if (typeof amount !== 'number' || amount <= 0 || !isFinite(amount)) {
             throw new Error('Amount must be a positive number');
         }
-        return await infrastructure_1.prisma.$transaction(async (tx) => {
+        return await core_1.prisma.$transaction(async (tx) => {
             const invoice = await tx.invoice.findFirst({
-                where: { id: invoiceId, tenantId: infrastructure_3.tenantContext.get().tenantId },
+                where: { id: invoiceId, tenantId: core_3.tenantContext.get().tenantId },
                 include: { customer: true },
             });
             if (!invoice)
@@ -345,7 +345,7 @@ class LedgerService {
             await tx.payment.create({
                 data: {
                     paymentNo: `REV-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-                    tenantId: infrastructure_3.tenantContext.get().tenantId,
+                    tenantId: core_3.tenantContext.get().tenantId,
                     customerId: invoice.customerId,
                     invoiceId,
                     amount: new library_1.Decimal(amount),
@@ -354,7 +354,7 @@ class LedgerService {
                     notes: `Reversal of payment on invoice ${invoice.invoiceNo ?? invoiceId}`,
                 },
             });
-            infrastructure_2.logger.info({ invoiceId, amount, customerId: invoice.customerId }, 'Payment reversed');
+            core_2.logger.info({ invoiceId, amount, customerId: invoice.customerId }, 'Payment reversed');
             return { ok: true, newPaid, newStatus };
         });
     }
@@ -362,8 +362,8 @@ class LedgerService {
      * Get most recent payments across all customers.
      */
     async getRecentTransactions(limit = 20) {
-        return await infrastructure_1.prisma.payment.findMany({
-            where: { tenantId: infrastructure_3.tenantContext.get().tenantId },
+        return await core_1.prisma.payment.findMany({
+            where: { tenantId: core_3.tenantContext.get().tenantId },
             take: limit,
             orderBy: { receivedAt: 'desc' },
             include: {

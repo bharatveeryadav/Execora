@@ -5,10 +5,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.openaiService = exports.llmService = void 0;
 const crypto_1 = __importDefault(require("crypto"));
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
-const infrastructure_3 = require("@execora/infrastructure");
-const infrastructure_4 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
+const core_3 = require("@execora/core");
+const core_4 = require("@execora/core");
 const types_1 = require("@execora/types");
 const conversation_1 = require("../../modules/voice/conversation");
 const devanagari_1 = require("../../utils/devanagari");
@@ -50,25 +50,25 @@ class LLMService {
         for (const a of [openai_adapter_1.openaiLLMAdapter, groq_adapter_1.groqAdapter, ollama_adapter_1.ollamaAdapter]) {
             (0, middleware_1.reportProviderAvailability)(a.name, 'llm', a.isAvailable());
         }
-        infrastructure_1.logger.info({
+        core_1.logger.info({
             intentProvider: intentAdapter()?.name ?? 'none',
             responseProvider: responseAdapter()?.name ?? 'none',
         }, 'LLM service initialized');
     }
     // ── Metrics ───────────────────────────────────────────────────────────────
     recordUsage(operation, intent, model, usage, cache) {
-        infrastructure_3.llmRequestsTotal.inc({ model, operation, intent, cache });
+        core_3.llmRequestsTotal.inc({ model, operation, intent, cache });
         if (!usage)
             return;
         const { promptTokens = 0, completionTokens = 0, totalTokens = promptTokens + completionTokens } = usage;
-        infrastructure_3.llmTokensTotal.inc({ model, operation, intent, type: 'prompt' }, promptTokens);
-        infrastructure_3.llmTokensTotal.inc({ model, operation, intent, type: 'completion' }, completionTokens);
-        infrastructure_3.llmTokensTotal.inc({ model, operation, intent, type: 'total' }, totalTokens);
-        const rt = (0, infrastructure_4.getRuntimeConfig)();
+        core_3.llmTokensTotal.inc({ model, operation, intent, type: 'prompt' }, promptTokens);
+        core_3.llmTokensTotal.inc({ model, operation, intent, type: 'completion' }, completionTokens);
+        core_3.llmTokensTotal.inc({ model, operation, intent, type: 'total' }, totalTokens);
+        const rt = (0, core_4.getRuntimeConfig)();
         const cost = (promptTokens / 1000) * rt.llm.cost.inputPer1k +
             (completionTokens / 1000) * rt.llm.cost.outputPer1k;
         if (cost > 0)
-            infrastructure_3.llmCostUsdTotal.inc({ model, operation, intent }, cost);
+            core_3.llmCostUsdTotal.inc({ model, operation, intent }, cost);
     }
     // ── Cache helpers ─────────────────────────────────────────────────────────
     buildResponseCacheKey(intent, result, scope) {
@@ -116,28 +116,28 @@ class LLMService {
             return text;
         const local = (0, devanagari_1.transliterateDevanagari)(text.trim());
         if (!/[\u0900-\u097F]/.test(local)) {
-            infrastructure_1.logger.debug({ original: text, result: local }, 'Devanagari transliterated (local)');
+            core_1.logger.debug({ original: text, result: local }, 'Devanagari transliterated (local)');
             return local;
         }
-        infrastructure_1.logger.warn({ text, partialResult: local }, 'Local transliteration incomplete — LLM fallback');
+        core_1.logger.warn({ text, partialResult: local }, 'Local transliteration incomplete — LLM fallback');
         const cacheKey = `translit:${sha256(text)}`;
-        const cached = await infrastructure_2.llmCache.get(cacheKey);
+        const cached = await core_2.llmCache.get(cacheKey);
         if (cached)
             return cached;
         const adapter = utilAdapter();
         if (!adapter) {
-            infrastructure_1.logger.error('No LLM adapter available for transliteration fallback');
+            core_1.logger.error('No LLM adapter available for transliteration fallback');
             return local;
         }
         try {
             const { text: result } = await (0, middleware_1.withProvider)({ provider: adapter.name, providerType: 'llm', operation: 'transliterate_fallback', maxRetries: 1 }, () => adapter.extractIntent(text, prompts_1.TRANSLITERATE_PROMPT));
             this.recordUsage('transliterate_fallback', 'UNKNOWN', adapter.name, undefined, 'miss');
             const out = result.trim() || local;
-            await infrastructure_2.llmCache.set(cacheKey, out, 86_400);
+            await core_2.llmCache.set(cacheKey, out, 86_400);
             return out;
         }
         catch (err) {
-            infrastructure_1.logger.error({ error: err.message }, 'LLM transliteration fallback failed');
+            core_1.logger.error({ error: err.message }, 'LLM transliteration fallback failed');
             return local;
         }
     }
@@ -177,7 +177,7 @@ class LLMService {
         return phone.toString().trim().split('').map((d) => {
             const w = map[d];
             if (!w)
-                infrastructure_1.logger.warn({ digit: d }, 'Unknown digit in phone conversion');
+                core_1.logger.warn({ digit: d }, 'Unknown digit in phone conversion');
             return w ?? d;
         }).join(' ');
     }
@@ -198,7 +198,7 @@ class LLMService {
             this.recordUsage('extract_intent', 'UNKNOWN', model, usage, 'miss');
             const jsonMatch = text.match(/\{[\s\S]*\}/);
             if (!jsonMatch) {
-                infrastructure_1.logger.warn({ content: text, provider: adapter.name }, 'Intent response contained no JSON object');
+                core_1.logger.warn({ content: text, provider: adapter.name }, 'Intent response contained no JSON object');
                 throw new Error('No JSON found in intent response');
             }
             const parsed = JSON.parse(jsonMatch[0]);
@@ -206,7 +206,7 @@ class LLMService {
             const intent = Object.values(types_1.IntentType).includes(rawIntent)
                 ? rawIntent
                 : types_1.IntentType.UNKNOWN;
-            infrastructure_1.logger.debug({ rawIntent, intent, provider: adapter.name }, 'Intent parsed');
+            core_1.logger.debug({ rawIntent, intent, provider: adapter.name }, 'Intent parsed');
             const entities = await this.normaliseEntities(parsed.entities ?? {}, transcript);
             return {
                 intent,
@@ -217,7 +217,7 @@ class LLMService {
             };
         }
         catch (error) {
-            infrastructure_1.logger.error({ error }, 'Intent extraction failed');
+            core_1.logger.error({ error }, 'Intent extraction failed');
             return {
                 intent: types_1.IntentType.UNKNOWN,
                 entities: {},
@@ -241,7 +241,7 @@ class LLMService {
             return text.trim() || rawText;
         }
         catch (error) {
-            infrastructure_1.logger.error({ error }, 'Transcript normalisation failed');
+            core_1.logger.error({ error }, 'Transcript normalisation failed');
             return rawText;
         }
     }
@@ -253,20 +253,20 @@ class LLMService {
      */
     async generateResponse(executionResult, originalIntent, _conversationId, onChunk, options) {
         try {
-            const rt = (0, infrastructure_4.getRuntimeConfig)();
+            const rt = (0, core_4.getRuntimeConfig)();
             const intentKey = originalIntent;
             const policy = rt.llm.responseCachePolicy[intentKey];
             const cacheKey = policy ? this.buildResponseCacheKey(intentKey, executionResult, policy.scope) : null;
             const adapter = responseAdapter();
             if (!adapter) {
-                infrastructure_1.logger.error('No LLM adapter available for response generation');
+                core_1.logger.error('No LLM adapter available for response generation');
                 return 'Theek hai.';
             }
             // Cache hit
             if (cacheKey) {
-                const cached = await infrastructure_2.llmCache.get(cacheKey);
+                const cached = await core_2.llmCache.get(cacheKey);
                 if (cached) {
-                    infrastructure_3.llmRequestsTotal.inc({ model: adapter.name, operation: 'generate_response', intent: intentKey, cache: 'hit' });
+                    core_3.llmRequestsTotal.inc({ model: adapter.name, operation: 'generate_response', intent: intentKey, cache: 'hit' });
                     onChunk?.(cached);
                     return cached;
                 }
@@ -279,12 +279,12 @@ class LLMService {
             const finalText = text || 'Theek hai.';
             this.recordUsage('generate_response', intentKey, model, usage, 'miss');
             if (cacheKey && policy && finalText !== 'Theek hai.') {
-                await infrastructure_2.llmCache.set(cacheKey, finalText, policy.ttlSeconds);
+                await core_2.llmCache.set(cacheKey, finalText, policy.ttlSeconds);
             }
             return finalText;
         }
         catch (error) {
-            infrastructure_1.logger.error({ error }, 'Response generation failed');
+            core_1.logger.error({ error }, 'Response generation failed');
             return 'Theek hai.';
         }
     }
@@ -303,7 +303,7 @@ class LLMService {
             return text.trim() || 'Confirm karein?';
         }
         catch (error) {
-            infrastructure_1.logger.error({ error }, 'Confirmation generation failed');
+            core_1.logger.error({ error }, 'Confirmation generation failed');
             return 'Confirm karein?';
         }
     }

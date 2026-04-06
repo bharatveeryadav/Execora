@@ -1,4 +1,4 @@
-// @execora/infrastructure — barrel exports
+// @execora/core — barrel exports
 
 export * from "./config";
 export * from "./logger";
@@ -23,3 +23,4 @@ export * from "./reminder-ops";
 export * from "./feature-flags";
 export * from "./portal-token";
 export * from "./resolve-entitlements";
+export * from "./event-bus";

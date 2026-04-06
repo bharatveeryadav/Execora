@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deepgramAdapter = exports.DeepgramAdapter = void 0;
 const sdk_1 = require("@deepgram/sdk");
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
 /**
  * Deepgram STT adapter.
  * Wraps Deepgram's event-based live connection into the unified
@@ -19,12 +19,12 @@ class DeepgramAdapter {
     };
     client = null;
     constructor() {
-        if (infrastructure_1.config.stt.deepgram.apiKey) {
-            this.client = (0, sdk_1.createClient)(infrastructure_1.config.stt.deepgram.apiKey);
-            infrastructure_2.logger.info('Deepgram STT adapter initialized');
+        if (core_1.config.stt.deepgram.apiKey) {
+            this.client = (0, sdk_1.createClient)(core_1.config.stt.deepgram.apiKey);
+            core_2.logger.info('Deepgram STT adapter initialized');
         }
         else {
-            infrastructure_2.logger.warn('DEEPGRAM_API_KEY not set — Deepgram STT unavailable');
+            core_2.logger.warn('DEEPGRAM_API_KEY not set — Deepgram STT unavailable');
         }
     }
     isAvailable() {
@@ -50,21 +50,21 @@ class DeepgramAdapter {
             // PCM-specific settings — only sent when frontend streams raw linear16
             ...(isPCM ? { encoding: 'linear16', sample_rate: sampleRate } : {}),
         });
-        infrastructure_2.logger.info({ encoding: isPCM ? 'linear16' : 'webm', sampleRate, channels }, 'Deepgram live session opened');
+        core_2.logger.info({ encoding: isPCM ? 'linear16' : 'webm', sampleRate, channels }, 'Deepgram live session opened');
         connection.on(sdk_1.LiveTranscriptionEvents.Transcript, (data) => {
             const text = data.channel?.alternatives?.[0]?.transcript;
             const isFinal = data.is_final;
             if (text?.trim()) {
-                infrastructure_2.logger.debug({ text, isFinal }, 'Deepgram transcript');
+                core_2.logger.debug({ text, isFinal }, 'Deepgram transcript');
                 onTranscript(text, isFinal);
             }
         });
         connection.on(sdk_1.LiveTranscriptionEvents.Error, (err) => {
-            infrastructure_2.logger.error({ error: err }, 'Deepgram error');
+            core_2.logger.error({ error: err }, 'Deepgram error');
             onError(err instanceof Error ? err : new Error(String(err)));
         });
         connection.on(sdk_1.LiveTranscriptionEvents.Close, () => {
-            infrastructure_2.logger.info('Deepgram connection closed');
+            core_2.logger.info('Deepgram connection closed');
         });
         return {
             send: (audioChunk) => {
@@ -100,7 +100,7 @@ class DeepgramAdapter {
         if (error)
             throw error;
         const transcript = result?.results?.channels?.[0]?.alternatives?.[0]?.transcript ?? '';
-        infrastructure_2.logger.info({ length: transcript.length, mimeType }, 'Deepgram transcription complete');
+        core_2.logger.info({ length: transcript.length, mimeType }, 'Deepgram transcription complete');
         return transcript;
     }
 }

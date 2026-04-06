@@ -4,7 +4,7 @@
  * POST /api/v1/push/register — register device for push notifications
  */
 import { FastifyInstance, FastifyRequest } from 'fastify';
-import { prisma } from '@execora/infrastructure';
+import { prisma } from '@execora/core';
 
 export async function pushRoutes(fastify: FastifyInstance) {
 	fastify.post(

@@ -5,22 +5,22 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.elevenLabsTTSService = void 0;
 const axios_1 = __importDefault(require("axios"));
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
 class ElevenLabsTTSService {
     apiKey;
     voiceId;
     isAvailable = false;
     baseUrl = 'https://api.elevenlabs.io/v1';
     constructor() {
-        this.apiKey = infrastructure_1.config.tts.elevenlabs.apiKey || '';
-        this.voiceId = infrastructure_1.config.tts.elevenlabs.voiceId || '21m00Tcm4TlvDq8ikWAM'; // Default Rachel voice
+        this.apiKey = core_1.config.tts.elevenlabs.apiKey || '';
+        this.voiceId = core_1.config.tts.elevenlabs.voiceId || '21m00Tcm4TlvDq8ikWAM'; // Default Rachel voice
         this.isAvailable = !!this.apiKey;
         if (this.isAvailable) {
-            infrastructure_2.logger.info('ElevenLabs TTS initialized');
+            core_2.logger.info('ElevenLabs TTS initialized');
         }
         else {
-            infrastructure_2.logger.warn('ElevenLabs API key not provided - TTS disabled');
+            core_2.logger.warn('ElevenLabs API key not provided - TTS disabled');
         }
     }
     /**
@@ -54,11 +54,11 @@ class ElevenLabsTTSService {
                 responseType: 'arraybuffer',
             });
             const audioBuffer = Buffer.from(response.data);
-            infrastructure_2.logger.info({ textLength: text.length, audioSize: audioBuffer.length }, 'ElevenLabs TTS generated');
+            core_2.logger.info({ textLength: text.length, audioSize: audioBuffer.length }, 'ElevenLabs TTS generated');
             return audioBuffer;
         }
         catch (error) {
-            infrastructure_2.logger.error({ error: error.response?.data || error.message }, 'ElevenLabs TTS failed');
+            core_2.logger.error({ error: error.response?.data || error.message }, 'ElevenLabs TTS failed');
             throw error;
         }
     }
@@ -84,10 +84,10 @@ class ElevenLabsTTSService {
                 },
                 responseType: 'stream',
             });
-            infrastructure_2.logger.info({ textLength: text.length }, 'ElevenLabs TTS stream started');
+            core_2.logger.info({ textLength: text.length }, 'ElevenLabs TTS stream started');
             // Attach error handler to stream
             response.data.on('error', (streamError) => {
-                infrastructure_2.logger.error({
+                core_2.logger.error({
                     error: streamError.message,
                     code: streamError.code,
                     stack: streamError.stack,
@@ -96,7 +96,7 @@ class ElevenLabsTTSService {
             return response.data;
         }
         catch (error) {
-            infrastructure_2.logger.error({
+            core_2.logger.error({
                 error: error.response?.data || error.message,
                 status: error.response?.status,
                 code: error.code,
@@ -121,7 +121,7 @@ class ElevenLabsTTSService {
             return response.data.voices || [];
         }
         catch (error) {
-            infrastructure_2.logger.error({ error }, 'Failed to list voices');
+            core_2.logger.error({ error }, 'Failed to list voices');
             return [];
         }
     }

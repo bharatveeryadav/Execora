@@ -8,9 +8,9 @@
  * Attach to a scoped Fastify instance (see api/index.ts) or to individual routes.
  */
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { verifyAccessToken } from '@execora/infrastructure';
-import { tenantContext } from '@execora/infrastructure';
-import { logger } from '@execora/infrastructure';
+import { verifyAccessToken } from '@execora/core';
+import { tenantContext } from '@execora/core';
+import { logger } from '@execora/core';
 import { UserJwtPayload } from '@execora/types';
 
 // Extend FastifyRequest so route handlers can access the decoded payload.

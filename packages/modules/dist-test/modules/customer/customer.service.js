@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.customerService = void 0;
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
-const infrastructure_3 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
+const core_3 = require("@execora/core");
 const library_1 = require("@prisma/client/runtime/library");
 const client_1 = require("@prisma/client");
 class CustomerService {
@@ -11,8 +11,8 @@ class CustomerService {
      * Get total pending amount (sum of all customer balances > 0)
      */
     async getTotalPendingAmount() {
-        const { tenantId } = infrastructure_3.tenantContext.get();
-        const result = await infrastructure_1.prisma.customer.aggregate({
+        const { tenantId } = core_3.tenantContext.get();
+        const result = await core_1.prisma.customer.aggregate({
             _sum: { balance: true },
             where: { tenantId, balance: { gt: 0 } },
         });
@@ -22,8 +22,8 @@ class CustomerService {
      * Get all customers with non-zero (pending) balance
      */
     async getAllCustomersWithPendingBalance() {
-        const { tenantId } = infrastructure_3.tenantContext.get();
-        const customers = await infrastructure_1.prisma.customer.findMany({
+        const { tenantId } = core_3.tenantContext.get();
+        const customers = await core_1.prisma.customer.findMany({
             where: {
                 tenantId,
                 balance: {
@@ -52,8 +52,8 @@ class CustomerService {
      * Unlike searchCustomer, this never filters by score — it just pages through all records.
      */
     async listAllCustomers(limit = 200) {
-        const { tenantId } = infrastructure_3.tenantContext.get();
-        const customers = await infrastructure_1.prisma.customer.findMany({
+        const { tenantId } = core_3.tenantContext.get();
+        const customers = await core_1.prisma.customer.findMany({
             where: { tenantId },
             orderBy: { balance: 'desc' },
             take: limit,
@@ -127,7 +127,7 @@ class CustomerService {
             }
         }
         if (cleaned > 0) {
-            infrastructure_2.logger.info({ cleaned }, 'Cleaned expired conversation cache entries');
+            core_2.logger.info({ cleaned }, 'Cleaned expired conversation cache entries');
         }
     }
     /**
@@ -165,8 +165,8 @@ class CustomerService {
         if (cached) {
             return cached;
         }
-        const { tenantId } = infrastructure_3.tenantContext.get();
-        const customer = await infrastructure_1.prisma.customer.findFirst({
+        const { tenantId } = core_3.tenantContext.get();
+        const customer = await core_1.prisma.customer.findFirst({
             where: { id: context.activeCustomerId, tenantId },
             select: {
                 id: true,
@@ -201,7 +201,7 @@ class CustomerService {
      * Used by resolveCustomer to restore active customer from Redis after a restart.
      */
     async getActiveCustomerById(customerId, conversationId) {
-        const customer = await infrastructure_1.prisma.customer.findUnique({
+        const customer = await core_1.prisma.customer.findUnique({
             where: { id: customerId },
             select: { id: true, name: true, phone: true, email: true, nickname: true, landmark: true, balance: true },
         });
@@ -233,7 +233,7 @@ class CustomerService {
             context.recentCustomers = [];
             context.lastSearch = '';
             context.timestamp = Date.now();
-            infrastructure_2.logger.info({ conversationId }, '🔄 Conversation cache invalidated');
+            core_2.logger.info({ conversationId }, '🔄 Conversation cache invalidated');
         }
     }
     /**
@@ -297,12 +297,12 @@ class CustomerService {
                 .filter((c) => c.matchScore >= 0.35)
                 .sort((a, b) => b.matchScore - a.matchScore);
             if (cachedResults.length > 0) {
-                infrastructure_2.logger.info({ conversationId, cacheHits: cachedResults.length }, '⚡ Customer search from cache');
+                core_2.logger.info({ conversationId, cacheHits: cachedResults.length }, '⚡ Customer search from cache');
                 return cachedResults;
             }
         }
         // Cache miss - search database
-        infrastructure_2.logger.info({ conversationId, query }, '🔍 Customer search from database');
+        core_2.logger.info({ conversationId, query }, '🔍 Customer search from database');
         const results = await this.searchCustomer(query);
         // Update context
         context.recentCustomers = results;
@@ -315,7 +315,7 @@ class CustomerService {
      */
     async getMultipleCustomersWithContext(customerIds, conversationId) {
         const context = this.getContext(conversationId);
-        infrastructure_2.logger.info({ conversationId, count: customerIds.length }, '📦 Batch customer fetch');
+        core_2.logger.info({ conversationId, count: customerIds.length }, '📦 Batch customer fetch');
         // Fetch all in parallel
         const customers = await Promise.all(customerIds.map((id) => this.getCustomerById(id)));
         // Update cache with results
@@ -340,7 +340,7 @@ class CustomerService {
         // Get initial balance
         const initialBalance = await this.getBalance(customerId);
         onUpdate({ balance: initialBalance, updatedAt: new Date().toISOString() });
-        infrastructure_2.logger.info({ customerId, conversationId }, '🔄 Starting real-time balance stream');
+        core_2.logger.info({ customerId, conversationId }, '🔄 Starting real-time balance stream');
         // Poll for balance changes every 1 second
         const streamId = `balance_${customerId}`;
         const interval = setInterval(async () => {
@@ -352,7 +352,7 @@ class CustomerService {
                 });
             }
             catch (error) {
-                infrastructure_2.logger.error({ error, customerId }, 'Balance stream error');
+                core_2.logger.error({ error, customerId }, 'Balance stream error');
             }
         }, 1000);
         // Store subscription for cleanup
@@ -361,7 +361,7 @@ class CustomerService {
         return () => {
             clearInterval(interval);
             context.streamSubscriptions.delete(streamId);
-            infrastructure_2.logger.info({ customerId, conversationId }, '🛑 Balance stream stopped');
+            core_2.logger.info({ customerId, conversationId }, '🛑 Balance stream stopped');
         };
     }
     /**
@@ -371,12 +371,12 @@ class CustomerService {
         const context = this.getContext(conversationId);
         if (!latestCustomerId)
             return;
-        infrastructure_2.logger.info({ conversationId, customerId: latestCustomerId }, '📥 Prefetching conversation context');
+        core_2.logger.info({ conversationId, customerId: latestCustomerId }, '📥 Prefetching conversation context');
         try {
             // Fetch main customer
             const customer = await this.getCustomerById(latestCustomerId);
             // Fetch related customers (same landmark or recent invoices)
-            const relatedCustomers = await infrastructure_1.prisma.customer.findMany({
+            const relatedCustomers = await core_1.prisma.customer.findMany({
                 where: {
                     OR: [{ landmark: { equals: customer?.landmark || '' } }, { phone: { not: null } }],
                 },
@@ -404,10 +404,10 @@ class CustomerService {
             }));
             context.recentCustomers = searchResults;
             context.timestamp = Date.now();
-            infrastructure_2.logger.info({ conversationId, prefetched: searchResults.length }, '✅ Context prefetched');
+            core_2.logger.info({ conversationId, prefetched: searchResults.length }, '✅ Context prefetched');
         }
         catch (error) {
-            infrastructure_2.logger.error({ error, conversationId }, 'Prefetch failed');
+            core_2.logger.error({ error, conversationId }, 'Prefetch failed');
         }
     }
     /**
@@ -455,7 +455,7 @@ class CustomerService {
      */
     async findSimilarCustomers(name, conversationId, threshold = 0.7) {
         const context = this.getContext(conversationId);
-        infrastructure_2.logger.info({ conversationId, name, threshold }, '🔎 Searching for similar customers');
+        core_2.logger.info({ conversationId, name, threshold }, '🔎 Searching for similar customers');
         // Search in cache first
         const cachedSimilar = context.recentCustomers
             .map((c) => ({
@@ -465,11 +465,11 @@ class CustomerService {
             .filter((result) => result.similarity >= threshold)
             .sort((a, b) => b.similarity - a.similarity);
         if (cachedSimilar.length > 0) {
-            infrastructure_2.logger.info({ conversationId, found: cachedSimilar.length, from: 'cache' }, '⚡ Similar customers found in cache');
+            core_2.logger.info({ conversationId, found: cachedSimilar.length, from: 'cache' }, '⚡ Similar customers found in cache');
             return cachedSimilar;
         }
         // Search in database
-        const allCustomers = await infrastructure_1.prisma.customer.findMany({
+        const allCustomers = await core_1.prisma.customer.findMany({
             select: {
                 id: true,
                 name: true,
@@ -496,7 +496,7 @@ class CustomerService {
             .filter((result) => result.similarity >= threshold)
             .sort((a, b) => b.similarity - a.similarity)
             .slice(0, 5);
-        infrastructure_2.logger.info({ conversationId, found: similar.length, from: 'database' }, '🔍 Similar customers found in database');
+        core_2.logger.info({ conversationId, found: similar.length, from: 'database' }, '🔍 Similar customers found in database');
         // Update cache with new findings
         context.recentCustomers = similar.map((s) => s.customer);
         context.timestamp = Date.now();
@@ -510,11 +510,11 @@ class CustomerService {
             if (!name || typeof name !== 'string' || !name.trim()) {
                 throw new Error('Customer name is required and must be a non-empty string');
             }
-            infrastructure_2.logger.info({ conversationId, name }, '⚡ Creating customer with name only');
+            core_2.logger.info({ conversationId, name }, '⚡ Creating customer with name only');
             // Check for exact/near-exact name match (0.95+ similarity threshold prevents same names)
             const duplicates = await this.findSimilarCustomers(name, conversationId, 0.95);
             if (duplicates.length > 0) {
-                infrastructure_2.logger.warn({ conversationId, name, found: duplicates[0].customer.name }, '🚫 Exact or near-exact duplicate customer name detected - Creation blocked');
+                core_2.logger.warn({ conversationId, name, found: duplicates[0].customer.name }, '🚫 Exact or near-exact duplicate customer name detected - Creation blocked');
                 return {
                     success: false,
                     duplicateFound: true,
@@ -529,9 +529,9 @@ class CustomerService {
                 };
             }
             // Create customer with only name
-            const customer = await infrastructure_1.prisma.customer.create({
+            const customer = await core_1.prisma.customer.create({
                 data: {
-                    tenantId: infrastructure_3.tenantContext.get().tenantId,
+                    tenantId: core_3.tenantContext.get().tenantId,
                     name: name.trim(),
                     balance: 0,
                     alternatePhone: [],
@@ -542,7 +542,7 @@ class CustomerService {
                     commonPhrases: [],
                 },
             });
-            infrastructure_2.logger.info({ customerId: customer.id, name: customer.name }, '✅ Customer created instantly');
+            core_2.logger.info({ customerId: customer.id, name: customer.name }, '✅ Customer created instantly');
             // Add to cache for instant access
             const context = this.getContext(conversationId);
             context.recentCustomers = [
@@ -568,7 +568,7 @@ class CustomerService {
             };
         }
         catch (error) {
-            infrastructure_2.logger.error({ error, name, conversationId }, 'Fast customer creation failed');
+            core_2.logger.error({ error, name, conversationId }, 'Fast customer creation failed');
             throw error;
         }
     }
@@ -583,7 +583,7 @@ class CustomerService {
             if (!updates || Object.keys(updates).length === 0) {
                 throw new Error('At least one field must be provided for update');
             }
-            infrastructure_2.logger.info({ customerId, updates, conversationId }, '⚡ Instant customer update');
+            core_2.logger.info({ customerId, updates, conversationId }, '⚡ Instant customer update');
             const updateData = {};
             // Add only provided fields
             if (updates.name !== undefined)
@@ -601,11 +601,11 @@ class CustomerService {
             if (updates.balance !== undefined) {
                 updateData.balance = new library_1.Decimal(updates.balance);
             }
-            const updated = await infrastructure_1.prisma.customer.update({
+            const updated = await core_1.prisma.customer.update({
                 where: { id: customerId },
                 data: updateData,
             });
-            infrastructure_2.logger.info({ customerId, fields: Object.keys(updates) }, '✅ Customer updated');
+            core_2.logger.info({ customerId, fields: Object.keys(updates) }, '✅ Customer updated');
             // Clear cache for this customer
             const context = this.getContext(conversationId);
             context.recentCustomers = context.recentCustomers.map((c) => c.id === customerId ? { ...c, ...updates } : c);
@@ -618,7 +618,7 @@ class CustomerService {
             };
         }
         catch (error) {
-            infrastructure_2.logger.error({ error, customerId }, 'Instant update failed');
+            core_2.logger.error({ error, customerId }, 'Instant update failed');
             throw error;
         }
     }
@@ -649,17 +649,17 @@ class CustomerService {
             if (updates.balance !== undefined) {
                 updateData.balance = new library_1.Decimal(updates.balance);
             }
-            await infrastructure_1.prisma.customer.update({
+            await core_1.prisma.customer.update({
                 where: { id: customerId },
                 data: updateData,
             });
             // Clear balance cache for this customer
             this.balanceCache.delete(customerId);
-            infrastructure_2.logger.info({ customerId, fields: Object.keys(updates) }, '✅ Customer updated');
+            core_2.logger.info({ customerId, fields: Object.keys(updates) }, '✅ Customer updated');
             return true;
         }
         catch (error) {
-            infrastructure_2.logger.error({ error, customerId }, 'Update customer failed');
+            core_2.logger.error({ error, customerId }, 'Update customer failed');
             return false;
         }
     }
@@ -678,7 +678,7 @@ class CustomerService {
         // Check fast cache first
         const cached = this.balanceCache.get(customerId);
         if (cached && Date.now() - cached.timestamp < this.balanceCacheTimeout) {
-            infrastructure_2.logger.debug({ customerId }, '⚡ Balance from fast cache');
+            core_2.logger.debug({ customerId }, '⚡ Balance from fast cache');
             return cached.balance;
         }
         // Get from DB
@@ -689,7 +689,7 @@ class CustomerService {
             timestamp: Date.now(),
         });
         if (conversationId) {
-            infrastructure_2.logger.info({ customerId, conversationId, balance }, '💰 Balance retrieved and cached');
+            core_2.logger.info({ customerId, conversationId, balance }, '💰 Balance retrieved and cached');
         }
         return balance;
     }
@@ -697,7 +697,7 @@ class CustomerService {
      * Search with rank-based scoring system
      */
     async searchCustomerRanked(query, conversationId) {
-        infrastructure_2.logger.info({ conversationId, query }, '🔍 Ranked customer search');
+        core_2.logger.info({ conversationId, query }, '🔍 Ranked customer search');
         // Try cache first
         const context = this.getContext(conversationId);
         if (this.isCacheValid(context.timestamp) && context.recentCustomers.length > 0) {
@@ -709,7 +709,7 @@ class CustomerService {
                 .filter((c) => c.matchScore > 0.3)
                 .sort((a, b) => b.matchScore - a.matchScore);
             if (cached.length > 0) {
-                infrastructure_2.logger.info({ conversationId, found: cached.length, from: 'cache' }, '⚡ Ranked search from cache');
+                core_2.logger.info({ conversationId, found: cached.length, from: 'cache' }, '⚡ Ranked search from cache');
                 return cached;
             }
         }
@@ -728,7 +728,7 @@ class CustomerService {
             context.activeCustomerId = ranked[0].id;
         }
         context.timestamp = Date.now();
-        infrastructure_2.logger.info({ conversationId, found: ranked.length }, '🎯 Ranked search results');
+        core_2.logger.info({ conversationId, found: ranked.length }, '🎯 Ranked search results');
         return ranked;
     }
     /**
@@ -805,7 +805,7 @@ class CustomerService {
      * Multi-customer resolution (handle multiple customers with similar names)
      */
     async resolveCustomerAmbiguity(query, conversationId) {
-        infrastructure_2.logger.info({ conversationId, query }, '🤝 Resolving customer ambiguity');
+        core_2.logger.info({ conversationId, query }, '🤝 Resolving customer ambiguity');
         // Search for exact match
         const results = await this.searchCustomerRanked(query, conversationId);
         if (results.length === 0) {
@@ -816,7 +816,7 @@ class CustomerService {
         }
         // If top result has high confidence, return it
         if (results[0].matchScore > 0.9) {
-            infrastructure_2.logger.info({ conversationId, customerId: results[0].id }, '✅ Exact match found');
+            core_2.logger.info({ conversationId, customerId: results[0].id }, '✅ Exact match found');
             return {
                 exact: results[0],
                 candidates: [],
@@ -825,7 +825,7 @@ class CustomerService {
         }
         // Multiple candidates - find similar
         const similar = await this.findSimilarCustomers(query, conversationId, 0.65);
-        infrastructure_2.logger.info({ conversationId, candidates: similar.length }, '🤔 Multiple candidates found');
+        core_2.logger.info({ conversationId, candidates: similar.length }, '🤔 Multiple candidates found');
         return {
             candidates: similar,
             needsConfirmation: similar.length > 1 || (similar.length === 1 && similar[0].similarity < 0.85),
@@ -835,7 +835,7 @@ class CustomerService {
      * Confirm customer selection and update context
      */
     async confirmCustomerSelection(customerId, conversationId, updateFields) {
-        infrastructure_2.logger.info({ customerId, conversationId }, '✅ Customer confirmed');
+        core_2.logger.info({ customerId, conversationId }, '✅ Customer confirmed');
         // Get customer
         const customer = await this.getCustomerById(customerId);
         if (!customer) {
@@ -860,7 +860,7 @@ class CustomerService {
         ];
         context.activeCustomerId = customer.id;
         context.timestamp = Date.now();
-        infrastructure_2.logger.info({ customerId, conversationId }, '🎯 Customer context set');
+        core_2.logger.info({ customerId, conversationId }, '🎯 Customer context set');
         return customer;
     }
     /**
@@ -874,7 +874,7 @@ class CustomerService {
                 clearInterval(interval);
             }
             this.conversationCache.delete(conversationId);
-            infrastructure_2.logger.info({ conversationId }, '🧹 Conversation cache cleared');
+            core_2.logger.info({ conversationId }, '🧹 Conversation cache cleared');
         }
     }
     /**
@@ -885,7 +885,7 @@ class CustomerService {
             const { normalized: searchLower, tokens } = this.parseQuery(query);
             // Search by exact phone match first
             if (/^\+?\d{10,15}$/.test(query.replace(/[\s-]/g, ''))) {
-                const byPhone = await infrastructure_1.prisma.customer.findMany({
+                const byPhone = await core_1.prisma.customer.findMany({
                     where: {
                         phone: {
                             contains: query.replace(/[\s-]/g, ''),
@@ -907,7 +907,7 @@ class CustomerService {
                 }
             }
             // Search by name, landmark, notes (nickname is String[] — use has for exact match)
-            const customers = await infrastructure_1.prisma.customer.findMany({
+            const customers = await core_1.prisma.customer.findMany({
                 where: {
                     OR: [
                         { name: { contains: searchLower, mode: 'insensitive' } },
@@ -967,7 +967,7 @@ class CustomerService {
                 .slice(0, 10);
         }
         catch (error) {
-            infrastructure_2.logger.error({ error, query }, 'Customer search failed');
+            core_2.logger.error({ error, query }, 'Customer search failed');
             return [];
         }
     }
@@ -975,8 +975,8 @@ class CustomerService {
      * Get customer by ID
      */
     async getCustomerById(id) {
-        const { tenantId } = infrastructure_3.tenantContext.get();
-        return await infrastructure_1.prisma.customer.findFirst({
+        const { tenantId } = core_3.tenantContext.get();
+        return await core_1.prisma.customer.findFirst({
             where: { id, tenantId },
             include: {
                 invoices: {
@@ -1000,7 +1000,7 @@ class CustomerService {
                 throw new Error('Customer name is required and must be a non-empty string');
             }
             // Check for exact same-name customer (prevent duplicates)
-            const existing = await infrastructure_1.prisma.customer.findMany({
+            const existing = await core_1.prisma.customer.findMany({
                 where: {
                     name: {
                         equals: data.name.trim(),
@@ -1011,12 +1011,12 @@ class CustomerService {
                 take: 1,
             });
             if (existing.length > 0) {
-                infrastructure_2.logger.warn({ name: data.name, existingId: existing[0].id }, '🚫 Duplicate customer name - creation blocked');
+                core_2.logger.warn({ name: data.name, existingId: existing[0].id }, '🚫 Duplicate customer name - creation blocked');
                 throw new Error(`Customer "${data.name}" already exists. Cannot create duplicate.`);
             }
-            const customer = await infrastructure_1.prisma.customer.create({
+            const customer = await core_1.prisma.customer.create({
                 data: {
-                    tenantId: infrastructure_3.tenantContext.get().tenantId,
+                    tenantId: core_3.tenantContext.get().tenantId,
                     name: data.name,
                     phone: data.phone,
                     nickname: data.nickname ? [data.nickname] : [],
@@ -1030,11 +1030,11 @@ class CustomerService {
                     commonPhrases: [],
                 },
             });
-            infrastructure_2.logger.info({ customerId: customer.id, name: customer.name }, 'Customer created');
+            core_2.logger.info({ customerId: customer.id, name: customer.name }, 'Customer created');
             return customer;
         }
         catch (error) {
-            infrastructure_2.logger.error({ error, data }, 'Customer creation failed');
+            core_2.logger.error({ error, data }, 'Customer creation failed');
             throw error;
         }
     }
@@ -1049,7 +1049,7 @@ class CustomerService {
             if (typeof amount !== 'number' || !isFinite(amount)) {
                 throw new Error('Balance adjustment amount must be a finite number');
             }
-            const customer = await infrastructure_1.prisma.customer.update({
+            const customer = await core_1.prisma.customer.update({
                 where: { id: customerId },
                 data: {
                     balance: {
@@ -1064,7 +1064,7 @@ class CustomerService {
             return customer;
         }
         catch (error) {
-            infrastructure_2.logger.error({ error, customerId, amount }, 'Balance update failed');
+            core_2.logger.error({ error, customerId, amount }, 'Balance update failed');
             throw error;
         }
     }
@@ -1072,7 +1072,7 @@ class CustomerService {
      * Get customer balance
      */
     async getBalance(customerId) {
-        const customer = await infrastructure_1.prisma.customer.findUnique({
+        const customer = await core_1.prisma.customer.findUnique({
             where: { id: customerId },
             select: { balance: true },
         });
@@ -1083,11 +1083,11 @@ class CustomerService {
      */
     async calculateBalanceFromLedger(customerId) {
         const [invoiceAgg, paymentAgg] = await Promise.all([
-            infrastructure_1.prisma.invoice.aggregate({
+            core_1.prisma.invoice.aggregate({
                 where: { customerId, status: { not: 'cancelled' } },
                 _sum: { total: true },
             }),
-            infrastructure_1.prisma.payment.aggregate({
+            core_1.prisma.payment.aggregate({
                 where: { customerId, status: 'completed' },
                 _sum: { amount: true },
             }),
@@ -1101,7 +1101,7 @@ class CustomerService {
      */
     async syncBalance(customerId) {
         const calculatedBalance = await this.calculateBalanceFromLedger(customerId);
-        await infrastructure_1.prisma.customer.update({
+        await core_1.prisma.customer.update({
             where: { id: customerId },
             data: { balance: new library_1.Decimal(calculatedBalance) },
         });
@@ -1117,7 +1117,7 @@ class CustomerService {
      */
     async deleteCustomerAndAllData(customerId) {
         try {
-            const result = await infrastructure_1.prisma.$transaction(async (tx) => {
+            const result = await core_1.prisma.$transaction(async (tx) => {
                 // Step 1: Delete message logs linked to customer's reminders
                 const reminders = await tx.reminder.findMany({
                     where: { customerId },
@@ -1179,7 +1179,7 @@ class CustomerService {
             };
         }
         catch (error) {
-            infrastructure_2.logger.error({ customerId, error: error.message }, 'Failed to delete customer and all related data');
+            core_2.logger.error({ customerId, error: error.message }, 'Failed to delete customer and all related data');
             return {
                 success: false,
                 error: error.message,
@@ -1221,30 +1221,30 @@ class CustomerService {
             updateData.notes = data.notes || null;
         if (Object.keys(updateData).length === 0)
             throw new Error('No fields to update');
-        const updated = await infrastructure_1.prisma.customer.update({
+        const updated = await core_1.prisma.customer.update({
             where: { id },
             data: updateData,
         });
         this.balanceCache.delete(id);
-        infrastructure_2.logger.info({ customerId: id, fields: Object.keys(updateData) }, 'Customer profile updated');
+        core_2.logger.info({ customerId: id, fields: Object.keys(updateData) }, 'Customer profile updated');
         return updated;
     }
     // ---------------------------------------------------------------------------
     // Communication preferences
     // ---------------------------------------------------------------------------
     async getCommPrefs(customerId) {
-        return infrastructure_1.prisma.customerCommunicationPrefs.findUnique({
+        return core_1.prisma.customerCommunicationPrefs.findUnique({
             where: { customerId },
         });
     }
     async upsertCommPrefs(customerId, data) {
-        const customer = await infrastructure_1.prisma.customer.findUnique({
+        const customer = await core_1.prisma.customer.findUnique({
             where: { id: customerId },
             select: { tenantId: true },
         });
         if (!customer)
             throw new Error('Customer not found');
-        const upserted = await infrastructure_1.prisma.customerCommunicationPrefs.upsert({
+        const upserted = await core_1.prisma.customerCommunicationPrefs.upsert({
             where: { customerId },
             create: {
                 tenantId: customer.tenantId,
@@ -1253,7 +1253,7 @@ class CustomerService {
             },
             update: data,
         });
-        infrastructure_2.logger.info({ customerId, fields: Object.keys(data) }, 'CommPrefs upserted');
+        core_2.logger.info({ customerId, fields: Object.keys(data) }, 'CommPrefs upserted');
         return upserted;
     }
 }

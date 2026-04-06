@@ -225,7 +225,7 @@ ports:
 
 1. Review [DEVELOPER_GUIDE.md](docs/implementation/DEVELOPER_GUIDE.md) for technical details
 2. Check [IMPLEMENTATION_DETAILS.md](docs/implementation/IMPLEMENTATION_DETAILS.md) for what's new
-3. Study `prisma/schema.prisma` for database schema
+3. Study `packages/db/schema.prisma` for database schema
 4. Explore `src/integrations/openai.ts` for LLM customization
 5. See [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) for system design
 

@@ -5,8 +5,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.groqAdapter = exports.GroqAdapter = void 0;
 const openai_1 = __importDefault(require("openai"));
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
 /**
  * Groq adapter — OpenAI-compatible API backed by LPU hardware.
  * ~200ms from India vs ~1400ms for OpenAI servers.
@@ -25,19 +25,19 @@ class GroqAdapter {
     client = null;
     model = 'llama-3.3-70b-versatile';
     constructor() {
-        if (infrastructure_1.config.groq.apiKey) {
+        if (core_1.config.groq.apiKey) {
             this.client = new openai_1.default({
-                apiKey: infrastructure_1.config.groq.apiKey,
+                apiKey: core_1.config.groq.apiKey,
                 baseURL: 'https://api.groq.com/openai/v1',
             });
-            infrastructure_2.logger.info('Groq LLM adapter initialized — fast response generation enabled');
+            core_2.logger.info('Groq LLM adapter initialized — fast response generation enabled');
         }
         else {
-            infrastructure_2.logger.warn('GROQ_API_KEY not set — response generation will use OpenAI (~1400ms)');
+            core_2.logger.warn('GROQ_API_KEY not set — response generation will use OpenAI (~1400ms)');
         }
     }
     isAvailable() {
-        return !!infrastructure_1.config.groq.apiKey && this.client !== null;
+        return !!core_1.config.groq.apiKey && this.client !== null;
     }
     /** Groq does not support the complex JSON intent prompt — always delegate to OpenAI. */
     async extractIntent(_transcript, _systemPrompt) {

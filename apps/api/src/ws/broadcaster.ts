@@ -6,7 +6,7 @@
  * without implementing SSE or a dedicated pub/sub bus.
  */
 import type { WebSocket } from 'ws';
-import { logger } from '@execora/infrastructure';
+import { logger } from '@execora/core';
 
 class TenantBroadcaster {
 	/** tenantId → set of live WS connections for that tenant */
@@ -32,7 +32,7 @@ class TenantBroadcaster {
 	 * Broadcast a typed event to every connected tab for this tenant.
 	 * Silently skips closed connections and cleans them up.
 	 */
-	send(tenantId: string, type: string, payload: Record<string, unknown> = {}) {
+	send(tenantId: string, type: string, payload: object = {}) {
 		const sockets = this.connections.get(tenantId);
 		if (!sockets || sockets.size === 0) return;
 

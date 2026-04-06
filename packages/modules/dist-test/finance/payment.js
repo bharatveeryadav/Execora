@@ -13,7 +13,7 @@ exports.reversePayment = reversePayment;
 exports.getCustomerLedger = getCustomerLedger;
 exports.getLedgerSummary = getLedgerSummary;
 exports.getRecentTransactions = getRecentTransactions;
-const infrastructure_1 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
 const library_1 = require("@prisma/client/runtime/library");
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 const METHOD_MAP = {
@@ -31,7 +31,7 @@ function generatePaymentNo() {
 }
 /** Auto-settle oldest unpaid invoices with the given remaining amount (mutates tx). */
 async function settleInvoices(tx, customerId, amount) {
-    const { tenantId } = infrastructure_1.tenantContext.get();
+    const { tenantId } = core_1.tenantContext.get();
     const pending = await tx.invoice.findMany({
         where: { customerId, tenantId, status: { in: ["pending", "partial"] } },
         orderBy: { invoiceDate: "asc" },
@@ -77,8 +77,8 @@ async function recordPayment(customerId, amount, paymentMode, notes, reference, 
         throw new Error("Payment amount must be a positive number");
     try {
         const method = METHOD_MAP[paymentMode] ?? "bank";
-        const { tenantId } = infrastructure_1.tenantContext.get();
-        return await infrastructure_1.prisma.$transaction(async (tx) => {
+        const { tenantId } = core_1.tenantContext.get();
+        return await core_1.prisma.$transaction(async (tx) => {
             const payment = await tx.payment.create({
                 data: {
                     paymentNo: generatePaymentNo(),
@@ -103,14 +103,14 @@ async function recordPayment(customerId, amount, paymentMode, notes, reference, 
                 },
             });
             await settleInvoices(tx, customerId, amount);
-            infrastructure_1.logger.info({ customerId, amount, paymentMode }, "Payment recorded");
-            infrastructure_1.paymentProcessing.inc({ status: "success" });
-            infrastructure_1.paymentAmount.observe({ customer_id: customerId }, amount);
+            core_1.logger.info({ customerId, amount, paymentMode }, "Payment recorded");
+            core_1.paymentProcessing.inc({ status: "success" });
+            core_1.paymentAmount.observe({ customer_id: customerId }, amount);
             return payment;
         });
     }
     catch (error) {
-        infrastructure_1.paymentProcessing.inc({ status: "error" });
+        core_1.paymentProcessing.inc({ status: "error" });
         throw error;
     }
 }
@@ -123,8 +123,8 @@ async function recordMixedPayment(customerId, splits, notes, reference, received
     if (totalAmount <= 0)
         throw new Error("Total payment amount must be positive");
     try {
-        const { tenantId } = infrastructure_1.tenantContext.get();
-        return await infrastructure_1.prisma.$transaction(async (tx) => {
+        const { tenantId } = core_1.tenantContext.get();
+        return await core_1.prisma.$transaction(async (tx) => {
             const payments = [];
             for (const split of splits) {
                 const method = METHOD_MAP[split.method] ?? "bank";
@@ -153,14 +153,14 @@ async function recordMixedPayment(customerId, splits, notes, reference, received
                 },
             });
             await settleInvoices(tx, customerId, totalAmount);
-            infrastructure_1.logger.info({ customerId, totalAmount, splits: splits.length }, "Mixed payment recorded");
-            infrastructure_1.paymentProcessing.inc({ status: "success" });
-            infrastructure_1.paymentAmount.observe({ customer_id: customerId }, totalAmount);
+            core_1.logger.info({ customerId, totalAmount, splits: splits.length }, "Mixed payment recorded");
+            core_1.paymentProcessing.inc({ status: "success" });
+            core_1.paymentAmount.observe({ customer_id: customerId }, totalAmount);
             return { payments, totalAmount };
         });
     }
     catch (error) {
-        infrastructure_1.paymentProcessing.inc({ status: "error" });
+        core_1.paymentProcessing.inc({ status: "error" });
         throw error;
     }
 }
@@ -171,14 +171,14 @@ async function addCredit(customerId, amount, description) {
         throw new Error("Amount must be positive");
     if (!description?.trim())
         throw new Error("Description is required");
-    const customer = await infrastructure_1.prisma.customer.update({
+    const customer = await core_1.prisma.customer.update({
         where: { id: customerId },
         data: {
             balance: { increment: amount },
             totalPurchases: { increment: amount },
         },
     });
-    infrastructure_1.logger.info({ customerId, amount, description }, "Credit added");
+    core_1.logger.info({ customerId, amount, description }, "Credit added");
     return customer;
 }
 async function reversePayment(invoiceId, amount) {
@@ -186,9 +186,9 @@ async function reversePayment(invoiceId, amount) {
         throw new Error("Invoice ID is required");
     if (typeof amount !== "number" || amount <= 0)
         throw new Error("Amount must be positive");
-    return infrastructure_1.prisma.$transaction(async (tx) => {
+    return core_1.prisma.$transaction(async (tx) => {
         const invoice = await tx.invoice.findFirst({
-            where: { id: invoiceId, tenantId: infrastructure_1.tenantContext.get().tenantId },
+            where: { id: invoiceId, tenantId: core_1.tenantContext.get().tenantId },
             include: { customer: true },
         });
         if (!invoice)
@@ -219,7 +219,7 @@ async function reversePayment(invoiceId, amount) {
         await tx.payment.create({
             data: {
                 paymentNo: `REV-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-                tenantId: infrastructure_1.tenantContext.get().tenantId,
+                tenantId: core_1.tenantContext.get().tenantId,
                 customerId: invoice.customerId,
                 invoiceId,
                 amount: new library_1.Decimal(amount),
@@ -228,23 +228,23 @@ async function reversePayment(invoiceId, amount) {
                 notes: `Reversal of payment on invoice ${invoice.invoiceNo ?? invoiceId}`,
             },
         });
-        infrastructure_1.logger.info({ invoiceId, amount, customerId: invoice.customerId }, "Payment reversed");
+        core_1.logger.info({ invoiceId, amount, customerId: invoice.customerId }, "Payment reversed");
         return { ok: true, newPaid, newStatus };
     });
 }
 // ─── Queries ──────────────────────────────────────────────────────────────────
 async function getCustomerLedger(customerId, limit = 50) {
-    return infrastructure_1.prisma.payment.findMany({
-        where: { tenantId: infrastructure_1.tenantContext.get().tenantId, customerId },
+    return core_1.prisma.payment.findMany({
+        where: { tenantId: core_1.tenantContext.get().tenantId, customerId },
         orderBy: { receivedAt: "desc" },
         take: limit,
         include: { customer: { select: { name: true, phone: true } } },
     });
 }
 async function getLedgerSummary(startDate, endDate) {
-    const payments = await infrastructure_1.prisma.payment.findMany({
+    const payments = await core_1.prisma.payment.findMany({
         where: {
-            tenantId: infrastructure_1.tenantContext.get().tenantId,
+            tenantId: core_1.tenantContext.get().tenantId,
             receivedAt: { gte: startDate, lte: endDate },
             status: "completed",
         },
@@ -271,8 +271,8 @@ async function getLedgerSummary(startDate, endDate) {
     };
 }
 async function getRecentTransactions(limit = 20) {
-    return infrastructure_1.prisma.payment.findMany({
-        where: { tenantId: infrastructure_1.tenantContext.get().tenantId },
+    return core_1.prisma.payment.findMany({
+        where: { tenantId: core_1.tenantContext.get().tenantId },
         take: limit,
         orderBy: { receivedAt: "desc" },
         include: { customer: { select: { name: true, phone: true } } },

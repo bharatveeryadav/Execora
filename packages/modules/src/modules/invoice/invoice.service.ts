@@ -1,13 +1,13 @@
-import { prisma } from "@execora/infrastructure";
-import { logger } from "@execora/infrastructure";
-import { tenantContext } from "@execora/infrastructure";
-import { emailService } from "@execora/infrastructure";
-import { generateInvoicePdf } from "@execora/infrastructure";
-import { minioClient } from "@execora/infrastructure";
-import { whatsappService } from "@execora/infrastructure";
+import { prisma } from "@execora/core";
+import { logger } from "@execora/core";
+import { tenantContext } from "@execora/core";
+import { emailService } from "@execora/core";
+import { generateInvoicePdf } from "@execora/core";
+import { minioClient } from "@execora/core";
+import { whatsappService } from "@execora/core";
 import { InvoiceItemInput } from "@execora/types";
 import { Decimal } from "@prisma/client/runtime/library";
-import { invoiceOperations } from "@execora/infrastructure";
+import { invoiceOperations } from "@execora/core";
 import { gstService, type SupplyType } from "../gst/gst.service";
 import { monitoringService } from "../monitoring/monitoring.service";
 

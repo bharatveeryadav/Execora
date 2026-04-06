@@ -2,15 +2,15 @@
  * Shared helpers used across all intent handlers.
  * Kept here so handlers stay focused on business logic only.
  */
-import { logger } from "@execora/infrastructure";
-import { prisma } from "@execora/infrastructure";
+import { logger } from "@execora/core";
+import { prisma } from "@execora/core";
 import { conversationMemory } from "../conversation";
 import { customerService } from "../../customer/customer.service";
 import { invoiceService } from "../../invoice/invoice.service";
-import { emailService } from "@execora/infrastructure";
-import { whatsappService } from "@execora/infrastructure";
-import { generateInvoicePdf } from "@execora/infrastructure";
-import { minioClient } from "@execora/infrastructure";
+import { emailService } from "@execora/core";
+import { whatsappService } from "@execora/core";
+import { generateInvoicePdf } from "@execora/core";
+import { minioClient } from "@execora/core";
 import type { CustomerSearchResult, ExecutionResult } from "@execora/types";
 
 // ── Numeric helpers ──────────────────────────────────────────────────────────

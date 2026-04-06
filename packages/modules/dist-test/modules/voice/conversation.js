@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.conversationMemory = void 0;
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
-const infrastructure_3 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
+const core_3 = require("@execora/core");
 const SHOP_TENANT = process.env.SYSTEM_TENANT_ID || 'system-tenant-001';
 // Shop-level (session-independent) keys — survive WebSocket reconnects within 4-hour TTL.
 const SHOP_PENDING_INVOICES_KEY = `shop:${SHOP_TENANT}:pending_invoices`; // JSON array of PendingInvoiceDraft[]
@@ -29,22 +29,22 @@ class ConversationMemoryService {
     // ── Private Redis I/O ──────────────────────────────────────────────────────
     async load(conversationId) {
         try {
-            const raw = await infrastructure_2.redisClient.get(memKey(conversationId));
+            const raw = await core_2.redisClient.get(memKey(conversationId));
             if (raw)
                 return JSON.parse(raw);
         }
         catch (err) {
-            infrastructure_1.logger.warn({ err, conversationId }, 'Redis read failed — starting fresh memory');
+            core_1.logger.warn({ err, conversationId }, 'Redis read failed — starting fresh memory');
         }
         return freshMemory(conversationId);
     }
     async save(conversationId, data) {
         data.lastActivity = new Date().toISOString();
         try {
-            await infrastructure_2.redisClient.setex(memKey(conversationId), infrastructure_2.CONV_TTL_SECONDS, JSON.stringify(data));
+            await core_2.redisClient.setex(memKey(conversationId), core_2.CONV_TTL_SECONDS, JSON.stringify(data));
         }
         catch (err) {
-            infrastructure_1.logger.warn({ err, conversationId }, 'Redis write failed — memory not persisted');
+            core_1.logger.warn({ err, conversationId }, 'Redis write failed — memory not persisted');
         }
     }
     // ── Customer tracking helpers ──────────────────────────────────────────────
@@ -53,7 +53,7 @@ class ConversationMemoryService {
         if (exact)
             return exact;
         for (const candidate of Object.values(data.recentCustomers)) {
-            if ((0, infrastructure_3.isSamePerson)(customerName, candidate.name))
+            if ((0, core_3.isSamePerson)(customerName, candidate.name))
                 return candidate;
         }
         return null;
@@ -117,7 +117,7 @@ class ConversationMemoryService {
             data.messages = data.messages.slice(-20);
         data.turnCount += 1;
         await this.save(conversationId, data);
-        infrastructure_1.logger.debug({ conversationId, messageCount: data.messages.length }, 'User message persisted to Redis');
+        core_1.logger.debug({ conversationId, messageCount: data.messages.length }, 'User message persisted to Redis');
     }
     /**
      * Add assistant response to conversation history.
@@ -132,7 +132,7 @@ class ConversationMemoryService {
         if (data.messages.length > 20)
             data.messages = data.messages.slice(-20);
         await this.save(conversationId, data);
-        infrastructure_1.logger.debug({ conversationId }, 'Assistant message persisted to Redis');
+        core_1.logger.debug({ conversationId }, 'Assistant message persisted to Redis');
     }
     /**
      * Return last N messages for display/inspection.
@@ -171,7 +171,7 @@ class ConversationMemoryService {
         data.context.activeCustomerName = customerName;
         this.trackCustomerMention(data, customerId, customerName);
         await this.save(conversationId, data);
-        infrastructure_1.logger.info({ conversationId, customerId, customerName }, 'Active customer set in Redis');
+        core_1.logger.info({ conversationId, customerId, customerName }, 'Active customer set in Redis');
     }
     /**
      * Get currently active customer in conversation.
@@ -192,7 +192,7 @@ class ConversationMemoryService {
         data.context.activeCustomerId = prev.id;
         data.context.activeCustomerName = prev.name;
         await this.save(conversationId, data);
-        infrastructure_1.logger.info({ conversationId, customerName: prev.name }, 'Switched to previous customer');
+        core_1.logger.info({ conversationId, customerName: prev.name }, 'Switched to previous customer');
         return prev;
     }
     /**
@@ -212,11 +212,11 @@ class ConversationMemoryService {
         if (!customer) {
             const candidates = Object.values(data.recentCustomers);
             const candidateNames = candidates.map((c) => c.name);
-            const bestMatch = (0, infrastructure_3.findBestMatch)(customerName, candidateNames, 0.7);
+            const bestMatch = (0, core_3.findBestMatch)(customerName, candidateNames, 0.7);
             if (bestMatch) {
                 customer = candidates.find((c) => c.name === bestMatch.matched);
                 if (customer) {
-                    infrastructure_1.logger.info({ conversationId, query: customerName, matched: bestMatch.matched, score: bestMatch.score }, 'Fuzzy matched customer name');
+                    core_1.logger.info({ conversationId, query: customerName, matched: bestMatch.matched, score: bestMatch.score }, 'Fuzzy matched customer name');
                 }
             }
         }
@@ -231,7 +231,7 @@ class ConversationMemoryService {
             customer,
         ];
         await this.save(conversationId, data);
-        infrastructure_1.logger.info({ conversationId, customerName: customer.name }, 'Switched to customer by name');
+        core_1.logger.info({ conversationId, customerName: customer.name }, 'Switched to customer by name');
         return customer;
     }
     /**
@@ -243,7 +243,7 @@ class ConversationMemoryService {
         const names = candidates.map((c) => c.name);
         return names
             .map((name) => {
-            const match = (0, infrastructure_3.matchIndianName)(customerName, name, threshold);
+            const match = (0, core_3.matchIndianName)(customerName, name, threshold);
             return match
                 ? { ...match, customer: candidates.find((c) => c.name === name) }
                 : null;
@@ -376,17 +376,17 @@ class ConversationMemoryService {
     /** Delete all Redis state for this conversation. */
     async clearMemory(conversationId) {
         try {
-            await infrastructure_2.redisClient.del(memKey(conversationId));
-            infrastructure_1.logger.info({ conversationId }, 'Conversation memory cleared from Redis');
+            await core_2.redisClient.del(memKey(conversationId));
+            core_1.logger.info({ conversationId }, 'Conversation memory cleared from Redis');
         }
         catch (err) {
-            infrastructure_1.logger.warn({ err, conversationId }, 'Failed to clear conversation memory from Redis');
+            core_1.logger.warn({ err, conversationId }, 'Failed to clear conversation memory from Redis');
         }
     }
     /** Stats — how many live conversation keys exist in Redis. */
     async getStats() {
         try {
-            const keys = await infrastructure_2.redisClient.keys('conv:*:mem');
+            const keys = await core_2.redisClient.keys('conv:*:mem');
             return { activeConversations: keys.length };
         }
         catch {
@@ -399,21 +399,21 @@ class ConversationMemoryService {
     /** Load the full draft list from Redis (internal helper). */
     async _loadDrafts() {
         try {
-            const raw = await infrastructure_2.redisClient.get(SHOP_PENDING_INVOICES_KEY);
+            const raw = await core_2.redisClient.get(SHOP_PENDING_INVOICES_KEY);
             return raw ? JSON.parse(raw) : [];
         }
         catch (err) {
-            infrastructure_1.logger.warn({ err }, 'Redis read failed — pending invoices not loaded');
+            core_1.logger.warn({ err }, 'Redis read failed — pending invoices not loaded');
             return [];
         }
     }
     /** Save the full draft list to Redis (internal helper). */
     async _saveDrafts(drafts) {
         try {
-            await infrastructure_2.redisClient.setex(SHOP_PENDING_INVOICES_KEY, infrastructure_2.CONV_TTL_SECONDS, JSON.stringify(drafts));
+            await core_2.redisClient.setex(SHOP_PENDING_INVOICES_KEY, core_2.CONV_TTL_SECONDS, JSON.stringify(drafts));
         }
         catch (err) {
-            infrastructure_1.logger.warn({ err }, 'Redis write failed — pending invoices not persisted');
+            core_1.logger.warn({ err }, 'Redis write failed — pending invoices not persisted');
         }
     }
     /**
@@ -427,7 +427,7 @@ class ConversationMemoryService {
         // Replace existing draft for same customer (prevent duplicates when re-drafting)
         const filtered = drafts.filter((d) => d.customerId !== draft.customerId);
         await this._saveDrafts([...filtered, entry]);
-        infrastructure_1.logger.info({ draftId, customerName: draft.customerName }, 'Pending invoice draft added');
+        core_1.logger.info({ draftId, customerName: draft.customerName }, 'Pending invoice draft added');
         return draftId;
     }
     /**
@@ -452,7 +452,7 @@ class ConversationMemoryService {
         const drafts = await this._loadDrafts();
         const updated = drafts.filter((d) => d.draftId !== draftId);
         await this._saveDrafts(updated);
-        infrastructure_1.logger.info({ draftId }, 'Pending invoice draft removed');
+        core_1.logger.info({ draftId }, 'Pending invoice draft removed');
     }
     /**
      * Return all pending invoice drafts (most recently created last).
@@ -473,10 +473,10 @@ class ConversationMemoryService {
      */
     async setShopPendingInvoice(_draft) {
         try {
-            await infrastructure_2.redisClient.del(SHOP_PENDING_INVOICES_KEY);
+            await core_2.redisClient.del(SHOP_PENDING_INVOICES_KEY);
         }
         catch (err) {
-            infrastructure_1.logger.warn({ err }, 'Redis delete failed — pending invoices not cleared');
+            core_1.logger.warn({ err }, 'Redis delete failed — pending invoices not cleared');
         }
     }
     // ── Shop-level pending email / send-confirmation ───────────────────────────
@@ -485,42 +485,42 @@ class ConversationMemoryService {
     async setShopPendingEmail(data) {
         try {
             if (data === null)
-                await infrastructure_2.redisClient.del(SHOP_PENDING_EMAIL_KEY);
+                await core_2.redisClient.del(SHOP_PENDING_EMAIL_KEY);
             else
-                await infrastructure_2.redisClient.setex(SHOP_PENDING_EMAIL_KEY, infrastructure_2.CONV_TTL_SECONDS, JSON.stringify(data));
+                await core_2.redisClient.setex(SHOP_PENDING_EMAIL_KEY, core_2.CONV_TTL_SECONDS, JSON.stringify(data));
         }
         catch (err) {
-            infrastructure_1.logger.warn({ err }, 'Redis write failed — shop pending email not persisted');
+            core_1.logger.warn({ err }, 'Redis write failed — shop pending email not persisted');
         }
     }
     async getShopPendingEmail() {
         try {
-            const raw = await infrastructure_2.redisClient.get(SHOP_PENDING_EMAIL_KEY);
+            const raw = await core_2.redisClient.get(SHOP_PENDING_EMAIL_KEY);
             return raw ? JSON.parse(raw) : null;
         }
         catch (err) {
-            infrastructure_1.logger.warn({ err }, 'Redis read failed — shop pending email not loaded');
+            core_1.logger.warn({ err }, 'Redis read failed — shop pending email not loaded');
             return null;
         }
     }
     async setShopPendingSendConfirm(data) {
         try {
             if (data === null)
-                await infrastructure_2.redisClient.del(SHOP_PENDING_SEND_CONF_KEY);
+                await core_2.redisClient.del(SHOP_PENDING_SEND_CONF_KEY);
             else
-                await infrastructure_2.redisClient.setex(SHOP_PENDING_SEND_CONF_KEY, infrastructure_2.CONV_TTL_SECONDS, JSON.stringify(data));
+                await core_2.redisClient.setex(SHOP_PENDING_SEND_CONF_KEY, core_2.CONV_TTL_SECONDS, JSON.stringify(data));
         }
         catch (err) {
-            infrastructure_1.logger.warn({ err }, 'Redis write failed — shop pending send-confirm not persisted');
+            core_1.logger.warn({ err }, 'Redis write failed — shop pending send-confirm not persisted');
         }
     }
     async getShopPendingSendConfirm() {
         try {
-            const raw = await infrastructure_2.redisClient.get(SHOP_PENDING_SEND_CONF_KEY);
+            const raw = await core_2.redisClient.get(SHOP_PENDING_SEND_CONF_KEY);
             return raw ? JSON.parse(raw) : null;
         }
         catch (err) {
-            infrastructure_1.logger.warn({ err }, 'Redis read failed — shop pending send-confirm not loaded');
+            core_1.logger.warn({ err }, 'Redis read failed — shop pending send-confirm not loaded');
             return null;
         }
     }

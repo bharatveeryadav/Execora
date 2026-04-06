@@ -1,4 +1,4 @@
-import { prisma } from "@execora/infrastructure";
+import { prisma } from "@execora/core";
 import { Prisma } from "@prisma/client";
 import type {
   ListExpensesInput,

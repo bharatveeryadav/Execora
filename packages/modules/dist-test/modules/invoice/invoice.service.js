@@ -1,15 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.invoiceService = void 0;
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
-const infrastructure_3 = require("@execora/infrastructure");
-const infrastructure_4 = require("@execora/infrastructure");
-const infrastructure_5 = require("@execora/infrastructure");
-const infrastructure_6 = require("@execora/infrastructure");
-const infrastructure_7 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
+const core_3 = require("@execora/core");
+const core_4 = require("@execora/core");
+const core_5 = require("@execora/core");
+const core_6 = require("@execora/core");
+const core_7 = require("@execora/core");
 const library_1 = require("@prisma/client/runtime/library");
-const infrastructure_8 = require("@execora/infrastructure");
+const core_8 = require("@execora/core");
 const gst_service_1 = require("../gst/gst.service");
 const monitoring_service_1 = require("../monitoring/monitoring.service");
 /**
@@ -24,7 +24,7 @@ async function generateInvoiceNo(tx) {
     const year = now.getFullYear();
     const fyStart = month >= 4 ? year : year - 1;
     const fy = `${fyStart}-${String(fyStart + 1).slice(-2)}`; // e.g. "2024-25"
-    const tenantId = infrastructure_3.tenantContext.get().tenantId;
+    const tenantId = core_3.tenantContext.get().tenantId;
     // Atomic increment: insert row for this tenant+FY on first invoice, else increment
     // Column may be tenant_id (migration) or "tenantId" (Prisma default) — try tenant_id first
     const result = await tx.$queryRaw `
@@ -52,7 +52,7 @@ class InvoiceService {
         // Pass 1: exact case-insensitive contains
         const exact = await tx.product.findFirst({
             where: {
-                tenantId: infrastructure_3.tenantContext.get().tenantId,
+                tenantId: core_3.tenantContext.get().tenantId,
                 name: { contains: productName, mode: "insensitive" },
                 isActive: true,
             },
@@ -61,7 +61,7 @@ class InvoiceService {
             return { product: exact, autoCreated: false };
         // Pass 2: fuzzy — best character-overlap across all active products
         const allProducts = await tx.product.findMany({
-            where: { tenantId: infrastructure_3.tenantContext.get().tenantId, isActive: true },
+            where: { tenantId: core_3.tenantContext.get().tenantId, isActive: true },
             select: {
                 id: true,
                 name: true,
@@ -97,7 +97,7 @@ class InvoiceService {
         // Shopkeeper should update the price later via the product catalog.
         const created = await tx.product.create({
             data: {
-                tenantId: infrastructure_3.tenantContext.get().tenantId,
+                tenantId: core_3.tenantContext.get().tenantId,
                 name: productName,
                 category: "General",
                 price: new library_1.Decimal(0),
@@ -106,10 +106,10 @@ class InvoiceService {
                 isActive: true,
             },
         });
-        infrastructure_2.logger.warn({
+        core_2.logger.warn({
             productName,
             productId: created.id,
-            tenantId: infrastructure_3.tenantContext.get().tenantId,
+            tenantId: core_3.tenantContext.get().tenantId,
         }, "Product auto-created during invoice (price=0) — update price in catalog");
         return { product: created, autoCreated: true };
     }
@@ -147,7 +147,7 @@ class InvoiceService {
         const resolvedItems = [];
         const autoCreatedProducts = [];
         // Run inside a transaction so auto-created products are committed atomically
-        await infrastructure_1.prisma.$transaction(async (tx) => {
+        await core_1.prisma.$transaction(async (tx) => {
             for (const item of items) {
                 if (!item.productName?.trim())
                     continue;
@@ -247,10 +247,10 @@ class InvoiceService {
         const { discountAmt, discountType } = this.computeDiscount(subtotal, opts);
         const grandTotal = Math.round((subtotal + totalTax - discountAmt) * 100) / 100;
         try {
-            return await infrastructure_1.prisma.$transaction(async (tx) => {
+            return await core_1.prisma.$transaction(async (tx) => {
                 const invoice = await tx.invoice.create({
                     data: {
-                        tenantId: infrastructure_3.tenantContext.get().tenantId,
+                        tenantId: core_3.tenantContext.get().tenantId,
                         invoiceNo: await generateInvoiceNo(tx),
                         customerId,
                         subtotal: new library_1.Decimal(subtotal),
@@ -311,7 +311,7 @@ class InvoiceService {
                     await tx.payment.create({
                         data: {
                             paymentNo: payNo,
-                            tenantId: infrastructure_3.tenantContext.get().tenantId,
+                            tenantId: core_3.tenantContext.get().tenantId,
                             customerId,
                             invoiceId: invoice.id,
                             amount: new library_1.Decimal(paid),
@@ -340,7 +340,7 @@ class InvoiceService {
                         visitCount: { increment: 1 },
                     },
                 });
-                infrastructure_2.logger.info({
+                core_2.logger.info({
                     invoiceId: invoice.id,
                     customerId,
                     subtotal,
@@ -348,22 +348,22 @@ class InvoiceService {
                     totalTax,
                     grandTotal,
                     itemCount: resolvedItems.length,
-                    tenantId: infrastructure_3.tenantContext.get().tenantId,
+                    tenantId: core_3.tenantContext.get().tenantId,
                 }, "Invoice confirmed and created");
-                infrastructure_8.invoiceOperations.inc({
+                core_8.invoiceOperations.inc({
                     operation: "create",
                     status: "success",
-                    tenantId: infrastructure_3.tenantContext.get().tenantId,
+                    tenantId: core_3.tenantContext.get().tenantId,
                 });
                 return invoice;
             });
         }
         catch (error) {
-            infrastructure_2.logger.error({ error, customerId, tenantId: infrastructure_3.tenantContext.get().tenantId }, "Invoice confirm failed");
-            infrastructure_8.invoiceOperations.inc({
+            core_2.logger.error({ error, customerId, tenantId: core_3.tenantContext.get().tenantId }, "Invoice confirm failed");
+            core_8.invoiceOperations.inc({
                 operation: "create",
                 status: "error",
-                tenantId: infrastructure_3.tenantContext.get().tenantId,
+                tenantId: core_3.tenantContext.get().tenantId,
             });
             throw error;
         }
@@ -388,7 +388,7 @@ class InvoiceService {
             }
             const supplyType = opts.supplyType ?? "INTRASTATE";
             const withGst = opts.withGst ?? false;
-            return await infrastructure_1.prisma.$transaction(async (tx) => {
+            return await core_1.prisma.$transaction(async (tx) => {
                 const resolvedItems = [];
                 const autoCreatedProducts = [];
                 for (const item of items) {
@@ -469,7 +469,7 @@ class InvoiceService {
                 }
                 const invoice = await tx.invoice.create({
                     data: {
-                        tenantId: infrastructure_3.tenantContext.get().tenantId,
+                        tenantId: core_3.tenantContext.get().tenantId,
                         invoiceNo: await generateInvoiceNo(tx),
                         customerId,
                         subtotal: new library_1.Decimal(subtotal),
@@ -536,7 +536,7 @@ class InvoiceService {
                     await tx.payment.create({
                         data: {
                             paymentNo: payNo,
-                            tenantId: infrastructure_3.tenantContext.get().tenantId,
+                            tenantId: core_3.tenantContext.get().tenantId,
                             customerId,
                             invoiceId: invoice.id,
                             amount: new library_1.Decimal(paid),
@@ -567,7 +567,7 @@ class InvoiceService {
                         },
                     });
                 }
-                infrastructure_2.logger.info({
+                core_2.logger.info({
                     invoiceId: invoice.id,
                     customerId,
                     subtotal,
@@ -577,18 +577,18 @@ class InvoiceService {
                     isProforma,
                     itemCount: items.length,
                     autoCreatedProducts,
-                    tenantId: infrastructure_3.tenantContext.get().tenantId,
+                    tenantId: core_3.tenantContext.get().tenantId,
                 }, isProforma ? "Proforma invoice created" : "Invoice created");
-                infrastructure_8.invoiceOperations.inc({
+                core_8.invoiceOperations.inc({
                     operation: "create",
                     status: "success",
-                    tenantId: infrastructure_3.tenantContext.get().tenantId,
+                    tenantId: core_3.tenantContext.get().tenantId,
                 });
                 return { invoice, autoCreatedProducts };
             }).then(async (result) => {
                 // Fire monitoring event outside the transaction so it never blocks billing
                 if (!opts.isProforma) {
-                    const { tenantId, userId } = infrastructure_3.tenantContext.get();
+                    const { tenantId, userId } = core_3.tenantContext.get();
                     const customerName = result.invoice.customer?.name;
                     const total = parseFloat(result.invoice.total.toString());
                     const disc = parseFloat(result.invoice.discount?.toString() ?? '0');
@@ -613,11 +613,11 @@ class InvoiceService {
             });
         }
         catch (error) {
-            infrastructure_2.logger.error({ error, customerId, items, tenantId: infrastructure_3.tenantContext.get().tenantId }, "Invoice creation failed");
-            infrastructure_8.invoiceOperations.inc({
+            core_2.logger.error({ error, customerId, items, tenantId: core_3.tenantContext.get().tenantId }, "Invoice creation failed");
+            core_8.invoiceOperations.inc({
                 operation: "create",
                 status: "error",
-                tenantId: infrastructure_3.tenantContext.get().tenantId,
+                tenantId: core_3.tenantContext.get().tenantId,
             });
             throw error;
         }
@@ -627,7 +627,7 @@ class InvoiceService {
      * Deducts stock and updates customer balance. Sets status to 'pending'.
      */
     async convertProformaToInvoice(invoiceId, initialPayment) {
-        return await infrastructure_1.prisma.$transaction(async (tx) => {
+        return await core_1.prisma.$transaction(async (tx) => {
             const invoice = await tx.invoice.findUnique({
                 where: { id: invoiceId },
                 include: { items: true },
@@ -661,7 +661,7 @@ class InvoiceService {
                 await tx.payment.create({
                     data: {
                         paymentNo: payNo,
-                        tenantId: infrastructure_3.tenantContext.get().tenantId,
+                        tenantId: core_3.tenantContext.get().tenantId,
                         customerId: invoice.customerId,
                         invoiceId: invoice.id,
                         amount: new library_1.Decimal(paidAmount),
@@ -699,7 +699,7 @@ class InvoiceService {
      * Only PENDING (or DRAFT) invoices can be edited. PAID/CANCELLED require admin override.
      */
     async updateInvoice(invoiceId, changes) {
-        return await infrastructure_1.prisma.$transaction(async (tx) => {
+        return await core_1.prisma.$transaction(async (tx) => {
             const existing = await tx.invoice.findUnique({
                 where: { id: invoiceId },
                 include: { items: true },
@@ -857,7 +857,7 @@ class InvoiceService {
      */
     async cancelInvoice(invoiceId) {
         try {
-            return await infrastructure_1.prisma.$transaction(async (tx) => {
+            return await core_1.prisma.$transaction(async (tx) => {
                 const invoice = await tx.invoice.findUnique({
                     where: { id: invoiceId },
                     include: { items: true },
@@ -894,12 +894,12 @@ class InvoiceService {
                     data: { status: "cancelled", updatedAt: new Date() },
                     include: { items: { include: { product: true } } },
                 });
-                infrastructure_2.logger.info({ invoiceId, tenantId: infrastructure_3.tenantContext.get().tenantId }, "Invoice cancelled");
+                core_2.logger.info({ invoiceId, tenantId: core_3.tenantContext.get().tenantId }, "Invoice cancelled");
                 return cancelled;
             });
         }
         catch (error) {
-            infrastructure_2.logger.error({ error, invoiceId, tenantId: infrastructure_3.tenantContext.get().tenantId }, "Invoice cancellation failed");
+            core_2.logger.error({ error, invoiceId, tenantId: core_3.tenantContext.get().tenantId }, "Invoice cancellation failed");
             throw error;
         }
     }
@@ -907,8 +907,8 @@ class InvoiceService {
      * Get recent invoices.
      */
     async getRecentInvoices(limit = 10) {
-        return await infrastructure_1.prisma.invoice.findMany({
-            where: { tenantId: infrastructure_3.tenantContext.get().tenantId },
+        return await core_1.prisma.invoice.findMany({
+            where: { tenantId: core_3.tenantContext.get().tenantId },
             take: limit,
             orderBy: { invoiceDate: "desc" },
             include: {
@@ -921,8 +921,8 @@ class InvoiceService {
      * Get all invoices for a customer.
      */
     async getCustomerInvoices(customerId, limit = 10) {
-        return await infrastructure_1.prisma.invoice.findMany({
-            where: { customerId, tenantId: infrastructure_3.tenantContext.get().tenantId },
+        return await core_1.prisma.invoice.findMany({
+            where: { customerId, tenantId: core_3.tenantContext.get().tenantId },
             take: limit,
             orderBy: { invoiceDate: "desc" },
             include: { items: { include: { product: true } } },
@@ -932,7 +932,7 @@ class InvoiceService {
      * Get the most recent non-cancelled invoice for a customer.
      */
     async getLastInvoice(customerId) {
-        return await infrastructure_1.prisma.invoice.findFirst({
+        return await core_1.prisma.invoice.findFirst({
             where: { customerId, status: { not: "cancelled" } },
             orderBy: { invoiceDate: "desc" },
             include: { items: { include: { product: true } } },
@@ -942,11 +942,11 @@ class InvoiceService {
      * Persist the MinIO object key (and presigned URL) on an invoice record.
      */
     async savePdfUrl(invoiceId, pdfObjectKey, pdfUrl) {
-        await infrastructure_1.prisma.invoice.update({
+        await core_1.prisma.invoice.update({
             where: { id: invoiceId },
             data: { pdfObjectKey, pdfUrl },
         });
-        infrastructure_2.logger.info({ invoiceId, pdfObjectKey }, "Invoice PDF URL saved to DB");
+        core_2.logger.info({ invoiceId, pdfObjectKey }, "Invoice PDF URL saved to DB");
     }
     /**
      * Generate invoice PDF (with UPI QR), upload to MinIO, and send email.
@@ -954,11 +954,11 @@ class InvoiceService {
      * Call fire-and-forget: dispatchInvoicePdfEmail(id).catch(() => {});
      */
     async dispatchInvoicePdfEmail(invoiceId) {
-        const log = infrastructure_2.logger.child({ invoiceId, fn: "dispatchInvoicePdfEmail" });
+        const log = core_2.logger.child({ invoiceId, fn: "dispatchInvoicePdfEmail" });
         const start = Date.now();
         try {
             // ── 1. Load invoice + items + customer ──────────────────────────────
-            const invoice = await infrastructure_1.prisma.invoice.findFirst({
+            const invoice = await core_1.prisma.invoice.findFirst({
                 where: { id: invoiceId },
                 include: { customer: true, items: true },
             });
@@ -967,7 +967,7 @@ class InvoiceService {
                 return;
             }
             // ── 2. Resolve tenant settings (shopName + upiVpa + bank + T&C + S12-05 template/logo) ─
-            const tenant = await infrastructure_1.prisma.tenant.findFirst({
+            const tenant = await core_1.prisma.tenant.findFirst({
                 where: { id: invoice.tenantId },
                 select: { name: true, legalName: true, settings: true, gstin: true, logoUrl: true },
             });
@@ -1001,7 +1001,7 @@ class InvoiceService {
             const logoObjectKey = settings.logoObjectKey;
             if (logoObjectKey) {
                 try {
-                    logoBuffer = await infrastructure_6.minioClient.getFile(logoObjectKey);
+                    logoBuffer = await core_6.minioClient.getFile(logoObjectKey);
                 }
                 catch {
                     /* non-fatal: PDF will render without logo */
@@ -1056,7 +1056,7 @@ class InvoiceService {
                 const rawTotal = subtotal - parseFloat((invoice.discount ?? 0).toString()) + totalTax;
                 const roundOffAmount = roundOff ? Math.round(rawTotal) - rawTotal : undefined;
                 const discountAmount = parseFloat((invoice.discount ?? 0).toString()) || undefined;
-                pdfBuffer = await (0, infrastructure_5.generateInvoicePdf)({
+                pdfBuffer = await (0, core_5.generateInvoicePdf)({
                     invoiceNo: invoice.invoiceNo || invoice.id,
                     invoiceId: invoice.id,
                     invoiceDate: invoice.invoiceDate ?? invoice.createdAt,
@@ -1102,10 +1102,10 @@ class InvoiceService {
             let pdfUrl;
             try {
                 const objectKey = `invoices/${invoice.tenantId}/${invoice.id}.pdf`;
-                await infrastructure_6.minioClient.uploadFile(objectKey, pdfBuffer, {
+                await core_6.minioClient.uploadFile(objectKey, pdfBuffer, {
                     contentType: "application/pdf",
                 });
-                pdfUrl = await infrastructure_6.minioClient.getPresignedUrl(objectKey, 7 * 24 * 60 * 60);
+                pdfUrl = await core_6.minioClient.getPresignedUrl(objectKey, 7 * 24 * 60 * 60);
                 await this.savePdfUrl(invoice.id, objectKey, pdfUrl);
             }
             catch (err) {
@@ -1133,7 +1133,7 @@ class InvoiceService {
                 if (!customerEmail || !autoSendEmail)
                     return false;
                 try {
-                    await infrastructure_4.emailService.sendInvoiceEmail(customerEmail, invoice.customer.name, invoice.id, emailItems, grandTotal, shopName, pdfBuffer, pdfUrl, invoiceRef);
+                    await core_4.emailService.sendInvoiceEmail(customerEmail, invoice.customer.name, invoice.id, emailItems, grandTotal, shopName, pdfBuffer, pdfUrl, invoiceRef);
                     log.info({ customerEmail, durationMs: Date.now() - start }, "invoice.pdf.email.sent");
                     return true;
                 }
@@ -1146,14 +1146,14 @@ class InvoiceService {
             const tryWhatsApp = customerPhone &&
                 pdfUrl &&
                 autoSendWhatsApp &&
-                infrastructure_7.whatsappService.isConfigured();
+                core_7.whatsappService.isConfigured();
             if (tryWhatsApp && customerPhone && pdfUrl) {
                 const phone = customerPhone;
                 const url = pdfUrl;
                 const invoiceCaption = `${shopName} — Invoice ${invoiceRef}\n₹${grandTotal.toFixed(2)} | Please find your invoice attached.`;
                 let waDelivered = false;
                 try {
-                    const waResult = await infrastructure_7.whatsappService.sendDocumentMessage(phone, url, invoiceCaption, `invoice-${invoiceRef}.pdf`);
+                    const waResult = await core_7.whatsappService.sendDocumentMessage(phone, url, invoiceCaption, `invoice-${invoiceRef}.pdf`);
                     waDelivered = waResult.success;
                     log.info({
                         customerPhone: phone,
@@ -1185,8 +1185,8 @@ class InvoiceService {
      * Get a single invoice with items and customer.
      */
     async getInvoiceById(invoiceId) {
-        return await infrastructure_1.prisma.invoice.findFirst({
-            where: { id: invoiceId, tenantId: infrastructure_3.tenantContext.get().tenantId },
+        return await core_1.prisma.invoice.findFirst({
+            where: { id: invoiceId, tenantId: core_3.tenantContext.get().tenantId },
             include: {
                 customer: true,
                 items: { include: { product: true } },
@@ -1198,11 +1198,11 @@ class InvoiceService {
      * for the last N days for this tenant.
      */
     async getTopSelling(limit = 5, days = 30) {
-        const { tenantId } = infrastructure_3.tenantContext.get();
+        const { tenantId } = core_3.tenantContext.get();
         const since = new Date();
         since.setDate(since.getDate() - days);
         since.setHours(0, 0, 0, 0);
-        const rows = await infrastructure_1.prisma.$queryRaw `
+        const rows = await core_1.prisma.$queryRaw `
       SELECT
         ii.product_id,
         ii.product_name,
@@ -1238,18 +1238,18 @@ class InvoiceService {
     async getSummaryRange(from, to) {
         const toEnd = new Date(to);
         toEnd.setHours(23, 59, 59, 999);
-        const invoices = await infrastructure_1.prisma.invoice.findMany({
+        const invoices = await core_1.prisma.invoice.findMany({
             where: {
-                tenantId: infrastructure_3.tenantContext.get().tenantId,
+                tenantId: core_3.tenantContext.get().tenantId,
                 invoiceDate: { gte: from, lte: toEnd },
                 status: { notIn: ["cancelled", "proforma"] },
             },
             select: { total: true },
         });
         const totalSales = invoices.reduce((sum, inv) => sum + parseFloat(inv.total.toString()), 0);
-        const payments = await infrastructure_1.prisma.payment.findMany({
+        const payments = await core_1.prisma.payment.findMany({
             where: {
-                tenantId: infrastructure_3.tenantContext.get().tenantId,
+                tenantId: core_3.tenantContext.get().tenantId,
                 receivedAt: { gte: from, lte: toEnd },
                 status: "completed",
             },
@@ -1282,18 +1282,18 @@ class InvoiceService {
         startOfDay.setHours(0, 0, 0, 0);
         const endOfDay = new Date(date);
         endOfDay.setHours(23, 59, 59, 999);
-        const invoices = await infrastructure_1.prisma.invoice.findMany({
+        const invoices = await core_1.prisma.invoice.findMany({
             where: {
-                tenantId: infrastructure_3.tenantContext.get().tenantId,
+                tenantId: core_3.tenantContext.get().tenantId,
                 invoiceDate: { gte: startOfDay, lte: endOfDay },
                 status: { notIn: ["cancelled", "proforma"] },
             },
             select: { total: true },
         });
         const totalSales = invoices.reduce((sum, inv) => sum + parseFloat(inv.total.toString()), 0);
-        const payments = await infrastructure_1.prisma.payment.findMany({
+        const payments = await core_1.prisma.payment.findMany({
             where: {
-                tenantId: infrastructure_3.tenantContext.get().tenantId,
+                tenantId: core_3.tenantContext.get().tenantId,
                 receivedAt: { gte: startOfDay, lte: endOfDay },
                 status: "completed",
             },
@@ -1322,9 +1322,9 @@ class InvoiceService {
      * Used for "Repeat Last Bill" functionality.
      */
     async getLastOrder(customerId) {
-        const invoice = await infrastructure_1.prisma.invoice.findFirst({
+        const invoice = await core_1.prisma.invoice.findFirst({
             where: {
-                tenantId: infrastructure_3.tenantContext.get().tenantId,
+                tenantId: core_3.tenantContext.get().tenantId,
                 customerId,
                 status: { notIn: ["cancelled"] },
             },

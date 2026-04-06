@@ -1,7 +1,7 @@
 import { Readable } from 'stream';
-import { config } from '@execora/infrastructure';
-import { logger } from '@execora/infrastructure';
-import { ttsProcessingTime } from '@execora/infrastructure';
+import { config } from '@execora/core';
+import { logger } from '@execora/core';
+import { ttsProcessingTime } from '@execora/core';
 import { TTSAdapter } from '../types';
 import { ProviderUnavailableError } from '../errors';
 import { withProvider, reportProviderAvailability } from '../middleware';

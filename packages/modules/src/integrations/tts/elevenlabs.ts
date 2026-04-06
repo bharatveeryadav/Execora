@@ -1,6 +1,6 @@
 import axios from 'axios';
-import { config } from '@execora/infrastructure';
-import { logger } from '@execora/infrastructure';
+import { config } from '@execora/core';
+import { logger } from '@execora/core';
 import { Readable } from 'stream';
 
 class ElevenLabsTTSService {

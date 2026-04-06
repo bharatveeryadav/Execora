@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import { Readable } from 'stream';
-import { config } from '@execora/infrastructure';
-import { logger } from '@execora/infrastructure';
+import { config } from '@execora/core';
+import { logger } from '@execora/core';
 import { TTSAdapter, ProviderCapabilities } from '../types';
 
 type OpenAIVoice = 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer';

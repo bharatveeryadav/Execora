@@ -9,15 +9,15 @@ exports.sendConfirmedInvoiceEmail = sendConfirmedInvoiceEmail;
  * Shared helpers used across all intent handlers.
  * Kept here so handlers stay focused on business logic only.
  */
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
 const conversation_1 = require("../conversation");
 const customer_service_1 = require("../../customer/customer.service");
 const invoice_service_1 = require("../../invoice/invoice.service");
-const infrastructure_3 = require("@execora/infrastructure");
-const infrastructure_4 = require("@execora/infrastructure");
-const infrastructure_5 = require("@execora/infrastructure");
-const infrastructure_6 = require("@execora/infrastructure");
+const core_3 = require("@execora/core");
+const core_4 = require("@execora/core");
+const core_5 = require("@execora/core");
+const core_6 = require("@execora/core");
 // ── Numeric helpers ──────────────────────────────────────────────────────────
 function toNum(value, fallback = 0) {
     if (value === null || value === undefined)
@@ -100,7 +100,7 @@ async function buildAndStoreInvoicePdf(invoice, customerName, resolvedItems, sho
         const totalCess = resolvedItems.reduce((s, i) => s + toNum(i.cess), 0);
         const totalTax = totalCgst + totalSgst + totalIgst + totalCess;
         const grandTotal = parseFloat(invoice.total.toString());
-        pdfBuffer = await (0, infrastructure_5.generateInvoicePdf)({
+        pdfBuffer = await (0, core_5.generateInvoicePdf)({
             invoiceNo: invoice.invoiceNo || invoice.id,
             invoiceId: invoice.id,
             invoiceDate: invoice.createdAt ? new Date(invoice.createdAt) : new Date(),
@@ -134,21 +134,21 @@ async function buildAndStoreInvoicePdf(invoice, customerName, resolvedItems, sho
         });
     }
     catch (err) {
-        infrastructure_1.logger.error({ err, invoiceId: invoice?.id }, "Invoice PDF generation failed");
+        core_1.logger.error({ err, invoiceId: invoice?.id }, "Invoice PDF generation failed");
         return {};
     }
     // Stage 2: Upload to MinIO (non-fatal)
     try {
         const objectKey = `invoices/${invoice.tenantId || "system"}/${invoice.id}.pdf`;
-        await infrastructure_6.minioClient.uploadFile(objectKey, pdfBuffer, {
+        await core_6.minioClient.uploadFile(objectKey, pdfBuffer, {
             contentType: "application/pdf",
         });
-        const pdfUrl = await infrastructure_6.minioClient.getPresignedUrl(objectKey, 7 * 24 * 60 * 60);
+        const pdfUrl = await core_6.minioClient.getPresignedUrl(objectKey, 7 * 24 * 60 * 60);
         await invoice_service_1.invoiceService.savePdfUrl(invoice.id, objectKey, pdfUrl);
         return { pdfBuffer, pdfUrl, pdfObjectKey: objectKey };
     }
     catch (err) {
-        infrastructure_1.logger.error({ err, invoiceId: invoice?.id }, "MinIO upload failed — email will still carry PDF attachment");
+        core_1.logger.error({ err, invoiceId: invoice?.id }, "MinIO upload failed — email will still carry PDF attachment");
         return { pdfBuffer };
     }
 }
@@ -167,7 +167,7 @@ async function sendConfirmedInvoiceEmail(invoice, customerId, customerEmail, cus
     let autoSendWhatsApp = true;
     if (invoice.tenantId) {
         try {
-            const tenant = await infrastructure_2.prisma.tenant.findFirst({
+            const tenant = await core_2.prisma.tenant.findFirst({
                 where: { id: invoice.tenantId },
                 select: { settings: true, name: true },
             });
@@ -181,7 +181,7 @@ async function sendConfirmedInvoiceEmail(invoice, customerId, customerEmail, cus
             }
         }
         catch (err) {
-            infrastructure_1.logger.warn({ err, tenantId: invoice.tenantId }, "Failed to read tenant settings — using defaults (autoSend=true)");
+            core_1.logger.warn({ err, tenantId: invoice.tenantId }, "Failed to read tenant settings — using defaults (autoSend=true)");
         }
     }
     const customerPhone = invoice.customer?.phone;
@@ -195,32 +195,32 @@ async function sendConfirmedInvoiceEmail(invoice, customerId, customerEmail, cus
     const deliveryChannels = [];
     // ── Email ────────────────────────────────────────────────────────────────
     if (customerEmail && autoSendEmail) {
-        infrastructure_3.emailService
+        core_3.emailService
             .sendInvoiceEmail(customerEmail, customerName, invoice.id, emailItems, total, shopName, pdfBuffer, pdfUrl, invoiceRef)
-            .catch((err) => infrastructure_1.logger.error({ err, invoiceId: invoice.id }, "voice: invoice email send failed"));
+            .catch((err) => core_1.logger.error({ err, invoiceId: invoice.id }, "voice: invoice email send failed"));
         deliveryChannels.push(`email (${customerEmail})`);
-        infrastructure_1.logger.info({ invoiceId: invoice.id, customerEmail }, "voice: invoice.pdf.email.queued");
+        core_1.logger.info({ invoiceId: invoice.id, customerEmail }, "voice: invoice.pdf.email.queued");
     }
     else if (customerEmail && !autoSendEmail) {
-        infrastructure_1.logger.info({ invoiceId: invoice.id }, "voice: invoice email skipped — autoSendEmail disabled");
+        core_1.logger.info({ invoiceId: invoice.id }, "voice: invoice email skipped — autoSendEmail disabled");
     }
     // ── WhatsApp ─────────────────────────────────────────────────────────────
     if (customerPhone &&
         autoSendWhatsApp &&
         pdfUrl &&
-        infrastructure_4.whatsappService.isConfigured()) {
+        core_4.whatsappService.isConfigured()) {
         const caption = `${shopName} — Invoice ${invoiceRef}\n₹${total.toFixed(2)} | ${customerName} ka bill.`;
-        infrastructure_4.whatsappService
+        core_4.whatsappService
             .sendDocumentMessage(customerPhone, pdfUrl, caption, `invoice-${invoiceRef}.pdf`)
-            .then((r) => infrastructure_1.logger.info({ invoiceId: invoice.id, customerPhone, success: r.success }, "voice: invoice.pdf.whatsapp.sent"))
-            .catch((err) => infrastructure_1.logger.error({ err, invoiceId: invoice.id, customerPhone }, "voice: invoice whatsapp send failed"));
+            .then((r) => core_1.logger.info({ invoiceId: invoice.id, customerPhone, success: r.success }, "voice: invoice.pdf.whatsapp.sent"))
+            .catch((err) => core_1.logger.error({ err, invoiceId: invoice.id, customerPhone }, "voice: invoice whatsapp send failed"));
         deliveryChannels.push("WhatsApp");
     }
     else if (customerPhone && autoSendWhatsApp && !pdfUrl) {
-        infrastructure_1.logger.warn({ invoiceId: invoice.id }, "voice: WhatsApp skipped — no pdfUrl (MinIO upload failed)");
+        core_1.logger.warn({ invoiceId: invoice.id }, "voice: WhatsApp skipped — no pdfUrl (MinIO upload failed)");
     }
     else if (customerPhone && !autoSendWhatsApp) {
-        infrastructure_1.logger.info({ invoiceId: invoice.id }, "voice: WhatsApp skipped — autoSendWhatsApp disabled");
+        core_1.logger.info({ invoiceId: invoice.id }, "voice: WhatsApp skipped — autoSendWhatsApp disabled");
     }
     // ── Build voice response message ─────────────────────────────────────────
     if (deliveryChannels.length > 0) {

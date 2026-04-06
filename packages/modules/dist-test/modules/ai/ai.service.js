@@ -12,8 +12,8 @@
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.aiService = void 0;
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
 // ── Service ───────────────────────────────────────────────────────────────────
 class AiService {
     // ── 1. Stock Replenishment Suggestions ─────────────────────────────────────
@@ -22,10 +22,10 @@ class AiService {
      * computed from 30-day sales velocity. Sorted by urgency (critical first).
      */
     async getReplenishmentSuggestions() {
-        const { tenantId } = infrastructure_1.tenantContext.get();
-        const log = infrastructure_1.logger.child({ op: 'ai.replenishment', tenantId });
+        const { tenantId } = core_1.tenantContext.get();
+        const log = core_1.logger.child({ op: 'ai.replenishment', tenantId });
         // Products at-or-below their configured minimum stock level
-        const lowStockProducts = await infrastructure_1.prisma.$queryRaw `
+        const lowStockProducts = await core_1.prisma.$queryRaw `
       SELECT id, name, stock, min_stock, preferred_supplier
       FROM   products
       WHERE  tenant_id = ${tenantId}
@@ -41,7 +41,7 @@ class AiService {
         // Sales velocity: units sold in last 30 days per product
         const productIds = lowStockProducts.map((p) => p.id);
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        const velocityRows = await infrastructure_1.prisma.$queryRaw `
+        const velocityRows = await core_1.prisma.$queryRaw `
       SELECT ii.product_id::text AS product_id,
              COALESCE(SUM(ii.quantity::numeric), 0)::int AS sold_qty
       FROM   invoice_items ii
@@ -71,7 +71,7 @@ class AiService {
                 preferredSupplier: p.preferred_supplier,
             };
         });
-        infrastructure_2.replenishmentSuggestionsTotal.inc({ tenantId });
+        core_2.replenishmentSuggestionsTotal.inc({ tenantId });
         log.info({ count: suggestions.length }, 'Replenishment suggestions computed');
         return suggestions;
     }
@@ -82,16 +82,16 @@ class AiService {
      * Requires at least 3 prior invoices; returns isAnomaly=false otherwise.
      */
     async checkInvoiceAnomaly(customerId, proposedTotal) {
-        const { tenantId } = infrastructure_1.tenantContext.get();
-        const log = infrastructure_1.logger.child({ op: 'ai.anomaly', tenantId, customerId, proposedTotal });
-        const recentInvoices = await infrastructure_1.prisma.invoice.findMany({
+        const { tenantId } = core_1.tenantContext.get();
+        const log = core_1.logger.child({ op: 'ai.anomaly', tenantId, customerId, proposedTotal });
+        const recentInvoices = await core_1.prisma.invoice.findMany({
             where: { tenantId, customerId, status: { notIn: ['cancelled'] }, deletedAt: null },
             orderBy: { createdAt: 'desc' },
             take: 12,
             select: { total: true },
         });
         if (recentInvoices.length < 3) {
-            infrastructure_2.anomalyDetectionsTotal.inc({ is_anomaly: 'false', severity: 'none', tenantId });
+            core_2.anomalyDetectionsTotal.inc({ is_anomaly: 'false', severity: 'none', tenantId });
             return {
                 isAnomaly: false,
                 severity: 'none',
@@ -110,14 +110,14 @@ class AiService {
         const minRange = Math.max(0, Math.round(avg - 2 * safeStdDev));
         const maxRange = Math.round(avg + 2 * safeStdDev);
         if (!isAnomaly) {
-            infrastructure_2.anomalyDetectionsTotal.inc({ is_anomaly: 'false', severity: 'none', tenantId });
+            core_2.anomalyDetectionsTotal.inc({ is_anomaly: 'false', severity: 'none', tenantId });
             return { isAnomaly: false, severity: 'none', message: '', expectedRange: { min: minRange, max: maxRange } };
         }
         const direction = proposedTotal > avg ? 'higher' : 'lower';
         const avgFmt = Math.round(avg).toLocaleString('en-IN');
         const billFmt = Math.round(proposedTotal).toLocaleString('en-IN');
         const message = `This bill (₹${billFmt}) is unusually ${direction} than this customer's average order of ₹${avgFmt}.`;
-        infrastructure_2.anomalyDetectionsTotal.inc({ is_anomaly: 'true', severity, tenantId });
+        core_2.anomalyDetectionsTotal.inc({ is_anomaly: 'true', severity, tenantId });
         log.warn({ zScore: zScore.toFixed(2), avg: Math.round(avg), severity }, 'Invoice anomaly detected');
         return { isAnomaly: true, severity, message, expectedRange: { min: minRange, max: maxRange } };
     }
@@ -128,11 +128,11 @@ class AiService {
      * extra day of lead time. Skips invoices that already have a pending/sent reminder.
      */
     async schedulePredictiveReminders() {
-        const { tenantId } = infrastructure_1.tenantContext.get();
-        const log = infrastructure_1.logger.child({ op: 'ai.predictive_reminders', tenantId });
+        const { tenantId } = core_1.tenantContext.get();
+        const log = core_1.logger.child({ op: 'ai.predictive_reminders', tenantId });
         const now = new Date();
         const sevenDaysOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-        const pendingInvoices = await infrastructure_1.prisma.invoice.findMany({
+        const pendingInvoices = await core_1.prisma.invoice.findMany({
             where: {
                 tenantId,
                 status: { in: ['pending', 'partial'] },
@@ -156,7 +156,7 @@ class AiService {
                 continue;
             }
             // Skip if a non-cancelled reminder already exists for this invoice
-            const existing = await infrastructure_1.prisma.reminder.findFirst({
+            const existing = await core_1.prisma.reminder.findFirst({
                 where: { tenantId, invoiceId: invoice.id, status: { in: ['pending', 'sent'] } },
             });
             if (existing) {
@@ -171,7 +171,7 @@ class AiService {
             const finalTime = scheduledAt < now ? now : scheduledAt;
             const balance = Number(invoice.total) - Number(invoice.paidAmount);
             const balFmt = Math.round(balance).toLocaleString('en-IN');
-            await infrastructure_1.prisma.reminder.create({
+            await core_1.prisma.reminder.create({
                 data: {
                     tenantId,
                     customerId: invoice.customer.id,
@@ -187,7 +187,7 @@ class AiService {
             });
             scheduled++;
         }
-        infrastructure_2.predictiveRemindersScheduled.inc({ tenantId }, scheduled);
+        core_2.predictiveRemindersScheduled.inc({ tenantId }, scheduled);
         log.info({ scheduled, skipped }, 'Predictive reminders scheduled');
         return { scheduled, skipped };
     }

@@ -6,7 +6,7 @@ exports.getDraft = getDraft;
 exports.updateDraft = updateDraft;
 exports.confirmDraft = confirmDraft;
 exports.discardDraft = discardDraft;
-const infrastructure_1 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
 const client_1 = require("@prisma/client");
 // ─── private: execute the real DB write for a confirmed draft ────────────────
 async function executeDraft(draft) {
@@ -14,7 +14,7 @@ async function executeDraft(draft) {
     const tid = draft.tenantId;
     switch (draft.type) {
         case "purchase_entry": {
-            const expense = await infrastructure_1.prisma.expense.create({
+            const expense = await core_1.prisma.expense.create({
                 data: {
                     tenantId: tid,
                     type: "purchase",
@@ -40,7 +40,7 @@ async function executeDraft(draft) {
             return { expense };
         }
         case "product": {
-            const product = await infrastructure_1.prisma.product.create({
+            const product = await core_1.prisma.product.create({
                 data: {
                     tenantId: tid,
                     name: data.name,
@@ -77,7 +77,7 @@ async function executeDraft(draft) {
         case "stock_adjustment": {
             const { productId, qty, direction } = data;
             const delta = direction === "out" ? -Math.abs(qty) : Math.abs(qty);
-            const product = await infrastructure_1.prisma.product.update({
+            const product = await core_1.prisma.product.update({
                 where: { id: productId },
                 data: { stock: { increment: delta } },
             });
@@ -89,7 +89,7 @@ async function executeDraft(draft) {
 }
 // ─── public module functions ─────────────────────────────────────────────────
 async function createDraft(tenantId, userId, input) {
-    return infrastructure_1.prisma.draft.create({
+    return core_1.prisma.draft.create({
         data: {
             tenantId,
             type: input.type,
@@ -102,7 +102,7 @@ async function createDraft(tenantId, userId, input) {
 }
 async function listDrafts(tenantId, opts) {
     const { type, status = "pending", limit = 100 } = opts;
-    const drafts = await infrastructure_1.prisma.draft.findMany({
+    const drafts = await core_1.prisma.draft.findMany({
         where: {
             tenantId,
             ...(type ? { type } : {}),
@@ -114,15 +114,15 @@ async function listDrafts(tenantId, opts) {
     return { drafts, count: drafts.length };
 }
 async function getDraft(tenantId, id) {
-    return infrastructure_1.prisma.draft.findFirst({ where: { id, tenantId } });
+    return core_1.prisma.draft.findFirst({ where: { id, tenantId } });
 }
 async function updateDraft(tenantId, id, patch) {
-    const existing = await infrastructure_1.prisma.draft.findFirst({ where: { id, tenantId } });
+    const existing = await core_1.prisma.draft.findFirst({ where: { id, tenantId } });
     if (!existing)
         throw new Error("Draft not found");
     if (existing.status !== "pending")
         throw new Error(`Draft is already ${existing.status}`);
-    return infrastructure_1.prisma.draft.update({
+    return core_1.prisma.draft.update({
         where: { id: existing.id },
         data: {
             ...(patch.data !== undefined
@@ -135,7 +135,7 @@ async function updateDraft(tenantId, id, patch) {
 }
 /** Executes the deferred DB write and marks the draft as confirmed. */
 async function confirmDraft(tenantId, id) {
-    const existing = await infrastructure_1.prisma.draft.findFirst({ where: { id, tenantId } });
+    const existing = await core_1.prisma.draft.findFirst({ where: { id, tenantId } });
     if (!existing)
         throw new Error("Draft not found");
     if (existing.status !== "pending")
@@ -146,17 +146,17 @@ async function confirmDraft(tenantId, id) {
         data: existing.data,
         tenantId,
     });
-    const draft = await infrastructure_1.prisma.draft.update({
+    const draft = await core_1.prisma.draft.update({
         where: { id: existing.id },
         data: { status: "confirmed", confirmedAt: new Date() },
     });
     return { draft, result };
 }
 async function discardDraft(tenantId, id) {
-    const existing = await infrastructure_1.prisma.draft.findFirst({ where: { id, tenantId } });
+    const existing = await core_1.prisma.draft.findFirst({ where: { id, tenantId } });
     if (!existing)
         throw new Error("Draft not found");
-    return infrastructure_1.prisma.draft.update({
+    return core_1.prisma.draft.update({
         where: { id: existing.id },
         data: { status: "discarded", discardedAt: new Date() },
     });

@@ -12,7 +12,7 @@ import {
 } from "@execora/modules";
 import { getGstinValidationError } from "@execora/shared";
 import { broadcaster } from "../../ws/broadcaster";
-import { makePortalToken } from "@execora/infrastructure";
+import { makePortalToken } from "@execora/core";
 
 function parseLimit(raw: unknown, defaultVal: number, maxVal = 100): number {
   const n = parseInt(String(raw ?? defaultVal), 10);

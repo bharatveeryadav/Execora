@@ -5,8 +5,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ollamaAdapter = exports.OllamaAdapter = void 0;
 const openai_1 = __importDefault(require("openai"));
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
 /**
  * Ollama adapter — local/self-hosted LLM inference.
  *
@@ -41,20 +41,20 @@ class OllamaAdapter {
     client = null;
     model;
     constructor() {
-        this.model = infrastructure_1.config.ollama.model;
-        if (infrastructure_1.config.ollama.enabled) {
+        this.model = core_1.config.ollama.model;
+        if (core_1.config.ollama.enabled) {
             this.client = new openai_1.default({
                 apiKey: 'ollama', // Ollama ignores the key but the client requires a non-empty string
-                baseURL: `${infrastructure_1.config.ollama.baseUrl}/v1`,
+                baseURL: `${core_1.config.ollama.baseUrl}/v1`,
             });
-            infrastructure_2.logger.info({ model: this.model, baseUrl: infrastructure_1.config.ollama.baseUrl }, 'Ollama LLM adapter initialized');
+            core_2.logger.info({ model: this.model, baseUrl: core_1.config.ollama.baseUrl }, 'Ollama LLM adapter initialized');
         }
         else {
-            infrastructure_2.logger.debug('Ollama not configured — set OLLAMA_BASE_URL to enable local LLM');
+            core_2.logger.debug('Ollama not configured — set OLLAMA_BASE_URL to enable local LLM');
         }
     }
     isAvailable() {
-        return infrastructure_1.config.ollama.enabled && this.client !== null;
+        return core_1.config.ollama.enabled && this.client !== null;
     }
     async extractIntent(transcript, systemPrompt) {
         if (!this.client)

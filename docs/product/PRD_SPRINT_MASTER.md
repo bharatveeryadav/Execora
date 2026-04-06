@@ -243,7 +243,7 @@
 | Offline | `apps/web/src/lib/offline-outbox.ts`, `apps/web/src/components/OfflineBanner.tsx`, `vite.config.ts` |
 | Onboarding | `apps/web/src/components/OnboardingWizard.tsx` (shown in `ProtectedRoute` in `App.tsx`) |
 | Invoice portal | `apps/api/src/api/routes/portal.routes.ts`, `apps/web/src/pages/InvoicePortal.tsx` |
-| Batch/expiry | `apps/api/src/api/routes/expense.routes.ts`, `apps/web/src/components/DraftConfirmDialog.tsx`, `prisma/schema.prisma` |
+| Batch/expiry | `apps/api/src/api/routes/expense.routes.ts`, `apps/web/src/components/DraftConfirmDialog.tsx`, `packages/db/schema.prisma` |
 | Settings | `Settings.tsx`, tenant update route |
 | Feature flags | `packages/infrastructure/src/feature-flags.ts` |
 

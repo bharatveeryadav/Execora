@@ -1,11 +1,11 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { Prisma } from '@prisma/client';
-import { prisma } from '@execora/infrastructure';
-import { getRuntimeConfig, setRuntimeConfig } from '@execora/infrastructure';
-import { reminderQueue, whatsappQueue, mediaQueue, checkRedisHealth } from '@execora/infrastructure';
-import { logger } from '@execora/infrastructure';
+import { prisma } from '@execora/core';
+import { getRuntimeConfig, setRuntimeConfig } from '@execora/core';
+import { reminderQueue, whatsappQueue, mediaQueue, checkRedisHealth } from '@execora/core';
+import { logger } from '@execora/core';
 import { adminAuthPreHandler } from '../middleware/admin-auth';
-import { hashPassword } from '@execora/infrastructure';
+import { hashPassword } from '@execora/core';
 import { sttService, ttsService } from '@execora/modules';
 
 /**

@@ -6,7 +6,7 @@
  * GET /pub/invoice/:id/:token/pdf      — redirect to fresh MinIO presigned URL
  */
 import { FastifyInstance } from 'fastify';
-import { verifyPortalToken, minioClient, prisma } from '@execora/infrastructure';
+import { verifyPortalToken, minioClient, prisma } from '@execora/core';
 
 type PortalParams = { id: string; token: string };
 

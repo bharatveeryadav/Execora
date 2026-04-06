@@ -13,7 +13,7 @@
  *   product.handler.ts  — UPDATE_STOCK
  *   shared.ts           — resolveCustomer, formatItemsSummary, buildAndStoreInvoicePdf, sendConfirmedInvoiceEmail
  */
-import { logger } from "@execora/infrastructure";
+import { logger } from "@execora/core";
 import {
   IntentType,
   type IntentExtraction,

@@ -205,7 +205,7 @@ ports:
 
 1. Review [docs/README.md](docs/README.md) for technical details
 2. Check [docs/README.md](docs/README.md) for recent changes
-3. Study `prisma/schema.prisma` for database schema
+3. Study `packages/db/schema.prisma` for database schema
 4. Explore `src/integrations/openai.ts` for LLM customization
 5. See [docs/README.md](docs/README.md) for system design
 

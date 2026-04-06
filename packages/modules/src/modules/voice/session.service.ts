@@ -1,7 +1,7 @@
-import { prisma } from '@execora/infrastructure';
-import { logger } from '@execora/infrastructure';
-import { minioClient } from '@execora/infrastructure';
-import { tenantContext } from '@execora/infrastructure';
+import { prisma } from '@execora/core';
+import { logger } from '@execora/core';
+import { minioClient } from '@execora/core';
+import { tenantContext } from '@execora/core';
 import { SessionStatus, Prisma } from '@prisma/client';
 
 const BUCKET_NAME = process.env.MINIO_BUCKET || 'execora-audio';

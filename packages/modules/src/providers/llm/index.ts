@@ -1,9 +1,9 @@
 import crypto from 'crypto';
-import { config } from '@execora/infrastructure';
-import { logger } from '@execora/infrastructure';
-import { llmCache } from '@execora/infrastructure';
-import { llmRequestsTotal, llmTokensTotal, llmCostUsdTotal } from '@execora/infrastructure';
-import { getRuntimeConfig } from '@execora/infrastructure';
+import { config } from '@execora/core';
+import { logger } from '@execora/core';
+import { llmCache } from '@execora/core';
+import { llmRequestsTotal, llmTokensTotal, llmCostUsdTotal } from '@execora/core';
+import { getRuntimeConfig } from '@execora/core';
 import { IntentType, IntentExtraction, ExecutionResult } from '@execora/types';
 import { conversationMemory } from '../../modules/voice/conversation';
 import { transliterateDevanagari } from '../../utils/devanagari';

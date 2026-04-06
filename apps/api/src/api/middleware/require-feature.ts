@@ -11,8 +11,8 @@
  * can override any tenant's features via PUT /admin/tenants/:id/features.
  */
 import { FastifyRequest, FastifyReply } from 'fastify';
-import { prisma } from '@execora/infrastructure';
-import { logger } from '@execora/infrastructure';
+import { prisma } from '@execora/core';
+import { logger } from '@execora/core';
 
 export function requireFeature(featureKey: string) {
   return async function featureGuard(request: FastifyRequest, reply: FastifyReply): Promise<void> {

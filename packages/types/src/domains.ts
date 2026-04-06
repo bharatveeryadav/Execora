@@ -169,6 +169,155 @@ export const DOMAIN_EVENTS = {
 export type DomainEventName =
   (typeof DOMAIN_EVENTS)[keyof typeof DOMAIN_EVENTS];
 
+// ── Typed domain event envelope ───────────────────────────────────────────────
+// Every event emitted via eventBus.emit() must conform to DomainEvent<T>.
+// `metadata.eventGroupId` enables the outbox pattern: events are held in the
+// BullMQ job until explicitly released (i.e. after the DB transaction commits).
+
+export interface DomainEventMetadata {
+  /** Module that produced the event: "invoicing" | "pos" | "ocr" | etc. */
+  source: string;
+  /** "created" | "confirmed" | "cancelled" | "recorded" | "adjusted" | etc. */
+  action: string;
+  /** ISO timestamp when the event was emitted. */
+  timestamp: string;
+  /**
+   * Outbox group identifier. When set, the BullMQ job carrying this event will
+   * not be processed until releaseGroupedEvents(eventGroupId) is called —
+   * ensuring side-effects only run after the DB transaction commits.
+   */
+  eventGroupId?: string;
+}
+
+export interface DomainEvent<T = unknown> {
+  name: DomainEventName;
+  data: T & { tenantId: string };
+  metadata: DomainEventMetadata;
+}
+
+// ── Per-event payload types ───────────────────────────────────────────────────
+
+export interface InvoiceCreatedPayload {
+  tenantId: string;
+  invoiceId: string;
+  invoiceNo: string;
+  customerId: string;
+  customerName: string;
+  total: number;
+  items: Array<{
+    productId: string;
+    productName: string;
+    quantity: number;
+    price: number;
+  }>;
+}
+
+export interface InvoiceCancelledPayload {
+  tenantId: string;
+  invoiceId: string;
+  invoiceNo: string;
+  customerId: string;
+  items: Array<{ productId: string; quantity: number }>;
+}
+
+export interface PaymentRecordedPayload {
+  tenantId: string;
+  paymentId: string;
+  invoiceId: string;
+  invoiceNo: string;
+  customerId: string;
+  amount: number;
+  method: string;
+}
+
+export interface StockAdjustedPayload {
+  tenantId: string;
+  productId: string;
+  productName: string;
+  delta: number; // positive = in, negative = out
+  reason: string;
+  locationId?: string;
+}
+
+export interface PurchaseBillPostedPayload {
+  tenantId: string;
+  purchaseId: string;
+  vendorId?: string;
+  items: Array<{ productId: string; quantity: number; cost: number }>;
+  totalAmount: number;
+}
+
+export interface OcrDocumentUploadedPayload {
+  tenantId: string;
+  jobId: string;
+  fileName: string;
+  fileUrl: string;
+}
+
+export interface OcrExtractionCompletedPayload {
+  tenantId: string;
+  jobId: string;
+  extractedData: Record<string, unknown>;
+  confidence: number;
+}
+
+export interface EInvoiceRequestedPayload {
+  tenantId: string;
+  invoiceId: string;
+  invoiceNo: string;
+}
+
+export interface EInvoiceIssuedPayload {
+  tenantId: string;
+  invoiceId: string;
+  invoiceNo: string;
+  irn: string;
+  qrCode: string;
+}
+
+/** Maps each event name to its strongly-typed payload. */
+export interface DomainEventPayloadMap {
+  InvoiceCreated: InvoiceCreatedPayload;
+  InvoiceCancelled: InvoiceCancelledPayload;
+  PaymentRecorded: PaymentRecordedPayload;
+  StockAdjusted: StockAdjustedPayload;
+  StockTransferred: StockAdjustedPayload;
+  PurchaseBillPosted: PurchaseBillPostedPayload;
+  OcrDocumentUploaded: OcrDocumentUploadedPayload;
+  OcrExtractionCompleted: OcrExtractionCompletedPayload;
+  EInvoiceRequested: EInvoiceRequestedPayload;
+  EInvoiceIssued: EInvoiceIssuedPayload;
+  EInvoiceCancelled: {
+    tenantId: string;
+    invoiceId: string;
+    invoiceNo: string;
+    irn: string;
+  };
+  ReminderScheduled: {
+    tenantId: string;
+    reminderId: string;
+    customerId: string;
+    scheduledAt: string;
+  };
+  GstReturnGenerated: {
+    tenantId: string;
+    period: string;
+    type: string;
+    fileUrl: string;
+  };
+  SubscriptionChanged: {
+    tenantId: string;
+    planId: string;
+    previousPlanId: string;
+  };
+  QuotaExceeded: {
+    tenantId: string;
+    resource: string;
+    limit: number;
+    current: number;
+  };
+}
+
 // ── Invoice finite state machine ──────────────────────────────────────────────
 // Valid transitions: draft → pending → partial | paid | cancelled
 

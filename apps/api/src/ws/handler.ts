@@ -1,13 +1,13 @@
 import { FastifyRequest } from 'fastify';
 import { WebSocket, type RawData } from 'ws';
-import { logger } from '@execora/infrastructure';
-import { ErrorHandler, WebSocketError } from '@execora/infrastructure';
+import { logger } from '@execora/core';
+import { ErrorHandler, WebSocketError } from '@execora/core';
 import { openaiService } from '@execora/modules';
 import { businessEngine } from '@execora/modules';
 import { conversationMemory } from '@execora/modules';
 import { voiceSessionService } from '@execora/modules';
-import { prisma } from '@execora/infrastructure';
-import { tenantContext } from '@execora/infrastructure';
+import { prisma } from '@execora/core';
+import { tenantContext } from '@execora/core';
 import { Prisma } from '@prisma/client';
 import { WSMessage, WSMessageType } from '@execora/types';
 import { rtcRelay } from './rtc-relay';

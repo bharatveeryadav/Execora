@@ -10,7 +10,7 @@
  *   Both   → rtc:ice    → server routes to specified peer (toId) or broadcasts
  */
 import type { WebSocket } from 'ws';
-import { logger } from '@execora/infrastructure';
+import { logger } from '@execora/core';
 
 interface RtcPeer {
 	ws:       WebSocket;

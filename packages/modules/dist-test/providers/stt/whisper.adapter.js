@@ -6,8 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.whisperAdapter = exports.WhisperAdapter = void 0;
 const axios_1 = __importDefault(require("axios"));
 const form_data_1 = __importDefault(require("form-data"));
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
 const errors_1 = require("../errors");
 /**
  * Whisper STT adapter — local/self-hosted speech recognition.
@@ -52,17 +52,17 @@ class WhisperAdapter {
     baseUrl;
     language;
     constructor() {
-        this.baseUrl = infrastructure_1.config.stt.whisper.baseUrl;
-        this.language = infrastructure_1.config.stt.whisper.language;
-        if (infrastructure_1.config.stt.whisper.enabled) {
-            infrastructure_2.logger.info({ baseUrl: this.baseUrl, language: this.language }, 'Whisper STT adapter initialized');
+        this.baseUrl = core_1.config.stt.whisper.baseUrl;
+        this.language = core_1.config.stt.whisper.language;
+        if (core_1.config.stt.whisper.enabled) {
+            core_2.logger.info({ baseUrl: this.baseUrl, language: this.language }, 'Whisper STT adapter initialized');
         }
         else {
-            infrastructure_2.logger.debug('Whisper not configured — set WHISPER_BASE_URL to enable local STT');
+            core_2.logger.debug('Whisper not configured — set WHISPER_BASE_URL to enable local STT');
         }
     }
     isAvailable() {
-        return infrastructure_1.config.stt.whisper.enabled;
+        return core_1.config.stt.whisper.enabled;
     }
     /** Whisper does not support live transcription — throws ProviderUnavailableError */
     async createLiveTranscription(_onTranscript, _onError) {
@@ -92,7 +92,7 @@ class WhisperAdapter {
             timeout: 60_000, // local inference can be slow on CPU
         });
         const transcript = (typeof response.data === 'string' ? response.data : String(response.data)).trim();
-        infrastructure_2.logger.info({ length: transcript.length, language: this.language }, 'Whisper transcription complete');
+        core_2.logger.info({ length: transcript.length, language: this.language }, 'Whisper transcription complete');
         return transcript;
     }
 }

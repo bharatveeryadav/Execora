@@ -1,14 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.reminderService = void 0;
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
-const infrastructure_3 = require("@execora/infrastructure");
-const infrastructure_4 = require("@execora/infrastructure");
-const infrastructure_5 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
+const core_3 = require("@execora/core");
+const core_4 = require("@execora/core");
+const core_5 = require("@execora/core");
 const date_fns_1 = require("date-fns");
 const date_fns_tz_1 = require("date-fns-tz");
-const infrastructure_6 = require("@execora/infrastructure");
+const core_6 = require("@execora/core");
 class ReminderService {
     normalizeSpokenNumbers(input) {
         const devanagariDigits = {
@@ -162,28 +162,28 @@ class ReminderService {
     async enqueueReminderJob(payload, scheduledTime) {
         const delay = scheduledTime.getTime() - Date.now();
         const jobId = `reminder-${payload.reminderId}-${scheduledTime.getTime()}`;
-        await infrastructure_3.reminderQueue.add('send-reminder', payload, {
+        await core_3.reminderQueue.add('send-reminder', payload, {
             delay: delay > 0 ? delay : 0,
             jobId,
         });
     }
     async removeQueuedJobsForReminder(reminderId) {
         try {
-            const legacyJob = await infrastructure_3.reminderQueue.getJob(`reminder-${reminderId}`);
+            const legacyJob = await core_3.reminderQueue.getJob(`reminder-${reminderId}`);
             if (legacyJob)
                 await legacyJob.remove();
         }
         catch (err) {
-            infrastructure_2.logger.warn({ err, reminderId }, 'Legacy reminder job not found');
+            core_2.logger.warn({ err, reminderId }, 'Legacy reminder job not found');
         }
         try {
-            const queueAny = infrastructure_3.reminderQueue;
+            const queueAny = core_3.reminderQueue;
             if (typeof queueAny.removeJobs === 'function') {
                 await queueAny.removeJobs(`reminder-${reminderId}-*`);
             }
         }
         catch (err) {
-            infrastructure_2.logger.warn({ err, reminderId }, 'Failed to remove reminder jobs by pattern');
+            core_2.logger.warn({ err, reminderId }, 'Failed to remove reminder jobs by pattern');
         }
     }
     /**
@@ -208,7 +208,7 @@ class ReminderService {
                 date = (0, date_fns_1.setHours)(date, 19);
                 date = (0, date_fns_1.setMinutes)(date, 0);
             }
-            return (0, date_fns_tz_1.fromZonedTime)(date, infrastructure_6.config.timezone);
+            return (0, date_fns_tz_1.fromZonedTime)(date, core_6.config.timezone);
         }
         // "aaj" / "today"
         if (lowerStr.includes('aaj') || lowerStr.includes('today')) {
@@ -220,7 +220,7 @@ class ReminderService {
                 date = (0, date_fns_1.setHours)(date, hour);
                 date = (0, date_fns_1.setMinutes)(date, 0);
             }
-            return (0, date_fns_tz_1.fromZonedTime)(date, infrastructure_6.config.timezone);
+            return (0, date_fns_tz_1.fromZonedTime)(date, core_6.config.timezone);
         }
         // Specific hour today
         const hourMatch = lowerStr.match(/(\d+)\s*(baje|pm|am)/);
@@ -232,7 +232,7 @@ class ReminderService {
             if (date < now) {
                 date = (0, date_fns_1.addDays)(date, 1);
             }
-            return (0, date_fns_tz_1.fromZonedTime)(date, infrastructure_6.config.timezone);
+            return (0, date_fns_tz_1.fromZonedTime)(date, core_6.config.timezone);
         }
         // Default: 1 hour from now
         return (0, date_fns_1.addHours)(now, 1);
@@ -251,7 +251,7 @@ class ReminderService {
             if (!dateTimeStr || typeof dateTimeStr !== 'string' || !dateTimeStr.trim()) {
                 throw new Error('Date/time is required for scheduling a reminder');
             }
-            const customer = await infrastructure_1.prisma.customer.findUnique({
+            const customer = await core_1.prisma.customer.findUnique({
                 where: { id: customerId },
             });
             if (!customer)
@@ -268,9 +268,9 @@ class ReminderService {
             const message = customMessage ||
                 `Namaste ${customer.name} ji,\n\n₹${amount} payment pending hai. Kripya payment kar dein. 🙏\n\nDhanyavad`;
             // Create reminder — amount stored in notes for job re-queuing
-            const reminder = await infrastructure_1.prisma.reminder.create({
+            const reminder = await core_1.prisma.reminder.create({
                 data: {
-                    tenantId: infrastructure_4.tenantContext.get().tenantId,
+                    tenantId: core_4.tenantContext.get().tenantId,
                     customerId,
                     reminderType: 'payment_due',
                     scheduledTime,
@@ -295,21 +295,21 @@ class ReminderService {
                 }, scheduledTime);
             }
             catch (queueError) {
-                await infrastructure_1.prisma.reminder
+                await core_1.prisma.reminder
                     .update({
                     where: { id: reminder.id },
                     data: { status: 'failed' },
                 })
                     .catch((updateErr) => {
-                    infrastructure_2.logger.error({ updateErr, reminderId: reminder.id }, 'Failed to mark reminder as failed after queue error');
+                    core_2.logger.error({ updateErr, reminderId: reminder.id }, 'Failed to mark reminder as failed after queue error');
                 });
                 throw queueError;
             }
-            infrastructure_2.logger.info({ reminderId: reminder.id, customerId, scheduledTime, recurringPattern }, 'Reminder scheduled');
+            core_2.logger.info({ reminderId: reminder.id, customerId, scheduledTime, recurringPattern }, 'Reminder scheduled');
             return reminder;
         }
         catch (error) {
-            infrastructure_2.logger.error({ error, customerId, amount, dateTimeStr }, 'Schedule reminder failed');
+            core_2.logger.error({ error, customerId, amount, dateTimeStr }, 'Schedule reminder failed');
             throw error;
         }
     }
@@ -318,16 +318,16 @@ class ReminderService {
      */
     async cancelReminder(reminderId) {
         try {
-            const reminder = await infrastructure_1.prisma.reminder.update({
+            const reminder = await core_1.prisma.reminder.update({
                 where: { id: reminderId },
                 data: { status: 'cancelled' },
             });
             await this.removeQueuedJobsForReminder(reminderId);
-            infrastructure_2.logger.info({ reminderId }, 'Reminder cancelled');
+            core_2.logger.info({ reminderId }, 'Reminder cancelled');
             return reminder;
         }
         catch (error) {
-            infrastructure_2.logger.error({ error, reminderId }, 'Cancel reminder failed');
+            core_2.logger.error({ error, reminderId }, 'Cancel reminder failed');
             throw error;
         }
     }
@@ -337,7 +337,7 @@ class ReminderService {
     async modifyReminderTime(reminderId, newDateTimeStr) {
         try {
             const newScheduledTime = this.parseDateTime(newDateTimeStr);
-            const reminder = await infrastructure_1.prisma.reminder.update({
+            const reminder = await core_1.prisma.reminder.update({
                 where: { id: reminderId },
                 data: { scheduledTime: newScheduledTime },
                 include: {
@@ -355,11 +355,11 @@ class ReminderService {
                 amount,
                 message,
             }, newScheduledTime);
-            infrastructure_2.logger.info({ reminderId, newScheduledTime }, 'Reminder time modified');
+            core_2.logger.info({ reminderId, newScheduledTime }, 'Reminder time modified');
             return reminder;
         }
         catch (error) {
-            infrastructure_2.logger.error({ error, reminderId, newDateTimeStr }, 'Modify reminder failed');
+            core_2.logger.error({ error, reminderId, newDateTimeStr }, 'Modify reminder failed');
             throw error;
         }
     }
@@ -367,9 +367,9 @@ class ReminderService {
      * Get pending reminders
      */
     async getPendingReminders(customerId) {
-        return await infrastructure_1.prisma.reminder.findMany({
+        return await core_1.prisma.reminder.findMany({
             where: {
-                tenantId: infrastructure_4.tenantContext.get().tenantId,
+                tenantId: core_4.tenantContext.get().tenantId,
                 status: 'pending',
                 ...(customerId && { customerId }),
             },
@@ -385,8 +385,8 @@ class ReminderService {
      * Get customer reminders
      */
     async getCustomerReminders(customerId, limit = 10) {
-        return await infrastructure_1.prisma.reminder.findMany({
-            where: { tenantId: infrastructure_4.tenantContext.get().tenantId, customerId },
+        return await core_1.prisma.reminder.findMany({
+            where: { tenantId: core_4.tenantContext.get().tenantId, customerId },
             orderBy: { createdAt: 'desc' },
             take: limit,
             include: {
@@ -400,21 +400,21 @@ class ReminderService {
      * Mark reminder as sent
      */
     async markAsSent(reminderId, options) {
-        return (0, infrastructure_5.markReminderSent)(reminderId, options);
+        return (0, core_5.markReminderSent)(reminderId, options);
     }
     /**
      * Mark reminder as failed
      */
     async markAsFailed(reminderId) {
-        return (0, infrastructure_5.markReminderFailed)(reminderId);
+        return (0, core_5.markReminderFailed)(reminderId);
     }
     /**
      * Get reminders due now
      */
     async getDueReminders() {
-        return await infrastructure_1.prisma.reminder.findMany({
+        return await core_1.prisma.reminder.findMany({
             where: {
-                tenantId: infrastructure_4.tenantContext.get().tenantId,
+                tenantId: core_4.tenantContext.get().tenantId,
                 status: 'pending',
                 scheduledTime: { lte: new Date() },
             },
@@ -422,7 +422,7 @@ class ReminderService {
         });
     }
     async scheduleNextOccurrence(reminderId) {
-        return (0, infrastructure_5.scheduleNextReminderOccurrence)(reminderId);
+        return (0, core_5.scheduleNextReminderOccurrence)(reminderId);
     }
     /**
      * Bulk-schedule reminders for multiple customers (e.g. all with overdue balance).
@@ -431,13 +431,13 @@ class ReminderService {
     async bulkScheduleReminders(data) {
         const { customerIds, message, daysOffset = 0 } = data;
         // Schedule time: today (+ daysOffset) at 18:00 IST
-        const tz = infrastructure_6.config.timezone ?? 'Asia/Kolkata';
+        const tz = core_6.config.timezone ?? 'Asia/Kolkata';
         const base = new Date();
         base.setDate(base.getDate() + daysOffset);
         base.setHours(0, 0, 0, 0);
         const scheduledTime = (0, date_fns_tz_1.fromZonedTime)(new Date(base.getFullYear(), base.getMonth(), base.getDate(), 18, 0, 0), tz);
         // Fetch customers to get their current balance
-        const customers = await infrastructure_1.prisma.customer.findMany({
+        const customers = await core_1.prisma.customer.findMany({
             where: { id: { in: customerIds }, balance: { gt: 0 } },
             select: { id: true, balance: true },
         });
@@ -445,12 +445,12 @@ class ReminderService {
         const succeeded = results.filter((r) => r.status === 'fulfilled');
         const failed = results.filter((r) => r.status === 'rejected');
         if (failed.length > 0) {
-            infrastructure_2.logger.warn({ failed: failed.length, succeeded: succeeded.length }, 'Some bulk reminders failed to schedule');
+            core_2.logger.warn({ failed: failed.length, succeeded: succeeded.length }, 'Some bulk reminders failed to schedule');
         }
         const reminders = succeeded
             .filter((r) => r.status === 'fulfilled')
             .map((r) => r.value);
-        infrastructure_2.logger.info({ count: reminders.length, daysOffset }, 'Bulk reminders scheduled');
+        core_2.logger.info({ count: reminders.length, daysOffset }, 'Bulk reminders scheduled');
         return reminders;
     }
 }

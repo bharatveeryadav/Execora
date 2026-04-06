@@ -26,14 +26,68 @@ This folder splits the master PRD into smaller docs that are easier to maintain 
 - Platform architecture and backend leads co-own `08`
 - Backend program lead and architecture council co-own `09`
 
-## Domain Files (Odoo-style — one file per business domain)
+## Implementation Module Docs — `@execora/modules` (6 modules)
 
-> Modelled after Odoo's `addons/<domain>/` pattern. Each file is the self-contained PRD for one business domain: mission, sub-modules, events, API contracts, backend package, and current status.
+> These are the **working implementation docs** aligned to the actual codebase package `@execora/modules`. Each doc covers: mission, feature modules with contract structure, capabilities, events, API contracts, current vs target package layout, and implementation status.
+>
+> Use these when building features, reviewing PRs, or planning the module restructure.
+
+| Module      | Doc                                                | Codebase path                      | Status                       | Squad                 |
+| ----------- | -------------------------------------------------- | ---------------------------------- | ---------------------------- | --------------------- |
+| Accounting  | [domains/accounting.md](./domains/accounting.md)   | `packages/modules/src/accounting/` | Ledger + payments active     | Finance + Compliance  |
+| Inventory   | [domains/inventory.md](./domains/inventory.md)     | `packages/modules/src/inventory/`  | Catalog + basic stock active | Inventory + Purchases |
+| POS         | [domains/pos.md](./domains/pos.md)                 | `packages/modules/src/pos/`        | Voice + drafts active        | Sales Domain          |
+| Invoicing   | [domains/invoicing.md](./domains/invoicing.md)     | `packages/modules/src/invoicing/`  | Invoice + customers active   | Sales Domain          |
+| E-Invoicing | [domains/e-invoicing.md](./domains/e-invoicing.md) | `packages/modules/src/e-invoice/`  | GST + GSTR-1 active          | Finance + Compliance  |
+| OCR         | [domains/ocr.md](./domains/ocr.md)                 | `packages/modules/src/ocr/`        | Job lifecycle + AI active    | Inventory + Purchases |
+
+### Feature Module Contract Structure
+
+Every feature module inside a domain follows this shape:
+
+```
+packages/modules/src/<module>/<feature>/
+  contracts/
+    commands.ts      ← write operation inputs + return types
+    queries.ts       ← read operation inputs + return types
+    events.ts        ← domain events emitted
+    errors.ts        ← typed error codes
+  commands/          ← command handler implementations
+  queries/           ← query handler implementations
+  policies/          ← business rule guards
+  __tests__/         ← unit tests per command/query
+  index.ts           ← feature barrel export
+```
+
+### Module Dependency Map
+
+```
+@execora/types  ←  @execora/shared  ←  @execora/infrastructure  ←  @execora/modules
+```
+
+Cross-module event flow (all one-directional):
+
+```
+invoicing  →  [InvoiceCreated]  →  accounting (ledger posting)
+invoicing  →  [InvoiceCreated]  →  inventory (stock deduction)
+invoicing  →  [InvoiceCreated]  →  e-invoicing (eligibility check)
+pos        →  [PosSessionClosed] → accounting (settlement)
+ocr        →  [PurchaseBillPosted] → accounting (payable)
+ocr        →  [GoodsReceived]   →  inventory (inward stock)
+accounting →  [PaymentRecorded] →  invoicing (payment state update)
+e-invoicing → [EInvoiceIssued]  →  invoicing (attach IRN + QR)
+inventory  →  [LowStockAlert]   →  notifications
+```
+
+---
+
+## Domain Files (Odoo-style reference — business domain PRDs)
+
+> Modelled after Odoo's `addons/<domain>/` pattern. These are the **source PRD documents** for business domain intent, product strategy, and squad ownership. Use these for product planning and architecture decisions.
 
 | Domain       | File                                                 | Odoo equivalent                                      | Squad                     |
 | ------------ | ---------------------------------------------------- | ---------------------------------------------------- | ------------------------- |
 | Sales        | [domains/sales.md](./domains/sales.md)               | `addons/sale` + `addons/point_of_sale`               | Sales Domain              |
-| Inventory    | [domains/inventory.md](./domains/inventory.md)       | `addons/stock` + `addons/product`                    | Inventory + Purchases     |
 | Finance      | [domains/finance.md](./domains/finance.md)           | `addons/account` (payments + bookkeeping)            | Finance + Compliance      |
 | Purchases    | [domains/purchases.md](./domains/purchases.md)       | `addons/purchase`                                    | Inventory + Purchases     |
 | CRM          | [domains/crm.md](./domains/crm.md)                   | `addons/crm` + `addons/contacts`                     | Sales Domain              |

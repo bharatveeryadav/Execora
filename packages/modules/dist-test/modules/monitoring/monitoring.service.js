@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.monitoringService = void 0;
-const infrastructure_1 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
 const library_1 = require("@prisma/client/runtime/library");
 const crypto_1 = require("crypto");
 class MonitoringService {
@@ -13,7 +13,7 @@ class MonitoringService {
         try {
             // Get config to check if monitoring is enabled for this tenant.
             // If no config row exists, default to enabled.
-            const config = await infrastructure_1.prisma.monitoringConfig.findUnique({
+            const config = await core_1.prisma.monitoringConfig.findUnique({
                 where: { tenantId: input.tenantId },
                 select: { enabled: true, alertDiscountAbove: true, alertCancelAbove: true, alertBillAbove: true },
             });
@@ -30,7 +30,7 @@ class MonitoringService {
                 if (input.eventType === 'bill.created' && billAbove && amt >= billAbove)
                     severity = 'warning';
             }
-            await infrastructure_1.prisma.monitoringEvent.create({
+            await core_1.prisma.monitoringEvent.create({
                 data: {
                     tenantId: input.tenantId,
                     userId: input.userId,
@@ -67,7 +67,7 @@ class MonitoringService {
                 where.createdAt.lte = opts.to;
         }
         const [events, total] = await Promise.all([
-            infrastructure_1.prisma.monitoringEvent.findMany({
+            core_1.prisma.monitoringEvent.findMany({
                 where,
                 orderBy: { createdAt: 'desc' },
                 take: opts.limit ?? 50,
@@ -76,29 +76,29 @@ class MonitoringService {
                     user: { select: { id: true, name: true, role: true } },
                 },
             }),
-            infrastructure_1.prisma.monitoringEvent.count({ where }),
+            core_1.prisma.monitoringEvent.count({ where }),
         ]);
         return { events, total };
     }
     async getUnreadAlertCount(tenantId) {
-        return infrastructure_1.prisma.monitoringEvent.count({
+        return core_1.prisma.monitoringEvent.count({
             where: { tenantId, isRead: false, severity: { in: ['warning', 'alert'] } },
         });
     }
     async markAllRead(tenantId) {
-        await infrastructure_1.prisma.monitoringEvent.updateMany({
+        await core_1.prisma.monitoringEvent.updateMany({
             where: { tenantId, isRead: false },
             data: { isRead: true },
         });
     }
     async markRead(tenantId, id) {
-        await infrastructure_1.prisma.monitoringEvent.updateMany({
+        await core_1.prisma.monitoringEvent.updateMany({
             where: { id, tenantId },
             data: { isRead: true },
         });
     }
     async getStats(tenantId, from, to) {
-        const events = await infrastructure_1.prisma.monitoringEvent.findMany({
+        const events = await core_1.prisma.monitoringEvent.findMany({
             where: { tenantId, createdAt: { gte: from, lte: to } },
             select: { eventType: true, severity: true, userId: true, amount: true, createdAt: true },
         });
@@ -184,13 +184,13 @@ class MonitoringService {
      * Get the latest cash reconciliation record for a given date.
      */
     async getCashReconciliation(tenantId, date) {
-        return infrastructure_1.prisma.monitoringEvent.findFirst({
+        return core_1.prisma.monitoringEvent.findFirst({
             where: { tenantId, eventType: 'cash.reconciliation', entityId: date },
             orderBy: { createdAt: 'desc' },
         });
     }
     async getConfig(tenantId) {
-        return infrastructure_1.prisma.monitoringConfig.findUnique({ where: { tenantId } });
+        return core_1.prisma.monitoringConfig.findUnique({ where: { tenantId } });
     }
     /**
      * Store a JPEG snapshot to MinIO and attach it to the most recent matching
@@ -199,10 +199,10 @@ class MonitoringService {
     async storeSnap(tenantId, userId, imageBuffer, opts) {
         const date = new Date().toISOString().slice(0, 10);
         const snapKey = `monitoring-snaps/${tenantId}/${date}/${(0, crypto_1.randomUUID)()}.jpg`;
-        await infrastructure_1.minioClient.uploadFile(snapKey, imageBuffer, { contentType: 'image/jpeg' });
+        await core_1.minioClient.uploadFile(snapKey, imageBuffer, { contentType: 'image/jpeg' });
         // Try to attach to existing event for this entity (created in last 60 s)
         const since = new Date(Date.now() - 60_000);
-        const existing = await infrastructure_1.prisma.monitoringEvent.findFirst({
+        const existing = await core_1.prisma.monitoringEvent.findFirst({
             where: {
                 tenantId,
                 entityId: opts.entityId,
@@ -213,14 +213,14 @@ class MonitoringService {
             orderBy: { createdAt: 'desc' },
         });
         if (existing) {
-            await infrastructure_1.prisma.monitoringEvent.update({
+            await core_1.prisma.monitoringEvent.update({
                 where: { id: existing.id },
                 data: { snapKey },
             });
             return { snapKey, eventId: existing.id };
         }
         // No matching event — create a snap-only event
-        const event = await infrastructure_1.prisma.monitoringEvent.create({
+        const event = await core_1.prisma.monitoringEvent.create({
             data: {
                 tenantId,
                 userId,
@@ -239,11 +239,11 @@ class MonitoringService {
         if (!snapKey.startsWith(`monitoring-snaps/${tenantId}/`)) {
             throw new Error('Forbidden');
         }
-        return infrastructure_1.minioClient.getPresignedUrl(snapKey, 900); // 15 min TTL
+        return core_1.minioClient.getPresignedUrl(snapKey, 900); // 15 min TTL
     }
     async upsertConfig(tenantId, data) {
         const toDecimal = (v) => v != null ? new library_1.Decimal(v) : undefined;
-        return infrastructure_1.prisma.monitoringConfig.upsert({
+        return core_1.prisma.monitoringConfig.upsert({
             where: { tenantId },
             create: {
                 tenantId,

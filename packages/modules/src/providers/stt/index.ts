@@ -1,6 +1,6 @@
-import { config } from '@execora/infrastructure';
-import { logger } from '@execora/infrastructure';
-import { sttProcessingTime } from '@execora/infrastructure';
+import { config } from '@execora/core';
+import { logger } from '@execora/core';
+import { sttProcessingTime } from '@execora/core';
 import { STTAdapter, LiveTranscriptionSession } from '../types';
 import type { LiveTranscriptionOptions } from '../types';
 import { ProviderUnavailableError } from '../errors';

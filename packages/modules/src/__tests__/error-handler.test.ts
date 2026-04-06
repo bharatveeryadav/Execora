@@ -23,7 +23,7 @@ import {
   ErrorHandler,
   ErrorSeverity,
   ErrorCategory,
-} from '@execora/infrastructure';
+} from '@execora/core';
 
 // ── AppError base class ────────────────────────────────────────────────────────
 

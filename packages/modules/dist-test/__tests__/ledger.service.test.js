@@ -11,7 +11,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = __importDefault(require("node:test"));
 const strict_1 = __importDefault(require("node:assert/strict"));
 const ledger_service_1 = require("../modules/ledger/ledger.service");
-const infrastructure_1 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
 const fixtures_1 = require("./helpers/fixtures");
 // ── Payment fixture (matches current Payment model) ────────────────────────────
 function makePayment(overrides = {}) {
@@ -40,7 +40,7 @@ function makePayment(overrides = {}) {
             invoice: { findMany: async () => [], update: async () => ({}) },
             customer: { update: async () => (0, fixtures_1.makeCustomer)(), findUnique: async () => (0, fixtures_1.makeCustomer)() },
         };
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma, '$transaction', (0, fixtures_1.makePrismaTransaction)(txProxy)));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma, '$transaction', (0, fixtures_1.makePrismaTransaction)(txProxy)));
         const result = await ledger_service_1.ledgerService.recordPayment('cust-001', 200, 'cash');
         strict_1.default.equal(result.status, 'completed');
         strict_1.default.equal(result.method, 'cash');
@@ -75,7 +75,7 @@ function makePayment(overrides = {}) {
                 invoice: { findMany: async () => [], update: async () => ({}) },
                 customer: { update: async () => (0, fixtures_1.makeCustomer)(), findUnique: async () => (0, fixtures_1.makeCustomer)() },
             };
-            restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma, '$transaction', (0, fixtures_1.makePrismaTransaction)(txProxy)));
+            restores.push((0, fixtures_1.patchMethod)(core_1.prisma, '$transaction', (0, fixtures_1.makePrismaTransaction)(txProxy)));
             const result = await ledger_service_1.ledgerService.recordPayment('cust-001', 100, mode);
             strict_1.default.equal(result.status, 'completed', `mode ${mode} should succeed`);
         }
@@ -90,7 +90,7 @@ function makePayment(overrides = {}) {
     const restores = [];
     try {
         const updatedCustomer = (0, fixtures_1.makeCustomer)({ balance: (0, fixtures_1.dec)(1000) });
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'update', async () => updatedCustomer));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'update', async () => updatedCustomer));
         const result = await ledger_service_1.ledgerService.addCredit('cust-001', 500, 'Invoice for butter');
         strict_1.default.ok(result !== null, 'should return the updated customer');
         strict_1.default.ok('id' in result, 'result should be a customer object');
@@ -117,7 +117,7 @@ function makePayment(overrides = {}) {
     const restores = [];
     try {
         const updatedCustomer = (0, fixtures_1.makeCustomer)({ balance: (0, fixtures_1.dec)(1000) });
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'update', async () => updatedCustomer));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'update', async () => updatedCustomer));
         const result = await ledger_service_1.ledgerService.setOpeningBalance('cust-001', 1000);
         strict_1.default.ok(result !== null);
         strict_1.default.ok('id' in result, 'result should be a customer object');
@@ -135,7 +135,7 @@ function makePayment(overrides = {}) {
 (0, node_test_1.default)('setOpeningBalance: allows zero as opening balance', async () => {
     const restores = [];
     try {
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.customer, 'update', async () => (0, fixtures_1.makeCustomer)({ balance: (0, fixtures_1.dec)(0) })));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.customer, 'update', async () => (0, fixtures_1.makeCustomer)({ balance: (0, fixtures_1.dec)(0) })));
         const result = await ledger_service_1.ledgerService.setOpeningBalance('cust-001', 0);
         strict_1.default.ok(result !== null);
     }
@@ -153,7 +153,7 @@ function makePayment(overrides = {}) {
             { amount: { toString: () => '200' }, method: 'upi' },
             { amount: { toString: () => '100' }, method: 'card' },
         ];
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.payment, 'findMany', async () => payments));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.payment, 'findMany', async () => payments));
         const summary = await ledger_service_1.ledgerService.getLedgerSummary(new Date('2024-01-01'), new Date('2024-01-31'));
         strict_1.default.equal(summary.totalCredits, 700); // 400 + 200 + 100
         strict_1.default.equal(summary.cashPayments, 400);
@@ -168,7 +168,7 @@ function makePayment(overrides = {}) {
 (0, node_test_1.default)('getLedgerSummary: returns zeros for empty date range', async () => {
     const restores = [];
     try {
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.payment, 'findMany', async () => []));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.payment, 'findMany', async () => []));
         const summary = await ledger_service_1.ledgerService.getLedgerSummary(new Date(), new Date());
         strict_1.default.equal(summary.totalDebits, 0);
         strict_1.default.equal(summary.totalCredits, 0);

@@ -21,8 +21,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.gstr1Service = exports.INDIAN_STATE_CODES = void 0;
 exports.getIndianFY = getIndianFY;
 exports.indianFYRange = indianFYRange;
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
 // ── Indian state codes (GST portal standard) ─────────────────────────────────
 exports.INDIAN_STATE_CODES = {
     '01': 'Jammu & Kashmir',
@@ -132,12 +132,12 @@ class Gstr1Service {
         const toDate = new Date(to);
         toDate.setHours(23, 59, 59, 999);
         // Fetch tenant info for GSTIN and state
-        const tenant = await infrastructure_1.prisma.tenant.findUnique({
+        const tenant = await core_1.prisma.tenant.findUnique({
             where: { id: tenantId },
             select: { gstin: true, legalName: true, tradeName: true, state: true },
         });
         // Fetch all non-cancelled, non-draft invoices in the period
-        const invoices = await infrastructure_1.prisma.invoice.findMany({
+        const invoices = await core_1.prisma.invoice.findMany({
             where: {
                 tenantId,
                 status: { notIn: ['cancelled', 'draft'] },
@@ -324,7 +324,7 @@ class Gstr1Service {
         }
         const gstin = tenant?.gstin ?? '';
         const legalName = tenant?.legalName ?? tenant?.tradeName ?? '';
-        infrastructure_2.logger.info({ tenantId, from: fromDate.toISOString(), to: toDate.toISOString(), invoiceCount }, 'GSTR-1 report generated');
+        core_2.logger.info({ tenantId, from: fromDate.toISOString(), to: toDate.toISOString(), invoiceCount }, 'GSTR-1 report generated');
         return {
             period: { from: fromDate.toISOString(), to: toDate.toISOString() },
             fy: getIndianFY(fromDate),
@@ -356,7 +356,7 @@ class Gstr1Service {
         const toDate = new Date(to);
         toDate.setHours(23, 59, 59, 999);
         const [invoices, payments] = await Promise.all([
-            infrastructure_1.prisma.invoice.findMany({
+            core_1.prisma.invoice.findMany({
                 where: {
                     tenantId,
                     status: { notIn: ['cancelled', 'draft'] },
@@ -373,7 +373,7 @@ class Gstr1Service {
                 },
                 orderBy: { invoiceDate: 'asc' },
             }),
-            infrastructure_1.prisma.payment.findMany({
+            core_1.prisma.payment.findMany({
                 where: {
                     tenantId,
                     receivedAt: { gte: fromDate, lte: toDate },
@@ -447,7 +447,7 @@ class Gstr1Service {
                 { label: 'Outstanding', currentValue: curr.outstanding, previousValue: prev.outstanding, changePercent: pctChange(curr.outstanding, prev.outstanding) },
             ];
         }
-        infrastructure_2.logger.info({ tenantId, from: fromDate.toISOString(), to: toDate.toISOString(), months: months.length }, 'P&L report generated');
+        core_2.logger.info({ tenantId, from: fromDate.toISOString(), to: toDate.toISOString(), months: months.length }, 'P&L report generated');
         return {
             period: { from: fromDate.toISOString(), to: toDate.toISOString() },
             months,
@@ -464,7 +464,7 @@ class Gstr1Service {
         fromDate.setHours(0, 0, 0, 0);
         const toDate = new Date(to);
         toDate.setHours(23, 59, 59, 999);
-        const items = await infrastructure_1.prisma.invoiceItem.findMany({
+        const items = await core_1.prisma.invoiceItem.findMany({
             where: {
                 invoice: {
                     tenantId,

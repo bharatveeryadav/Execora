@@ -4,10 +4,10 @@
  *         GET_CUSTOMER_INFO, DELETE_CUSTOMER_DATA, CHECK_BALANCE,
  *         LIST_CUSTOMER_BALANCES, TOTAL_PENDING_AMOUNT
  */
-import { logger } from '@execora/infrastructure';
+import { logger } from '@execora/core';
 import { customerService } from '../../customer/customer.service';
 import { conversationMemory } from '../conversation';
-import { emailService } from '@execora/infrastructure';
+import { emailService } from '@execora/core';
 import { openaiService } from '../../../integrations/openai';
 import { resolveCustomer } from './shared';
 import type { ExecutionResult } from '@execora/types';

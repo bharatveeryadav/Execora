@@ -1,4 +1,4 @@
-import { prisma, minioClient } from '@execora/infrastructure';
+import { prisma, minioClient } from '@execora/core';
 import { Decimal } from '@prisma/client/runtime/library';
 import { randomUUID } from 'crypto';
 

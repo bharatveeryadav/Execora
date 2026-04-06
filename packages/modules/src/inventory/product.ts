@@ -4,7 +4,7 @@
  * Direct Prisma calls, flat async functions, no class wrappers.
  */
 
-import { prisma, logger, tenantContext } from "@execora/infrastructure";
+import { prisma, logger, tenantContext } from "@execora/core";
 import { Decimal } from "@prisma/client/runtime/library";
 
 // ─── Queries ──────────────────────────────────────────────────────────────────

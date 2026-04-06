@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.listSuppliers = listSuppliers;
 exports.getSupplierById = getSupplierById;
 exports.createSupplier = createSupplier;
-const infrastructure_1 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
 // ─── Queries ──────────────────────────────────────────────────────────────────
 async function listSuppliers(tenantId, q, limit = 50) {
     const where = { tenantId };
@@ -14,20 +14,20 @@ async function listSuppliers(tenantId, q, limit = 50) {
             { phone: { contains: q } },
         ];
     }
-    return infrastructure_1.prisma.supplier.findMany({
+    return core_1.prisma.supplier.findMany({
         where,
         take: Math.min(limit, 200),
         orderBy: { name: "asc" },
     });
 }
 async function getSupplierById(tenantId, supplierId) {
-    return infrastructure_1.prisma.supplier.findFirst({
+    return core_1.prisma.supplier.findFirst({
         where: { id: supplierId, tenantId },
     });
 }
 // ─── Commands ─────────────────────────────────────────────────────────────────
 async function createSupplier(tenantId, input) {
-    return infrastructure_1.prisma.supplier.create({
+    return core_1.prisma.supplier.create({
         data: {
             tenantId,
             name: input.name.trim(),

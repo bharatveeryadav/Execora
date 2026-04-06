@@ -19,7 +19,7 @@ Use these files as implementation source of truth before updating docs:
   - `packages/modules/src/modules/gst/gst.service.ts`
   - `packages/modules/src/modules/gst/gstr1.service.ts`
 - Data contracts:
-  - `prisma/schema.prisma` (`Invoice`, `InvoiceItem`, `InvoiceCounter`, tenant GST fields)
+  - `packages/db/schema.prisma` (`Invoice`, `InvoiceItem`, `InvoiceCounter`, tenant GST fields)
 
 ## Canonical Truth Map (Docs)
 

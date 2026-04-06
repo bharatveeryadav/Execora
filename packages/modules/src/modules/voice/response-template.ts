@@ -1,4 +1,4 @@
-import { logger } from '@execora/infrastructure';
+import { logger } from '@execora/core';
 import { ExecutionResult } from '@execora/types';
 
 /**

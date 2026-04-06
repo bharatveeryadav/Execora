@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.taskQueueService = void 0;
-const infrastructure_1 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
 class TaskQueueService {
     queues = new Map();
     maxConcurrentPerSession = 3; // Allow up to 3 parallel tasks per session
@@ -35,7 +35,7 @@ class TaskQueueService {
             priority,
         };
         queue.tasks.set(taskId, task);
-        infrastructure_1.logger.info({ taskId, conversationId, intent, priority, queueSize: queue.tasks.size }, '📋 Task added to queue');
+        core_1.logger.info({ taskId, conversationId, intent, priority, queueSize: queue.tasks.size }, '📋 Task added to queue');
         return taskId;
     }
     /**
@@ -75,7 +75,7 @@ class TaskQueueService {
         task.status = 'RUNNING';
         task.startedAt = new Date();
         queue.running.add(taskId);
-        infrastructure_1.logger.info({ taskId, conversationId }, '▶️ Task started running');
+        core_1.logger.info({ taskId, conversationId }, '▶️ Task started running');
         return true;
     }
     /**
@@ -92,7 +92,7 @@ class TaskQueueService {
         task.completedAt = new Date();
         task.result = result;
         queue.running.delete(taskId);
-        infrastructure_1.logger.info({
+        core_1.logger.info({
             taskId,
             conversationId,
             duration: task.completedAt.getTime() - (task.startedAt?.getTime() || 0),
@@ -114,7 +114,7 @@ class TaskQueueService {
         task.completedAt = new Date();
         task.error = error;
         queue.running.delete(taskId);
-        infrastructure_1.logger.error({
+        core_1.logger.error({
             taskId,
             conversationId,
             error,
@@ -136,7 +136,7 @@ class TaskQueueService {
             task.status = 'CANCELLED';
             task.completedAt = new Date();
             queue.running.delete(taskId);
-            infrastructure_1.logger.info({ taskId, conversationId }, '🚫 Task cancelled');
+            core_1.logger.info({ taskId, conversationId }, '🚫 Task cancelled');
             return true;
         }
         return false;
@@ -195,7 +195,7 @@ class TaskQueueService {
             }
         }
         if (cleaned > 0) {
-            infrastructure_1.logger.info({ conversationId, cleaned }, '🧹 Cleaned old completed tasks');
+            core_1.logger.info({ conversationId, cleaned }, '🧹 Cleaned old completed tasks');
         }
         return cleaned;
     }
@@ -210,7 +210,7 @@ class TaskQueueService {
             clearInterval(queue.processingTimer);
         }
         this.queues.delete(conversationId);
-        infrastructure_1.logger.info({ conversationId }, '🗑️ Conversation queue cleared');
+        core_1.logger.info({ conversationId }, '🗑️ Conversation queue cleared');
     }
 }
 exports.taskQueueService = new TaskQueueService();

@@ -6,7 +6,7 @@
  * remain in modules/customer/customer.service.ts (legacy, voice layer only).
  */
 
-import { prisma, logger, tenantContext } from "@execora/infrastructure";
+import { prisma, logger, tenantContext } from "@execora/core";
 import { Decimal } from "@prisma/client/runtime/library";
 import { ReminderStatus } from "@prisma/client";
 import type { CustomerSearchResult } from "@execora/types";

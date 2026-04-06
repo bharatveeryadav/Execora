@@ -17,8 +17,8 @@
  *  - CBIC HSN reporting threshold: ≥ ₹5Cr turnover → 6-digit HSN, otherwise 4-digit
  */
 
-import { prisma } from '@execora/infrastructure';
-import { logger } from '@execora/infrastructure';
+import { prisma } from '@execora/core';
+import { logger } from '@execora/core';
 
 // ── Indian state codes (GST portal standard) ─────────────────────────────────
 export const INDIAN_STATE_CODES: Record<string, string> = {

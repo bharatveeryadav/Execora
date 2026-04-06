@@ -10,7 +10,7 @@
  *                                    (admin tool, disabled in production unless ADMIN_API_KEY matches)
  */
 import { FastifyInstance, FastifyRequest } from "fastify";
-import { prisma, minioClient, logger, config } from "@execora/infrastructure";
+import { prisma, minioClient, logger, config } from "@execora/core";
 import {
   generateTokens,
   verifyPassword,
@@ -18,7 +18,7 @@ import {
   rotateRefreshToken,
   revokeRefreshToken,
   isPasswordSet,
-} from "@execora/infrastructure";
+} from "@execora/core";
 import { getGstinValidationError } from "@execora/shared";
 import { requireAuth } from "../middleware/require-auth";
 

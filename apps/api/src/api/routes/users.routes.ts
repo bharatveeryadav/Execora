@@ -14,9 +14,9 @@
  * SME/corporate: owner creates staff accounts with specific permissions.
  */
 import { FastifyInstance, FastifyRequest } from "fastify";
-import { prisma } from "@execora/infrastructure";
-import { logger } from "@execora/infrastructure";
-import { hashPassword } from "@execora/infrastructure";
+import { prisma } from "@execora/core";
+import { logger } from "@execora/core";
+import { hashPassword } from "@execora/core";
 import { requirePermission, requireRole } from "../middleware/require-role";
 import { ROLE_DEFAULT_PERMISSIONS } from "@execora/types";
 

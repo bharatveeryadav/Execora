@@ -26,7 +26,7 @@ exports.getLastOrder = getLastOrder;
 exports.getTopSelling = getTopSelling;
 exports.getSummaryRange = getSummaryRange;
 exports.getDailySummary = getDailySummary;
-const infrastructure_1 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
 const library_1 = require("@prisma/client/runtime/library");
 const gst_service_1 = require("../modules/gst/gst.service");
 const monitoring_service_1 = require("../modules/monitoring/monitoring.service");
@@ -37,7 +37,7 @@ async function generateInvoiceNo(tx) {
     const year = now.getFullYear();
     const fyStart = month >= 4 ? year : year - 1;
     const fy = `${fyStart}-${String(fyStart + 1).slice(-2)}`;
-    const tenantId = infrastructure_1.tenantContext.get().tenantId;
+    const tenantId = core_1.tenantContext.get().tenantId;
     const result = await tx.$queryRaw `
     INSERT INTO invoice_counters (fy, "tenantId", last_seq)
     VALUES (${fy}, ${tenantId}, 1)
@@ -55,7 +55,7 @@ async function findOrCreateProduct(tx, productName) {
         .trim();
     const exact = await tx.product.findFirst({
         where: {
-            tenantId: infrastructure_1.tenantContext.get().tenantId,
+            tenantId: core_1.tenantContext.get().tenantId,
             name: { contains: productName, mode: "insensitive" },
             isActive: true,
         },
@@ -63,7 +63,7 @@ async function findOrCreateProduct(tx, productName) {
     if (exact)
         return { product: exact, autoCreated: false };
     const allProducts = await tx.product.findMany({
-        where: { tenantId: infrastructure_1.tenantContext.get().tenantId, isActive: true },
+        where: { tenantId: core_1.tenantContext.get().tenantId, isActive: true },
         select: {
             id: true,
             name: true,
@@ -96,7 +96,7 @@ async function findOrCreateProduct(tx, productName) {
         return { product: bestProduct, autoCreated: false };
     const created = await tx.product.create({
         data: {
-            tenantId: infrastructure_1.tenantContext.get().tenantId,
+            tenantId: core_1.tenantContext.get().tenantId,
             name: productName,
             category: "General",
             price: new library_1.Decimal(0),
@@ -105,10 +105,10 @@ async function findOrCreateProduct(tx, productName) {
             isActive: true,
         },
     });
-    infrastructure_1.logger.warn({
+    core_1.logger.warn({
         productName,
         productId: created.id,
-        tenantId: infrastructure_1.tenantContext.get().tenantId,
+        tenantId: core_1.tenantContext.get().tenantId,
     }, "Product auto-created during invoice (price=0) — update price in catalog");
     return { product: created, autoCreated: true };
 }
@@ -138,7 +138,7 @@ async function previewInvoice(customerId, items, withGst = false, supplyType = "
         throw new Error("No items provided");
     const resolvedItems = [];
     const autoCreatedProducts = [];
-    await infrastructure_1.prisma.$transaction(async (tx) => {
+    await core_1.prisma.$transaction(async (tx) => {
         for (const item of items) {
             if (!item.productName?.trim())
                 continue;
@@ -234,10 +234,10 @@ async function confirmInvoice(customerId, resolvedItems, notes, opts = {}) {
     const { discountAmt, discountType } = computeDiscount(subtotal, opts);
     const grandTotal = Math.round((subtotal + totalTax - discountAmt) * 100) / 100;
     try {
-        return await infrastructure_1.prisma.$transaction(async (tx) => {
+        return await core_1.prisma.$transaction(async (tx) => {
             const invoice = await tx.invoice.create({
                 data: {
-                    tenantId: infrastructure_1.tenantContext.get().tenantId,
+                    tenantId: core_1.tenantContext.get().tenantId,
                     invoiceNo: await generateInvoiceNo(tx),
                     customerId,
                     subtotal: new library_1.Decimal(subtotal),
@@ -297,7 +297,7 @@ async function confirmInvoice(customerId, resolvedItems, notes, opts = {}) {
                 await tx.payment.create({
                     data: {
                         paymentNo: payNo,
-                        tenantId: infrastructure_1.tenantContext.get().tenantId,
+                        tenantId: core_1.tenantContext.get().tenantId,
                         customerId,
                         invoiceId: invoice.id,
                         amount: new library_1.Decimal(paid),
@@ -324,7 +324,7 @@ async function confirmInvoice(customerId, resolvedItems, notes, opts = {}) {
                     visitCount: { increment: 1 },
                 },
             });
-            infrastructure_1.logger.info({
+            core_1.logger.info({
                 invoiceId: invoice.id,
                 customerId,
                 subtotal,
@@ -332,22 +332,22 @@ async function confirmInvoice(customerId, resolvedItems, notes, opts = {}) {
                 totalTax,
                 grandTotal,
                 itemCount: resolvedItems.length,
-                tenantId: infrastructure_1.tenantContext.get().tenantId,
+                tenantId: core_1.tenantContext.get().tenantId,
             }, "Invoice confirmed and created");
-            infrastructure_1.invoiceOperations.inc({
+            core_1.invoiceOperations.inc({
                 operation: "create",
                 status: "success",
-                tenantId: infrastructure_1.tenantContext.get().tenantId,
+                tenantId: core_1.tenantContext.get().tenantId,
             });
             return invoice;
         });
     }
     catch (error) {
-        infrastructure_1.logger.error({ error, customerId, tenantId: infrastructure_1.tenantContext.get().tenantId }, "Invoice confirm failed");
-        infrastructure_1.invoiceOperations.inc({
+        core_1.logger.error({ error, customerId, tenantId: core_1.tenantContext.get().tenantId }, "Invoice confirm failed");
+        core_1.invoiceOperations.inc({
             operation: "create",
             status: "error",
-            tenantId: infrastructure_1.tenantContext.get().tenantId,
+            tenantId: core_1.tenantContext.get().tenantId,
         });
         throw error;
     }
@@ -369,7 +369,7 @@ async function createInvoice(customerId, items, notes, opts = {}) {
         }
         const supplyType = opts.supplyType ?? "INTRASTATE";
         const withGst = opts.withGst ?? false;
-        return await infrastructure_1.prisma
+        return await core_1.prisma
             .$transaction(async (tx) => {
             const resolvedItems = [];
             const autoCreatedProducts = [];
@@ -448,7 +448,7 @@ async function createInvoice(customerId, items, notes, opts = {}) {
             }
             const invoice = await tx.invoice.create({
                 data: {
-                    tenantId: infrastructure_1.tenantContext.get().tenantId,
+                    tenantId: core_1.tenantContext.get().tenantId,
                     invoiceNo: await generateInvoiceNo(tx),
                     customerId,
                     subtotal: new library_1.Decimal(subtotal),
@@ -513,7 +513,7 @@ async function createInvoice(customerId, items, notes, opts = {}) {
                 await tx.payment.create({
                     data: {
                         paymentNo: payNo,
-                        tenantId: infrastructure_1.tenantContext.get().tenantId,
+                        tenantId: core_1.tenantContext.get().tenantId,
                         customerId,
                         invoiceId: invoice.id,
                         amount: new library_1.Decimal(paid),
@@ -543,7 +543,7 @@ async function createInvoice(customerId, items, notes, opts = {}) {
                     },
                 });
             }
-            infrastructure_1.logger.info({
+            core_1.logger.info({
                 invoiceId: invoice.id,
                 customerId,
                 subtotal,
@@ -553,18 +553,18 @@ async function createInvoice(customerId, items, notes, opts = {}) {
                 isProforma,
                 itemCount: items.length,
                 autoCreatedProducts,
-                tenantId: infrastructure_1.tenantContext.get().tenantId,
+                tenantId: core_1.tenantContext.get().tenantId,
             }, isProforma ? "Proforma invoice created" : "Invoice created");
-            infrastructure_1.invoiceOperations.inc({
+            core_1.invoiceOperations.inc({
                 operation: "create",
                 status: "success",
-                tenantId: infrastructure_1.tenantContext.get().tenantId,
+                tenantId: core_1.tenantContext.get().tenantId,
             });
             return { invoice, autoCreatedProducts };
         })
             .then(async (result) => {
             if (!opts.isProforma) {
-                const { tenantId, userId } = infrastructure_1.tenantContext.get();
+                const { tenantId, userId } = core_1.tenantContext.get();
                 const customerName = result.invoice.customer?.name;
                 const total = parseFloat(result.invoice.total.toString());
                 const disc = parseFloat(result.invoice.discount?.toString() ?? "0");
@@ -589,11 +589,11 @@ async function createInvoice(customerId, items, notes, opts = {}) {
         });
     }
     catch (error) {
-        infrastructure_1.logger.error({ error, customerId, items, tenantId: infrastructure_1.tenantContext.get().tenantId }, "Invoice creation failed");
-        infrastructure_1.invoiceOperations.inc({
+        core_1.logger.error({ error, customerId, items, tenantId: core_1.tenantContext.get().tenantId }, "Invoice creation failed");
+        core_1.invoiceOperations.inc({
             operation: "create",
             status: "error",
-            tenantId: infrastructure_1.tenantContext.get().tenantId,
+            tenantId: core_1.tenantContext.get().tenantId,
         });
         throw error;
     }
@@ -603,7 +603,7 @@ async function createInvoice(customerId, items, notes, opts = {}) {
  * Deducts stock and updates customer balance.
  */
 async function convertProformaToInvoice(invoiceId, initialPayment) {
-    return infrastructure_1.prisma.$transaction(async (tx) => {
+    return core_1.prisma.$transaction(async (tx) => {
         const invoice = await tx.invoice.findUnique({
             where: { id: invoiceId },
             include: { items: true },
@@ -638,7 +638,7 @@ async function convertProformaToInvoice(invoiceId, initialPayment) {
             await tx.payment.create({
                 data: {
                     paymentNo: payNo,
-                    tenantId: infrastructure_1.tenantContext.get().tenantId,
+                    tenantId: core_1.tenantContext.get().tenantId,
                     customerId: invoice.customerId,
                     invoiceId: invoice.id,
                     amount: new library_1.Decimal(paidAmount),
@@ -675,7 +675,7 @@ async function convertProformaToInvoice(invoiceId, initialPayment) {
  * Update a pending/draft invoice — re-resolves items, restores then re-deducts stock.
  */
 async function updateInvoice(invoiceId, changes) {
-    return infrastructure_1.prisma.$transaction(async (tx) => {
+    return core_1.prisma.$transaction(async (tx) => {
         const existing = await tx.invoice.findUnique({
             where: { id: invoiceId },
             include: { items: true },
@@ -824,7 +824,7 @@ async function updateInvoice(invoiceId, changes) {
  */
 async function cancelInvoice(invoiceId) {
     try {
-        return await infrastructure_1.prisma.$transaction(async (tx) => {
+        return await core_1.prisma.$transaction(async (tx) => {
             const invoice = await tx.invoice.findUnique({
                 where: { id: invoiceId },
                 include: { items: true },
@@ -861,12 +861,12 @@ async function cancelInvoice(invoiceId) {
                 data: { status: "cancelled", updatedAt: new Date() },
                 include: { items: { include: { product: true } } },
             });
-            infrastructure_1.logger.info({ invoiceId, tenantId: infrastructure_1.tenantContext.get().tenantId }, "Invoice cancelled");
+            core_1.logger.info({ invoiceId, tenantId: core_1.tenantContext.get().tenantId }, "Invoice cancelled");
             return cancelled;
         });
     }
     catch (error) {
-        infrastructure_1.logger.error({ error, invoiceId, tenantId: infrastructure_1.tenantContext.get().tenantId }, "Invoice cancellation failed");
+        core_1.logger.error({ error, invoiceId, tenantId: core_1.tenantContext.get().tenantId }, "Invoice cancellation failed");
         throw error;
     }
 }
@@ -874,21 +874,21 @@ async function cancelInvoice(invoiceId) {
  * Persist the MinIO object key (and presigned URL) on an invoice record.
  */
 async function savePdfUrl(invoiceId, pdfObjectKey, pdfUrl) {
-    await infrastructure_1.prisma.invoice.update({
+    await core_1.prisma.invoice.update({
         where: { id: invoiceId },
         data: { pdfObjectKey, pdfUrl },
     });
-    infrastructure_1.logger.info({ invoiceId, pdfObjectKey }, "Invoice PDF URL saved to DB");
+    core_1.logger.info({ invoiceId, pdfObjectKey }, "Invoice PDF URL saved to DB");
 }
 /**
  * Generate invoice PDF, upload to MinIO, and send via email / WhatsApp.
  * Non-fatal — never blocks the invoice flow. Call fire-and-forget.
  */
 async function dispatchInvoicePdfEmail(invoiceId) {
-    const log = infrastructure_1.logger.child({ invoiceId, fn: "dispatchInvoicePdfEmail" });
+    const log = core_1.logger.child({ invoiceId, fn: "dispatchInvoicePdfEmail" });
     const start = Date.now();
     try {
-        const invoice = await infrastructure_1.prisma.invoice.findFirst({
+        const invoice = await core_1.prisma.invoice.findFirst({
             where: { id: invoiceId },
             include: { customer: true, items: true },
         });
@@ -896,7 +896,7 @@ async function dispatchInvoicePdfEmail(invoiceId) {
             log.warn("Invoice not found — skipping PDF dispatch");
             return;
         }
-        const tenant = await infrastructure_1.prisma.tenant.findFirst({
+        const tenant = await core_1.prisma.tenant.findFirst({
             where: { id: invoice.tenantId },
             select: {
                 name: true,
@@ -944,7 +944,7 @@ async function dispatchInvoicePdfEmail(invoiceId) {
         const logoObjectKey = settings.logoObjectKey;
         if (logoObjectKey) {
             try {
-                logoBuffer = await infrastructure_1.minioClient.getFile(logoObjectKey);
+                logoBuffer = await core_1.minioClient.getFile(logoObjectKey);
             }
             catch {
                 /* non-fatal */
@@ -1005,7 +1005,7 @@ async function dispatchInvoicePdfEmail(invoiceId) {
                 ? Math.round(rawTotal) - rawTotal
                 : undefined;
             const discountAmount = parseFloat((invoice.discount ?? 0).toString()) || undefined;
-            pdfBuffer = await (0, infrastructure_1.generateInvoicePdf)({
+            pdfBuffer = await (0, core_1.generateInvoicePdf)({
                 invoiceNo: invoice.invoiceNo || invoice.id,
                 invoiceId: invoice.id,
                 invoiceDate: invoice.invoiceDate ?? invoice.createdAt,
@@ -1050,10 +1050,10 @@ async function dispatchInvoicePdfEmail(invoiceId) {
         let pdfUrl;
         try {
             const objectKey = `invoices/${invoice.tenantId}/${invoice.id}.pdf`;
-            await infrastructure_1.minioClient.uploadFile(objectKey, pdfBuffer, {
+            await core_1.minioClient.uploadFile(objectKey, pdfBuffer, {
                 contentType: "application/pdf",
             });
-            pdfUrl = await infrastructure_1.minioClient.getPresignedUrl(objectKey, 7 * 24 * 60 * 60);
+            pdfUrl = await core_1.minioClient.getPresignedUrl(objectKey, 7 * 24 * 60 * 60);
             await savePdfUrl(invoice.id, objectKey, pdfUrl);
         }
         catch (err) {
@@ -1080,7 +1080,7 @@ async function dispatchInvoicePdfEmail(invoiceId) {
             if (!customerEmail || !autoSendEmail)
                 return false;
             try {
-                await infrastructure_1.emailService.sendInvoiceEmail(customerEmail, invoice.customer.name, invoice.id, emailItems, grandTotal, shopName, pdfBuffer, pdfUrl, invoiceRef);
+                await core_1.emailService.sendInvoiceEmail(customerEmail, invoice.customer.name, invoice.id, emailItems, grandTotal, shopName, pdfBuffer, pdfUrl, invoiceRef);
                 log.info({ customerEmail, durationMs: Date.now() - start }, "invoice.pdf.email.sent");
                 return true;
             }
@@ -1092,12 +1092,12 @@ async function dispatchInvoicePdfEmail(invoiceId) {
         const tryWhatsApp = customerPhone &&
             pdfUrl &&
             autoSendWhatsApp &&
-            infrastructure_1.whatsappService.isConfigured();
+            core_1.whatsappService.isConfigured();
         if (tryWhatsApp && customerPhone && pdfUrl) {
             const invoiceCaption = `${shopName} — Invoice ${invoiceRef}\n₹${grandTotal.toFixed(2)} | Please find your invoice attached.`;
             let waDelivered = false;
             try {
-                const waResult = await infrastructure_1.whatsappService.sendDocumentMessage(customerPhone, pdfUrl, invoiceCaption, `invoice-${invoiceRef}.pdf`);
+                const waResult = await core_1.whatsappService.sendDocumentMessage(customerPhone, pdfUrl, invoiceCaption, `invoice-${invoiceRef}.pdf`);
                 waDelivered = waResult.success;
                 log.info({
                     customerPhone,
@@ -1126,38 +1126,38 @@ async function dispatchInvoicePdfEmail(invoiceId) {
 }
 // ─── Queries ──────────────────────────────────────────────────────────────────
 async function getInvoiceById(invoiceId) {
-    return infrastructure_1.prisma.invoice.findFirst({
-        where: { id: invoiceId, tenantId: infrastructure_1.tenantContext.get().tenantId },
+    return core_1.prisma.invoice.findFirst({
+        where: { id: invoiceId, tenantId: core_1.tenantContext.get().tenantId },
         include: { customer: true, items: { include: { product: true } } },
     });
 }
 async function getRecentInvoices(limit = 10) {
-    return infrastructure_1.prisma.invoice.findMany({
-        where: { tenantId: infrastructure_1.tenantContext.get().tenantId },
+    return core_1.prisma.invoice.findMany({
+        where: { tenantId: core_1.tenantContext.get().tenantId },
         take: limit,
         orderBy: { invoiceDate: "desc" },
         include: { customer: true, items: { include: { product: true } } },
     });
 }
 async function getCustomerInvoices(customerId, limit = 10) {
-    return infrastructure_1.prisma.invoice.findMany({
-        where: { customerId, tenantId: infrastructure_1.tenantContext.get().tenantId },
+    return core_1.prisma.invoice.findMany({
+        where: { customerId, tenantId: core_1.tenantContext.get().tenantId },
         take: limit,
         orderBy: { invoiceDate: "desc" },
         include: { items: { include: { product: true } } },
     });
 }
 async function getLastInvoice(customerId) {
-    return infrastructure_1.prisma.invoice.findFirst({
+    return core_1.prisma.invoice.findFirst({
         where: { customerId, status: { not: "cancelled" } },
         orderBy: { invoiceDate: "desc" },
         include: { items: { include: { product: true } } },
     });
 }
 async function getLastOrder(customerId) {
-    return infrastructure_1.prisma.invoice.findFirst({
+    return core_1.prisma.invoice.findFirst({
         where: {
-            tenantId: infrastructure_1.tenantContext.get().tenantId,
+            tenantId: core_1.tenantContext.get().tenantId,
             customerId,
             status: { notIn: ["cancelled"] },
         },
@@ -1168,11 +1168,11 @@ async function getLastOrder(customerId) {
     });
 }
 async function getTopSelling(limit = 5, days = 30) {
-    const { tenantId } = infrastructure_1.tenantContext.get();
+    const { tenantId } = core_1.tenantContext.get();
     const since = new Date();
     since.setDate(since.getDate() - days);
     since.setHours(0, 0, 0, 0);
-    const rows = await infrastructure_1.prisma.$queryRaw `
+    const rows = await core_1.prisma.$queryRaw `
     SELECT
       ii.product_id, ii.product_name,
       COALESCE(p.unit, 'piece') AS unit,
@@ -1204,18 +1204,18 @@ async function getTopSelling(limit = 5, days = 30) {
 async function getSummaryRange(from, to) {
     const toEnd = new Date(to);
     toEnd.setHours(23, 59, 59, 999);
-    const invoices = await infrastructure_1.prisma.invoice.findMany({
+    const invoices = await core_1.prisma.invoice.findMany({
         where: {
-            tenantId: infrastructure_1.tenantContext.get().tenantId,
+            tenantId: core_1.tenantContext.get().tenantId,
             invoiceDate: { gte: from, lte: toEnd },
             status: { notIn: ["cancelled", "proforma"] },
         },
         select: { total: true },
     });
     const totalSales = invoices.reduce((sum, inv) => sum + parseFloat(inv.total.toString()), 0);
-    const payments = await infrastructure_1.prisma.payment.findMany({
+    const payments = await core_1.prisma.payment.findMany({
         where: {
-            tenantId: infrastructure_1.tenantContext.get().tenantId,
+            tenantId: core_1.tenantContext.get().tenantId,
             receivedAt: { gte: from, lte: toEnd },
             status: "completed",
         },
@@ -1245,18 +1245,18 @@ async function getDailySummary(date = new Date()) {
     startOfDay.setHours(0, 0, 0, 0);
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
-    const invoices = await infrastructure_1.prisma.invoice.findMany({
+    const invoices = await core_1.prisma.invoice.findMany({
         where: {
-            tenantId: infrastructure_1.tenantContext.get().tenantId,
+            tenantId: core_1.tenantContext.get().tenantId,
             invoiceDate: { gte: startOfDay, lte: endOfDay },
             status: { notIn: ["cancelled", "proforma"] },
         },
         select: { total: true },
     });
     const totalSales = invoices.reduce((sum, inv) => sum + parseFloat(inv.total.toString()), 0);
-    const payments = await infrastructure_1.prisma.payment.findMany({
+    const payments = await core_1.prisma.payment.findMany({
         where: {
-            tenantId: infrastructure_1.tenantContext.get().tenantId,
+            tenantId: core_1.tenantContext.get().tenantId,
             receivedAt: { gte: startOfDay, lte: endOfDay },
             status: "completed",
         },

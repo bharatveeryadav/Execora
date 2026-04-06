@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@execora/infrastructure": "workspace:*",
+    "@execora/core": "workspace:*",
     "@execora/modules":        "workspace:*",
     "@execora/shared":        "workspace:*",
     "@execora/types":          "workspace:*",

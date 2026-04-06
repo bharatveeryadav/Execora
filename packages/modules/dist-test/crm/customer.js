@@ -19,7 +19,7 @@ exports.updateCustomer = updateCustomer;
 exports.updateCustomerBalance = updateCustomerBalance;
 exports.upsertCustomerCommPrefs = upsertCustomerCommPrefs;
 exports.deleteCustomer = deleteCustomer;
-const infrastructure_1 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
 const library_1 = require("@prisma/client/runtime/library");
 const client_1 = require("@prisma/client");
 // ─── Internal helpers ─────────────────────────────────────────────────────────
@@ -75,8 +75,8 @@ function toSearchResult(c) {
 }
 // ─── Queries ──────────────────────────────────────────────────────────────────
 async function getCustomerById(id) {
-    const { tenantId } = infrastructure_1.tenantContext.get();
-    return infrastructure_1.prisma.customer.findFirst({
+    const { tenantId } = core_1.tenantContext.get();
+    return core_1.prisma.customer.findFirst({
         where: { id, tenantId },
         include: {
             invoices: { orderBy: { createdAt: "desc" }, take: 5 },
@@ -88,7 +88,7 @@ async function getCustomerById(id) {
     });
 }
 async function getCustomerBalance(customerId) {
-    const customer = await infrastructure_1.prisma.customer.findUnique({
+    const customer = await core_1.prisma.customer.findUnique({
         where: { id: customerId },
         select: { balance: true },
     });
@@ -99,14 +99,14 @@ async function searchCustomers(query) {
     const q = query.toLowerCase().trim();
     // Phone number fast-path
     if (/^\+?\d{10,15}$/.test(query.replace(/[\s-]/g, ""))) {
-        const byPhone = await infrastructure_1.prisma.customer.findMany({
+        const byPhone = await core_1.prisma.customer.findMany({
             where: { phone: { contains: query.replace(/[\s-]/g, "") } },
             take: 5,
         });
         if (byPhone.length > 0)
             return byPhone.map(toSearchResult);
     }
-    const customers = await infrastructure_1.prisma.customer.findMany({
+    const customers = await core_1.prisma.customer.findMany({
         where: {
             OR: [
                 { name: { contains: q, mode: "insensitive" } },
@@ -141,8 +141,8 @@ async function searchCustomers(query) {
     return customers.map(toSearchResult);
 }
 async function listCustomers(limit = 200) {
-    const { tenantId } = infrastructure_1.tenantContext.get();
-    const customers = await infrastructure_1.prisma.customer.findMany({
+    const { tenantId } = core_1.tenantContext.get();
+    const customers = await core_1.prisma.customer.findMany({
         where: { tenantId },
         orderBy: { balance: "desc" },
         take: limit,
@@ -168,8 +168,8 @@ async function listCustomers(limit = 200) {
     return customers.map(toSearchResult);
 }
 async function listOverdueCustomers() {
-    const { tenantId } = infrastructure_1.tenantContext.get();
-    const customers = await infrastructure_1.prisma.customer.findMany({
+    const { tenantId } = core_1.tenantContext.get();
+    const customers = await core_1.prisma.customer.findMany({
         where: { tenantId, balance: { gt: 0 } },
         select: {
             id: true,
@@ -189,15 +189,15 @@ async function listOverdueCustomers() {
     }));
 }
 async function getTotalPending() {
-    const { tenantId } = infrastructure_1.tenantContext.get();
-    const result = await infrastructure_1.prisma.customer.aggregate({
+    const { tenantId } = core_1.tenantContext.get();
+    const result = await core_1.prisma.customer.aggregate({
         _sum: { balance: true },
         where: { tenantId, balance: { gt: 0 } },
     });
     return parseFloat(String(result._sum.balance ?? 0));
 }
 async function getCustomerCommPrefs(customerId) {
-    return infrastructure_1.prisma.customerCommunicationPrefs.findUnique({
+    return core_1.prisma.customerCommunicationPrefs.findUnique({
         where: { customerId },
     });
 }
@@ -206,15 +206,15 @@ async function createCustomer(data) {
     const { name, phone, email, nickname, landmark, notes, openingBalance, creditLimit, tags, gstin, } = data;
     if (!name?.trim())
         throw new Error("Customer name is required");
-    const existing = await infrastructure_1.prisma.customer.findFirst({
+    const existing = await core_1.prisma.customer.findFirst({
         where: { name: { equals: name.trim(), mode: "insensitive" } },
         select: { id: true },
     });
     if (existing)
         throw new Error(`Customer "${name}" already exists`);
-    const customer = await infrastructure_1.prisma.customer.create({
+    const customer = await core_1.prisma.customer.create({
         data: {
-            tenantId: infrastructure_1.tenantContext.get().tenantId,
+            tenantId: core_1.tenantContext.get().tenantId,
             name: name.trim(),
             phone: phone ?? null,
             email: email ?? null,
@@ -231,7 +231,7 @@ async function createCustomer(data) {
             commonPhrases: [],
         },
     });
-    infrastructure_1.logger.info({ customerId: customer.id, name: customer.name }, "Customer created");
+    core_1.logger.info({ customerId: customer.id, name: customer.name }, "Customer created");
     return customer;
 }
 async function updateCustomer(id, data) {
@@ -256,29 +256,29 @@ async function updateCustomer(id, data) {
         updateData.gstin = data.gstin ? data.gstin.trim().toUpperCase() : null;
     if (Object.keys(updateData).length === 0)
         throw new Error("No fields to update");
-    const updated = await infrastructure_1.prisma.customer.update({
+    const updated = await core_1.prisma.customer.update({
         where: { id },
         data: updateData,
     });
-    infrastructure_1.logger.info({ customerId: id, fields: Object.keys(updateData) }, "Customer updated");
+    core_1.logger.info({ customerId: id, fields: Object.keys(updateData) }, "Customer updated");
     return updated;
 }
 async function updateCustomerBalance(customerId, amount) {
     if (!isFinite(amount))
         throw new Error("Amount must be a finite number");
-    return infrastructure_1.prisma.customer.update({
+    return core_1.prisma.customer.update({
         where: { id: customerId },
         data: { balance: { increment: amount } },
     });
 }
 async function upsertCustomerCommPrefs(customerId, data) {
-    const customer = await infrastructure_1.prisma.customer.findUnique({
+    const customer = await core_1.prisma.customer.findUnique({
         where: { id: customerId },
         select: { tenantId: true },
     });
     if (!customer)
         throw new Error("Customer not found");
-    return infrastructure_1.prisma.customerCommunicationPrefs.upsert({
+    return core_1.prisma.customerCommunicationPrefs.upsert({
         where: { customerId },
         create: { tenantId: customer.tenantId, customerId, ...data },
         update: data,
@@ -286,7 +286,7 @@ async function upsertCustomerCommPrefs(customerId, data) {
 }
 async function deleteCustomer(customerId) {
     try {
-        const result = await infrastructure_1.prisma.$transaction(async (tx) => {
+        const result = await core_1.prisma.$transaction(async (tx) => {
             const reminders = await tx.reminder.findMany({
                 where: { customerId },
                 select: { id: true },
@@ -331,7 +331,7 @@ async function deleteCustomer(customerId) {
     }
     catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
-        infrastructure_1.logger.error({ customerId, error: msg }, "Customer delete failed");
+        core_1.logger.error({ customerId, error: msg }, "Customer delete failed");
         return {
             success: false,
             error: msg,

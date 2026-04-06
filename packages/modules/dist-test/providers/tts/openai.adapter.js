@@ -5,8 +5,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.openaiTTSAdapter = exports.OpenAITTSAdapter = void 0;
 const openai_1 = __importDefault(require("openai"));
-const infrastructure_1 = require("@execora/infrastructure");
-const infrastructure_2 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
+const core_2 = require("@execora/core");
 /**
  * OpenAI TTS adapter — fallback when ElevenLabs is unavailable.
  * Does not support streaming (returns Buffer from generateSpeechStream too).
@@ -22,12 +22,12 @@ class OpenAITTSAdapter {
     client = null;
     voice = 'alloy';
     constructor() {
-        if (infrastructure_1.config.openai.apiKey) {
-            this.client = new openai_1.default({ apiKey: infrastructure_1.config.openai.apiKey });
-            infrastructure_2.logger.info('OpenAI TTS adapter initialized');
+        if (core_1.config.openai.apiKey) {
+            this.client = new openai_1.default({ apiKey: core_1.config.openai.apiKey });
+            core_2.logger.info('OpenAI TTS adapter initialized');
         }
         else {
-            infrastructure_2.logger.warn('OPENAI_API_KEY not set — OpenAI TTS unavailable');
+            core_2.logger.warn('OPENAI_API_KEY not set — OpenAI TTS unavailable');
         }
     }
     isAvailable() {
@@ -43,7 +43,7 @@ class OpenAITTSAdapter {
             speed: 1.0,
         });
         const buffer = Buffer.from(await mp3.arrayBuffer());
-        infrastructure_2.logger.info({ textLength: text.length, audioSize: buffer.length }, 'OpenAI TTS generated');
+        core_2.logger.info({ textLength: text.length, audioSize: buffer.length }, 'OpenAI TTS generated');
         return buffer;
     }
     /** OpenAI TTS does not support streaming — returns a Buffer wrapped as the interface return type. */

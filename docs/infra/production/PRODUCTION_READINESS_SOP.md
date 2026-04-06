@@ -52,7 +52,7 @@ execora/                             ← workspace root (pnpm + turbo)
 │   ├── types/                       ← @execora/types     — JWT payload, RBAC, permission enums
 │   ├── infrastructure/              ← @execora/infrastructure — prisma, logger, redis, queue, metrics, auth
 │   └── modules/                     ← @execora/modules   — business services: invoice, customer, voice, STT/TTS
-├── prisma/
+├── packages/db/
 │   ├── schema.prisma                ← Single schema for entire backend
 │   └── seed.ts                      ← Deterministic seed — run: pnpm seed
 ├── docs/                            ← All documentation lives here
@@ -1882,7 +1882,7 @@ STEP 4: SECOND REVIEWER (required for critical paths)
 ──────────────────────────────────────────────────────────────────
 Required when PR touches ANY of:
   packages/shared (any change to public API)
-  prisma/schema.prisma
+  packages/db/schema.prisma
   Auth: JWT handling, OTP, token refresh, session management
   Payment recording or invoice creation
   .github/workflows/
@@ -1947,7 +1947,7 @@ STEP 6: POST-MERGE
 │                        │ (Expo, React Native,       │ (enforces correct use    │
 │                        │  EAS, navigation, MMKV)    │  of shared package)      │
 ├────────────────────────┼────────────────────────────┼──────────────────────────┤
-│ prisma/schema.prisma   │ Backend                    │ Platform-DevOps          │
+│ packages/db/schema.prisma   │ Backend                    │ Platform-DevOps          │
 │                        │ (schema design,            │ (migration deployment,   │
 │                        │  migration files)          │  rollback runbook)       │
 ├────────────────────────┼────────────────────────────┼──────────────────────────┤

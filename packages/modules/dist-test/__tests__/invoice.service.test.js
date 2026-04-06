@@ -11,7 +11,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const node_test_1 = __importDefault(require("node:test"));
 const strict_1 = __importDefault(require("node:assert/strict"));
 const invoice_service_1 = require("../modules/invoice/invoice.service");
-const infrastructure_1 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
 const fixtures_1 = require("./helpers/fixtures");
 // ── createInvoice — validation ────────────────────────────────────────────────
 (0, node_test_1.default)('createInvoice: throws when customerId is empty', async () => {
@@ -59,7 +59,7 @@ const fixtures_1 = require("./helpers/fixtures");
                 update: async () => (0, fixtures_1.makeCustomer)({ balance: (0, fixtures_1.dec)(100) }),
             },
         };
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma, '$transaction', (0, fixtures_1.makePrismaTransaction)(txProxy)));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma, '$transaction', (0, fixtures_1.makePrismaTransaction)(txProxy)));
         // createInvoice returns { invoice, autoCreatedProducts }
         const result = await invoice_service_1.invoiceService.createInvoice('cust-001', [{ productName: 'Butter', quantity: 2 }]);
         strict_1.default.equal(result.invoice.id, 'inv-001');
@@ -85,7 +85,7 @@ const fixtures_1 = require("./helpers/fixtures");
             invoice: { create: async () => invoice },
             customer: { findUnique: async () => (0, fixtures_1.makeCustomer)({ balance: (0, fixtures_1.dec)(0) }), update: async () => (0, fixtures_1.makeCustomer)() },
         };
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma, '$transaction', (0, fixtures_1.makePrismaTransaction)(txProxy)));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma, '$transaction', (0, fixtures_1.makePrismaTransaction)(txProxy)));
         const result = await invoice_service_1.invoiceService.createInvoice('cust-001', [{ productName: 'Ghost Item', quantity: 1 }]);
         strict_1.default.ok(result.autoCreatedProducts.includes('Ghost Item'));
     }
@@ -110,7 +110,7 @@ const fixtures_1 = require("./helpers/fixtures");
             invoice: { create: async () => invoice },
             customer: { findUnique: async () => (0, fixtures_1.makeCustomer)({ balance: (0, fixtures_1.dec)(0) }), update: async () => ({}) },
         };
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma, '$transaction', (0, fixtures_1.makePrismaTransaction)(txProxy)));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma, '$transaction', (0, fixtures_1.makePrismaTransaction)(txProxy)));
         // No error thrown — service allows stock to go negative
         const result = await invoice_service_1.invoiceService.createInvoice('cust-001', [{ productName: 'Butter', quantity: 10 }]);
         strict_1.default.equal(result.invoice.id, 'inv-low-stock');
@@ -133,7 +133,7 @@ const fixtures_1 = require("./helpers/fixtures");
             product: { update: async () => ({}) },
             customer: { update: async () => (0, fixtures_1.makeCustomer)({ balance: (0, fixtures_1.dec)(0) }) },
         };
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma, '$transaction', (0, fixtures_1.makePrismaTransaction)(txProxy)));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma, '$transaction', (0, fixtures_1.makePrismaTransaction)(txProxy)));
         const result = await invoice_service_1.invoiceService.cancelInvoice('inv-001');
         strict_1.default.equal(result.status, 'cancelled');
     }
@@ -149,7 +149,7 @@ const fixtures_1 = require("./helpers/fixtures");
             product: { update: async () => ({}) },
             customer: { update: async () => ({}) },
         };
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma, '$transaction', (0, fixtures_1.makePrismaTransaction)(txProxy)));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma, '$transaction', (0, fixtures_1.makePrismaTransaction)(txProxy)));
         await strict_1.default.rejects(() => invoice_service_1.invoiceService.cancelInvoice('nonexistent-invoice'), /Invoice not found/i);
     }
     finally {
@@ -166,7 +166,7 @@ const fixtures_1 = require("./helpers/fixtures");
             product: { update: async () => ({}) },
             customer: { update: async () => ({}) },
         };
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma, '$transaction', (0, fixtures_1.makePrismaTransaction)(txProxy)));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma, '$transaction', (0, fixtures_1.makePrismaTransaction)(txProxy)));
         await strict_1.default.rejects(() => invoice_service_1.invoiceService.cancelInvoice('inv-001'), /already cancelled/i);
     }
     finally {
@@ -178,12 +178,12 @@ const fixtures_1 = require("./helpers/fixtures");
     const restores = [];
     try {
         // Return two invoices
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.invoice, 'findMany', async () => [
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.invoice, 'findMany', async () => [
             { total: { toString: () => '500' } },
             { total: { toString: () => '300' } },
         ]));
         // getDailySummary now uses prisma.payment.findMany (not ledgerEntry)
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.payment, 'findMany', async () => [
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.payment, 'findMany', async () => [
             { amount: { toString: () => '400' }, method: 'cash' },
             { amount: { toString: () => '200' }, method: 'upi' },
         ]));
@@ -202,8 +202,8 @@ const fixtures_1 = require("./helpers/fixtures");
 (0, node_test_1.default)('getDailySummary: returns zeros when no activity', async () => {
     const restores = [];
     try {
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.invoice, 'findMany', async () => []));
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.payment, 'findMany', async () => []));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.invoice, 'findMany', async () => []));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.payment, 'findMany', async () => []));
         const summary = await invoice_service_1.invoiceService.getDailySummary(new Date());
         strict_1.default.equal(summary.totalSales, 0);
         strict_1.default.equal(summary.totalPayments, 0);
@@ -219,7 +219,7 @@ const fixtures_1 = require("./helpers/fixtures");
     const restores = [];
     try {
         const invoice = (0, fixtures_1.makeInvoice)({ status: 'CONFIRMED' });
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.invoice, 'findFirst', async () => invoice));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.invoice, 'findFirst', async () => invoice));
         const result = await invoice_service_1.invoiceService.getLastInvoice('cust-001');
         strict_1.default.ok(result !== null);
         strict_1.default.equal(result.status, 'CONFIRMED');
@@ -231,7 +231,7 @@ const fixtures_1 = require("./helpers/fixtures");
 (0, node_test_1.default)('getLastInvoice: returns null when no invoices', async () => {
     const restores = [];
     try {
-        restores.push((0, fixtures_1.patchMethod)(infrastructure_1.prisma.invoice, 'findFirst', async () => null));
+        restores.push((0, fixtures_1.patchMethod)(core_1.prisma.invoice, 'findFirst', async () => null));
         const result = await invoice_service_1.invoiceService.getLastInvoice('cust-001');
         strict_1.default.equal(result, null);
     }

@@ -7,7 +7,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ledgerService } from '../modules/ledger/ledger.service';
-import { prisma } from '@execora/infrastructure';
+import { prisma } from '@execora/core';
 import { patchMethod, restoreAll, makeCustomer, makePrismaTransaction, dec } from './helpers/fixtures';
 import type { RestoreFn } from './helpers/fixtures';
 

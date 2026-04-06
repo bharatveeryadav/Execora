@@ -13,7 +13,7 @@
  *  "product_catalog"  — scan a product photo → seed item catalog
  */
 
-import { prisma, logger } from "@execora/infrastructure";
+import { prisma, logger } from "@execora/core";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

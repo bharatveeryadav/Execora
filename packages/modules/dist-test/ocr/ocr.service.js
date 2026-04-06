@@ -18,10 +18,10 @@ exports.createOcrJob = createOcrJob;
 exports.retryOcrJob = retryOcrJob;
 exports.getOcrJob = getOcrJob;
 exports.listOcrJobs = listOcrJobs;
-const infrastructure_1 = require("@execora/infrastructure");
+const core_1 = require("@execora/core");
 // ── Commands ──────────────────────────────────────────────────────────────────
 async function createOcrJob(tenantId, input) {
-    const job = await infrastructure_1.prisma.ocrJob.create({
+    const job = await core_1.prisma.ocrJob.create({
         data: {
             tenantId,
             jobType: input.jobType,
@@ -30,16 +30,16 @@ async function createOcrJob(tenantId, input) {
             status: "pending",
         },
     });
-    infrastructure_1.logger.info({ jobId: job.id, jobType: job.jobType }, "ocr_job_created");
+    core_1.logger.info({ jobId: job.id, jobType: job.jobType }, "ocr_job_created");
     return job;
 }
 async function retryOcrJob(tenantId, id) {
-    const job = await infrastructure_1.prisma.ocrJob.findFirst({ where: { id, tenantId } });
+    const job = await core_1.prisma.ocrJob.findFirst({ where: { id, tenantId } });
     if (!job)
         throw new Error(`OCR job ${id} not found`);
     if (job.status !== "failed")
         throw new Error(`Only failed jobs can be retried (current: ${job.status})`);
-    const updated = await infrastructure_1.prisma.ocrJob.update({
+    const updated = await core_1.prisma.ocrJob.update({
         where: { id },
         data: {
             status: "pending",
@@ -47,17 +47,17 @@ async function retryOcrJob(tenantId, id) {
             errorMessage: null,
         },
     });
-    infrastructure_1.logger.info({ jobId: id, retryCount: updated.retryCount }, "ocr_job_retry_queued");
+    core_1.logger.info({ jobId: id, retryCount: updated.retryCount }, "ocr_job_retry_queued");
     return updated;
 }
 // ── Queries ───────────────────────────────────────────────────────────────────
 async function getOcrJob(tenantId, id) {
-    return infrastructure_1.prisma.ocrJob.findFirst({
+    return core_1.prisma.ocrJob.findFirst({
         where: { id, tenantId },
     });
 }
 async function listOcrJobs(tenantId, status, limit = 50) {
-    return infrastructure_1.prisma.ocrJob.findMany({
+    return core_1.prisma.ocrJob.findMany({
         where: { tenantId, ...(status ? { status } : {}) },
         orderBy: { createdAt: "desc" },
         take: Math.min(limit, 200),

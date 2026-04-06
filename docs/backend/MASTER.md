@@ -10,7 +10,7 @@
 - `apps/api/src/ws/handler.ts` — original WS handler (fallback)
 - `packages/modules/src/modules/` — business services
 - `packages/infrastructure/src/` — DB, Redis, queue, auth, metrics
-- `prisma/schema.prisma` — data model (28 models)
+- `packages/db/schema.prisma` — data model (28 models)
 
 ---
 

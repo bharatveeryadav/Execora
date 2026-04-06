@@ -79,7 +79,7 @@ A real-time **owner-only monitoring panel** that:
 | `packages/modules/src/modules/monitoring/monitoring.service.ts` | recordEvent, getStats (with footfall/hourly/byEmployee), recordCashReconciliation, getCashReconciliation |
 | `apps/api/src/api/routes/monitoring.routes.ts` | All /api/v1/monitoring/* routes |
 | `apps/api/src/api/routes/rtc-relay.ts` | WebRTC signalling relay for peer-to-peer video |
-| `prisma/schema.prisma` | MonitoringEvent model, MonitoringConfig model |
+| `packages/db/schema.prisma` | MonitoringEvent model, MonitoringConfig model |
 
 ### Frontend Components
 

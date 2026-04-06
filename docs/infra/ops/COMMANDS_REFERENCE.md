@@ -236,7 +236,7 @@ npm run db:migrate
 - Creates migration file from schema changes
 - Generates migration SQL
 - Allows manual editing of migration
-- Creates `prisma/migrations/` folder
+- Creates `packages/db/migrations/` folder
 
 **When to use:**
 - Schema changes in development
@@ -253,13 +253,13 @@ npm run db:migrate
 
 **Example workflow:**
 ```bash
-# Make schema changes in prisma/schema.prisma
+# Make schema changes in packages/db/schema.prisma
 # Then create migration
 npm run db:migrate
 
 # Prompts you for migration name
 # Create migration (yes)
-# Migration file created in prisma/migrations/
+# Migration file created in packages/db/migrations/
 ```
 
 **Common issues & fixes:**
@@ -282,7 +282,7 @@ npm run db:generate
 - Required after schema changes
 
 **When to use:**
-- After changing `prisma/schema.prisma`
+- After changing `packages/db/schema.prisma`
 - If Prisma types are outdated
 - After `npm install` sometimes
 - When schemas become out of sync
@@ -353,7 +353,7 @@ npm run seed
 ```
 
 **What it does:**
-- Runs `prisma/seed.ts`
+- Runs `packages/db/seed.ts`
 - Populates database with test data
 - Creates sample customers, products, etc.
 - Resets data if called multiple times

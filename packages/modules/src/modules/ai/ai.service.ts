@@ -10,12 +10,12 @@
  * in packages/infrastructure/src/workers.ts.
  */
 
-import { prisma, logger, tenantContext } from '@execora/infrastructure';
+import { prisma, logger, tenantContext } from '@execora/core';
 import {
 	replenishmentSuggestionsTotal,
 	anomalyDetectionsTotal,
 	predictiveRemindersScheduled,
-} from '@execora/infrastructure';
+} from '@execora/core';
 import { Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 

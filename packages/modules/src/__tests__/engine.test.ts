@@ -4,7 +4,7 @@ import { businessEngine } from '../modules/voice/engine';
 import { customerService } from '../modules/customer/customer.service';
 import { ledgerService } from '../modules/ledger/ledger.service';
 import { IntentType, IntentExtraction } from '@execora/types';
-import { disconnectDB } from '@execora/infrastructure';
+import { disconnectDB } from '@execora/core';
 
 type RestoreFn = () => void;
 

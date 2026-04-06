@@ -14,8 +14,8 @@
  */
 import crypto from "crypto";
 import { FastifyInstance, FastifyRequest } from "fastify";
-import { whatsappService, logger } from "@execora/infrastructure";
-import { prisma } from "@execora/infrastructure";
+import { whatsappService, logger } from "@execora/core";
+import { prisma } from "@execora/core";
 import { recordPayment } from "@execora/modules";
 import { broadcaster } from "../../ws/broadcaster";
 
@@ -69,7 +69,7 @@ async function processUpiPayment(
   const resolvedName = customer?.name ?? norm.name;
 
   if (customer && !dup) {
-    const { tenantContext } = await import("@execora/infrastructure");
+    const { tenantContext } = await import("@execora/core");
     await tenantContext.run({ tenantId, userId: "webhook" }, () =>
       recordPayment(
         customer.id,
