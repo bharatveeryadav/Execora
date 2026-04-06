@@ -17,10 +17,10 @@ fi
 echo "🚀 Starting Execora stack with admin tools (tailscale expose-all mode)..."
 
 if [[ -n "${POSTGRES_PASSWORD:-}" && -n "${REDIS_PASSWORD:-}" && -n "${MINIO_ROOT_USER:-}" && -n "${MINIO_ROOT_PASSWORD:-}" ]]; then
-  COMPOSE_FILES=( -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.tailscale.yml )
+  COMPOSE_FILES=( -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.prod.yml -f infra/docker/docker-compose.tailscale.yml )
   echo "ℹ️ Using production override files."
 else
-  COMPOSE_FILES=( -f docker-compose.yml -f docker-compose.tailscale.yml )
+  COMPOSE_FILES=( -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.tailscale.yml )
   echo "⚠️ Production secrets are missing in environment; using non-prod compose mode."
   echo "   Set POSTGRES_PASSWORD, REDIS_PASSWORD, MINIO_ROOT_USER, MINIO_ROOT_PASSWORD for prod mode."
 fi

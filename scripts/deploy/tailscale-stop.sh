@@ -11,9 +11,9 @@ fi
 
 echo "🧹 Stopping Execora stack (tailscale mode)..."
 docker compose \
-  -f docker-compose.yml \
-  -f docker-compose.prod.yml \
-  -f docker-compose.tailscale.yml \
+  -f infra/docker/docker-compose.yml \
+  -f infra/docker/docker-compose.prod.yml \
+  -f infra/docker/docker-compose.tailscale.yml \
   down
 
 echo "✅ Stopped."

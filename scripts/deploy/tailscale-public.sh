@@ -21,9 +21,9 @@ fi
 
 echo "🚀 Starting Execora production stack (tailscale mode)..."
 docker compose \
-  -f docker-compose.yml \
-  -f docker-compose.prod.yml \
-  -f docker-compose.tailscale.yml \
+  -f infra/docker/docker-compose.yml \
+  -f infra/docker/docker-compose.prod.yml \
+  -f infra/docker/docker-compose.tailscale.yml \
   up -d --build
 
 echo "⏳ Waiting for API health at http://127.0.0.1:3007/health ..."

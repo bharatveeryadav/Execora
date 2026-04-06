@@ -184,28 +184,28 @@ header "Step 4/5 — Starting Execora"
 
 info "Building and starting containers (this may take 3–5 minutes on first run)..."
 
-$COMPOSE -f docker-compose.dist.yml up -d --build
+$COMPOSE -f infra/docker/docker-compose.dist.yml up -d --build
 
 info "Waiting for database to be ready..."
 for i in $(seq 1 30); do
-  if $COMPOSE -f docker-compose.dist.yml exec -T postgres pg_isready -U execora >/dev/null 2>&1; then
+  if $COMPOSE -f infra/docker/docker-compose.dist.yml exec -T postgres pg_isready -U execora >/dev/null 2>&1; then
     success "Database ready"
     break
   fi
   if [ "$i" -eq 30 ]; then
-    error "Database did not start in time. Check: $COMPOSE -f docker-compose.dist.yml logs postgres"
+    error "Database did not start in time. Check: $COMPOSE -f infra/docker/docker-compose.dist.yml logs postgres"
   fi
   sleep 2
 done
 
 info "Waiting for API to be ready..."
 for i in $(seq 1 40); do
-  if $COMPOSE -f docker-compose.dist.yml exec -T app node -e "require('http').get('http://localhost:3006/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))" >/dev/null 2>&1; then
+  if $COMPOSE -f infra/docker/docker-compose.dist.yml exec -T app node -e "require('http').get('http://localhost:3006/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))" >/dev/null 2>&1; then
     success "API ready"
     break
   fi
   if [ "$i" -eq 40 ]; then
-    error "API did not start in time. Check: $COMPOSE -f docker-compose.dist.yml logs app"
+    error "API did not start in time. Check: $COMPOSE -f infra/docker/docker-compose.dist.yml logs app"
   fi
   sleep 3
 done
@@ -214,20 +214,20 @@ done
 header "Step 5/5 — Loading demo data"
 
 info "Seeding products, demo customers, and sample invoices..."
-$COMPOSE -f docker-compose.dist.yml exec -T app node -e "
+$COMPOSE -f infra/docker/docker-compose.dist.yml exec -T app node -e "
   const { execSync } = require('child_process');
   execSync('pnpm exec prisma db seed', { stdio: 'inherit', cwd: '/app' });
-" 2>/dev/null || $COMPOSE -f docker-compose.dist.yml exec -T app sh -c "cd /app && pnpm exec prisma db seed" || warn "Seed skipped (non-critical)"
+" 2>/dev/null || $COMPOSE -f infra/docker/docker-compose.dist.yml exec -T app sh -c "cd /app && pnpm exec prisma db seed" || warn "Seed skipped (non-critical)"
 
 # Compute admin password hash inside container (bcryptjs is available there)
 if [ "$ADMIN_PASSWORD_HASH" = "PENDING" ]; then
   info "Computing admin password hash..."
-  HASH=$($COMPOSE -f docker-compose.dist.yml exec -T app node -e \
+  HASH=$($COMPOSE -f infra/docker/docker-compose.dist.yml exec -T app node -e \
     "const b=require('bcryptjs');b.hash('${ADMIN_PASSWORD}',10).then(h=>{process.stdout.write(h);process.exit(0);})" 2>/dev/null || echo "")
   if [ -n "$HASH" ]; then
     sed -i "s|ADMIN_PASSWORD_HASH=PENDING|ADMIN_PASSWORD_HASH=${HASH}|" .env
     # Restart app to pick up updated hash
-    $COMPOSE -f docker-compose.dist.yml restart app >/dev/null 2>&1 || true
+    $COMPOSE -f infra/docker/docker-compose.dist.yml restart app >/dev/null 2>&1 || true
     success "Admin password set"
   fi
 fi
@@ -243,10 +243,10 @@ echo -e "  ${BOLD}Admin email:${NC}   ${ADMIN_EMAIL}"
 echo -e "  ${BOLD}Shop name:${NC}     ${SHOP_NAME}"
 echo ""
 echo -e "  ${CYAN}Management commands:${NC}"
-echo -e "    Stop:     $COMPOSE -f docker-compose.dist.yml down"
-echo -e "    Restart:  $COMPOSE -f docker-compose.dist.yml restart"
-echo -e "    Logs:     $COMPOSE -f docker-compose.dist.yml logs -f"
-echo -e "    Update:   git pull && $COMPOSE -f docker-compose.dist.yml up -d --build"
+echo -e "    Stop:     $COMPOSE -f infra/docker/docker-compose.dist.yml down"
+echo -e "    Restart:  $COMPOSE -f infra/docker/docker-compose.dist.yml restart"
+echo -e "    Logs:     $COMPOSE -f infra/docker/docker-compose.dist.yml logs -f"
+echo -e "    Update:   git pull && $COMPOSE -f infra/docker/docker-compose.dist.yml up -d --build"
 echo ""
 echo -e "  ${YELLOW}Next steps:${NC}"
 echo -e "    1. Open http://localhost:${APP_PORT} and log in"

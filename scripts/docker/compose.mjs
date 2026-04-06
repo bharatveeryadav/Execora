@@ -5,6 +5,10 @@ import {
 } from "node:child_process";
 
 const userArgs = process.argv.slice(2);
+const hasComposeFileFlag = userArgs.includes("-f") || userArgs.includes("--file");
+const normalizedArgs = hasComposeFileFlag
+    ? userArgs
+    : ["-f", "infra/docker/docker-compose.yml", ...userArgs];
 
 function run(command, args, options = {}) {
     return spawnSync(command, args, {
@@ -35,10 +39,10 @@ let args = [];
 
 if (hasDockerComposePlugin()) {
     cmd = "docker";
-    args = ["compose", ...userArgs];
+    args = ["compose", ...normalizedArgs];
 } else if (hasDockerComposeBinary()) {
     cmd = "docker-compose";
-    args = userArgs;
+    args = normalizedArgs;
 } else {
     console.error(
         "Docker Compose was not found. Install Docker Desktop or docker-compose before running this command.",
