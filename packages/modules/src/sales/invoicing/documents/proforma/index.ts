@@ -4,4 +4,4 @@
  * Feature: proforma invoice — advance estimate with tax for customs/advance payment.
  * Source: sales/invoice.ts → convertProformaToInvoice
  */
-export { convertProformaToInvoice, previewInvoice } from "../../../invoice";
+export { convertProformaToInvoice } from "../../../invoice";
