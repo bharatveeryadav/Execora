@@ -98,7 +98,7 @@ export async function portalRoutes(fastify: FastifyInstance) {
       if (!invoice) return reply.code(404).send({ error: 'Invoice not found' });
 
       if (!invoice.pdfObjectKey) {
-        return reply.code(404).send({ error: 'PDF not yet generated' });
+        return reply.code(202).send({ status: 'pending', message: 'PDF is being generated. Retry shortly.' });
       }
 
       // Fresh 1-hour presigned URL — avoids serving a stored (possibly expired) URL

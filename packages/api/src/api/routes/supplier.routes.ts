@@ -1,8 +1,11 @@
 /**
- * Supplier routes — list and create suppliers for Purchase Orders.
+ * Supplier routes — full CRUD for suppliers.
  *
- * GET  /api/v1/suppliers         — list (optional ?q= search)
- * POST /api/v1/suppliers         — create
+ * GET    /api/v1/suppliers       — list (optional ?q= search)
+ * GET    /api/v1/suppliers/:id   — get by ID
+ * POST   /api/v1/suppliers       — create
+ * PUT    /api/v1/suppliers/:id   — update
+ * DELETE /api/v1/suppliers/:id   — delete
  */
 import { FastifyInstance, FastifyRequest } from "fastify";
 import {
@@ -10,6 +13,7 @@ import {
   getSupplierById,
   createSupplier,
 } from "@execora/modules";
+import { prisma } from "@execora/core";
 import { getGstinValidationError } from "@execora/shared";
 
 function parseLimit(raw: unknown, defaultVal = 50, maxVal = 200): number {
@@ -93,6 +97,79 @@ export async function supplierRoutes(fastify: FastifyInstance) {
       }
       const supplier = await createSupplier(tenantId, request.body);
       return reply.code(201).send({ supplier });
+    },
+  );
+
+  // ── PUT /api/v1/suppliers/:id ─────────────────────────────────────────────
+  fastify.put<{
+    Params: { id: string };
+    Body: {
+      name?: string;
+      companyName?: string;
+      phone?: string;
+      email?: string;
+      address?: string;
+      gstin?: string;
+      paymentTerms?: string;
+    };
+  }>(
+    "/api/v1/suppliers/:id",
+    {
+      schema: {
+        body: {
+          type: "object",
+          properties: {
+            name: { type: "string", minLength: 1, maxLength: 255 },
+            companyName: { type: "string", maxLength: 255 },
+            phone: { type: "string", maxLength: 20 },
+            email: { type: "string", maxLength: 255 },
+            address: { type: "string", maxLength: 500 },
+            gstin: { type: "string", maxLength: 15 },
+            paymentTerms: { type: "string", maxLength: 100 },
+          },
+          additionalProperties: false,
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const { gstin, ...rest } = request.body;
+      if (gstin) {
+        const gstinErr = getGstinValidationError(gstin.trim());
+        if (gstinErr)
+          return reply
+            .code(400)
+            .send({ error: "INVALID_GSTIN", message: gstinErr });
+      }
+      const existing = await prisma.supplier.findFirst({
+        where: { id: request.params.id, tenantId },
+      });
+      if (!existing) return reply.code(404).send({ error: "Supplier not found" });
+      const supplier = await prisma.supplier.update({
+        where: { id: request.params.id },
+        data: { ...rest, ...(gstin ? { gstin: gstin.trim() } : {}) },
+      });
+      return { supplier };
+    },
+  );
+
+  // ── DELETE /api/v1/suppliers/:id ─────────────────────────────────────────
+  fastify.delete<{ Params: { id: string } }>(
+    "/api/v1/suppliers/:id",
+    async (request, reply) => {
+      const tenantId = request.user!.tenantId;
+      const existing = await prisma.supplier.findFirst({
+        where: { id: request.params.id, tenantId },
+      });
+      if (!existing) return reply.code(404).send({ error: "Supplier not found" });
+      // Guard: block delete if open purchase orders exist
+      const openPOs = await prisma.purchaseOrder.count({
+        where: { supplierId: request.params.id, status: { in: ["pending", "partial"] } },
+      });
+      if (openPOs > 0)
+        return reply.code(409).send({ error: "Cannot delete supplier with open purchase orders" });
+      await prisma.supplier.delete({ where: { id: request.params.id } });
+      return reply.code(204).send();
     },
   );
 }

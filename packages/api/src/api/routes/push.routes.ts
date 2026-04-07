@@ -1,7 +1,8 @@
 /**
- * Push notification routes — device token registration (Sprint 15).
+ * Push notification routes — device token registration.
  *
- * POST /api/v1/push/register — register device for push notifications
+ * POST   /api/v1/push/register    — register device for push notifications
+ * DELETE /api/v1/push/unregister  — unregister (remove) a device token
  */
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma } from '@execora/core';
@@ -49,6 +50,34 @@ export async function pushRoutes(fastify: FastifyInstance) {
 			});
 
 			return reply.code(200).send({ ok: true });
+		}
+	);
+
+	// ── DELETE /api/v1/push/unregister ─────────────────────────────────────────
+	fastify.delete(
+		'/api/v1/push/unregister',
+		{
+			schema: {
+				body: {
+					type: 'object',
+					required: ['token'],
+					properties: {
+						token: { type: 'string', minLength: 1, maxLength: 500 },
+					},
+					additionalProperties: false,
+				},
+			},
+		},
+		async (
+			request: FastifyRequest<{ Body: { token: string } }>,
+			reply
+		) => {
+			const tenantId = request.user!.tenantId;
+			const userId = request.user!.userId;
+			await prisma.pushDevice.deleteMany({
+				where: { tenantId, userId, token: request.body.token },
+			});
+			return reply.code(204).send();
 		}
 	);
 }
