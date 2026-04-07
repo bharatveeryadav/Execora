@@ -19,7 +19,7 @@
 export * from "../sales/invoicing/create-invoice";
 
 // ── Credit notes ──────────────────────────────────────────────────────────────
-export * from "../sales/credit-notes/credit-note";
+// Note: credit-notes are exported from the accounting module
 
 // ── Purchase orders ───────────────────────────────────────────────────────────
 export * from "../purchases/purchase/purchase-order";

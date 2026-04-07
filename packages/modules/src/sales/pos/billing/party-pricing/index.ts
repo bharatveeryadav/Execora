@@ -1,0 +1,27 @@
+/**
+ * sales/pos/billing/party-pricing
+ *
+ * Feature: customer/supplier-specific pricing tiers — contract rates, volume discounts.
+ */
+export interface PartyPriceTier {
+  customerId: string;
+  productId: string;
+  specialRate: number;
+  minQty?: number;
+  validUntil?: string;
+}
+
+export async function getPartyPriceTier(
+  _tenantId: string,
+  _customerId: string,
+  _productId: string,
+): Promise<PartyPriceTier | null> {
+  return null;
+}
+
+export async function upsertPartyPriceTier(
+  _tenantId: string,
+  _tier: Omit<PartyPriceTier, never>,
+): Promise<PartyPriceTier> {
+  throw new Error("Not implemented");
+}

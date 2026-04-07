@@ -9,9 +9,37 @@
  *  - productService        → singleton class with advanced stock queries
  */
 
-// ── Stock catalog flat functions + types ──────────────────────────────────────
-// Re-exports from inventory/product.ts + inventory/stock/types.ts
+// ── stock/item-catalog ─────────────────────────────────────────────────────────
+// Product CRUD, search, list, paginated query.
 export * from "./stock/item-catalog";
 
+// ── stock/batch-tracking ───────────────────────────────────────────────────────
+// Batch write-offs, expiry listing, expiry page query.
+export * from "./stock/batch-tracking";
+
+// ── alerts/low-stock ──────────────────────────────────────────────────────────
+// Lists products below reorder threshold.
+export * from "./alerts/low-stock";
+// ── alerts/reorder-suggestions ────────────────────────────────────────────────
+// Reorder candidates (stub; Mode 3 agent wiring planned).
+export { listReorderCandidates } from "./alerts/reorder-suggestions";
+
 // ── ProductService — pagination, low-stock, expiry, variant management ────────
-export * from "../modules/product/product.service";
+export * from "./product.service";
+export * from "./stock/stock-level";
+export * from "./stock/bulk-update";
+export * from "./stock/reservations";
+export * from "./stock/valuation";
+export * from "./warehouse/locations";
+export * from "./warehouse/transfer-request";
+export * from "./warehouse/location-policy";
+export * from "./movement/inward";
+export * from "./movement/outward";
+export * from "./movement/transfer-ledger";
+export * from "./batch/serial-number";
+export * from "./barcode/generator";
+export * from "./barcode/scanner";
+export * from "./barcode/label-printing";
+export * from "./alerts/overstock";
+export * from "./alerts/expiry-alerts";
+export * from "./stock/adjustments";

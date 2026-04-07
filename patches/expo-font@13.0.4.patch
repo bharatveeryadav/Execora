@@ -1,0 +1,8 @@
+diff --git a/build/index.js b/build/index.js
+--- a/build/index.js
++++ b/build/index.js
+@@ -1,2 +1,2 @@
+-export * from './Font';
+-export { useFonts } from './FontHooks';
++export * from './Font.js';
++export { useFonts } from './FontHooks.js';

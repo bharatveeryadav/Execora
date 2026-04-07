@@ -1,5 +1,9 @@
 /**
- * @deprecated Import directly from 'src/providers/stt' instead.
- * This re-export shim exists for backward compatibility.
+ * integrations/stt
+ *
+ * Feature: STT (speech-to-text) provider abstraction — Deepgram, ElevenLabs, Whisper.
+ * Owner: integrations domain
+ * Source of truth: providers/stt/index.ts
  */
-export { sttService } from '../../providers/stt';
+export * from "../../providers/stt";
+export type { STTAdapter, LiveTranscriptionSession, LiveTranscriptionOptions } from "../../providers/types";

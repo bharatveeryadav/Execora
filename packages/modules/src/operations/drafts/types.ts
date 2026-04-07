@@ -1,21 +1,2 @@
-export type DraftType = "purchase_entry" | "product" | "stock_adjustment";
-export type DraftStatus = "pending" | "confirmed" | "discarded";
-
-export interface CreateDraftInput {
-  type: DraftType;
-  title?: string;
-  data: Record<string, unknown>;
-  notes?: string;
-}
-
-export interface UpdateDraftInput {
-  data?: Record<string, unknown>;
-  title?: string;
-  notes?: string;
-}
-
-export interface ListDraftsInput {
-  type?: string;
-  status?: string;
-  limit?: number;
-}
+// Re-exported from sales/pos/cart-session. Source of truth: sales/pos/cart-session/types.ts
+export * from "../../sales/pos/cart-session/types";

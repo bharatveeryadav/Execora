@@ -16,5 +16,4 @@
 // ── GST calculation & tax service ────────────────────────────────────────────
 export * from "../modules/gst/gst.service";
 
-// ── GSTR-1 filing & P&L reporting ────────────────────────────────────────────
-export * from "../modules/gst/gstr1.service";
+// Note: gstr1.service (GSTR-1 reports + P&L) is exported from the accounting module
