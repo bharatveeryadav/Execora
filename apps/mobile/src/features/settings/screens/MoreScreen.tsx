@@ -86,7 +86,19 @@ const SECTIONS: Section[] = [
         route: "Monitoring",
         color: "#0ea5e9",
       },
+      {
+        icon: "document-lock",
+        label: "Audit Log",
+        route: "Audit",
+        color: "#3d7a9e",
+      },
       { icon: "document-text", label: "GST", route: "Gstr", color: "#e67e22" },
+      {
+        icon: "shield-checkmark",
+        label: "Compliance",
+        route: "Compliance",
+        color: "#1a9248",
+      },
       {
         icon: "document-text",
         label: "Aging",
@@ -117,6 +129,18 @@ const SECTIONS: Section[] = [
         label: "E-Invoice",
         route: "EInvoicing",
         color: "#0ea5e9",
+      },
+      {
+        icon: "layers",
+        label: "Inventory",
+        route: "Inventory",
+        color: "#3d7a9e",
+      },
+      {
+        icon: "calculator",
+        label: "POS",
+        route: "Pos",
+        color: "#e67e22",
       },
       {
         icon: "cash",
@@ -172,6 +196,12 @@ const SECTIONS: Section[] = [
         label: "Feedback",
         route: "Feedback",
         color: "#e67e22",
+      },
+      {
+        icon: "sparkles",
+        label: "Subscription",
+        route: "Subscription",
+        color: "#0ea5e9",
       },
       {
         icon: "settings",

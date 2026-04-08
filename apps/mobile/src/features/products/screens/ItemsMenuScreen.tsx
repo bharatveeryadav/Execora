@@ -27,9 +27,16 @@ const MENU_ITEMS: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   subtitle: string;
-  action: "expiry" | "comingSoon";
+  action: "inventory" | "expiry" | "comingSoon";
   title?: string;
 }[] = [
+  {
+    id: "inventory",
+    icon: "layers",
+    label: "Inventory Center",
+    subtitle: "Movements, valuation and warehouse locations",
+    action: "inventory",
+  },
   {
     id: "expiry",
     icon: "calendar",
@@ -75,6 +82,10 @@ export function ItemsMenuScreen({ navigation }: Props) {
   }, []);
 
   function handleMenuPress(item: (typeof MENU_ITEMS)[0]) {
+    if (item.action === "inventory") {
+      navigation.navigate("Inventory");
+      return;
+    }
     if (item.action === "expiry") {
       InteractionManager.runAfterInteractions(() => {
         // getParent() is ItemsStack→parent. When opened via ItemsTab that's MainTabs.

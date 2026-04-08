@@ -32,6 +32,7 @@ import {
 import {
   ItemsScreen,
   ItemsMenuScreen,
+  InventoryScreen,
   ProductDetailScreen,
   UpdateProductScreen,
 } from "../features/products";
@@ -57,6 +58,10 @@ import {
   SettingsScreen,
   ImportScreen,
   FeedbackScreen,
+  SubscriptionScreen,
+  AuditScreen,
+  ComplianceScreen,
+  PosScreen,
   SettingsThermalScreen,
   ExpiryScreen,
   CompanyProfileScreen,
@@ -86,6 +91,7 @@ export type MainTabParams = {
 
 export type ItemsStackParams = {
   ItemsList: undefined;
+  Inventory: undefined;
   ProductDetail: { id: string; product?: Record<string, unknown> };
   UpdateProduct: { id: string; product?: Record<string, unknown> };
   ItemsMenu: undefined;
@@ -104,6 +110,11 @@ export type MoreStackParams = {
   Recurring: undefined;
   Purchases: undefined;
   Monitoring: undefined;
+  Subscription: undefined;
+  Audit: undefined;
+  Compliance: undefined;
+  Pos: undefined;
+  Inventory: undefined;
   Settings: undefined;
   DocumentSettings: undefined;
   DocumentTemplates: undefined;
@@ -355,6 +366,11 @@ function ItemsNavigator() {
       >
         <ItemsStack.Screen name="ItemsList" component={ItemsScreen} />
         <ItemsStack.Screen
+          name="Inventory"
+          component={InventoryScreen}
+          options={{ headerShown: true, title: "Inventory" }}
+        />
+        <ItemsStack.Screen
           name="ProductDetail"
           component={ProductDetailScreen}
         />
@@ -448,6 +464,31 @@ function MoreNavigator() {
           name="Monitoring"
           component={MonitoringScreen}
           options={{ title: "Store Monitor" }}
+        />
+        <MoreStack.Screen
+          name="Subscription"
+          component={SubscriptionScreen}
+          options={{ title: "Subscription" }}
+        />
+        <MoreStack.Screen
+          name="Audit"
+          component={AuditScreen}
+          options={{ title: "Audit Log" }}
+        />
+        <MoreStack.Screen
+          name="Compliance"
+          component={ComplianceScreen}
+          options={{ title: "Compliance" }}
+        />
+        <MoreStack.Screen
+          name="Pos"
+          component={PosScreen}
+          options={{ title: "POS" }}
+        />
+        <MoreStack.Screen
+          name="Inventory"
+          component={InventoryScreen}
+          options={{ title: "Inventory" }}
         />
         <MoreStack.Screen
           name="Expiry"
