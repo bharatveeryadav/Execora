@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { RESPONSIVE_STRATEGIES } from "@execora/shared";
 import { formatCurrency, formatDate, toFloat } from "../../../shared/lib/utils";
 import { STATUS_STYLES, PAYMENT_METHODS } from "../../../shared/lib/constants";
 import { useWsInvalidation } from "../../../shared/hooks/useWsInvalidation";
@@ -32,6 +33,9 @@ import { showInfo, showSuccess } from "../../../shared/lib/alerts";
 import type { InvoicesStackParams } from "../../../navigation";
 
 type Props = NativeStackScreenProps<InvoicesStackParams, "InvoiceDetail">;
+
+export const INVOICE_DETAIL_RESPONSIVE_CONFIG =
+  RESPONSIVE_STRATEGIES.universalResponsive;
 
 // ── Component ─────────────────────────────────────────────────────────────────
 

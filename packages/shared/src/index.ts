@@ -9,3 +9,4 @@ export * from "./api-client";
 export * from "./gstin";
 export * from "./demo-invoices";
 export * from "./entitlements";
+export * from "./responsive-system";

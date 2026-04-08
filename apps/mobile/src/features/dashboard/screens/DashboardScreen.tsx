@@ -37,7 +37,7 @@ import {
   reminderApi,
   authApi,
 } from "../../../lib/api";
-import { inr } from "@execora/shared";
+import { inr, RESPONSIVE_STRATEGIES } from "@execora/shared";
 import { useWsInvalidation } from "../../../hooks/useWsInvalidation";
 import { useResponsive } from "../../../hooks/useResponsive";
 import { useAuth } from "../../../contexts/AuthContext";
@@ -62,6 +62,9 @@ const ACTION_COLORS: Record<string, string> = {
   success: COLORS.success,
   warning: COLORS.warning,
 };
+
+export const DASHBOARD_SCREEN_RESPONSIVE_CONFIG =
+  RESPONSIVE_STRATEGIES.universalResponsive;
 
 const QUICK_ACTIONS: QuickActionItem[] = [
   {

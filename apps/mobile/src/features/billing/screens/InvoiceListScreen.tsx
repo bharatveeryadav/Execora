@@ -26,7 +26,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { invoiceApi } from "../api/invoiceApi";
 import { purchaseApi } from "../../../lib/api";
-import { inr, type Invoice } from "@execora/shared";
+import {
+  inr,
+  RESPONSIVE_STRATEGIES,
+  type Invoice,
+} from "@execora/shared";
 import { useWsInvalidation } from "../../../shared/hooks/useWsInvalidation";
 import { useResponsive } from "../../../shared/hooks/useResponsive";
 import { TabBar, type TabItem } from "../../../components/composites/TabBar";
@@ -64,6 +68,9 @@ type StatusTab =
   | "Paid"
   | "Cancelled"
   | "Proforma";
+
+export const INVOICE_LIST_RESPONSIVE_CONFIG =
+  RESPONSIVE_STRATEGIES.universalResponsive;
 
 // Web: DATE_FILTERS, DATE_FILTER_LABELS
 const DATE_FILTERS: DateFilter[] = [

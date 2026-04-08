@@ -59,6 +59,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   amountInWords,
   inr,
+  RESPONSIVE_STRATEGIES,
   computeAmount,
   computeTotals,
   fuzzyFilter,
@@ -123,6 +124,9 @@ let _id = 1;
 
 const DUE_DATE_PRESETS = [0, 15, 30, 60] as const;
 type DocumentTitle = "invoice" | "billOfSupply";
+
+export const BILLING_SCREEN_RESPONSIVE_CONFIG =
+  RESPONSIVE_STRATEGIES.universalResponsive;
 
 // Modern icons (Ionicons) — matches web Lucide: Banknote, Smartphone, CreditCard, Wallet
 const PAY_MODE_ICONS: Record<PaymentMode, keyof typeof Ionicons.glyphMap> = {
