@@ -93,7 +93,7 @@ const STATUS_STYLES: Record<
 const styles = StyleSheet.create({
   surfaceShadow: Platform.select({
     ios: {
-      shadowColor: "#000",
+      shadowColor: COLORS.text.primary,
       shadowOffset: { width: 0, height: 8 },
       shadowOpacity: 0.06,
       shadowRadius: 18,
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   }),
   cardShadow: Platform.select({
     ios: {
-      shadowColor: "#000",
+      shadowColor: COLORS.text.primary,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.05,
       shadowRadius: 10,
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   }),
   fabShadow: Platform.select({
     ios: {
-      shadowColor: "#000",
+      shadowColor: COLORS.text.primary,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.2,
       shadowRadius: 8,
@@ -724,7 +724,7 @@ export function ItemsScreen({ navigation }: Props) {
                   {/* Categories */}
                   <View className="mb-2 flex-row items-center">
                     <View className="mr-2 h-6 w-6 items-center justify-center rounded-lg bg-slate-100">
-                      <Ionicons name="grid-outline" size={13} color="#64748b" />
+                      <Ionicons name="grid-outline" size={13} color={COLORS.slate[500]} />
                     </View>
                     <ScrollView
                       horizontal
@@ -786,7 +786,7 @@ export function ItemsScreen({ navigation }: Props) {
                       <Ionicons
                         name="funnel-outline"
                         size={13}
-                        color="#64748b"
+                        color={COLORS.slate[500]}
                       />
                     </View>
                     <ScrollView
@@ -850,7 +850,7 @@ export function ItemsScreen({ navigation }: Props) {
                       <Ionicons
                         name="swap-vertical-outline"
                         size={13}
-                        color="#64748b"
+                        color={COLORS.slate[500]}
                       />
                     </View>
                     <ScrollView
@@ -895,7 +895,7 @@ export function ItemsScreen({ navigation }: Props) {
                       <Ionicons
                         name="albums-outline"
                         size={13}
-                        color="#64748b"
+                        color={COLORS.slate[500]}
                       />
                     </View>
                     <View className="flex-row gap-2">
@@ -1216,7 +1216,7 @@ export function ItemsScreen({ navigation }: Props) {
                 activeOpacity={0.8}
                 className="w-10 h-10 rounded-full bg-slate-100 items-center justify-center"
               >
-                <Ionicons name="close" size={20} color="#475569" />
+                <Ionicons name="close" size={20} color={COLORS.slate[600]} />
               </TouchableOpacity>
             </View>
 
@@ -1325,7 +1325,7 @@ export function ItemsScreen({ navigation }: Props) {
                               : "chevron-forward-circle-outline"
                           }
                           size={18}
-                          color={active ? "#e67e22" : "#94a3b8"}
+                          color={active ? COLORS.primary : COLORS.slate[400]}
                         />
                       </View>
                     </TouchableOpacity>
@@ -1356,7 +1356,7 @@ export function ItemsScreen({ navigation }: Props) {
           ...styles.fabShadow,
         }}
       >
-        <Ionicons name="add" size={22} color="#fff" />
+        <Ionicons name="add" size={22} color={COLORS.text.inverted} />
         <Text className="text-white font-bold text-sm">Add Items</Text>
       </Pressable>
     </SafeAreaView>
@@ -1868,7 +1868,7 @@ function AddProductModal({
                 accessibilityLabel="Close add item modal"
                 className="w-10 h-10 rounded-xl bg-slate-100 items-center justify-center"
               >
-                <Ionicons name="close" size={20} color="#475569" />
+                <Ionicons name="close" size={20} color={COLORS.slate[600]} />
               </Pressable>
             </View>
 
@@ -2013,7 +2013,7 @@ function AddProductModal({
                   accessibilityLabel="Scan item barcode"
                   className="w-12 h-12 items-center justify-center border-l border-slate-200"
                 >
-                  <Ionicons name="barcode-outline" size={24} color="#e67e22" />
+                  <Ionicons name="barcode-outline" size={24} color={COLORS.primary} />
                 </Pressable>
               </View>
             </FormField>

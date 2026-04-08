@@ -3,7 +3,7 @@
  * Variants: primary, outline, ghost, danger; sizes: sm, md, lg.
  */
 import React from "react";
-import { TouchableOpacity, Text, ActivityIndicator } from "react-native";
+import { Pressable, Text, ActivityIndicator } from "react-native";
 import { cn } from "../../lib/utils";
 import { hapticLight } from "../../lib/haptics";
 import { SIZES } from "../../lib/constants";
@@ -84,17 +84,16 @@ export function Button({
   };
 
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={handlePress}
       disabled={isDisabled}
-      activeOpacity={0.7}
-      style={sizeStyles[size]}
       className={cn(
         "rounded-xl items-center justify-center flex-row",
         variantContainerStyles[variant],
         isDisabled && "opacity-50",
         className,
       )}
+      style={({ pressed }) => [sizeStyles[size], pressed && !isDisabled ? { opacity: 0.75 } : null]}
     >
       {loading ? (
         <ActivityIndicator
@@ -103,7 +102,7 @@ export function Button({
             variant === "primary" || variant === "danger" ? "#fff" : "#475569"
           }
         />
-      ) : (
+      ) : typeof children === "string" || typeof children === "number" ? (
         <Text
           style={sizeTextStyles[size]}
           maxFontSizeMultiplier={MAX_FONT_SIZE_MULTIPLIER}
@@ -115,7 +114,9 @@ export function Button({
         >
           {children}
         </Text>
+      ) : (
+        children
       )}
-    </TouchableOpacity>
+    </Pressable>
   );
 }

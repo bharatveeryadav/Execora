@@ -17,6 +17,7 @@ import { useWsInvalidation } from "../../../hooks/useWsInvalidation";
 import { formatCurrency } from "../../../lib/utils";
 import { Chip } from "../../../components/ui/Chip";
 import { ErrorCard } from "../../../components/ui/ErrorCard";
+import { COLORS } from "../../../lib/constants";
 
 function getPeriodRange(period: string) {
   const now = new Date();
@@ -160,7 +161,7 @@ export function BankReconScreen() {
         ListEmptyComponent={
           isFetching ? (
             <View className="py-16 items-center">
-              <ActivityIndicator size="large" color="#e67e22" />
+              <ActivityIndicator size="large" color={COLORS.primary} />
             </View>
           ) : (
             <Text className="text-slate-500 text-center py-8">

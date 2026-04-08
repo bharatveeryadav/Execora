@@ -15,12 +15,15 @@ import { useMutation } from "@tanstack/react-query";
 import { authApi, getApiBaseUrl } from "../../../lib/api";
 import { tokenStorage } from "../../../lib/storage";
 import { useAuth, type AuthUser } from "../../../contexts/AuthContext";
+import { COLORS } from "../../../lib/constants";
 
 export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
   const { loginWithUser } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [backendReachable, setBackendReachable] = useState<boolean | null>(null);
+  const [backendReachable, setBackendReachable] = useState<boolean | null>(
+    null,
+  );
   const [checking, setChecking] = useState(false);
 
   const checkBackend = React.useCallback(() => {
@@ -96,11 +99,14 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
 
           {backendReachable === false && (
             <View className="bg-destructive/15 border border-destructive/40 rounded-xl px-4 py-3 mb-6">
-              <Text className="text-destructive font-semibold text-sm">Cannot reach backend</Text>
+              <Text className="text-destructive font-semibold text-sm">
+                Cannot reach backend
+              </Text>
               <Text className="text-destructive/90 text-xs mt-1">
                 1) API is running (pnpm dev){"\n"}
                 2) EXPO_PUBLIC_API_URL in .env points to your machine{"\n"}
-                3) On physical phone: use your PC's LAN IP (e.g. http://192.168.1.x:3006){"\n"}
+                3) On physical phone: use your PC's LAN IP (e.g.
+                http://192.168.1.x:3006){"\n"}
                 4) On emulator: use http://10.0.2.2:3006
               </Text>
               <TouchableOpacity
@@ -109,9 +115,11 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                 className="mt-3 py-2 px-4 bg-destructive/30 rounded-lg self-start"
               >
                 {checking ? (
-                  <ActivityIndicator size="small" color="#cf2a2a" />
+                  <ActivityIndicator size="small" color={COLORS.error} />
                 ) : (
-                  <Text className="text-destructive font-semibold text-sm">Retry connection</Text>
+                  <Text className="text-destructive font-semibold text-sm">
+                    Retry connection
+                  </Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -125,7 +133,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
             value={email}
             onChangeText={setEmail}
             placeholder="you@example.com"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={COLORS.slate[400]}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
@@ -140,7 +148,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
             value={password}
             onChangeText={setPassword}
             placeholder="••••••••"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={COLORS.slate[400]}
             secureTextEntry
             returnKeyType="done"
             onSubmitEditing={() => canSubmit && void login.mutateAsync()}
@@ -153,7 +161,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
             className={`h-14 rounded-2xl items-center justify-center ${canSubmit ? "bg-primary" : "bg-slate-300"}`}
           >
             {login.isPending ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={COLORS.text.inverted} />
             ) : (
               <Text className="text-white font-bold text-base">Sign In</Text>
             )}

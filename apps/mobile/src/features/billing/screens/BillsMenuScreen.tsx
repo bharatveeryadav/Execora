@@ -9,6 +9,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { TYPO } from "../../../shared/lib/typography";
 import { useResponsive } from "../../../shared/hooks/useResponsive";
+import { COLORS } from "../../../shared/lib/constants";
 import type { InvoicesStackParams, DocumentType } from "../../../navigation";
 import {
   BILLING_DOC_SHORTCUTS,
@@ -72,7 +73,11 @@ export function BillsMenuScreen({ navigation }: Props) {
                 >
                   {doc.label}
                 </Text>
-                <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
+                <Ionicons
+                  name="chevron-forward"
+                  size={16}
+                  color={COLORS.slate[400]}
+                />
               </Pressable>
             ))}
           </View>
@@ -86,7 +91,11 @@ export function BillsMenuScreen({ navigation }: Props) {
                 style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
               >
                 <View className="w-8 h-8 rounded-lg bg-slate-100 items-center justify-center">
-                  <Ionicons name={item.icon} size={18} color="#64748b" />
+                  <Ionicons
+                    name={item.icon}
+                    size={18}
+                    color={COLORS.slate[500]}
+                  />
                 </View>
                 <Text
                   className={TYPO.body + " flex-1 min-w-0"}
@@ -94,7 +103,11 @@ export function BillsMenuScreen({ navigation }: Props) {
                 >
                   {item.label}
                 </Text>
-                <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
+                <Ionicons
+                  name="chevron-forward"
+                  size={16}
+                  color={COLORS.slate[400]}
+                />
               </Pressable>
             ))}
           </View>

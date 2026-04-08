@@ -18,6 +18,7 @@ import { useResponsive } from "../../../hooks/useResponsive";
 import { inr, type Customer } from "@execora/shared";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import { ErrorCard } from "../../../components/ui/ErrorCard";
+import { COLORS } from "../../../lib/constants";
 
 export function CustomersScreen() {
   const navigation = useNavigation<any>();
@@ -111,7 +112,7 @@ export function CustomersScreen() {
           <Ionicons
             name="search"
             size={18}
-            color="#94a3b8"
+            color={COLORS.slate[400]}
             style={{ marginRight: 8 }}
           />
           <TextInput
@@ -121,10 +122,10 @@ export function CustomersScreen() {
               setPage(1);
             }}
             placeholder="Search by name or phone…"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={COLORS.slate[400]}
             className="flex-1 h-11 text-sm text-slate-800"
           />
-          {isFetching && <ActivityIndicator size="small" color="#e67e22" />}
+          {isFetching && <ActivityIndicator size="small" color={COLORS.primary} />}
         </View>
       </View>
 

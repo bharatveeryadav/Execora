@@ -31,6 +31,7 @@ import {
 import { showError, showSuccess } from "../../../lib/alerts";
 import {
   CUSTOMER_TAGS,
+  COLORS,
   LANGUAGE_LABELS,
   LANGUAGES,
 } from "../../../lib/constants";
@@ -191,7 +192,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-white items-center justify-center">
-        <ActivityIndicator color="#e67e22" size="large" />
+        <ActivityIndicator color={COLORS.primary} size="large" />
       </SafeAreaView>
     );
   }
@@ -264,7 +265,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
             style={{ padding: 10, marginLeft: -4 }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons name="chevron-back" size={24} color="#475569" />
+            <Ionicons name="chevron-back" size={24} color={COLORS.slate[600]} />
           </TouchableOpacity>
           {/* Avatar */}
           <View
@@ -635,7 +636,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
             <View className="bg-white rounded-2xl overflow-hidden shadow-sm">
               {remindersFetching ? (
                 <View className="py-8 items-center">
-                  <ActivityIndicator size="small" color="#e67e22" />
+                  <ActivityIndicator size="small" color={COLORS.primary} />
                 </View>
               ) : reminders.length === 0 ? (
                 <View className="py-10 items-center">
@@ -701,7 +702,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
                 value={editName}
                 onChangeText={setEditName}
                 placeholder="Customer name"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={COLORS.slate[400]}
                 className="border border-slate-200 rounded-xl px-3 py-3 text-sm text-slate-800 mb-3"
               />
               {/* Phone */}
@@ -713,7 +714,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
                 onChangeText={setEditPhone}
                 placeholder="10-digit mobile"
                 keyboardType="phone-pad"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={COLORS.slate[400]}
                 className="border border-slate-200 rounded-xl px-3 py-3 text-sm text-slate-800 mb-3"
               />
               {/* Email */}
@@ -726,7 +727,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
                 placeholder="email@example.com"
                 keyboardType="email-address"
                 autoCapitalize="none"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={COLORS.slate[400]}
                 className="border border-slate-200 rounded-xl px-3 py-3 text-sm text-slate-800 mb-3"
               />
               {/* Nickname */}
@@ -737,7 +738,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
                 value={editNickname}
                 onChangeText={setEditNickname}
                 placeholder="e.g. Ramesh bhai"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={COLORS.slate[400]}
                 className="border border-slate-200 rounded-xl px-3 py-3 text-sm text-slate-800 mb-3"
               />
               {/* Landmark */}
@@ -748,7 +749,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
                 value={editLandmark}
                 onChangeText={setEditLandmark}
                 placeholder="e.g. near Rajiv Chowk"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={COLORS.slate[400]}
                 className="border border-slate-200 rounded-xl px-3 py-3 text-sm text-slate-800 mb-3"
               />
               {/* Credit Limit */}
@@ -760,7 +761,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
                 onChangeText={setEditCreditLimit}
                 keyboardType="numeric"
                 placeholder="0"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={COLORS.slate[400]}
                 className="border border-slate-200 rounded-xl px-3 py-3 text-sm text-slate-800 mb-3"
               />
               {/* Tags */}
@@ -811,7 +812,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
                 value={editNotes}
                 onChangeText={setEditNotes}
                 placeholder="Any notes about this customer…"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={COLORS.slate[400]}
                 multiline
                 numberOfLines={2}
                 className="border border-slate-200 rounded-xl px-3 py-3 text-sm text-slate-800 mb-4"
@@ -843,7 +844,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
                         className="bg-red-600 rounded-lg px-4 py-2 flex-row items-center gap-1"
                       >
                         {deleteMutation.isPending ? (
-                          <ActivityIndicator color="#fff" size="small" />
+                          <ActivityIndicator color={COLORS.text.inverted} size="small" />
                         ) : (
                           <Text className="text-white text-xs font-bold">
                             Yes, Delete
@@ -890,7 +891,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
                 className={`flex-1 rounded-xl py-3 items-center ${editName.trim() ? "bg-indigo-600" : "bg-slate-200"}`}
               >
                 {updateMutation.isPending ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={COLORS.text.inverted} />
                 ) : (
                   <Text className="font-bold text-white">Save Changes</Text>
                 )}
@@ -920,7 +921,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
               onChangeText={setRemAmount}
               keyboardType="numeric"
               placeholder={String(balance > 0 ? balance : 0)}
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={COLORS.slate[400]}
               className="border border-slate-200 rounded-xl px-3 py-3 text-sm text-slate-800 mb-3"
             />
             <Text className="text-xs font-medium text-slate-600 mb-1">
@@ -930,7 +931,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
               value={remDate}
               onChangeText={setRemDate}
               placeholder="2026-04-01 10:00"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={COLORS.slate[400]}
               className="border border-slate-200 rounded-xl px-3 py-3 text-sm text-slate-800 mb-3"
             />
             <Text className="text-xs font-medium text-slate-600 mb-1">
@@ -940,7 +941,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
               value={remMessage}
               onChangeText={setRemMessage}
               placeholder={`Reminder for ${customer?.name ?? "customer"}`}
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={COLORS.slate[400]}
               className="border border-slate-200 rounded-xl px-3 py-3 text-sm text-slate-800 mb-4"
             />
             <View className="flex-row gap-3">
@@ -963,7 +964,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
                 className={`flex-1 rounded-xl py-3 items-center ${remDate ? "bg-indigo-600" : "bg-slate-200"}`}
               >
                 {createReminderMutation.isPending ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={COLORS.text.inverted} />
                 ) : (
                   <Text className="font-bold text-white">Set Reminder</Text>
                 )}
@@ -994,7 +995,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
                 <Switch
                   value={pWaEnabled}
                   onValueChange={setPWaEnabled}
-                  trackColor={{ true: "#e67e22" }}
+                  trackColor={{ true: COLORS.primary }}
                 />
               </View>
               {pWaEnabled && (
@@ -1003,7 +1004,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
                   onChangeText={setPWaNumber}
                   keyboardType="phone-pad"
                   placeholder="10-digit number"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor={COLORS.slate[400]}
                   className="border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 mt-1"
                 />
               )}
@@ -1017,7 +1018,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
                 <Switch
                   value={pEmailEnabled}
                   onValueChange={setPEmailEnabled}
-                  trackColor={{ true: "#e67e22" }}
+                  trackColor={{ true: COLORS.primary }}
                 />
               </View>
               {pEmailEnabled && (
@@ -1027,7 +1028,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   placeholder="customer@email.com"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor={COLORS.slate[400]}
                   className="border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 mt-1"
                 />
               )}
@@ -1040,7 +1041,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
               <Switch
                 value={pSmsEnabled}
                 onValueChange={setPSmsEnabled}
-                trackColor={{ true: "#e67e22" }}
+                trackColor={{ true: COLORS.primary }}
               />
             </View>
             {/* Language */}
@@ -1084,7 +1085,7 @@ export function CustomerDetailScreen({ navigation, route }: Props) {
                 className="flex-1 bg-indigo-600 rounded-xl py-3 items-center"
               >
                 {updatePrefsMutation.isPending ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={COLORS.text.inverted} />
                 ) : (
                   <Text className="font-bold text-white">Save</Text>
                 )}

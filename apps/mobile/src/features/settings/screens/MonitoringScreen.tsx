@@ -24,6 +24,7 @@ import { formatCurrency } from "../../../lib/utils";
 import { Chip } from "../../../components/ui/Chip";
 import { ErrorCard } from "../../../components/ui/ErrorCard";
 import { hapticLight } from "../../../lib/haptics";
+import { COLORS } from "../../../lib/constants";
 
 function getTodayRange() {
   const now = new Date();
@@ -187,7 +188,7 @@ export function MonitoringScreen() {
         <>
           <View className="flex-row items-center justify-between px-4 py-3 bg-black/80">
             <TouchableOpacity onPress={() => setTab("dashboard")}>
-              <Ionicons name="arrow-back" size={24} color="#fff" />
+              <Ionicons name="arrow-back" size={24} color={COLORS.text.inverted} />
             </TouchableOpacity>
             <Text className="text-white font-bold">Camera</Text>
             <TouchableOpacity
@@ -227,7 +228,7 @@ export function MonitoringScreen() {
                   className="bg-primary py-3 rounded-xl items-center"
                 >
                   {logEvent.isPending ? (
-                    <ActivityIndicator color="#fff" />
+                    <ActivityIndicator color={COLORS.text.inverted} />
                   ) : (
                     <Text className="text-white font-semibold">Log Event</Text>
                   )}
@@ -256,7 +257,7 @@ export function MonitoringScreen() {
                 <Ionicons
                   name="refresh"
                   size={22}
-                  color={statsLoading ? "#94a3b8" : "#64748b"}
+                  color={statsLoading ? COLORS.slate[400] : COLORS.slate[500]}
                 />
               </TouchableOpacity>
             </View>
@@ -536,7 +537,7 @@ export function MonitoringScreen() {
               className="bg-primary py-3 rounded-xl items-center mb-2"
             >
               {submitCash.isPending ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={COLORS.text.inverted} />
               ) : (
                 <Text className="text-white font-semibold">Submit</Text>
               )}

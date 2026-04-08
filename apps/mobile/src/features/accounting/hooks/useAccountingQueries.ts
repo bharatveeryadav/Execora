@@ -26,7 +26,11 @@ export function useSummaryRange(from: string, to: string) {
   });
 }
 
-export function useGstr1Report(params?: { from?: string; to?: string; fy?: string }) {
+export function useGstr1Report(params?: {
+  from?: string;
+  to?: string;
+  fy?: string;
+}) {
   return useQuery({
     queryKey: ["gstr1", params?.from, params?.to, params?.fy],
     queryFn: () => reportsApi.gstr1(params),
@@ -34,7 +38,11 @@ export function useGstr1Report(params?: { from?: string; to?: string; fy?: strin
   });
 }
 
-export function usePnLReport(params?: { from?: string; to?: string; fy?: string }) {
+export function usePnLReport(params?: {
+  from?: string;
+  to?: string;
+  fy?: string;
+}) {
   return useQuery({
     queryKey: ["pnl", params?.from, params?.to, params?.fy],
     queryFn: () => reportsApi.pnl(params),
@@ -45,7 +53,7 @@ export function usePnLReport(params?: { from?: string; to?: string; fy?: string 
 /** Convenience hook: fetches cashbook + summary + PnL for a date range in parallel. */
 export function useAccountingQueries(from: string, to: string) {
   const cashbook = useCashbookData({ from, to });
-  const summary  = useSummaryRange(from, to);
-  const pnl      = usePnLReport({ from, to });
+  const summary = useSummaryRange(from, to);
+  const pnl = usePnLReport({ from, to });
   return { cashbook, summary, pnl };
 }

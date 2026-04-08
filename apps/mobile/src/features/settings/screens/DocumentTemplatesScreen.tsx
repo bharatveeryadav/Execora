@@ -26,6 +26,7 @@ import {
   DEMO_SERVICE_BILL_SHIP,
   type DemoInvoiceData,
 } from "@execora/shared";
+import { COLORS } from "../../../lib/constants";
 
 /** Map template ID to matching demo for preview */
 const TEMPLATE_TO_DEMO: Record<TemplateId, DemoInvoiceData> = {
@@ -128,7 +129,7 @@ export function DocumentTemplatesScreen() {
           onPress={() => setTemplateTab("invoice")}
           className={`flex-1 py-2.5 flex-row items-center justify-center gap-1.5 ${templateTab === "invoice" ? "border-b-2 border-primary bg-primary/5" : ""}`}
         >
-          <Ionicons name="document-text-outline" size={18} color={templateTab === "invoice" ? "#e67e22" : "#64748b"} />
+          <Ionicons name="document-text-outline" size={18} color={templateTab === "invoice" ? COLORS.primary : COLORS.slate[500]} />
           <Text className={`font-semibold text-xs ${templateTab === "invoice" ? "text-primary" : "text-slate-600"}`}>
             Invoice
           </Text>
@@ -137,7 +138,7 @@ export function DocumentTemplatesScreen() {
           onPress={() => setTemplateTab("purchase")}
           className={`flex-1 py-2.5 flex-row items-center justify-center gap-1.5 ${templateTab === "purchase" ? "border-b-2 border-primary bg-primary/5" : ""}`}
         >
-          <Ionicons name="cube-outline" size={18} color={templateTab === "purchase" ? "#e67e22" : "#64748b"} />
+          <Ionicons name="cube-outline" size={18} color={templateTab === "purchase" ? COLORS.primary : COLORS.slate[500]} />
           <Text className={`font-semibold text-xs ${templateTab === "purchase" ? "text-primary" : "text-slate-600"}`}>
             Purchase
           </Text>
@@ -146,7 +147,7 @@ export function DocumentTemplatesScreen() {
           onPress={() => setTemplateTab("quotation")}
           className={`flex-1 py-2.5 flex-row items-center justify-center gap-1.5 ${templateTab === "quotation" ? "border-b-2 border-primary bg-primary/5" : ""}`}
         >
-          <Ionicons name="chatbubble-ellipses-outline" size={18} color={templateTab === "quotation" ? "#e67e22" : "#64748b"} />
+          <Ionicons name="chatbubble-ellipses-outline" size={18} color={templateTab === "quotation" ? COLORS.primary : COLORS.slate[500]} />
           <Text className={`font-semibold text-xs ${templateTab === "quotation" ? "text-primary" : "text-slate-600"}`}>
             Quotation
           </Text>

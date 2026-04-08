@@ -28,7 +28,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { tokenStorage } from "../../../lib/storage";
 import { getApiBaseUrl } from "../../../lib/api";
 import { useResponsive } from "../../../hooks/useResponsive";
-import { SIZES } from "../../../lib/constants";
+import { COLORS, SIZES } from "../../../lib/constants";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -253,7 +253,7 @@ export function VoiceScreen() {
             value={input}
             onChangeText={setInput}
             placeholder="Jaise: Rahul ko 2 kg cheeni ka bill banao…"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={COLORS.slate[400]}
             multiline={false}
             returnKeyType="send"
             onSubmitEditing={send}
@@ -268,7 +268,7 @@ export function VoiceScreen() {
             ]}
           >
             {connecting ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={COLORS.text.inverted} />
             ) : (
               <Text style={styles.sendBtnText}>Send</Text>
             )}
@@ -285,36 +285,36 @@ export function VoiceScreen() {
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f8fafc" },
+  container: { flex: 1, backgroundColor: COLORS.bg.primary },
 
   header: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 12,
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.text.inverted,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#e2e8f0",
+    borderBottomColor: COLORS.border.light,
     gap: 6,
   },
   headerTitle: {
     fontSize: SIZES.FONT.lg,
     fontWeight: "700",
-    color: "#0f172a",
+    color: COLORS.text.primary,
     flex: 1,
   },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  dotGreen: { backgroundColor: "#22c55e" },
-  dotRed: { backgroundColor: "#ef4444" },
-  statusLabel: { fontSize: SIZES.FONT.sm, color: "#64748b" },
+  dotGreen: { backgroundColor: COLORS.success },
+  dotRed: { backgroundColor: COLORS.error },
+  statusLabel: { fontSize: SIZES.FONT.sm, color: COLORS.slate[500] },
   reconnectBtn: {
     minHeight: SIZES.TOUCH_MIN,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    backgroundColor: "#e67e22",
+    backgroundColor: COLORS.primary,
     borderRadius: 6,
   },
   reconnectText: {
-    color: "#fff",
+    color: COLORS.text.inverted,
     fontSize: SIZES.FONT.sm,
     fontWeight: "600",
   },
@@ -331,68 +331,68 @@ const styles = StyleSheet.create({
   },
   bubbleUser: {
     alignSelf: "flex-end",
-    backgroundColor: "#e67e22",
+    backgroundColor: COLORS.primary,
     borderBottomRightRadius: 4,
   },
   bubbleAssistant: {
     alignSelf: "flex-start",
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.text.inverted,
     borderBottomLeftRadius: 4,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "#e2e8f0",
+    borderColor: COLORS.border.light,
   },
   bubbleSystem: {
     alignSelf: "center",
-    backgroundColor: "#f1f5f9",
+    backgroundColor: COLORS.slate[100],
     borderRadius: 8,
     maxWidth: "96%",
   },
   intentBadge: {
     fontSize: SIZES.FONT.xs,
     fontWeight: "700",
-    color: "#e67e22",
+    color: COLORS.primary,
     marginBottom: 2,
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   bubbleText: { fontSize: SIZES.FONT.base, lineHeight: 20 },
-  bubbleTextUser: { color: "#fff" },
-  bubbleTextOther: { color: "#1e293b" },
+  bubbleTextUser: { color: COLORS.text.inverted },
+  bubbleTextOther: { color: COLORS.slate[800] },
 
   inputBar: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.text.inverted,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "#e2e8f0",
+    borderTopColor: COLORS.border.light,
     gap: 8,
   },
   textInput: {
     flex: 1,
     minHeight: SIZES.TOUCH_MIN,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: COLORS.border.light,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: SIZES.FONT.base,
-    color: "#0f172a",
-    backgroundColor: "#f8fafc",
+    color: COLORS.text.primary,
+    backgroundColor: COLORS.bg.primary,
   },
   sendBtn: {
     minWidth: 60,
     minHeight: SIZES.TOUCH_MIN,
     borderRadius: 10,
-    backgroundColor: "#e67e22",
+    backgroundColor: COLORS.primary,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 14,
   },
-  sendBtnDisabled: { backgroundColor: "#c7d2fe" },
+  sendBtnDisabled: { backgroundColor: COLORS.slate[300] },
   sendBtnText: {
-    color: "#fff",
+    color: COLORS.text.inverted,
     fontWeight: "700",
     fontSize: SIZES.FONT.base,
   },
@@ -400,8 +400,8 @@ const styles = StyleSheet.create({
   hint: {
     textAlign: "center",
     fontSize: SIZES.FONT.sm,
-    color: "#94a3b8",
+    color: COLORS.slate[400],
     paddingBottom: 8,
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.text.inverted,
   },
 });

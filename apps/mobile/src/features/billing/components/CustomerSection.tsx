@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { Customer } from "@execora/shared";
+import { COLORS } from "../../../lib/constants";
 
 export interface CustomerSectionProps {
   selectedCustomer: Customer | null;
@@ -48,7 +49,7 @@ export function CustomerSection({
     <View className="mt-2 mb-2">
       <View className="flex-row items-center justify-between mb-1.5">
         <View className="flex-row items-center gap-1.5">
-          <Ionicons name="person-outline" size={14} color="#64748b" />
+          <Ionicons name="person-outline" size={14} color={COLORS.slate[500]} />
           <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
             Customer
           </Text>
@@ -60,9 +61,9 @@ export function CustomerSection({
             className="flex-row items-center gap-1 px-2 py-1 rounded-lg border border-primary/40 bg-primary/10"
           >
             {createWalkInPending ? (
-              <ActivityIndicator size="small" color="#e67e22" />
+              <ActivityIndicator size="small" color={COLORS.primary} />
             ) : (
-              <Ionicons name="cart-outline" size={14} color="#e67e22" />
+              <Ionicons name="cart-outline" size={14} color={COLORS.primary} />
             )}
             <Text className="text-xs font-semibold text-primary">Walk-in</Text>
           </TouchableOpacity>
@@ -82,7 +83,7 @@ export function CustomerSection({
             )}
             {outstandingBalance > 0 && (
               <View className="flex-row items-center gap-1 mt-0.5">
-                <Ionicons name="warning-outline" size={12} color="#d97706" />
+                <Ionicons name="warning-outline" size={12} color={COLORS.warning} />
                 <Text className="text-xs font-semibold text-amber-600">
                   ₹{inr(outstandingBalance)} outstanding
                 </Text>
@@ -93,7 +94,7 @@ export function CustomerSection({
                 <Ionicons
                   name="checkmark-circle-outline"
                   size={12}
-                  color="#16a34a"
+                  color={COLORS.success}
                 />
                 <Text className="text-xs font-semibold text-green-600">
                   ₹{inr(Math.abs(outstandingBalance))} advance credit
@@ -114,7 +115,7 @@ export function CustomerSection({
             <Ionicons
               name="search"
               size={18}
-              color="#94a3b8"
+              color={COLORS.slate[400]}
               style={{ marginRight: 8 }}
             />
             <TextInput
@@ -123,11 +124,11 @@ export function CustomerSection({
               onFocus={onCustomerInputFocus}
               onBlur={onCustomerInputBlur}
               placeholder="Search customer… (blank = Walk-in)"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={COLORS.slate[400]}
               className="flex-1 h-12 text-sm text-slate-800"
             />
             {searchingCustomers && (
-              <ActivityIndicator size="small" color="#e67e22" />
+              <ActivityIndicator size="small" color={COLORS.primary} />
             )}
           </View>
 

@@ -29,6 +29,7 @@ import { getGstinValidationError } from "@execora/shared";
 import { authApi, authExtApi, getApiBaseUrl } from "../../../lib/api";
 import { tokenStorage } from "../../../lib/storage";
 import { TYPO } from "../../../lib/typography";
+import { COLORS } from "../../../lib/constants";
 
 const BUSINESS_TYPES = [
   "Retail / Shops",
@@ -128,7 +129,9 @@ type ProfileComparableState = {
   logoObjectKey: string;
 };
 
-function normalizeComparableState(state: ProfileComparableState): ProfileComparableState {
+function normalizeComparableState(
+  state: ProfileComparableState,
+): ProfileComparableState {
   return {
     companyName: state.companyName.trim(),
     tradeName: state.tradeName.trim(),
@@ -154,7 +157,8 @@ function isValidWebsite(value: string): boolean {
   const v = value.trim();
   if (!v) return true;
   try {
-    const url = v.startsWith("http://") || v.startsWith("https://") ? v : `https://${v}`;
+    const url =
+      v.startsWith("http://") || v.startsWith("https://") ? v : `https://${v}`;
     const parsed = new URL(url);
     return !!parsed.hostname && parsed.hostname.includes(".");
   } catch {
@@ -231,11 +235,16 @@ export function CompanyProfileScreen({ navigation }: Props) {
   const websiteTrimmed = website.trim();
   const normalizedWebsite =
     websiteTrimmed &&
-    !(websiteTrimmed.startsWith("http://") || websiteTrimmed.startsWith("https://"))
+    !(
+      websiteTrimmed.startsWith("http://") ||
+      websiteTrimmed.startsWith("https://")
+    )
       ? `https://${websiteTrimmed}`
       : websiteTrimmed;
 
-  const companyNameError = companyName.trim() ? null : "Business name is required";
+  const companyNameError = companyName.trim()
+    ? null
+    : "Business name is required";
   const billingAddressError = billingAddress.trim()
     ? null
     : "Billing address is required";
@@ -252,7 +261,9 @@ export function CompanyProfileScreen({ navigation }: Props) {
       ? "Enter a valid business email"
       : null;
   const panError =
-    panUpper && !PAN_REGEX.test(panUpper) ? "PAN format should be ABCDE1234F" : null;
+    panUpper && !PAN_REGEX.test(panUpper)
+      ? "PAN format should be ABCDE1234F"
+      : null;
   const ifscError =
     bankIfscUpper && !IFSC_REGEX.test(bankIfscUpper)
       ? "IFSC format should be like SBIN0001234"
@@ -413,7 +424,9 @@ export function CompanyProfileScreen({ navigation }: Props) {
     setGstin(tenant?.gstin ?? "");
     setPhone(String(settings.phone ?? ""));
     setEmail(String(settings.email ?? ""));
-    setBillingAddress(String(settings.billingAddress ?? settings.address ?? ""));
+    setBillingAddress(
+      String(settings.billingAddress ?? settings.address ?? ""),
+    );
     setShippingAddress(String(settings.shippingAddress ?? ""));
     setBusinessType(String(settings.businessType ?? ""));
     setPan(String(settings.pan ?? ""));
@@ -573,7 +586,7 @@ export function CompanyProfileScreen({ navigation }: Props) {
     return (
       <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#e67e22" />
+          <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
       </SafeAreaView>
     );
@@ -587,7 +600,7 @@ export function CompanyProfileScreen({ navigation }: Props) {
       >
         <View className="px-4 py-3 border-b border-slate-100 flex-row items-center justify-between">
           <TouchableOpacity onPress={handleBackPress}>
-            <Ionicons name="arrow-back" size={24} color="#0f172a" />
+            <Ionicons name="arrow-back" size={24} color={COLORS.text.primary} />
           </TouchableOpacity>
           <Text className={TYPO.sectionTitle}>Company Details</Text>
           <View className="flex-row items-center gap-2">
@@ -608,9 +621,11 @@ export function CompanyProfileScreen({ navigation }: Props) {
               }`}
             >
               {updateProfile.isPending ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={COLORS.text.inverted} />
               ) : (
-                <Text className={`font-semibold ${isSaveDisabled ? "text-slate-500" : "text-white"}`}>
+                <Text
+                  className={`font-semibold ${isSaveDisabled ? "text-slate-500" : "text-white"}`}
+                >
                   Save
                 </Text>
               )}
@@ -629,7 +644,8 @@ export function CompanyProfileScreen({ navigation }: Props) {
                 Unsaved changes
               </Text>
               <Text className="text-xs text-amber-700 mt-0.5">
-                Review and save your business profile updates before leaving this screen.
+                Review and save your business profile updates before leaving
+                this screen.
               </Text>
             </View>
           )}
@@ -648,10 +664,14 @@ export function CompanyProfileScreen({ navigation }: Props) {
                   resizeMode="cover"
                 />
               ) : logoUploading ? (
-                <ActivityIndicator size="large" color="#e67e22" />
+                <ActivityIndicator size="large" color={COLORS.primary} />
               ) : (
                 <View className="items-center">
-                  <Ionicons name="business" size={36} color="#94a3b8" />
+                  <Ionicons
+                    name="business"
+                    size={36}
+                    color={COLORS.slate[400]}
+                  />
                 </View>
               )}
             </TouchableOpacity>
@@ -678,7 +698,9 @@ export function CompanyProfileScreen({ navigation }: Props) {
                 </Pressable>
               )}
             </View>
-            {hasUnsavedChanges && !logoObjectKey && loadedProfileState.logoObjectKey ? (
+            {hasUnsavedChanges &&
+            !logoObjectKey &&
+            loadedProfileState.logoObjectKey ? (
               <Text className="text-xs text-amber-700 mt-2">
                 Save to remove the current logo.
               </Text>
@@ -692,10 +714,12 @@ export function CompanyProfileScreen({ navigation }: Props) {
             onChangeText={setCompanyName}
             placeholder="Enter business name"
             className={`${INPUT} ${companyNameError ? "border-red-400" : ""} mb-1`}
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={COLORS.slate[400]}
           />
           {companyNameError ? (
-            <Text className="text-xs text-red-600 mb-3">{companyNameError}</Text>
+            <Text className="text-xs text-red-600 mb-3">
+              {companyNameError}
+            </Text>
           ) : (
             <View className="mb-4" />
           )}
@@ -707,7 +731,7 @@ export function CompanyProfileScreen({ navigation }: Props) {
             onChangeText={setTradeName}
             placeholder="Optional"
             className={`${INPUT} mb-4`}
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={COLORS.slate[400]}
           />
 
           {/* GST toggle */}
@@ -716,8 +740,8 @@ export function CompanyProfileScreen({ navigation }: Props) {
             <Switch
               value={gstEnabled}
               onValueChange={setGstEnabled}
-              trackColor={{ false: "#cbd5e1", true: "#e67e22" }}
-              thumbColor="#fff"
+              trackColor={{ false: COLORS.border.medium, true: COLORS.primary }}
+              thumbColor={COLORS.text.inverted}
             />
           </View>
           {gstEnabled && (
@@ -734,7 +758,7 @@ export function CompanyProfileScreen({ navigation }: Props) {
                   }}
                   placeholder="15-digit GSTIN"
                   className={`flex-1 ${INPUT} ${gstError ? "border-red-400" : ""}`}
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor={COLORS.slate[400]}
                   maxLength={15}
                   autoCapitalize="characters"
                 />
@@ -746,7 +770,9 @@ export function CompanyProfileScreen({ navigation }: Props) {
                 </TouchableOpacity>
               </View>
               {effectiveGstError ? (
-                <Text className="text-xs text-red-600 -mt-2 mb-4">{effectiveGstError}</Text>
+                <Text className="text-xs text-red-600 -mt-2 mb-4">
+                  {effectiveGstError}
+                </Text>
               ) : gstStateHint && gstPanHint ? (
                 <Text className="text-xs text-emerald-700 -mt-2 mb-4">
                   State: {gstStateHint} | PAN: {gstPanHint}
@@ -762,11 +788,13 @@ export function CompanyProfileScreen({ navigation }: Props) {
             onChangeText={setPhone}
             placeholder="Phone number"
             className={`${INPUT} ${businessPhoneError ? "border-red-400" : ""} mb-1`}
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={COLORS.slate[400]}
             keyboardType="phone-pad"
           />
           {businessPhoneError ? (
-            <Text className="text-xs text-red-600 mb-3">{businessPhoneError}</Text>
+            <Text className="text-xs text-red-600 mb-3">
+              {businessPhoneError}
+            </Text>
           ) : (
             <View className="mb-4" />
           )}
@@ -776,7 +804,7 @@ export function CompanyProfileScreen({ navigation }: Props) {
             onChangeText={setEmail}
             placeholder="Email"
             className={`${INPUT} ${emailError ? "border-red-400" : ""} mb-1`}
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={COLORS.slate[400]}
             keyboardType="email-address"
           />
           {emailError ? (
@@ -793,14 +821,22 @@ export function CompanyProfileScreen({ navigation }: Props) {
                 onPress={shareAddress}
                 className="flex-row items-center gap-1"
               >
-                <Ionicons name="share-outline" size={16} color="#64748b" />
+                <Ionicons
+                  name="share-outline"
+                  size={16}
+                  color={COLORS.slate[500]}
+                />
                 <Text className={TYPO.micro}>Share</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={copyToShipping}
                 className="flex-row items-center gap-1"
               >
-                <Ionicons name="copy-outline" size={16} color="#64748b" />
+                <Ionicons
+                  name="copy-outline"
+                  size={16}
+                  color={COLORS.slate[500]}
+                />
                 <Text className={TYPO.micro}>Copy to Shipping</Text>
               </TouchableOpacity>
             </View>
@@ -810,12 +846,14 @@ export function CompanyProfileScreen({ navigation }: Props) {
             onChangeText={setBillingAddress}
             placeholder="Full billing address"
             className={`${INPUT} ${billingAddressError ? "border-red-400" : ""} mb-1`}
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={COLORS.slate[400]}
             multiline
             numberOfLines={3}
           />
           {billingAddressError ? (
-            <Text className="text-xs text-red-600 mb-3">{billingAddressError}</Text>
+            <Text className="text-xs text-red-600 mb-3">
+              {billingAddressError}
+            </Text>
           ) : (
             <View className="mb-4" />
           )}
@@ -827,7 +865,7 @@ export function CompanyProfileScreen({ navigation }: Props) {
             onChangeText={setShippingAddress}
             placeholder="Same as billing or different"
             className={`${INPUT} mb-4`}
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={COLORS.slate[400]}
             multiline
             numberOfLines={3}
           />
@@ -839,7 +877,7 @@ export function CompanyProfileScreen({ navigation }: Props) {
             onChangeText={setBankAccountHolder}
             placeholder="Account holder name"
             className={`${INPUT} mb-4`}
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={COLORS.slate[400]}
           />
           <Text className={`${LABEL} mb-2`}>Bank Name</Text>
           <TextInput
@@ -847,7 +885,7 @@ export function CompanyProfileScreen({ navigation }: Props) {
             onChangeText={setBankName}
             placeholder="e.g. State Bank of India"
             className={`${INPUT} mb-4`}
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={COLORS.slate[400]}
           />
           <Text className={`${LABEL} mb-2`}>Account Number</Text>
           <TextInput
@@ -855,11 +893,13 @@ export function CompanyProfileScreen({ navigation }: Props) {
             onChangeText={setBankAccountNo}
             placeholder="Bank account number"
             className={`${INPUT} ${bankAccountError ? "border-red-400" : ""} mb-1`}
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={COLORS.slate[400]}
             keyboardType="numeric"
           />
           {bankAccountError ? (
-            <Text className="text-xs text-red-600 mb-3">{bankAccountError}</Text>
+            <Text className="text-xs text-red-600 mb-3">
+              {bankAccountError}
+            </Text>
           ) : (
             <View className="mb-4" />
           )}
@@ -869,7 +909,7 @@ export function CompanyProfileScreen({ navigation }: Props) {
             onChangeText={(t) => setBankIfsc(t.toUpperCase())}
             placeholder="e.g. SBIN0001234"
             className={`${INPUT} ${ifscError ? "border-red-400" : ""} mb-1`}
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={COLORS.slate[400]}
             autoCapitalize="characters"
             maxLength={11}
           />
@@ -894,7 +934,7 @@ export function CompanyProfileScreen({ navigation }: Props) {
             >
               {businessType || "Select business type"}
             </Text>
-            <Ionicons name="chevron-down" size={20} color="#94a3b8" />
+            <Ionicons name="chevron-down" size={20} color={COLORS.slate[400]} />
           </TouchableOpacity>
 
           <Modal
@@ -918,7 +958,11 @@ export function CompanyProfileScreen({ navigation }: Props) {
                   <TouchableOpacity
                     onPress={() => setBusinessTypeModalOpen(false)}
                   >
-                    <Ionicons name="close" size={24} color="#64748b" />
+                    <Ionicons
+                      name="close"
+                      size={24}
+                      color={COLORS.slate[500]}
+                    />
                   </TouchableOpacity>
                 </View>
                 <ScrollView
@@ -941,7 +985,7 @@ export function CompanyProfileScreen({ navigation }: Props) {
                         <Ionicons
                           name="checkmark-circle"
                           size={22}
-                          color="#e67e22"
+                          color={COLORS.primary}
                         />
                       )}
                     </TouchableOpacity>
@@ -959,7 +1003,7 @@ export function CompanyProfileScreen({ navigation }: Props) {
             <Ionicons
               name={showOptional ? "chevron-down" : "chevron-forward"}
               size={18}
-              color="#64748b"
+              color={COLORS.slate[500]}
             />
             <Text className={LABEL}>Optional fields</Text>
           </TouchableOpacity>
@@ -971,7 +1015,7 @@ export function CompanyProfileScreen({ navigation }: Props) {
                 onChangeText={(v) => setPan(v.toUpperCase())}
                 placeholder="10-char PAN"
                 className={`${INPUT} ${panError ? "border-red-400" : ""} mb-1`}
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={COLORS.slate[400]}
                 maxLength={10}
               />
               {panError ? (
@@ -985,11 +1029,13 @@ export function CompanyProfileScreen({ navigation }: Props) {
                 onChangeText={setAltContact}
                 placeholder="Alternate phone"
                 className={`${INPUT} ${altContactError ? "border-red-400" : ""} mb-1`}
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={COLORS.slate[400]}
                 keyboardType="phone-pad"
               />
               {altContactError ? (
-                <Text className="text-xs text-red-600 mb-3">{altContactError}</Text>
+                <Text className="text-xs text-red-600 mb-3">
+                  {altContactError}
+                </Text>
               ) : (
                 <View className="mb-4" />
               )}
@@ -999,11 +1045,13 @@ export function CompanyProfileScreen({ navigation }: Props) {
                 onChangeText={setWebsite}
                 placeholder="https://..."
                 className={`${INPUT} ${websiteError ? "border-red-400" : ""} mb-1`}
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={COLORS.slate[400]}
                 keyboardType="url"
               />
               {websiteError ? (
-                <Text className="text-xs text-red-600 mb-3">{websiteError}</Text>
+                <Text className="text-xs text-red-600 mb-3">
+                  {websiteError}
+                </Text>
               ) : (
                 <View className="mb-4" />
               )}

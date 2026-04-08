@@ -21,7 +21,7 @@ import { Button } from "../../../components/ui/Button";
 import { Input } from "../../../components/ui/Input";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import { useResponsive } from "../../../hooks/useResponsive";
-import { SIZES } from "../../../lib/constants";
+import { COLORS, SIZES } from "../../../lib/constants";
 
 const CATEGORIES = [
   "Stock Purchase",
@@ -227,7 +227,7 @@ export function ExpensesScreen() {
         ListEmptyComponent={
           isFetching ? (
             <View className="py-16 items-center">
-              <ActivityIndicator size="large" color="#e67e22" />
+              <ActivityIndicator size="large" color={COLORS.primary} />
             </View>
           ) : (
             <EmptyState

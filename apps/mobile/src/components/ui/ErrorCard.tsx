@@ -2,9 +2,10 @@
  * ErrorCard — error state with retry (Sprint 19).
  */
 import React from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { cn } from "../../lib/utils";
+import { COLORS } from "../../shared/lib/constants";
 
 export interface ErrorCardProps {
   message?: string;
@@ -24,18 +25,18 @@ export function ErrorCard({
         className
       )}
     >
-      <Ionicons name="alert-circle" size={32} color="#dc2626" />
+      <Ionicons name="alert-circle" size={32} color={COLORS.danger} />
       <Text className="text-slate-800 dark:text-slate-200 font-medium mt-2 text-center">
         {message}
       </Text>
       {onRetry && (
-        <TouchableOpacity
+        <Pressable
           onPress={onRetry}
-          activeOpacity={0.7}
           className="mt-3 bg-primary min-h-[44px] min-w-[120px] px-4 py-2.5 rounded-xl items-center justify-center"
+          style={({ pressed }) => (pressed ? { opacity: 0.75 } : null)}
         >
           <Text className="text-white font-semibold">Retry</Text>
-        </TouchableOpacity>
+        </Pressable>
       )}
     </View>
   );

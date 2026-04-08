@@ -19,7 +19,7 @@ import { productApi, apiFetch } from "@execora/shared";
 import { Ionicons } from "@expo/vector-icons";
 import { useWsInvalidation } from "../../../hooks/useWsInvalidation";
 import { useResponsive } from "../../../hooks/useResponsive";
-import { SIZES } from "../../../lib/constants";
+import { COLORS, SIZES } from "../../../lib/constants";
 
 function num(v: string | number | undefined | null): number {
   if (v === undefined || v === null) return 0;
@@ -152,7 +152,7 @@ export function ProductDetailScreen({ navigation, route }: Props) {
     return (
       <SafeAreaView className="flex-1 bg-slate-50">
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#e67e22" />
+          <ActivityIndicator size="large" color={COLORS.primary} />
           <Text className="mt-2 text-slate-500">Loading…</Text>
         </View>
       </SafeAreaView>
@@ -173,17 +173,17 @@ export function ProductDetailScreen({ navigation, route }: Props) {
         className="flex-row items-center justify-between border-b border-slate-200 bg-white"
       >
         <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 -ml-2">
-          <Ionicons name="arrow-back" size={24} color="#0f172a" />
+          <Ionicons name="arrow-back" size={24} color={COLORS.text.primary} />
         </TouchableOpacity>
         <Text className="text-lg font-bold text-slate-800 flex-1 text-center" numberOfLines={1}>
           {name || "Product"}
         </Text>
         <View className="flex-row items-center gap-1">
           <TouchableOpacity onPress={goToUpdate} className="p-2">
-            <Ionicons name="create-outline" size={22} color="#64748b" />
+            <Ionicons name="create-outline" size={22} color={COLORS.slate[500]} />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => showAlert("More", "Options coming soon")} className="p-2">
-            <Ionicons name="ellipsis-horizontal" size={22} color="#64748b" />
+            <Ionicons name="ellipsis-horizontal" size={22} color={COLORS.slate[500]} />
           </TouchableOpacity>
         </View>
       </View>
@@ -204,7 +204,7 @@ export function ProductDetailScreen({ navigation, route }: Props) {
         >
           <Text className="text-sm font-medium text-slate-700">Add Missing Details — Tap to edit</Text>
           <TouchableOpacity onPress={() => setShowAddDetailsBanner(false)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Ionicons name="close" size={20} color="#64748b" />
+            <Ionicons name="close" size={20} color={COLORS.slate[500]} />
           </TouchableOpacity>
         </TouchableOpacity>
       )}
@@ -261,7 +261,7 @@ export function ProductDetailScreen({ navigation, route }: Props) {
           }}
         >
           {adjustStockMutation.isPending && (adjustStockMutation.variables as { op: string })?.op === "subtract" ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color={COLORS.text.inverted} />
           ) : (
             <Text className="text-white font-bold text-base">STOCK OUT</Text>
           )}
@@ -273,7 +273,7 @@ export function ProductDetailScreen({ navigation, route }: Props) {
           style={{ minHeight: SIZES.BUTTON.lg.minHeight }}
         >
           {adjustStockMutation.isPending && (adjustStockMutation.variables as { op: string })?.op === "add" ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color={COLORS.text.inverted} />
           ) : (
             <Text className="text-white font-bold text-base">STOCK IN</Text>
           )}

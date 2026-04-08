@@ -20,6 +20,7 @@ import { expenseApi, purchaseApi, supplierApi } from "../../../lib/api";
 import { inr } from "@execora/shared";
 import { formatDate } from "../../../lib/utils";
 import { TYPO } from "../../../lib/typography";
+import { COLORS } from "../../../lib/constants";
 import type { PartiesStackParams } from "../../../navigation";
 
 type Props = NativeStackScreenProps<PartiesStackParams, "SupplierDetail">;
@@ -184,7 +185,7 @@ export function SupplierDetailScreen({ navigation, route }: Props) {
                     <Ionicons
                       name="call-outline"
                       size={16}
-                      color={supplier.phone ? "#475569" : "#cbd5e1"}
+                      color={supplier.phone ? COLORS.slate[600] : COLORS.border.medium}
                     />
                     <Text
                       className={`text-sm font-medium ${supplier.phone ? "text-slate-700" : "text-slate-400"}`}
@@ -200,7 +201,7 @@ export function SupplierDetailScreen({ navigation, route }: Props) {
                     <Ionicons
                       name="mail-outline"
                       size={16}
-                      color={supplier.email ? "#475569" : "#cbd5e1"}
+                      color={supplier.email ? COLORS.slate[600] : COLORS.border.medium}
                     />
                     <Text
                       className={`text-sm font-medium ${supplier.email ? "text-slate-700" : "text-slate-400"}`}
@@ -326,7 +327,7 @@ export function SupplierDetailScreen({ navigation, route }: Props) {
                 </View>
                 {expensesFetching ? (
                   <View className="px-4 py-4 items-center">
-                    <ActivityIndicator size="small" color="#e67e22" />
+                    <ActivityIndicator size="small" color={COLORS.primary} />
                   </View>
                 ) : expensesError ? (
                   <View className="p-4">

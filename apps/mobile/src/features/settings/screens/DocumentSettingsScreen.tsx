@@ -20,7 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
-import { SIZES } from "../../../lib/constants";
+import { COLORS, SIZES } from "../../../lib/constants";
 import {
   storage,
   DOC_SETTINGS_KEY,
@@ -73,7 +73,7 @@ export interface DocumentSettings {
 }
 
 const DEFAULT_SETTINGS: DocumentSettings = {
-  themeColor: "#e67e22",
+  themeColor: COLORS.primary,
   language: "en",
   fontSize: "normal",
   fontStyle: "default",
@@ -188,7 +188,11 @@ function SettingRow({
           <View className="flex-row items-center gap-2">
             {value && <Text className="text-sm text-slate-600">{value}</Text>}
             {onPress && (
-              <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={COLORS.slate[400]}
+              />
             )}
           </View>
         )}
@@ -337,14 +341,18 @@ export function DocumentSettingsScreen({ navigation }: Props) {
                 style={{
                   color:
                     TEMPLATES.find((t) => t.id === invoiceTemplate)?.color ??
-                    "#16a34a",
+                    COLORS.success,
                 }}
               >
                 {TEMPLATES.find((t) => t.id === invoiceTemplate)?.label ??
                   "Classic"}
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={24} color="#94a3b8" />
+            <Ionicons
+              name="chevron-forward"
+              size={24}
+              color={COLORS.slate[400]}
+            />
           </View>
         </TouchableOpacity>
 
@@ -368,8 +376,13 @@ export function DocumentSettingsScreen({ navigation }: Props) {
                     save({ showItemHsn: value });
                     setHasChanges(true);
                   }}
-                  trackColor={{ false: "#cbd5e1", true: "#fdba74" }}
-                  thumbColor={settings.showItemHsn ? "#e67e22" : "#f8fafc"}
+                  trackColor={{
+                    false: COLORS.border.medium,
+                    true: COLORS.bg.warning,
+                  }}
+                  thumbColor={
+                    settings.showItemHsn ? COLORS.primary : COLORS.slate[50]
+                  }
                 />
               }
             />
@@ -383,9 +396,14 @@ export function DocumentSettingsScreen({ navigation }: Props) {
                     save({ showCustomerAddress: value });
                     setHasChanges(true);
                   }}
-                  trackColor={{ false: "#cbd5e1", true: "#fdba74" }}
+                  trackColor={{
+                    false: COLORS.border.medium,
+                    true: COLORS.bg.warning,
+                  }}
                   thumbColor={
-                    settings.showCustomerAddress ? "#e67e22" : "#f8fafc"
+                    settings.showCustomerAddress
+                      ? COLORS.primary
+                      : COLORS.slate[50]
                   }
                 />
               }
@@ -400,8 +418,13 @@ export function DocumentSettingsScreen({ navigation }: Props) {
                     save({ showPaymentMode: value });
                     setHasChanges(true);
                   }}
-                  trackColor={{ false: "#cbd5e1", true: "#fdba74" }}
-                  thumbColor={settings.showPaymentMode ? "#e67e22" : "#f8fafc"}
+                  trackColor={{
+                    false: COLORS.border.medium,
+                    true: COLORS.bg.warning,
+                  }}
+                  thumbColor={
+                    settings.showPaymentMode ? COLORS.primary : COLORS.slate[50]
+                  }
                 />
               }
             />
@@ -451,7 +474,7 @@ export function DocumentSettingsScreen({ navigation }: Props) {
                 setHasChanges(true);
               }}
               placeholder="Add default thank-you note, bank details, or delivery instructions"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={COLORS.slate[400]}
               multiline
               textAlignVertical="top"
               className="border border-slate-200 rounded-xl px-3 py-3 text-sm text-slate-800 bg-slate-50 min-h-[92px]"
@@ -467,7 +490,7 @@ export function DocumentSettingsScreen({ navigation }: Props) {
                 setHasChanges(true);
               }}
               placeholder="Enter terms printed on invoice"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={COLORS.slate[400]}
               multiline
               textAlignVertical="top"
               maxLength={500}
@@ -487,7 +510,11 @@ export function DocumentSettingsScreen({ navigation }: Props) {
               Share your current document settings as JSON
             </Text>
             <View className="absolute right-4 top-4">
-              <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={COLORS.slate[400]}
+              />
             </View>
           </TouchableOpacity>
           <TouchableOpacity
@@ -499,7 +526,11 @@ export function DocumentSettingsScreen({ navigation }: Props) {
               Paste exported JSON to restore template and document preferences
             </Text>
             <View className="absolute right-4 top-4">
-              <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={COLORS.slate[400]}
+              />
             </View>
           </TouchableOpacity>
           <TouchableOpacity
@@ -519,7 +550,11 @@ export function DocumentSettingsScreen({ navigation }: Props) {
             </Text>
             <View className="absolute right-4 top-4 flex-row items-center gap-2">
               <Text className="text-slate-600">{settings.priceDecimals}</Text>
-              <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={COLORS.slate[400]}
+              />
             </View>
           </TouchableOpacity>
           <View className="px-4 py-4">
@@ -625,7 +660,9 @@ export function DocumentSettingsScreen({ navigation }: Props) {
                   style={{
                     backgroundColor: c,
                     borderColor:
-                      settings.themeColor === c ? "#0f172a" : "transparent",
+                      settings.themeColor === c
+                        ? COLORS.text.primary
+                        : "transparent",
                   }}
                 />
               ))}
@@ -649,7 +686,11 @@ export function DocumentSettingsScreen({ navigation }: Props) {
                 {LANGUAGES.find((l) => l.id === settings.language)?.label ??
                   "English"}
               </Text>
-              <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={COLORS.slate[400]}
+              />
             </View>
           </TouchableOpacity>
           <TouchableOpacity
@@ -669,7 +710,11 @@ export function DocumentSettingsScreen({ navigation }: Props) {
               <Text className="text-slate-600 capitalize">
                 {settings.fontSize}
               </Text>
-              <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={COLORS.slate[400]}
+              />
             </View>
           </TouchableOpacity>
           <TouchableOpacity
@@ -685,7 +730,11 @@ export function DocumentSettingsScreen({ navigation }: Props) {
                 {FONT_STYLES.find((f) => f.id === settings.fontStyle)?.label ??
                   "Default"}
               </Text>
-              <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={COLORS.slate[400]}
+              />
             </View>
           </TouchableOpacity>
         </View>
@@ -709,7 +758,11 @@ export function DocumentSettingsScreen({ navigation }: Props) {
               <Text className="text-slate-600 capitalize">
                 {settings.pdfOrientation}
               </Text>
-              <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={COLORS.slate[400]}
+              />
             </View>
           </TouchableOpacity>
           <SettingRow
@@ -775,14 +828,14 @@ export function DocumentSettingsScreen({ navigation }: Props) {
           style={{
             minHeight: SIZES.BUTTON.lg.minHeight,
             paddingVertical: SIZES.BUTTON.lg.paddingY,
-            backgroundColor: hasChanges ? "#e67e22" : "#e2e8f0",
+            backgroundColor: hasChanges ? COLORS.primary : COLORS.border.light,
           }}
         >
           <Text
             style={{
               fontWeight: "700",
               fontSize: SIZES.BUTTON.lg.fontSize,
-              color: hasChanges ? "#fff" : "#64748b",
+              color: hasChanges ? COLORS.text.inverted : COLORS.slate[500],
             }}
           >
             Update Document Settings
@@ -990,7 +1043,7 @@ export function DocumentSettingsScreen({ navigation }: Props) {
               value={importText}
               onChangeText={setImportText}
               placeholder='{"template":"classic","settings":{...}}'
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={COLORS.slate[400]}
               multiline
               textAlignVertical="top"
               className="border border-slate-200 rounded-xl px-3 py-3 text-xs text-slate-800 bg-slate-50 min-h-[180px]"

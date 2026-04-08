@@ -48,7 +48,7 @@ import {
   Input,
   InputField,
   Spinner,
-} from "@gluestack-ui/themed";
+} from "../components/BillingUi";
 import { showAlert } from "../../../shared/lib/alerts";
 import {
   SafeAreaView,
@@ -102,6 +102,7 @@ import {
   hapticError,
   hapticLight,
 } from "../../../shared/lib/haptics";
+import { COLORS } from "../../../shared/lib/constants";
 import { cacheProducts } from "../../../lib/offlineQueue";
 import type { ReceiptData } from "../../../lib/thermalReceipt";
 import type { InvoiceStackParams } from "../../../navigation";
@@ -206,6 +207,19 @@ const DOC_TYPE_LABELS: Record<string, string> = {
   bill_of_supply: "Bill of Supply",
   pos_sale: "Quick Sale",
 };
+
+const UI_COLORS = {
+  text: COLORS.text.primary,
+  muted: COLORS.slate[500],
+  subtle: COLORS.slate[400],
+  border: COLORS.slate[200],
+  disabled: COLORS.slate[300],
+  surface: COLORS.text.inverted,
+  primary: COLORS.primary,
+  primarySoft: "rgba(230, 126, 34, 0.1)",
+  shadow: COLORS.slate[900],
+  switchThumbOff: COLORS.slate[100],
+} as const;
 
 export function BillingScreen({ navigation, route }: InvoiceProps) {
   const qc = useQueryClient();
@@ -584,7 +598,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
               resizeMode="cover"
             />
           ) : (
-            <Ionicons name="document-text-outline" size={24} color="#0f172a" />
+            <Ionicons name="document-text-outline" size={24} color={UI_COLORS.text} />
           )}
         </Button>
       ),
@@ -1103,7 +1117,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                             <Ionicons
                               name="settings-outline"
                               size={14}
-                              color="#64748b"
+                              color={UI_COLORS.muted}
                             />
                             <AccordionTitleText className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                               Billing setup
@@ -1120,7 +1134,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                           <Ionicons
                             name={isExpanded ? "chevron-up" : "chevron-down"}
                             size={16}
-                            color="#94a3b8"
+                            color={UI_COLORS.subtle}
                           />
                         </View>
                       )}
@@ -1135,8 +1149,8 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                         <Switch
                           value={compositionScheme}
                           onValueChange={handleCompositionSchemeChange}
-                          trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
-                          thumbColor={compositionScheme ? "#e67e22" : "#f4f4f5"}
+                          trackColor={{ false: UI_COLORS.border, true: UI_COLORS.primary }}
+                          thumbColor={compositionScheme ? UI_COLORS.primary : UI_COLORS.switchThumbOff}
                         />
                       </View>
                       <View className="flex-row items-center justify-between">
@@ -1146,8 +1160,8 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                         <Switch
                           value={roundOffEnabled}
                           onValueChange={handleRoundOffChange}
-                          trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
-                          thumbColor={roundOffEnabled ? "#e67e22" : "#f4f4f5"}
+                          trackColor={{ false: UI_COLORS.border, true: UI_COLORS.primary }}
+                          thumbColor={roundOffEnabled ? UI_COLORS.primary : UI_COLORS.switchThumbOff}
                         />
                       </View>
                       <Pressable
@@ -1159,7 +1173,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                         <Ionicons
                           name="settings-outline"
                           size={16}
-                          color="#e67e22"
+                          color={UI_COLORS.primary}
                         />
                         <Text className="text-sm font-medium text-primary">
                           Billing settings (GSTIN, address, bank…)
@@ -1192,7 +1206,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                             <Ionicons
                               name="document-text-outline"
                               size={14}
-                              color="#64748b"
+                              color={UI_COLORS.muted}
                             />
                             <AccordionTitleText className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                               My Store Invoice Style
@@ -1205,7 +1219,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                           <Ionicons
                             name={isExpanded ? "chevron-up" : "chevron-down"}
                             size={16}
-                            color="#94a3b8"
+                            color={UI_COLORS.subtle}
                           />
                         </View>
                       )}
@@ -1313,8 +1327,8 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                 <Switch
                   value={withGst}
                   onValueChange={setWithGst}
-                  trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
-                  thumbColor={withGst ? "#e67e22" : "#f4f4f5"}
+                  trackColor={{ false: UI_COLORS.border, true: UI_COLORS.primary }}
+                  thumbColor={withGst ? UI_COLORS.primary : UI_COLORS.switchThumbOff}
                 />
               </Card>
 
@@ -1334,7 +1348,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                       }}
                       keyboardType="decimal-pad"
                       placeholder="0"
-                      placeholderTextColor="#94a3b8"
+                      placeholderTextColor={UI_COLORS.subtle}
                       className="flex-1 h-12 text-base text-slate-800"
                     />
                     <Text className="text-slate-400 text-sm">%</Text>
@@ -1354,7 +1368,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                       }}
                       keyboardType="decimal-pad"
                       placeholder="0.00"
-                      placeholderTextColor="#94a3b8"
+                      placeholderTextColor={UI_COLORS.subtle}
                       className="flex-1 h-12 text-base text-slate-800"
                     />
                   </Input>
@@ -1404,8 +1418,8 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                         <Switch
                           value={roundOffEnabled}
                           onValueChange={handleRoundOffChange}
-                          trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
-                          thumbColor={roundOffEnabled ? "#e67e22" : "#f4f4f5"}
+                          trackColor={{ false: UI_COLORS.border, true: UI_COLORS.primary }}
+                          thumbColor={roundOffEnabled ? UI_COLORS.primary : UI_COLORS.switchThumbOff}
                         />
                       </View>
                     </View>
@@ -1423,7 +1437,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
               <View className="mb-2">
                 <View className="flex-row items-center justify-between mb-2">
                   <View className="flex-row items-center gap-1.5">
-                    <Ionicons name="card-outline" size={14} color="#64748b" />
+                    <Ionicons name="card-outline" size={14} color={UI_COLORS.muted} />
                     <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                       Payment
                     </Text>
@@ -1435,8 +1449,8 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                       onValueChange={(v) => {
                         toggleSplit(v);
                       }}
-                      trackColor={{ false: "#e2e8f0", true: "#818cf8" }}
-                      thumbColor={splitEnabled ? "#e67e22" : "#f4f4f5"}
+                      trackColor={{ false: UI_COLORS.border, true: UI_COLORS.primary }}
+                      thumbColor={splitEnabled ? UI_COLORS.primary : UI_COLORS.switchThumbOff}
                     />
                   </View>
                 </View>
@@ -1454,16 +1468,16 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                             flex: 1,
                             borderRadius: 12,
                             borderWidth: 2,
-                            borderColor: paymentMode === id ? "#e67e22" : "#e2e8f0",
+                            borderColor: paymentMode === id ? UI_COLORS.primary : UI_COLORS.border,
                             backgroundColor:
-                              paymentMode === id ? "rgba(230, 126, 34, 0.1)" : "#fff",
+                              paymentMode === id ? UI_COLORS.primarySoft : UI_COLORS.surface,
                             minHeight: 56,
                           }}
                         >
                           <Ionicons
                             name={PAY_MODE_ICONS[id]}
                             size={28}
-                            color={paymentMode === id ? "#e67e22" : "#64748b"}
+                            color={paymentMode === id ? UI_COLORS.primary : UI_COLORS.muted}
                           />
                           <Text
                             className={`text-xs font-semibold mt-0.5 ${paymentMode === id ? "text-primary" : "text-slate-500"}`}
@@ -1482,7 +1496,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                             onChangeText={setPaymentAmount}
                             keyboardType="decimal-pad"
                             placeholder={`Amount paid (₹${inr(finalTotal)})`}
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor={UI_COLORS.subtle}
                             className="flex-1 h-12 text-base text-slate-800"
                           />
                         </Input>
@@ -1558,9 +1572,9 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                                 height: 36,
                                 borderRadius: 8,
                                 borderWidth: 1,
-                                borderColor: sp.mode === id ? "#e67e22" : "transparent",
+                                borderColor: sp.mode === id ? UI_COLORS.primary : "transparent",
                                 backgroundColor:
-                                  sp.mode === id ? "rgba(230, 126, 34, 0.1)" : "transparent",
+                                  sp.mode === id ? UI_COLORS.primarySoft : "transparent",
                                 paddingHorizontal: 0,
                                 paddingVertical: 0,
                               }}
@@ -1568,7 +1582,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                               <Ionicons
                                 name={PAY_MODE_ICONS[id]}
                                 size={22}
-                                color={sp.mode === id ? "#e67e22" : "#64748b"}
+                                color={sp.mode === id ? UI_COLORS.primary : UI_COLORS.muted}
                               />
                             </Button>
                           ))}
@@ -1582,7 +1596,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                             }
                             keyboardType="decimal-pad"
                             placeholder="Amount"
-                            placeholderTextColor="#94a3b8"
+                            placeholderTextColor={UI_COLORS.subtle}
                             className="flex-1 h-10 text-sm text-slate-800"
                           />
                         </Input>
@@ -1679,7 +1693,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                       value={notes}
                       onChangeText={setNotes}
                       placeholder="Special instructions, delivery address…"
-                      placeholderTextColor="#94a3b8"
+                      placeholderTextColor={UI_COLORS.subtle}
                       multiline
                       numberOfLines={3}
                       className="text-sm text-slate-800"
@@ -1699,7 +1713,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                         value={dueDate}
                         onChangeText={setDueDate}
                         placeholder="DD/MM/YYYY or leave blank"
-                        placeholderTextColor="#94a3b8"
+                        placeholderTextColor={UI_COLORS.subtle}
                         keyboardType="numbers-and-punctuation"
                         className="text-sm text-slate-800 h-12"
                       />
@@ -1743,8 +1757,8 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
             alignItems: "center",
             justifyContent: "center",
             backgroundColor:
-              validItemCount > 0 && !isSubmitting ? "#e67e22" : "#cbd5e1",
-            shadowColor: "#000",
+              validItemCount > 0 && !isSubmitting ? UI_COLORS.primary : UI_COLORS.disabled,
+            shadowColor: UI_COLORS.shadow,
             shadowOpacity: 0.2,
             shadowRadius: 6,
             shadowOffset: { width: 0, height: 3 },
@@ -1756,7 +1770,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
           {isSubmitting ? (
             <Spinner color="$white" size="small" />
           ) : (
-            <Ionicons name="add" size={26} color="#fff" />
+            <Ionicons name="add" size={26} color={UI_COLORS.surface} />
           )}
         </Button>
       </View>
@@ -1784,7 +1798,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                 className="p-2 -m-2"
                 style={{ minHeight: 36, paddingHorizontal: 0 }}
               >
-                <Ionicons name="close" size={24} color="#64748b" />
+                <Ionicons name="close" size={24} color={UI_COLORS.muted} />
               </Button>
             </View>
             <ScrollView
@@ -1927,7 +1941,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                 value={invoicePrefix}
                 onChangeText={setInvoicePrefix}
                 placeholder="e.g. INV-, BOS-"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={UI_COLORS.subtle}
                 maxLength={16}
                 className="h-12 text-base text-slate-800"
               />
@@ -1940,7 +1954,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                 value={documentDate}
                 onChangeText={setDocumentDate}
                 placeholder="YYYY-MM-DD"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={UI_COLORS.subtle}
                 className="h-12 text-base text-slate-800"
               />
             </Input>
@@ -2095,7 +2109,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                 onPress={handleInvoiceBarSave}
                 action="primary"
                 className="flex-1 h-12 items-center justify-center bg-primary rounded-xl"
-                style={{ borderRadius: 12, backgroundColor: "#e67e22" }}
+                style={{ borderRadius: 12, backgroundColor: UI_COLORS.primary }}
               >
                 <ButtonText>Save</ButtonText>
               </Button>
@@ -2146,7 +2160,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
               value={newCustName}
               onChangeText={setNewCustName}
               placeholder="Customer name"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={UI_COLORS.subtle}
               autoFocus
               className="h-12 text-base text-slate-800"
             />
@@ -2159,7 +2173,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
               value={newCustPhone}
               onChangeText={setNewCustPhone}
               placeholder="10-digit mobile"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={UI_COLORS.subtle}
               keyboardType="phone-pad"
               maxLength={15}
               className="h-12 text-base text-slate-800"
@@ -2182,7 +2196,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                 flex: 1,
                 height: 48,
                 borderRadius: 12,
-                backgroundColor: newCustName.trim() ? "#e67e22" : "#cbd5e1",
+                backgroundColor: newCustName.trim() ? UI_COLORS.primary : UI_COLORS.disabled,
               }}
             >
               {createCustomerInline.isPending ? (

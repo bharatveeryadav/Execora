@@ -145,7 +145,7 @@ const STATUS_STYLES: Record<
 const styles = StyleSheet.create({
   surfaceShadow: Platform.select({
     ios: {
-      shadowColor: "#000",
+      shadowColor: COLORS.text.primary,
       shadowOffset: { width: 0, height: 8 },
       shadowOpacity: 0.06,
       shadowRadius: 18,
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
   }),
   cardShadow: Platform.select({
     ios: {
-      shadowColor: "#000",
+      shadowColor: COLORS.text.primary,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.05,
       shadowRadius: 10,
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   }),
   fabShadow: Platform.select({
     ios: {
-      shadowColor: "#000",
+      shadowColor: COLORS.text.primary,
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.2,
       shadowRadius: 8,
@@ -682,7 +682,7 @@ export function InvoiceListScreen({ navigation, route }: Props) {
       >
         <View className="flex-row items-center gap-3">
           <View className="w-11 h-11 rounded-2xl bg-amber-100 items-center justify-center shrink-0">
-            <Ionicons name="cube-outline" size={20} color="#d97706" />
+            <Ionicons name="cube-outline" size={20} color={COLORS.warning} />
           </View>
           <View className="flex-1 min-w-0">
             <View className="flex-row items-center justify-between gap-3">
@@ -753,7 +753,7 @@ export function InvoiceListScreen({ navigation, route }: Props) {
     () => [
       {
         label: "Sales",
-        color: "#e67e22",
+        color: COLORS.primary,
         actions: [
           {
             id: "new_invoice",
@@ -806,7 +806,7 @@ export function InvoiceListScreen({ navigation, route }: Props) {
       },
       {
         label: "Purchase",
-        color: "#0ea5e9",
+        color: COLORS.secondary,
         actions: [
           {
             id: "purchase",
@@ -842,7 +842,7 @@ export function InvoiceListScreen({ navigation, route }: Props) {
       },
       {
         label: "Other",
-        color: "#f59e0b",
+        color: COLORS.warning,
         actions: [
           {
             id: "expense",
@@ -1026,7 +1026,7 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                     <Ionicons
                       name={item.icon as keyof typeof Ionicons.glyphMap}
                       size={15}
-                      color="#b45309"
+                      color={COLORS.warning}
                     />
                   </View>
                   <Text
@@ -1148,7 +1148,7 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                       <Ionicons
                         name="calendar-outline"
                         size={11}
-                        color="#0369a1"
+                        color={COLORS.secondary}
                       />
                       <Text className="text-[11px] font-medium text-sky-700">
                         {dateFilterLabel}
@@ -1160,7 +1160,7 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                       <Ionicons
                         name="swap-vertical-outline"
                         size={11}
-                        color="#b45309"
+                        color={COLORS.warning}
                       />
                       <Text className="text-[11px] font-medium text-amber-700">
                         {sortLabel}
@@ -1452,7 +1452,7 @@ export function InvoiceListScreen({ navigation, route }: Props) {
           ...styles.fabShadow,
         }}
       >
-        <Ionicons name="add" size={28} color="#fff" />
+        <Ionicons name="add" size={28} color={COLORS.text.inverted} />
       </Pressable>
 
       <Modal
@@ -1489,7 +1489,7 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                 accessibilityLabel="Close add transaction"
                 className="h-10 w-10 rounded-xl bg-slate-100 items-center justify-center"
               >
-                <Ionicons name="close" size={20} color="#64748b" />
+                <Ionicons name="close" size={20} color={COLORS.slate[500]} />
               </Pressable>
             </View>
 
@@ -1508,8 +1508,8 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                       groupIndex === addTransactionGroups.length - 1 ? 0 : 10,
                     borderRadius: 14,
                     borderWidth: 1,
-                    borderColor: "#e2e8f0",
-                    backgroundColor: "#f8fafc",
+                    borderColor: COLORS.border.light,
+                    backgroundColor: COLORS.slate[50],
                     paddingHorizontal: isVerySmall ? 8 : 10,
                     paddingBottom: isVerySmall ? 8 : 12,
                   }}
@@ -1554,10 +1554,10 @@ export function InvoiceListScreen({ navigation, route }: Props) {
                                 gap: 4,
                                 borderRadius: 12,
                                 borderWidth: 1,
-                                borderColor: "#dbe2ea",
+                                borderColor: COLORS.border.light,
                                 backgroundColor: pressed
                                   ? COLORS.slate[50]
-                                  : "#ffffff",
+                                  : COLORS.text.inverted,
                                 paddingVertical: isVerySmall ? 6 : 8,
                                 paddingHorizontal: contentWidth < 360 ? 2 : 4,
                               })}

@@ -17,6 +17,7 @@ import { purchaseOrderApi } from "../../../lib/api";
 import { formatCurrency } from "../../../lib/utils";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import { ErrorCard } from "../../../components/ui/ErrorCard";
+import { COLORS } from "../../../lib/constants";
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-slate-100 text-slate-600",
@@ -97,7 +98,7 @@ export function PurchaseOrdersScreen() {
         ListEmptyComponent={
           isFetching ? (
             <View className="py-16 items-center">
-              <ActivityIndicator size="large" color="#e67e22" />
+              <ActivityIndicator size="large" color={COLORS.primary} />
             </View>
           ) : (
             <EmptyState

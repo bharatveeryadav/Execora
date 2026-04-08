@@ -21,6 +21,7 @@ import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { useQueryClient } from "@tanstack/react-query";
 import { customerExtApi, supplierApi } from "../../../lib/api";
+import { COLORS } from "../../../lib/constants";
 
 type EntityType = "customers" | "suppliers";
 type Step = 1 | 2 | 3 | 4;
@@ -204,7 +205,7 @@ export function ImportScreen({ navigation, route }: Props) {
           onPress={() => (canGoBack ? setStep((s) => (s - 1) as Step) : navigation.goBack())}
           className="mr-3 p-1"
         >
-          <Ionicons name="arrow-back" size={24} color="#0f172a" />
+          <Ionicons name="arrow-back" size={24} color={COLORS.text.primary} />
         </TouchableOpacity>
         <View className="flex-1">
           <Text className="text-lg font-bold text-slate-800">Import Data</Text>
@@ -247,7 +248,7 @@ export function ImportScreen({ navigation, route }: Props) {
                     entityType === t ? "border-primary bg-primary/5" : "border-slate-200 bg-white"
                   }`}
                 >
-                  <Ionicons name={t === "customers" ? "people" : "cube"} size={32} color={entityType === t ? "#e67e22" : "#64748b"} />
+                  <Ionicons name={t === "customers" ? "people" : "cube"} size={32} color={entityType === t ? COLORS.primary : COLORS.slate[500]} />
                   <Text className={`mt-2 text-sm font-semibold ${entityType === t ? "text-primary" : "text-slate-600"}`}>
                     {CONFIGS[t].label}
                   </Text>
@@ -274,7 +275,7 @@ export function ImportScreen({ navigation, route }: Props) {
               onPress={handleDownloadTemplate}
               className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-white p-4"
             >
-              <Ionicons name="download" size={24} color="#64748b" />
+              <Ionicons name="download" size={24} color={COLORS.slate[500]} />
               <View className="flex-1">
                 <Text className="text-sm font-medium text-slate-800">Download template</Text>
                 <Text className="text-xs text-slate-500">import-{config.type}-template.csv</Text>
@@ -284,12 +285,12 @@ export function ImportScreen({ navigation, route }: Props) {
               onPress={handlePickFile}
               className="flex-row items-center gap-3 rounded-xl border border-slate-200 bg-white p-4"
             >
-              <Ionicons name="document-attach" size={24} color="#64748b" />
+              <Ionicons name="document-attach" size={24} color={COLORS.slate[500]} />
               <View className="flex-1">
                 <Text className="text-sm font-medium text-slate-800">Pick CSV file</Text>
                 <Text className="text-xs text-slate-500">Select from device</Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#94a3b8" />
+              <Ionicons name="chevron-forward" size={20} color={COLORS.slate[400]} />
             </TouchableOpacity>
           </View>
         )}
@@ -318,7 +319,7 @@ export function ImportScreen({ navigation, route }: Props) {
               className={`mt-4 rounded-xl py-3 items-center ${validRows.length === 0 || loading ? "bg-slate-300" : "bg-primary"}`}
             >
               {loading ? (
-                <ActivityIndicator color="#fff" size="small" />
+                <ActivityIndicator color={COLORS.text.inverted} size="small" />
               ) : (
                 <Text className="text-white font-semibold">Import {validRows.length} {config.label}</Text>
               )}
@@ -329,7 +330,7 @@ export function ImportScreen({ navigation, route }: Props) {
         {/* Step 4: Done */}
         {step === 4 && done && (
           <View className="items-center py-12">
-            <Ionicons name="checkmark-circle" size={64} color="#22c55e" />
+            <Ionicons name="checkmark-circle" size={64} color={COLORS.success} />
             <Text className="mt-4 text-lg font-bold text-slate-800">Import complete</Text>
             <TouchableOpacity
               onPress={() => navigation.goBack()}

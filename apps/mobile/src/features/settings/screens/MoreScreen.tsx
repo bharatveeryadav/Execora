@@ -10,6 +10,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { useResponsive } from "../../../hooks/useResponsive";
 import { TYPO } from "../../../lib/typography";
+import { COLORS } from "../../../lib/constants";
 
 const MIN_TOUCH = 44;
 
@@ -269,11 +270,11 @@ export function MoreScreen({ navigation }: Props) {
                       onPress={() => handlePress(tile)}
                       className="flex-row items-center gap-3 px-4 py-3.5"
                       style={({ pressed }) => ({
-                        backgroundColor: pressed ? "#f8fafc" : "#fff",
+                        backgroundColor: pressed ? COLORS.bg.primary : COLORS.text.inverted,
                         minHeight: MIN_TOUCH + 8,
                         borderBottomWidth:
                           idx < section.tiles.length - 1 ? 1 : 0,
-                        borderBottomColor: "#f1f5f9",
+                        borderBottomColor: COLORS.slate[100],
                       })}
                     >
                       <View
@@ -292,7 +293,7 @@ export function MoreScreen({ navigation }: Props) {
                       <Ionicons
                         name="chevron-forward"
                         size={18}
-                        color="#94a3b8"
+                        color={COLORS.slate[400]}
                       />
                     </Pressable>
                   ))}

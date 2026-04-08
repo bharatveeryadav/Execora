@@ -56,10 +56,13 @@ export const customerExtApi = {
       preferredLanguage?: string;
     },
   ) =>
-    apiFetch<{ prefs: unknown }>(`/api/v1/customers/${id}/communication-prefs`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }),
+    apiFetch<{ prefs: unknown }>(
+      `/api/v1/customers/${id}/communication-prefs`,
+      {
+        method: "PUT",
+        body: JSON.stringify(data),
+      },
+    ),
 };
 
 export const reminderApi = {
@@ -71,7 +74,9 @@ export const reminderApi = {
         scheduledTime: string;
         message?: string;
       }>;
-    }>(`/api/v1/reminders${customerId ? `?customerId=${customerId}` : ""}`) as Promise<{
+    }>(
+      `/api/v1/reminders${customerId ? `?customerId=${customerId}` : ""}`,
+    ) as Promise<{
       reminders: Array<{
         id: string;
         customerId?: string;

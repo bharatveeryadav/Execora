@@ -22,6 +22,7 @@ import { formatCurrency, formatDate, toFloat } from "../../../shared/lib/utils";
 import { STATUS_STYLES, PAYMENT_METHODS } from "../../../shared/lib/constants";
 import { useWsInvalidation } from "../../../shared/hooks/useWsInvalidation";
 import { useResponsive } from "../../../shared/hooks/useResponsive";
+import { COLORS } from "../../../lib/constants";
 import {
   useInvoiceById,
   useCancelInvoice,
@@ -71,7 +72,7 @@ export function InvoiceDetailScreen({ navigation, route }: Props) {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-white items-center justify-center">
-        <ActivityIndicator color="#e67e22" size="large" />
+        <ActivityIndicator color={COLORS.primary} size="large" />
       </SafeAreaView>
     );
   }
@@ -506,7 +507,7 @@ export function InvoiceDetailScreen({ navigation, route }: Props) {
                 className="flex-1 bg-red-600 rounded-xl py-3 items-center"
               >
                 {cancelMutation.isPending ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={COLORS.text.inverted} />
                 ) : (
                   <Text className="font-bold text-white">Yes, Cancel</Text>
                 )}
@@ -584,7 +585,7 @@ export function InvoiceDetailScreen({ navigation, route }: Props) {
                 value={editNotes}
                 onChangeText={setEditNotes}
                 placeholder="Notes (optional)"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={COLORS.slate[400]}
                 multiline
                 numberOfLines={2}
                 className="mt-4 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800"
@@ -603,7 +604,7 @@ export function InvoiceDetailScreen({ navigation, route }: Props) {
                 className="flex-1 bg-primary rounded-xl py-3 items-center"
               >
                 {updateMutation.isPending ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={COLORS.text.inverted} />
                 ) : (
                   <Text className="font-bold text-white">Save Changes</Text>
                 )}
@@ -636,7 +637,7 @@ export function InvoiceDetailScreen({ navigation, route }: Props) {
               onChangeText={setConvertAmount}
               keyboardType="numeric"
               placeholder={`Max ${formatCurrency(total)}`}
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={COLORS.slate[400]}
               className="border border-slate-200 rounded-xl px-3 py-3 text-sm text-slate-800 mb-3"
             />
             <Text className="text-xs font-medium text-slate-600 mb-1">

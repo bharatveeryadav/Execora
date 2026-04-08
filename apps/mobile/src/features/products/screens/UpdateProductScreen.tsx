@@ -28,6 +28,7 @@ import { getApiBaseUrl } from "../../../lib/api"; // App-level API helpers
 import { tokenStorage } from "../../../lib/storage";
 import { Ionicons } from "@expo/vector-icons";
 import { BarcodeScanner } from "../../../components/common/BarcodeScanner";
+import { COLORS } from "../../../lib/constants";
 
 const UNITS = [
   "piece",
@@ -233,7 +234,7 @@ export function UpdateProductScreen({ navigation, route }: Props) {
     return (
       <SafeAreaView className="flex-1 bg-slate-50">
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#e67e22" />
+          <ActivityIndicator size="large" color={COLORS.primary} />
           <Text className="mt-2 text-slate-500">Loading…</Text>
         </View>
       </SafeAreaView>
@@ -252,14 +253,14 @@ export function UpdateProductScreen({ navigation, route }: Props) {
           onPress={() => navigation.goBack()}
           className="p-2 -ml-2"
         >
-          <Ionicons name="arrow-back" size={24} color="#0f172a" />
+          <Ionicons name="arrow-back" size={24} color={COLORS.text.primary} />
         </TouchableOpacity>
         <Text className="text-lg font-bold text-slate-800">Update Product</Text>
         <TouchableOpacity
           onPress={() => showAlert("Product Settings", "Coming soon")}
           className="p-2"
         >
-          <Ionicons name="cube-outline" size={22} color="#64748b" />
+          <Ionicons name="cube-outline" size={22} color={COLORS.slate[500]} />
         </TouchableOpacity>
       </View>
 
@@ -278,7 +279,11 @@ export function UpdateProductScreen({ navigation, route }: Props) {
             className="mx-4 mt-3 flex-row items-center justify-between rounded-xl bg-sky-100 px-4 py-3"
           >
             <View className="flex-row items-center gap-2">
-              <Ionicons name="add-circle-outline" size={20} color="#0284c7" />
+              <Ionicons
+                name="add-circle-outline"
+                size={20}
+                color={COLORS.secondary}
+              />
               <View>
                 <Text className="text-sm font-bold text-slate-800">
                   Add Custom Fields
@@ -288,7 +293,7 @@ export function UpdateProductScreen({ navigation, route }: Props) {
                 </Text>
               </View>
             </View>
-            <Ionicons name="headset-outline" size={22} color="#64748b" />
+            <Ionicons name="headset-outline" size={22} color={COLORS.slate[500]} />
           </TouchableOpacity>
 
           {/* Product Details */}
@@ -349,7 +354,7 @@ export function UpdateProductScreen({ navigation, route }: Props) {
                 value={price}
                 onChangeText={setPrice}
                 placeholder="0.00"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={COLORS.slate[400]}
                 keyboardType="decimal-pad"
                 className="px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-800 text-base"
               />
@@ -362,12 +367,12 @@ export function UpdateProductScreen({ navigation, route }: Props) {
                 value={gstRate}
                 onChangeText={setGstRate}
                 placeholder="0.0"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={COLORS.slate[400]}
                 keyboardType="decimal-pad"
                 className="px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-800 text-base"
               />
               <TouchableOpacity className="flex-row items-center gap-1 mt-2">
-                <Ionicons name="add" size={14} color="#2563eb" />
+                <Ionicons name="add" size={14} color={COLORS.secondary} />
                 <Text className="text-sm text-blue-600">
                   Enter GSTIN to add/change Tax
                 </Text>
@@ -386,7 +391,7 @@ export function UpdateProductScreen({ navigation, route }: Props) {
                 value={cost}
                 onChangeText={setCost}
                 placeholder="0.00"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={COLORS.slate[400]}
                 keyboardType="decimal-pad"
                 className="px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-800 text-base"
               />
@@ -414,7 +419,7 @@ export function UpdateProductScreen({ navigation, route }: Props) {
                 <Text className="text-base font-medium text-slate-800">
                   {displayUnit}
                 </Text>
-                <Ionicons name="chevron-down" size={20} color="#64748b" />
+                <Ionicons name="chevron-down" size={20} color={COLORS.slate[500]} />
               </View>
             </TouchableOpacity>
           </View>
@@ -431,7 +436,7 @@ export function UpdateProductScreen({ navigation, route }: Props) {
               <Ionicons
                 name={optionalExpanded ? "chevron-up" : "chevron-down"}
                 size={22}
-                color="#64748b"
+                color={COLORS.slate[500]}
               />
             </View>
             <Text className="px-4 pb-3 text-xs text-slate-500">
@@ -460,7 +465,7 @@ export function UpdateProductScreen({ navigation, route }: Props) {
                     value={description}
                     onChangeText={setDescription}
                     placeholder="Add Description"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={COLORS.slate[400]}
                     multiline
                     numberOfLines={3}
                     className="px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-800 text-sm"
@@ -473,7 +478,7 @@ export function UpdateProductScreen({ navigation, route }: Props) {
                       value={barcode}
                       onChangeText={setBarcode}
                       placeholder="Add Barcode"
-                      placeholderTextColor="#94a3b8"
+                      placeholderTextColor={COLORS.slate[400]}
                       className="flex-1 px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-800 text-sm"
                     />
                     <TouchableOpacity
@@ -483,7 +488,7 @@ export function UpdateProductScreen({ navigation, route }: Props) {
                       <Ionicons
                         name="barcode-outline"
                         size={24}
-                        color="#64748b"
+                        color={COLORS.slate[500]}
                       />
                     </TouchableOpacity>
                   </View>
@@ -500,7 +505,7 @@ export function UpdateProductScreen({ navigation, route }: Props) {
                     <Ionicons
                       name="chevron-forward"
                       size={18}
-                      color="#64748b"
+                      color={COLORS.slate[500]}
                     />
                   </View>
                 </TouchableOpacity>
@@ -511,8 +516,8 @@ export function UpdateProductScreen({ navigation, route }: Props) {
                   <Switch
                     value={isFeatured}
                     onValueChange={setIsFeatured}
-                    trackColor={{ false: "#cbd5e1", true: "#e67e22" }}
-                    thumbColor="#fff"
+                    trackColor={{ false: COLORS.border.medium, true: COLORS.primary }}
+                    thumbColor={COLORS.text.inverted}
                   />
                 </View>
                 <FormField
@@ -533,7 +538,7 @@ export function UpdateProductScreen({ navigation, route }: Props) {
             className="mx-4 mt-6 mb-8 flex-row items-center justify-center gap-2 bg-primary py-4 rounded-xl"
           >
             {updateMutation.isPending ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={COLORS.text.inverted} />
             ) : (
               <Text className="text-white font-bold text-base">
                 Update Product
@@ -569,7 +574,7 @@ export function UpdateProductScreen({ navigation, route }: Props) {
                 >
                   <Text className="text-base text-slate-800">{u}</Text>
                   {unit === u && (
-                    <Ionicons name="checkmark" size={20} color="#e67e22" />
+                    <Ionicons name="checkmark" size={20} color={COLORS.primary} />
                   )}
                 </Pressable>
               ))}
@@ -610,7 +615,7 @@ function FormField({
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="#94a3b8"
+        placeholderTextColor={COLORS.slate[400]}
         keyboardType={keyboardType}
         className="px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-800 text-base"
       />

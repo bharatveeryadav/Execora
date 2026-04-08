@@ -16,6 +16,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { TYPO } from "../../../lib/typography";
 import { storage } from "../../../lib/storage";
+import { COLORS } from "../../../lib/constants";
 import type { ItemsStackParams } from "../../../navigation";
 
 type Props = NativeStackScreenProps<ItemsStackParams, "ItemsMenu">;
@@ -130,7 +131,7 @@ export function ItemsMenuScreen({ navigation }: Props) {
             pointerEvents="box-none"
           >
             <View className="w-8 h-8 rounded-lg bg-amber-100 items-center justify-center">
-              <Ionicons name="notifications" size={18} color="#d97706" />
+              <Ionicons name="notifications" size={18} color={COLORS.warning} />
             </View>
             <View className="flex-1 min-w-0 pr-2">
               <Text className={TYPO.body}>Low Stock Notification</Text>
@@ -144,8 +145,8 @@ export function ItemsMenuScreen({ navigation }: Props) {
             <Switch
               value={lowStockAlertsEnabled}
               onValueChange={toggleLowStockAlerts}
-              trackColor={{ false: "#cbd5e1", true: "#fcd34d" }}
-              thumbColor={lowStockAlertsEnabled ? "#ffffff" : "#f8fafc"}
+              trackColor={{ false: COLORS.border.medium, true: COLORS.bg.warning }}
+              thumbColor={lowStockAlertsEnabled ? COLORS.text.inverted : COLORS.slate[50]}
               accessibilityLabel="Toggle low stock notification"
             />
           </View>
@@ -158,7 +159,7 @@ export function ItemsMenuScreen({ navigation }: Props) {
               style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
             >
               <View className="w-8 h-8 rounded-lg bg-slate-100 items-center justify-center">
-                <Ionicons name={item.icon as any} size={18} color="#64748b" />
+                <Ionicons name={item.icon as any} size={18} color={COLORS.slate[500]} />
               </View>
               <View className="flex-1 min-w-0 pr-2">
                 <Text className={TYPO.body} numberOfLines={1}>
@@ -171,7 +172,7 @@ export function ItemsMenuScreen({ navigation }: Props) {
                   {item.subtitle}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
+              <Ionicons name="chevron-forward" size={16} color={COLORS.slate[400]} />
             </Pressable>
           ))}
         </View>

@@ -15,6 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import { reportsApi } from "../../../lib/api";
 import { Chip } from "../../../components/ui/Chip";
 import { ErrorCard } from "../../../components/ui/ErrorCard";
+import { COLORS } from "../../../lib/constants";
 
 export function GstrScreen() {
   const [fy, setFy] = useState<string | undefined>(undefined);
@@ -55,7 +56,7 @@ export function GstrScreen() {
       >
         {isFetching && !report ? (
           <View className="py-16 items-center">
-            <ActivityIndicator size="large" color="#e67e22" />
+            <ActivityIndicator size="large" color={COLORS.primary} />
           </View>
         ) : report ? (
           <View className="gap-4">

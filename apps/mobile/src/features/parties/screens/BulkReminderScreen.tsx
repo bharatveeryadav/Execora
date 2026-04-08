@@ -22,6 +22,7 @@ import { ErrorCard } from "../../../components/ui/ErrorCard";
 import { Skeleton } from "../../../components/ui/Skeleton";
 import { inr, type Customer } from "@execora/shared";
 import { TYPO } from "../../../lib/typography";
+import { COLORS } from "../../../lib/constants";
 import type { PartiesStackParams } from "../../../navigation";
 
 type Props = NativeStackScreenProps<PartiesStackParams, "BulkReminder">;
@@ -191,7 +192,7 @@ export function BulkReminderScreen({ navigation }: Props) {
               keyboardType="number-pad"
               placeholder="0"
               className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={COLORS.slate[400]}
             />
 
             <Text className={TYPO.label + " mt-4 mb-1"}>
@@ -203,7 +204,7 @@ export function BulkReminderScreen({ navigation }: Props) {
               placeholder="Payment reminder from your store"
               multiline
               className="border border-slate-200 rounded-xl px-4 py-3 text-base text-slate-800 min-h-[92]"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={COLORS.slate[400]}
               textAlignVertical="top"
             />
             <Text className="text-xs text-slate-500 mt-2">
@@ -282,10 +283,10 @@ export function BulkReminderScreen({ navigation }: Props) {
             className={`min-h-[48] rounded-xl items-center justify-center ${targets.length > 0 && !bulkReminderMutation.isPending ? "bg-primary" : "bg-slate-300"}`}
           >
             {bulkReminderMutation.isPending ? (
-              <ActivityIndicator color="#fff" size="small" />
+              <ActivityIndicator color={COLORS.text.inverted} size="small" />
             ) : (
               <View className="flex-row items-center gap-2">
-                <Ionicons name="notifications" size={16} color="#fff" />
+                <Ionicons name="notifications" size={16} color={COLORS.text.inverted} />
                 <Text className="text-sm font-semibold text-white">
                   Schedule Bulk Follow-up
                 </Text>

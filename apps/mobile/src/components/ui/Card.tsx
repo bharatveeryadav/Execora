@@ -2,8 +2,9 @@
  * Card — design system component (Sprint 2).
  */
 import React from "react";
-import { View, TouchableOpacity, ViewProps } from "react-native";
+import { View, Pressable, ViewProps } from "react-native";
 import { cn } from "../../lib/utils";
+import { COLORS } from "../../shared/lib/constants";
 
 export function Card({
   children,
@@ -19,7 +20,7 @@ export function Card({
       )}
       style={[
         {
-          shadowColor: "#0f172a",
+          shadowColor: COLORS.text.primary,
           shadowOpacity: 0.05,
           shadowOffset: { width: 0, height: 2 },
           shadowRadius: 8,
@@ -42,26 +43,26 @@ export function PressableCard({
   ...props
 }: ViewProps & { children: React.ReactNode; onPress?: () => void }) {
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={onPress}
-      activeOpacity={0.7}
       className={cn(
         "rounded-2xl border border-slate-200/80 bg-white p-4",
         className
       )}
-      style={[
+      style={({ pressed }) => [
         {
-          shadowColor: "#0f172a",
+          shadowColor: COLORS.text.primary,
           shadowOpacity: 0.05,
           shadowOffset: { width: 0, height: 2 },
           shadowRadius: 8,
           elevation: 1,
         },
+        pressed ? { opacity: 0.8 } : null,
         style,
       ]}
       {...props}
     >
       {children}
-    </TouchableOpacity>
+    </Pressable>
   );
 }

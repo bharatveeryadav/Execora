@@ -9,6 +9,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { feedbackApi } from "../../../lib/api";
 import { Button } from "../../../components/ui/Button";
+import { COLORS } from "../../../lib/constants";
 
 const NPS_LABELS: Record<number, string> = {
   0: "Not at all likely",
@@ -16,7 +17,10 @@ const NPS_LABELS: Record<number, string> = {
   10: "Extremely likely",
 };
 
-type Props = NativeStackScreenProps<import("../../../navigation").MoreStackParams, "Feedback">;
+type Props = NativeStackScreenProps<
+  import("../../../navigation").MoreStackParams,
+  "Feedback"
+>;
 
 export function FeedbackScreen({ navigation }: Props) {
   const [npsScore, setNpsScore] = useState<number | null>(null);
@@ -39,7 +43,10 @@ export function FeedbackScreen({ navigation }: Props) {
 
   const handleSubmit = () => {
     if (npsScore === null) {
-      showAlert("Select a score", "Please select how likely you are to recommend Execora (0–10).");
+      showAlert(
+        "Select a score",
+        "Please select how likely you are to recommend Execora (0–10).",
+      );
       return;
     }
     submitMutation.mutate();
@@ -82,25 +89,38 @@ export function FeedbackScreen({ navigation }: Props) {
               key={n}
               onPress={() => setNpsScore(n)}
               className="w-10 h-10 rounded-full items-center justify-center"
-              style={{ backgroundColor: npsScore === n ? "#e67e22" : "#f1f5f9" }}
+              style={{
+                backgroundColor:
+                  npsScore === n ? COLORS.primary : COLORS.slate[100],
+              }}
             >
-              <Text style={{ color: npsScore === n ? "#fff" : "#475569", fontWeight: "600" }}>
+              <Text
+                style={{
+                  color:
+                    npsScore === n ? COLORS.text.inverted : COLORS.slate[600],
+                  fontWeight: "600",
+                }}
+              >
                 {n}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
         {npsScore !== null && NPS_LABELS[npsScore] && (
-          <Text className="text-center text-xs text-slate-500 mb-6">{NPS_LABELS[npsScore]}</Text>
+          <Text className="text-center text-xs text-slate-500 mb-6">
+            {NPS_LABELS[npsScore]}
+          </Text>
         )}
 
         {/* Optional text */}
-        <Text className="text-sm font-medium text-slate-600 mb-2">Anything else? (optional)</Text>
+        <Text className="text-sm font-medium text-slate-600 mb-2">
+          Anything else? (optional)
+        </Text>
         <TextInput
           value={text}
           onChangeText={setText}
           placeholder="What do you love? What could be better?"
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor={COLORS.slate[400]}
           multiline
           numberOfLines={4}
           maxLength={2000}

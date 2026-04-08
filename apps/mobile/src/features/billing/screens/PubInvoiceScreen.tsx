@@ -19,6 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
 
 import { getApiBaseUrl } from "../../../lib/api";
+import { COLORS } from "../../../lib/constants";
 const API_BASE = getApiBaseUrl().replace(/\/$/, "");
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -67,20 +68,24 @@ function inr(n: number) {
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
-const STATUS_CFG: Record<string, { label: string; bg: string; text: string }> = {
-  paid: { label: "Paid ✅", bg: "bg-green-100", text: "text-green-700" },
-  partial: { label: "Partial", bg: "bg-amber-100", text: "text-amber-700" },
-  cancelled: { label: "Cancelled", bg: "bg-red-100", text: "text-red-600" },
-  proforma: { label: "Proforma", bg: "bg-blue-100", text: "text-blue-700" },
-  pending: { label: "Unpaid", bg: "bg-yellow-100", text: "text-yellow-700" },
-  draft: { label: "Draft", bg: "bg-slate-100", text: "text-slate-600" },
-};
+const STATUS_CFG: Record<string, { label: string; bg: string; text: string }> =
+  {
+    paid: { label: "Paid ✅", bg: "bg-green-100", text: "text-green-700" },
+    partial: { label: "Partial", bg: "bg-amber-100", text: "text-amber-700" },
+    cancelled: { label: "Cancelled", bg: "bg-red-100", text: "text-red-600" },
+    proforma: { label: "Proforma", bg: "bg-blue-100", text: "text-blue-700" },
+    pending: { label: "Unpaid", bg: "bg-yellow-100", text: "text-yellow-700" },
+    draft: { label: "Draft", bg: "bg-slate-100", text: "text-slate-600" },
+  };
 
 // ── Screen ───────────────────────────────────────────────────────────────────
 
 export type PubInvoiceParams = { id: string; token: string };
 
-type Props = NativeStackScreenProps<import("../../../navigation").RootStackParams, "PubInvoice">;
+type Props = NativeStackScreenProps<
+  import("../../../navigation").RootStackParams,
+  "PubInvoice"
+>;
 
 export function PubInvoiceScreen({ navigation, route }: Props) {
   const { id, token } = route.params;
@@ -104,7 +109,7 @@ export function PubInvoiceScreen({ navigation, route }: Props) {
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-slate-50 items-center justify-center">
-        <ActivityIndicator size="large" color="#e67e22" />
+        <ActivityIndicator size="large" color={COLORS.primary} />
         <Text className="text-slate-500 mt-3">Loading invoice…</Text>
       </SafeAreaView>
     );
@@ -113,12 +118,17 @@ export function PubInvoiceScreen({ navigation, route }: Props) {
   if (isError || !data) {
     return (
       <SafeAreaView className="flex-1 bg-slate-50 items-center justify-center px-6">
-        <Ionicons name="alert-circle-outline" size={48} color="#94a3b8" />
+        <Ionicons
+          name="alert-circle-outline"
+          size={48}
+          color={COLORS.slate[400]}
+        />
         <Text className="text-xl font-bold text-slate-700 mt-4 text-center">
           Invoice not found
         </Text>
         <Text className="text-slate-500 text-center mt-2">
-          This link may have expired or is invalid. Please contact the sender for a new link.
+          This link may have expired or is invalid. Please contact the sender
+          for a new link.
         </Text>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -141,8 +151,11 @@ export function PubInvoiceScreen({ navigation, route }: Props) {
     <SafeAreaView className="flex-1 bg-slate-50">
       {/* Header */}
       <View className="bg-white border-b border-slate-200 px-4 py-3 flex-row items-center justify-between">
-        <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 -ml-2">
-          <Ionicons name="arrow-back" size={24} color="#0f172a" />
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          className="p-2 -ml-2"
+        >
+          <Ionicons name="arrow-back" size={24} color={COLORS.text.primary} />
         </TouchableOpacity>
         <Text className="text-base font-semibold text-slate-800">
           {invoice.shopName ?? "Invoice"}
@@ -163,7 +176,9 @@ export function PubInvoiceScreen({ navigation, route }: Props) {
               <Text className="text-xs text-slate-400 uppercase tracking-wide font-medium">
                 Invoice
               </Text>
-              <Text className="text-2xl font-black text-slate-800">{invoice.invoiceNo}</Text>
+              <Text className="text-2xl font-black text-slate-800">
+                {invoice.invoiceNo}
+              </Text>
               <Text className="text-sm text-slate-500 mt-0.5">
                 {new Date(invoice.createdAt).toLocaleDateString("en-IN", {
                   day: "numeric",
@@ -173,7 +188,9 @@ export function PubInvoiceScreen({ navigation, route }: Props) {
               </Text>
             </View>
             <View className={`px-3 py-1.5 rounded-full ${status.bg}`}>
-              <Text className={`text-xs font-semibold ${status.text}`}>{status.label}</Text>
+              <Text className={`text-xs font-semibold ${status.text}`}>
+                {status.label}
+              </Text>
             </View>
           </View>
 
@@ -182,15 +199,23 @@ export function PubInvoiceScreen({ navigation, route }: Props) {
               <Text className="text-xs text-slate-400 uppercase tracking-wide font-medium mb-1">
                 Bill To
               </Text>
-              <Text className="font-semibold text-slate-800">{invoice.customer.name}</Text>
+              <Text className="font-semibold text-slate-800">
+                {invoice.customer.name}
+              </Text>
               {invoice.customer.phone && (
-                <Text className="text-sm text-slate-500">{invoice.customer.phone}</Text>
+                <Text className="text-sm text-slate-500">
+                  {invoice.customer.phone}
+                </Text>
               )}
               {invoice.customer.address && (
-                <Text className="text-sm text-slate-500">{invoice.customer.address}</Text>
+                <Text className="text-sm text-slate-500">
+                  {invoice.customer.address}
+                </Text>
               )}
               {invoice.customer.gstin && (
-                <Text className="text-xs text-slate-400 mt-0.5">GSTIN: {invoice.customer.gstin}</Text>
+                <Text className="text-xs text-slate-400 mt-0.5">
+                  GSTIN: {invoice.customer.gstin}
+                </Text>
               )}
             </View>
           )}
@@ -202,19 +227,30 @@ export function PubInvoiceScreen({ navigation, route }: Props) {
             Items
           </Text>
           {invoice.items.map((item, idx) => (
-            <View key={idx} className="flex-row justify-between py-2 border-b border-slate-50 last:border-0">
+            <View
+              key={idx}
+              className="flex-row justify-between py-2 border-b border-slate-50 last:border-0"
+            >
               <View className="flex-1 mr-3">
-                <Text className="text-sm font-semibold text-slate-800" numberOfLines={2}>
+                <Text
+                  className="text-sm font-semibold text-slate-800"
+                  numberOfLines={2}
+                >
                   {item.productName}
                 </Text>
                 <Text className="text-xs text-slate-500">
                   {item.quantity} × ₹{inr(item.unitPrice)}
                   {item.lineDiscountPercent ? (
-                    <Text className="text-green-600"> (-{item.lineDiscountPercent}%)</Text>
+                    <Text className="text-green-600">
+                      {" "}
+                      (-{item.lineDiscountPercent}%)
+                    </Text>
                   ) : null}
                 </Text>
               </View>
-              <Text className="text-sm font-semibold text-slate-800">₹{inr(item.lineTotal)}</Text>
+              <Text className="text-sm font-semibold text-slate-800">
+                ₹{inr(item.lineTotal)}
+              </Text>
             </View>
           ))}
 
@@ -222,18 +258,24 @@ export function PubInvoiceScreen({ navigation, route }: Props) {
           <View className="border-t border-slate-100 mt-4 pt-4">
             <View className="flex-row justify-between py-1">
               <Text className="text-sm text-slate-600">Subtotal</Text>
-              <Text className="text-sm text-slate-600">₹{inr(invoice.subtotal)}</Text>
+              <Text className="text-sm text-slate-600">
+                ₹{inr(invoice.subtotal)}
+              </Text>
             </View>
             {hasDiscount && (
               <View className="flex-row justify-between py-1">
                 <Text className="text-sm text-green-600">Discount</Text>
-                <Text className="text-sm text-green-600">-₹{inr(invoice.discountAmount)}</Text>
+                <Text className="text-sm text-green-600">
+                  -₹{inr(invoice.discountAmount)}
+                </Text>
               </View>
             )}
             {hasTax && (
               <View className="flex-row justify-between py-1">
                 <Text className="text-sm text-slate-600">GST</Text>
-                <Text className="text-sm text-slate-600">₹{inr(invoice.taxAmount)}</Text>
+                <Text className="text-sm text-slate-600">
+                  ₹{inr(invoice.taxAmount)}
+                </Text>
               </View>
             )}
             <View className="flex-row justify-between py-2 mt-1 border-t border-slate-100">
@@ -245,7 +287,9 @@ export function PubInvoiceScreen({ navigation, route }: Props) {
             {invoice.paidAmount > 0 && (
               <View className="flex-row justify-between py-1">
                 <Text className="text-sm text-green-600">Paid</Text>
-                <Text className="text-sm text-green-600">₹{inr(invoice.paidAmount)}</Text>
+                <Text className="text-sm text-green-600">
+                  ₹{inr(invoice.paidAmount)}
+                </Text>
               </View>
             )}
 
@@ -253,19 +297,27 @@ export function PubInvoiceScreen({ navigation, route }: Props) {
             {pending > 0 && invoice.status !== "cancelled" && (
               <View className="mt-4 gap-2">
                 <View className="rounded-xl bg-amber-50 border border-amber-200 p-3 flex-row justify-between items-center">
-                  <Text className="text-sm font-semibold text-amber-700">Amount Due</Text>
-                  <Text className="text-lg font-black text-amber-700">₹{inr(pending)}</Text>
+                  <Text className="text-sm font-semibold text-amber-700">
+                    Amount Due
+                  </Text>
+                  <Text className="text-lg font-black text-amber-700">
+                    ₹{inr(pending)}
+                  </Text>
                 </View>
                 {invoice.upiVpa && (
                   <TouchableOpacity
                     onPress={() =>
                       Linking.openURL(
-                        `upi://pay?pa=${encodeURIComponent(invoice.upiVpa!)}&pn=${encodeURIComponent(invoice.shopName ?? "Execora")}&am=${pending.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Invoice ${invoice.invoiceNo}`)}`
+                        `upi://pay?pa=${encodeURIComponent(invoice.upiVpa!)}&pn=${encodeURIComponent(invoice.shopName ?? "Execora")}&am=${pending.toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Invoice ${invoice.invoiceNo}`)}`,
                       )
                     }
                     className="rounded-xl bg-green-600 py-3.5 flex-row items-center justify-center gap-2"
                   >
-                    <Ionicons name="phone-portrait-outline" size={20} color="#fff" />
+                    <Ionicons
+                      name="phone-portrait-outline"
+                      size={20}
+                      color={COLORS.text.inverted}
+                    />
                     <Text className="text-white font-bold">Pay Now (UPI)</Text>
                   </TouchableOpacity>
                 )}
@@ -273,8 +325,14 @@ export function PubInvoiceScreen({ navigation, route }: Props) {
             )}
             {pending === 0 && invoice.status === "paid" && (
               <View className="mt-4 rounded-xl bg-green-50 border border-green-200 p-3 flex-row items-center justify-center gap-2">
-                <Ionicons name="checkmark-circle" size={20} color="#22c55e" />
-                <Text className="text-sm font-semibold text-green-700">Fully Paid — Thank you!</Text>
+                <Ionicons
+                  name="checkmark-circle"
+                  size={20}
+                  color={COLORS.success}
+                />
+                <Text className="text-sm font-semibold text-green-700">
+                  Fully Paid — Thank you!
+                </Text>
               </View>
             )}
           </View>
@@ -296,7 +354,11 @@ export function PubInvoiceScreen({ navigation, route }: Props) {
             onPress={handleDownloadPdf}
             className="rounded-2xl bg-primary py-3.5 flex-row items-center justify-center gap-2 mb-4"
           >
-            <Ionicons name="download-outline" size={22} color="#fff" />
+            <Ionicons
+              name="download-outline"
+              size={22}
+              color={COLORS.text.inverted}
+            />
             <Text className="text-white font-bold">Download PDF Invoice</Text>
           </TouchableOpacity>
         )}

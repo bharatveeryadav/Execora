@@ -45,6 +45,7 @@ import { Skeleton } from "../../../components/ui/Skeleton";
 import { ScreenInner } from "../../../components/ui/ScreenLayout";
 import { FilterBar } from "../../../components/composites/FilterBar";
 import { TabBar, type TabItem } from "../../../components/composites/TabBar";
+import { COLORS } from "../../../lib/constants";
 import { TYPO } from "../../../lib/typography";
 import type { PartiesStackParams } from "../../../navigation";
 
@@ -580,7 +581,7 @@ export function PartiesScreen({ navigation, route }: Props) {
           accessibilityLabel={`Open ${c.name} details`}
           onPress={() => navigation.navigate("PartyDetail", { id: c.id })}
           style={({ pressed }) => ({
-            backgroundColor: pressed ? "#f8fafc" : "#fff",
+            backgroundColor: pressed ? COLORS.slate[50] : COLORS.text.inverted,
           })}
         >
           <View
@@ -627,7 +628,7 @@ export function PartiesScreen({ navigation, route }: Props) {
               </Text>
             ) : (
               <View className="flex-row items-center gap-1 bg-green-50 px-2 py-1 rounded-full">
-                <Ionicons name="checkmark-circle" size={12} color="#16a34a" />
+                <Ionicons name="checkmark-circle" size={12} color={COLORS.success} />
                 <Text className="text-[11px] font-medium text-green-700">
                   Clear
                 </Text>
@@ -649,11 +650,11 @@ export function PartiesScreen({ navigation, route }: Props) {
                 className="w-10 h-10 rounded-full bg-green-50 items-center justify-center"
                 style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
               >
-                <Ionicons name="logo-whatsapp" size={18} color="#16a34a" />
+                <Ionicons name="logo-whatsapp" size={18} color={COLORS.success} />
               </Pressable>
             ) : (
               <View className="w-10 h-10 rounded-full bg-slate-50 items-center justify-center">
-                <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
+                <Ionicons name="chevron-forward" size={16} color={COLORS.slate[400]} />
               </View>
             )}
           </View>
@@ -678,7 +679,7 @@ export function PartiesScreen({ navigation, route }: Props) {
               <View className="flex-row items-center gap-2">
                 <View className="flex-1 rounded-2xl border border-slate-200 bg-white min-h-[48] px-3 flex-row items-center shadow-sm">
                   <View className="w-7 h-7 rounded-full bg-slate-100 items-center justify-center mr-2">
-                    <Ionicons name="search" size={15} color="#64748b" />
+                    <Ionicons name="search" size={15} color={COLORS.slate[500]} />
                   </View>
                   <TextInput
                     ref={
@@ -700,7 +701,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                         ? "Search suppliers"
                         : "Search customers"
                     }
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={COLORS.slate[400]}
                     className="flex-1 text-[15px] text-slate-800 py-2"
                     autoCorrect={false}
                     autoCapitalize="none"
@@ -718,13 +719,13 @@ export function PartiesScreen({ navigation, route }: Props) {
                       accessibilityRole="button"
                       accessibilityLabel="Clear search text"
                     >
-                      <Ionicons name="close" size={14} color="#64748b" />
+                      <Ionicons name="close" size={14} color={COLORS.slate[500]} />
                     </Pressable>
                   )}
                   {(tab === "suppliers" ? isSuppliersFetching : isFetching) && (
                     <ActivityIndicator
                       size="small"
-                      color="#e67e22"
+                      color={COLORS.primary}
                       style={{ marginLeft: 8 }}
                     />
                   )}
@@ -763,7 +764,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                   style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Ionicons name="search" size={18} color="#475569" />
+                  <Ionicons name="search" size={18} color={COLORS.slate[600]} />
                 </Pressable>
                 <Pressable
                   onPress={() => setMenuOpen(true)}
@@ -776,7 +777,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                   <Ionicons
                     name="ellipsis-horizontal"
                     size={20}
-                    color="#475569"
+                    color={COLORS.slate[600]}
                   />
                 </Pressable>
               </View>
@@ -807,7 +808,7 @@ export function PartiesScreen({ navigation, route }: Props) {
               <RefreshControl
                 refreshing={isFetching}
                 onRefresh={refetch}
-                tintColor="#e67e22"
+                tintColor={COLORS.primary}
               />
             }
           >
@@ -817,7 +818,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                 <View className="flex-row gap-1.5">
                   <View className="flex-1 rounded-lg border border-red-100 bg-red-50 px-2 py-1.5 flex-row items-center gap-1.5">
                     <View className="w-5 h-5 rounded-full bg-red-100 items-center justify-center">
-                      <Ionicons name="arrow-up" size={11} color="#dc2626" />
+                      <Ionicons name="arrow-up" size={11} color={COLORS.danger} />
                     </View>
                     <View className="flex-1 min-w-0">
                       <Text className="text-[10px] font-medium text-red-600">
@@ -833,7 +834,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                   </View>
                   <View className="flex-1 rounded-lg border border-green-100 bg-green-50 px-2 py-1.5 flex-row items-center gap-1.5">
                     <View className="w-5 h-5 rounded-full bg-green-100 items-center justify-center">
-                      <Ionicons name="arrow-down" size={11} color="#16a34a" />
+                      <Ionicons name="arrow-down" size={11} color={COLORS.success} />
                     </View>
                     <View className="flex-1 min-w-0">
                       <Text className="text-[10px] font-medium text-green-600">
@@ -948,7 +949,7 @@ export function PartiesScreen({ navigation, route }: Props) {
               right: fabRight,
             }}
           >
-            <Ionicons name="add" size={28} color="#fff" />
+            <Ionicons name="add" size={28} color={COLORS.text.inverted} />
           </Pressable>
         </>
       )}
@@ -966,7 +967,7 @@ export function PartiesScreen({ navigation, route }: Props) {
               <RefreshControl
                 refreshing={isSuppliersFetching}
                 onRefresh={refetchSuppliers}
-                tintColor="#e67e22"
+                tintColor={COLORS.primary}
               />
             }
           >
@@ -976,7 +977,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                 <View className="flex-row gap-1.5">
                   <View className="flex-1 rounded-lg border border-red-100 bg-red-50 px-2 py-1.5 flex-row items-center gap-1.5">
                     <View className="w-5 h-5 rounded-full bg-red-100 items-center justify-center">
-                      <Ionicons name="arrow-up" size={11} color="#dc2626" />
+                      <Ionicons name="arrow-up" size={11} color={COLORS.danger} />
                     </View>
                     <View className="flex-1 min-w-0">
                       <Text className="text-[10px] font-medium text-red-600">
@@ -992,7 +993,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                   </View>
                   <View className="flex-1 rounded-lg border border-green-100 bg-green-50 px-2 py-1.5 flex-row items-center gap-1.5">
                     <View className="w-5 h-5 rounded-full bg-green-100 items-center justify-center">
-                      <Ionicons name="arrow-down" size={11} color="#16a34a" />
+                      <Ionicons name="arrow-down" size={11} color={COLORS.success} />
                     </View>
                     <View className="flex-1 min-w-0">
                       <Text className="text-[10px] font-medium text-green-600">
@@ -1073,7 +1074,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                         })
                       }
                       style={({ pressed }) => ({
-                        backgroundColor: pressed ? "#f8fafc" : "#fff",
+                        backgroundColor: pressed ? COLORS.slate[50] : COLORS.text.inverted,
                       })}
                     >
                       <View className="flex-1 min-w-0">
@@ -1091,7 +1092,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                       <Ionicons
                         name="chevron-forward"
                         size={20}
-                        color="#94a3b8"
+                        color={COLORS.slate[400]}
                       />
                     </Pressable>
                   ))
@@ -1112,7 +1113,7 @@ export function PartiesScreen({ navigation, route }: Props) {
               right: fabRight,
             }}
           >
-            <Ionicons name="add" size={28} color="#fff" />
+            <Ionicons name="add" size={28} color={COLORS.text.inverted} />
           </Pressable>
 
           {/* Add Supplier Modal */}
@@ -1143,7 +1144,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                     onChangeText={setSupplierName}
                     placeholder="e.g. Ramesh Traders"
                     className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800 mb-3"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={COLORS.slate[400]}
                   />
                   <Text className={TYPO.label + " mb-1"}>Company Name</Text>
                   <TextInput
@@ -1151,7 +1152,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                     onChangeText={setSupplierCompany}
                     placeholder="e.g. Ramesh Pvt Ltd"
                     className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800 mb-3"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={COLORS.slate[400]}
                   />
                   <Text className={TYPO.label + " mb-1"}>Phone</Text>
                   <TextInput
@@ -1160,7 +1161,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                     placeholder="10-digit mobile"
                     keyboardType="phone-pad"
                     className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800 mb-3"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={COLORS.slate[400]}
                   />
                   <Text className={TYPO.label + " mb-1"}>Email</Text>
                   <TextInput
@@ -1169,7 +1170,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                     placeholder="email@example.com"
                     keyboardType="email-address"
                     className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800 mb-3"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={COLORS.slate[400]}
                   />
                   <Text className={TYPO.label + " mb-1"}>Address</Text>
                   <TextInput
@@ -1177,7 +1178,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                     onChangeText={setSupplierAddress}
                     placeholder="Full address"
                     className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800 mb-4"
-                    placeholderTextColor="#94a3b8"
+                    placeholderTextColor={COLORS.slate[400]}
                   />
                   <View className="flex-row gap-2">
                     <TouchableOpacity
@@ -1196,7 +1197,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                       className={`flex-1 rounded-xl py-3 items-center ${supplierName.trim() && !createSupplierMutation.isPending ? "bg-primary" : "bg-slate-300"}`}
                     >
                       {createSupplierMutation.isPending ? (
-                        <ActivityIndicator color="#fff" size="small" />
+                        <ActivityIndicator color={COLORS.text.inverted} size="small" />
                       ) : (
                         <Text className="text-sm font-semibold text-white">
                           Add Supplier
@@ -1246,13 +1247,13 @@ export function PartiesScreen({ navigation, route }: Props) {
                     style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
                   >
                     <View className="w-8 h-8 rounded-lg bg-red-100 items-center justify-center">
-                      <Ionicons name="alert-circle" size={18} color="#dc2626" />
+                      <Ionicons name="alert-circle" size={18} color={COLORS.danger} />
                     </View>
                     <Text className={`${TYPO.body} flex-1`}>Udhaar List</Text>
                     <Ionicons
                       name="chevron-forward"
                       size={16}
-                      color="#94a3b8"
+                      color={COLORS.slate[400]}
                     />
                   </Pressable>
 
@@ -1265,7 +1266,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                       <Ionicons
                         name="notifications"
                         size={18}
-                        color="#d97706"
+                        color={COLORS.warning}
                       />
                     </View>
                     <View className="flex-1 min-w-0">
@@ -1280,7 +1281,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                     <Ionicons
                       name="chevron-forward"
                       size={16}
-                      color="#94a3b8"
+                      color={COLORS.slate[400]}
                     />
                   </Pressable>
 
@@ -1290,7 +1291,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                     style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
                   >
                     <View className="w-8 h-8 rounded-lg bg-slate-100 items-center justify-center">
-                      <Ionicons name="cloud-upload" size={18} color="#64748b" />
+                      <Ionicons name="cloud-upload" size={18} color={COLORS.slate[500]} />
                     </View>
                     <Text className={`${TYPO.body} flex-1`}>
                       Import Customers
@@ -1298,7 +1299,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                     <Ionicons
                       name="chevron-forward"
                       size={16}
-                      color="#94a3b8"
+                      color={COLORS.slate[400]}
                     />
                   </Pressable>
 
@@ -1308,7 +1309,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                     style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
                   >
                     <View className="w-8 h-8 rounded-lg bg-slate-100 items-center justify-center">
-                      <Ionicons name="git-merge" size={18} color="#64748b" />
+                      <Ionicons name="git-merge" size={18} color={COLORS.slate[500]} />
                     </View>
                     <Text className={`${TYPO.body} flex-1`}>
                       Merge Customers (Soon)
@@ -1316,7 +1317,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                     <Ionicons
                       name="chevron-forward"
                       size={16}
-                      color="#94a3b8"
+                      color={COLORS.slate[400]}
                     />
                   </Pressable>
 
@@ -1329,7 +1330,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                       <Ionicons
                         name="document-text"
                         size={18}
-                        color="#64748b"
+                        color={COLORS.slate[500]}
                       />
                     </View>
                     <Text className={`${TYPO.body} flex-1`}>
@@ -1338,7 +1339,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                     <Ionicons
                       name="chevron-forward"
                       size={16}
-                      color="#94a3b8"
+                      color={COLORS.slate[400]}
                     />
                   </Pressable>
 
@@ -1348,13 +1349,13 @@ export function PartiesScreen({ navigation, route }: Props) {
                     style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
                   >
                     <View className="w-8 h-8 rounded-lg bg-slate-100 items-center justify-center">
-                      <Ionicons name="document" size={18} color="#64748b" />
+                      <Ionicons name="document" size={18} color={COLORS.slate[500]} />
                     </View>
                     <Text className={`${TYPO.body} flex-1`}>Download PDF</Text>
                     <Ionicons
                       name="chevron-forward"
                       size={16}
-                      color="#94a3b8"
+                      color={COLORS.slate[400]}
                     />
                   </Pressable>
                 </>
@@ -1369,7 +1370,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                     style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
                   >
                     <View className="w-8 h-8 rounded-lg bg-slate-100 items-center justify-center">
-                      <Ionicons name="cube" size={18} color="#64748b" />
+                      <Ionicons name="cube" size={18} color={COLORS.slate[500]} />
                     </View>
                     <Text className={`${TYPO.body} flex-1`}>
                       View Purchases
@@ -1377,7 +1378,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                     <Ionicons
                       name="chevron-forward"
                       size={16}
-                      color="#94a3b8"
+                      color={COLORS.slate[400]}
                     />
                   </Pressable>
 
@@ -1390,13 +1391,13 @@ export function PartiesScreen({ navigation, route }: Props) {
                     style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
                   >
                     <View className="w-8 h-8 rounded-lg bg-slate-100 items-center justify-center">
-                      <Ionicons name="receipt" size={18} color="#64748b" />
+                      <Ionicons name="receipt" size={18} color={COLORS.slate[500]} />
                     </View>
                     <Text className={`${TYPO.body} flex-1`}>View Expenses</Text>
                     <Ionicons
                       name="chevron-forward"
                       size={16}
-                      color="#94a3b8"
+                      color={COLORS.slate[400]}
                     />
                   </Pressable>
 
@@ -1406,7 +1407,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                     style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
                   >
                     <View className="w-8 h-8 rounded-lg bg-slate-100 items-center justify-center">
-                      <Ionicons name="cloud-upload" size={18} color="#64748b" />
+                      <Ionicons name="cloud-upload" size={18} color={COLORS.slate[500]} />
                     </View>
                     <Text className={`${TYPO.body} flex-1`}>
                       Import Suppliers
@@ -1414,7 +1415,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                     <Ionicons
                       name="chevron-forward"
                       size={16}
-                      color="#94a3b8"
+                      color={COLORS.slate[400]}
                     />
                   </Pressable>
                 </>
@@ -1461,7 +1462,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                 onChangeText={setNewName}
                 placeholder="e.g. Ramesh Kumar"
                 className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800 mb-3"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={COLORS.slate[400]}
               />
 
               <Text className={TYPO.label + " mb-1"}>Phone</Text>
@@ -1471,7 +1472,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                 placeholder="10-digit mobile"
                 keyboardType="phone-pad"
                 className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800 mb-3"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={COLORS.slate[400]}
               />
 
               <Text className={TYPO.label + " mb-1"}>Email</Text>
@@ -1481,7 +1482,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                 placeholder="email@example.com"
                 keyboardType="email-address"
                 className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800 mb-3"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={COLORS.slate[400]}
               />
 
               <Text className={TYPO.label + " mb-1"}>Nickname</Text>
@@ -1490,7 +1491,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                 onChangeText={setNewNickname}
                 placeholder="e.g. Ramesh bhai"
                 className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800 mb-3"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={COLORS.slate[400]}
               />
 
               <Text className={TYPO.label + " mb-1"}>Landmark / Area</Text>
@@ -1499,7 +1500,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                 onChangeText={setNewLandmark}
                 placeholder="e.g. near Rajiv Chowk"
                 className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800 mb-3"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={COLORS.slate[400]}
               />
 
               <Text className={TYPO.label + " mb-1"}>Opening Balance ₹</Text>
@@ -1509,7 +1510,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                 placeholder="0.00"
                 keyboardType="decimal-pad"
                 className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800 mb-3"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={COLORS.slate[400]}
               />
 
               <Text className={TYPO.label + " mb-1"}>Credit Limit ₹</Text>
@@ -1519,7 +1520,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                 placeholder="No limit"
                 keyboardType="decimal-pad"
                 className="border border-slate-200 rounded-xl px-4 h-12 text-base text-slate-800 mb-3"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={COLORS.slate[400]}
               />
 
               <Text className={TYPO.label + " mb-1"}>Notes</Text>
@@ -1529,7 +1530,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                 placeholder="Any notes…"
                 multiline
                 className="border border-slate-200 rounded-xl px-4 py-3 text-base text-slate-800 min-h-[60px] mb-3"
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={COLORS.slate[400]}
               />
 
               <Text className={TYPO.label + " mb-2"}>Tags</Text>
@@ -1568,7 +1569,7 @@ export function PartiesScreen({ navigation, route }: Props) {
                   className={`flex-1 rounded-xl py-3 items-center ${newName.trim() && !createMutation.isPending ? "bg-primary" : "bg-slate-300"}`}
                 >
                   {createMutation.isPending ? (
-                    <ActivityIndicator color="#fff" size="small" />
+                    <ActivityIndicator color={COLORS.text.inverted} size="small" />
                   ) : (
                     <Text className="text-sm font-semibold text-white">
                       Add Customer

@@ -16,6 +16,7 @@ import { reportsApi, expenseApi } from "../../../lib/api";
 import { formatCurrency } from "../../../lib/utils";
 import { Chip } from "../../../components/ui/Chip";
 import { ErrorCard } from "../../../components/ui/ErrorCard";
+import { COLORS } from "../../../lib/constants";
 
 export function BalanceSheetScreen() {
   const [fy, setFy] = useState<string | undefined>(undefined);
@@ -70,7 +71,7 @@ export function BalanceSheetScreen() {
       >
         {isFetching && !report ? (
           <View className="py-16 items-center">
-            <ActivityIndicator size="large" color="#e67e22" />
+            <ActivityIndicator size="large" color={COLORS.primary} />
           </View>
         ) : (
           <View className="gap-4">

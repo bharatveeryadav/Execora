@@ -3,9 +3,10 @@
  * Supports emoji (icon) or Ionicons (iconName).
  */
 import React from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { cn } from "../../lib/utils";
+import { COLORS } from "../../shared/lib/constants";
 
 export interface EmptyStateProps {
   /** Emoji fallback when iconName not provided */
@@ -32,7 +33,7 @@ export function EmptyState({
     <View className={cn("items-center justify-center py-12 px-6", className)}>
       {iconName ? (
         <View className="mb-3">
-          <Ionicons name={iconName} size={48} color="#94a3b8" />
+          <Ionicons name={iconName} size={48} color={COLORS.slate[400]} />
         </View>
       ) : (
         <Text className="text-5xl mb-3">{icon}</Text>
@@ -46,13 +47,13 @@ export function EmptyState({
         </Text>
       )}
       {actionLabel && onAction && (
-        <TouchableOpacity
+        <Pressable
           onPress={onAction}
-          activeOpacity={0.7}
           className="bg-primary px-5 min-h-[44px] py-2.5 rounded-xl items-center justify-center"
+          style={({ pressed }) => (pressed ? { opacity: 0.75 } : null)}
         >
           <Text className="text-white font-semibold">{actionLabel}</Text>
-        </TouchableOpacity>
+        </Pressable>
       )}
     </View>
   );

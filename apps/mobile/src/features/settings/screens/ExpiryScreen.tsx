@@ -20,6 +20,7 @@ import { EmptyState } from "../../../components/ui/EmptyState";
 import { ErrorCard } from "../../../components/ui/ErrorCard";
 import { hapticSuccess, hapticError } from "../../../lib/haptics";
 import { useResponsive } from "../../../hooks/useResponsive";
+import { COLORS } from "../../../lib/constants";
 
 const FILTERS = ["expired", "7d", "30d", "90d", "all"] as const;
 const FILTER_LABELS: Record<(typeof FILTERS)[number], string> = {
@@ -114,7 +115,7 @@ export function ExpiryScreen() {
                 className="bg-red-100 px-3 py-1.5 rounded-lg min-h-[36px] justify-center"
               >
                 {writeOff.isPending ? (
-                  <ActivityIndicator size="small" color="#dc2626" />
+                  <ActivityIndicator size="small" color={COLORS.error} />
                 ) : (
                   <Text className="text-xs font-semibold text-red-700">
                     Write off
@@ -190,7 +191,7 @@ export function ExpiryScreen() {
           ListEmptyComponent={
             isFetching ? (
               <View className="py-16 items-center">
-                <ActivityIndicator size="large" color="#e67e22" />
+                <ActivityIndicator size="large" color={COLORS.primary} />
               </View>
             ) : (
               <EmptyState

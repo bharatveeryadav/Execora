@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { Customer } from "@execora/shared";
+import { COLORS } from "../../../lib/constants";
 
 export interface SavedInvoice {
   id: string;
@@ -111,7 +112,7 @@ export function SuccessModal({
             onPress={onPrint}
             className="flex-row items-center justify-center gap-2 bg-slate-700 rounded-2xl h-12 mb-3"
           >
-            <Ionicons name="print-outline" size={20} color="#fff" />
+            <Ionicons name="print-outline" size={20} color={COLORS.text.inverted} />
             <Text className="text-white font-semibold text-sm">
               Print Receipt
             </Text>

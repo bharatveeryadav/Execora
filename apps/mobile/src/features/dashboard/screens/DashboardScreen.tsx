@@ -57,10 +57,10 @@ import { formatCurrency } from "../../../lib/utils";
 import { TYPO } from "../../../lib/typography";
 
 const ACTION_COLORS: Record<string, string> = {
-  primary: "#e67e22",
-  secondary: "#3d7a9e",
-  success: "#1a9248",
-  warning: "#e6a319",
+  primary: COLORS.primary,
+  secondary: COLORS.secondary,
+  success: COLORS.success,
+  warning: COLORS.warning,
 };
 
 const QUICK_ACTIONS: QuickActionItem[] = [
@@ -69,7 +69,7 @@ const QUICK_ACTIONS: QuickActionItem[] = [
     icon: "flash-outline",
     primary: true,
     route: "InvoiceForm",
-    color: "#ffffff",
+    color: COLORS.text.inverted,
     params: { startAsWalkIn: true },
   },
   {
@@ -410,9 +410,13 @@ function daysLabel(days: number) {
 }
 
 function reminderPillStyle(days: number) {
-  if (days <= 3) return { borderColor: "#fecaca", backgroundColor: "#fef2f2" };
-  if (days <= 5) return { borderColor: "#fde68a", backgroundColor: "#fffbeb" };
-  return { borderColor: "#bbf7d0", backgroundColor: "#f0fdf4" };
+  if (days <= 3) {
+    return { borderColor: COLORS.border.light, backgroundColor: COLORS.bg.error };
+  }
+  if (days <= 5) {
+    return { borderColor: COLORS.warning, backgroundColor: COLORS.bg.warning };
+  }
+  return { borderColor: COLORS.success, backgroundColor: COLORS.bg.success };
 }
 
 const SECTION_GAP = 16;
@@ -420,7 +424,7 @@ const SECTION_GAP = 16;
 const styles = StyleSheet.create({
   heroShadow: Platform.select({
     ios: {
-      shadowColor: "#000",
+      shadowColor: COLORS.text.primary,
       shadowOffset: { width: 0, height: 10 },
       shadowOpacity: 0.08,
       shadowRadius: 20,
@@ -432,7 +436,7 @@ const styles = StyleSheet.create({
   }),
   cardShadow: Platform.select({
     ios: {
-      shadowColor: "#000",
+      shadowColor: COLORS.text.primary,
       shadowOffset: { width: 0, height: 5 },
       shadowOpacity: 0.06,
       shadowRadius: 12,
@@ -821,7 +825,7 @@ export function DashboardScreen({ navigation, route }: Props) {
   const overdueScore = Math.max(0, 100 - overdueCount * 10);
   const overall = Math.round((collectionRate + stockScore + overdueScore) / 3);
   const overallColor =
-    overall >= 70 ? "#1a9248" : overall >= 50 ? "#e6a319" : "#dc2626";
+    overall >= 70 ? COLORS.success : overall >= 50 ? COLORS.warning : COLORS.danger;
   const overallLabel =
     overall >= 70 ? "Good" : overall >= 50 ? "Under Target" : "Critical";
 
@@ -1145,7 +1149,7 @@ export function DashboardScreen({ navigation, route }: Props) {
                 {businessName}
               </Text>
             </View>
-            <Ionicons name="chevron-down" size={18} color="#94a3b8" />
+            <Ionicons name="chevron-down" size={18} color={COLORS.slate[400]} />
           </TouchableOpacity>
 
           {/* Business menu modal */}
@@ -1182,7 +1186,7 @@ export function DashboardScreen({ navigation, route }: Props) {
                     <Ionicons
                       name="radio-button-on"
                       size={18}
-                      color="#e67e22"
+                      color={COLORS.primary}
                     />
                   </View>
                   <View className="flex-row items-center pr-8">
@@ -1249,7 +1253,7 @@ export function DashboardScreen({ navigation, route }: Props) {
                     }}
                     className="flex-row items-center gap-1.5 py-2.5 px-4 rounded-lg bg-primary/10"
                   >
-                    <Ionicons name="add" size={18} color="#e67e22" />
+                    <Ionicons name="add" size={18} color={COLORS.primary} />
                     <Text className="text-xs font-medium text-slate-700">
                       Add New Business
                     </Text>
@@ -1271,9 +1275,9 @@ export function DashboardScreen({ navigation, route }: Props) {
                 flashCollection || flashStock || flashReceivables ? 2 : 1,
               borderColor:
                 flashCollection || flashStock || flashReceivables
-                  ? "#e67e22"
-                  : "#e2e8f0",
-              backgroundColor: "#fff",
+                  ? COLORS.primary
+                  : COLORS.border.light,
+              backgroundColor: COLORS.text.inverted,
               padding: businessHealthExpanded ? 14 : 12,
               marginBottom: 16,
               ...(styles.cardShadow as object),
@@ -1289,7 +1293,7 @@ export function DashboardScreen({ navigation, route }: Props) {
                   style={{
                     borderWidth: 3,
                     borderColor: overallColor,
-                    backgroundColor: "#f8fafc",
+                    backgroundColor: COLORS.slate[50],
                   }}
                 >
                   <Text
@@ -1308,7 +1312,7 @@ export function DashboardScreen({ navigation, route }: Props) {
                     {healthRefreshing && (
                       <ActivityIndicator
                         size="small"
-                        color="#e67e22"
+                        color={COLORS.primary}
                         style={{ marginLeft: 4 }}
                       />
                     )}
@@ -1332,7 +1336,7 @@ export function DashboardScreen({ navigation, route }: Props) {
                 <Ionicons
                   name={businessHealthExpanded ? "chevron-up" : "chevron-down"}
                   size={16}
-                  color="#e67e22"
+                  color={COLORS.primary}
                 />
               </TouchableOpacity>
             </View>
@@ -1343,10 +1347,10 @@ export function DashboardScreen({ navigation, route }: Props) {
                 <View
                   style={{
                     flexDirection: "row",
-                    backgroundColor: "#f8fafc",
+                    backgroundColor: COLORS.slate[50],
                     borderRadius: 10,
                     borderWidth: 1,
-                    borderColor: "#e2e8f0",
+                    borderColor: COLORS.border.light,
                     padding: 10,
                     marginTop: 10,
                     marginBottom: 10,
@@ -1358,7 +1362,7 @@ export function DashboardScreen({ navigation, route }: Props) {
                       flex: 1,
                       alignItems: "center",
                       borderRightWidth: 1,
-                      borderRightColor: "#e2e8f0",
+                      borderRightColor: COLORS.border.light,
                     }}
                     activeOpacity={0.7}
                   >
@@ -1378,7 +1382,7 @@ export function DashboardScreen({ navigation, route }: Props) {
                       flex: 1,
                       alignItems: "center",
                       borderRightWidth: 1,
-                      borderRightColor: "#e2e8f0",
+                      borderRightColor: COLORS.border.light,
                     }}
                     activeOpacity={0.7}
                   >
@@ -1401,7 +1405,7 @@ export function DashboardScreen({ navigation, route }: Props) {
                       flex: 1,
                       alignItems: "center",
                       borderRightWidth: 1,
-                      borderRightColor: "#e2e8f0",
+                      borderRightColor: COLORS.border.light,
                     }}
                     activeOpacity={0.7}
                   >
@@ -1416,10 +1420,10 @@ export function DashboardScreen({ navigation, route }: Props) {
                       style={{
                         color:
                           collectionRate >= 80
-                            ? "#1a9248"
+                            ? COLORS.success
                             : collectionRate >= 50
-                              ? "#e6a319"
-                              : "#dc2626",
+                              ? COLORS.warning
+                              : COLORS.danger,
                       }}
                     >
                       {collectionRate}%
@@ -1469,14 +1473,14 @@ export function DashboardScreen({ navigation, route }: Props) {
                 >
                   {(() => {
                     const scoreColor = (n: number) =>
-                      n >= 80 ? "#1a9248" : n >= 50 ? "#e6a319" : "#dc2626";
+                      n >= 80 ? COLORS.success : n >= 50 ? COLORS.warning : COLORS.danger;
                     const cardStyle = (flash: boolean) => ({
                       flex: 1,
                       minWidth: 0,
                       borderRadius: 10,
                       borderWidth: flash ? 2 : 1,
-                      borderColor: flash ? "#e67e22" : "#e2e8f0",
-                      backgroundColor: "#f8fafc",
+                      borderColor: flash ? COLORS.primary : COLORS.border.light,
+                      backgroundColor: COLORS.slate[50],
                       padding: 10,
                       minHeight: 58,
                     });
@@ -1561,7 +1565,7 @@ export function DashboardScreen({ navigation, route }: Props) {
                     className="flex-row flex-wrap items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 mb-2"
                   >
                     <View className="flex-row items-center gap-1 shrink-0">
-                      <Ionicons name="alert-circle" size={14} color="#dc2626" />
+                      <Ionicons name="alert-circle" size={14} color={COLORS.danger} />
                       <Text className={TYPO.labelBold + " text-red-700"}>
                         Overdue ({overdueList.length})
                       </Text>
@@ -1600,7 +1604,7 @@ export function DashboardScreen({ navigation, route }: Props) {
                     className="flex-row flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5"
                   >
                     <View className="flex-row items-center gap-1">
-                      <Ionicons name="time-outline" size={14} color="#e67e22" />
+                      <Ionicons name="time-outline" size={14} color={COLORS.primary} />
                       <Text className={TYPO.labelBold + " text-primary"}>
                         Upcoming ({upcomingReminders.length})
                       </Text>
@@ -1766,10 +1770,10 @@ export function DashboardScreen({ navigation, route }: Props) {
                     style={{
                       color:
                         collectionRate >= 80
-                          ? "#1a9248"
+                            ? COLORS.success
                           : collectionRate >= 50
-                            ? "#e6a319"
-                            : "#dc2626",
+                              ? COLORS.warning
+                              : COLORS.danger,
                     }}
                   >
                     {collectionRate}%
@@ -1793,7 +1797,7 @@ export function DashboardScreen({ navigation, route }: Props) {
                   <Ionicons
                     name="trending-up-outline"
                     size={13}
-                    color="#64748b"
+                    color={COLORS.slate[500]}
                   />
                   <Text className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                     Today's P&L
@@ -1804,10 +1808,10 @@ export function DashboardScreen({ navigation, route }: Props) {
                   style={{
                     color:
                       collectionRate >= 80
-                        ? "#1a9248"
+                        ? COLORS.success
                         : collectionRate >= 50
-                          ? "#e6a319"
-                          : "#dc2626",
+                          ? COLORS.warning
+                          : COLORS.danger,
                   }}
                 >
                   {collectionRate}% collected
@@ -1833,13 +1837,13 @@ export function DashboardScreen({ navigation, route }: Props) {
                       <View
                         style={{
                           width: `${collectedPct}%`,
-                          backgroundColor: "#22c55e",
+                          backgroundColor: COLORS.success,
                         }}
                       />
                       <View
                         style={{
                           width: `${pendingPct}%`,
-                          backgroundColor: "#f59e0b",
+                          backgroundColor: COLORS.warning,
                         }}
                       />
                     </View>
@@ -1867,7 +1871,7 @@ export function DashboardScreen({ navigation, route }: Props) {
                   </Text>
                 </View>
                 <View className="flex-row items-center gap-1.5">
-                  <Ionicons name="receipt-outline" size={11} color="#94a3b8" />
+                  <Ionicons name="receipt-outline" size={11} color={COLORS.slate[400]} />
                   <Text className="text-[11px] text-slate-500">
                     {dailySummary?.invoiceCount ?? 0} bills
                   </Text>
@@ -2034,7 +2038,7 @@ export function DashboardScreen({ navigation, route }: Props) {
           <View className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 mb-4">
             <View className="flex-row items-center gap-3">
               <View className="rounded-full bg-primary/10 p-2">
-                <Ionicons name="mic" size={18} color="#e67e22" />
+                <Ionicons name="mic" size={18} color={COLORS.primary} />
               </View>
               <View className="flex-1 min-w-0">
                 <Text className={TYPO.sectionTitle + " text-primary/80"}>
@@ -2318,7 +2322,7 @@ export function DashboardScreen({ navigation, route }: Props) {
                 accessibilityLabel="Close quick actions"
                 className="h-10 w-10 rounded-xl bg-slate-100 items-center justify-center"
               >
-                <Ionicons name="close" size={20} color="#64748b" />
+                <Ionicons name="close" size={20} color={COLORS.slate[500]} />
               </Pressable>
             </View>
 
@@ -2343,8 +2347,8 @@ export function DashboardScreen({ navigation, route }: Props) {
                           : 10,
                       borderRadius: 14,
                       borderWidth: 1,
-                      borderColor: "#e2e8f0",
-                      backgroundColor: "#f8fafc",
+                      borderColor: COLORS.border.light,
+                      backgroundColor: COLORS.slate[50],
                       paddingHorizontal: popupGroupPad,
                       paddingBottom: compactAddPopup ? 8 : 12,
                     }}
@@ -2434,8 +2438,8 @@ export function DashboardScreen({ navigation, route }: Props) {
                       groupIndex === ADD_TRANSACTION_GROUPS.length - 1 ? 0 : 10,
                     borderRadius: 14,
                     borderWidth: 1,
-                    borderColor: "#e2e8f0",
-                    backgroundColor: "#f8fafc",
+                    borderColor: COLORS.border.light,
+                    backgroundColor: COLORS.slate[50],
                     paddingHorizontal: popupGroupPad,
                     paddingBottom: compactAddPopup ? 8 : 12,
                   }}
@@ -2483,10 +2487,10 @@ export function DashboardScreen({ navigation, route }: Props) {
                                 gap: 4,
                                 borderRadius: 12,
                                 borderWidth: 1,
-                                borderColor: "#dbe2ea",
+                                borderColor: COLORS.border.light,
                                 backgroundColor: pressed
                                   ? COLORS.slate[50]
-                                  : "#ffffff",
+                                  : COLORS.text.inverted,
                                 paddingVertical: compactAddPopup ? 6 : 8,
                                 paddingHorizontal: contentWidth < 360 ? 2 : 4,
                               })}
@@ -2536,7 +2540,7 @@ export function DashboardScreen({ navigation, route }: Props) {
             {expirySelected && (
               <>
                 <View className="flex-row items-center gap-2 mb-3">
-                  <Ionicons name="warning" size={20} color="#dc2626" />
+                  <Ionicons name="warning" size={20} color={COLORS.danger} />
                   <Text className={TYPO.value}>Expiry Stock Alert</Text>
                 </View>
                 <View

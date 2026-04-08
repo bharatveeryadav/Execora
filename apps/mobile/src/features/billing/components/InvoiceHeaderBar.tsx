@@ -12,6 +12,7 @@
 import React from "react";
 import { View, Text, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { COLORS } from "../../../lib/constants";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -170,14 +171,14 @@ export function InvoiceHeaderBar({
           {/* Dates column */}
           <View className="items-end shrink-0 gap-0.5">
             <View className="flex-row items-center gap-1">
-              <Ionicons name="calendar-outline" size={11} color="#94a3b8" />
+              <Ionicons name="calendar-outline" size={11} color={COLORS.slate[400]} />
               <Text className="text-[11px] text-slate-500">
                 {fmtDate(documentDate)}
               </Text>
             </View>
             {dueDate ? (
               <View className="flex-row items-center gap-1">
-                <Ionicons name="time-outline" size={11} color="#94a3b8" />
+                <Ionicons name="time-outline" size={11} color={COLORS.slate[400]} />
                 <Text className="text-[11px] text-slate-500">
                   Due {fmtDate(dueDate)}
                 </Text>
@@ -186,7 +187,7 @@ export function InvoiceHeaderBar({
           </View>
 
           {/* Edit chevron */}
-          <Ionicons name="pencil-outline" size={15} color="#94a3b8" />
+          <Ionicons name="pencil-outline" size={15} color={COLORS.slate[400]} />
         </View>
       </View>
     </Pressable>

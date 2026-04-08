@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { fuzzyFilter, type Product } from "@execora/shared";
+import { COLORS } from "../../../lib/constants";
 
 export interface ProductPickerModalProps {
   visible: boolean;
@@ -91,7 +92,7 @@ export function ProductPickerModal({
             <Text className="text-sm font-bold text-primary">
               ₹{getEffectivePrice(p).toLocaleString("en-IN")}
             </Text>
-            <Ionicons name="add-circle" size={22} color="#e67e22" />
+            <Ionicons name="add-circle" size={22} color={COLORS.primary} />
           </View>
         </TouchableOpacity>
       );
@@ -112,18 +113,18 @@ export function ProductPickerModal({
             Browse / Add items
           </Text>
           <TouchableOpacity onPress={onClose} className="p-2 -m-2">
-            <Ionicons name="close" size={24} color="#64748b" />
+            <Ionicons name="close" size={24} color={COLORS.slate[500]} />
           </TouchableOpacity>
         </View>
 
         <View className="px-4 py-2 border-b border-slate-100">
           <View className="flex-row items-center bg-slate-100 rounded-lg px-3">
-            <Ionicons name="search" size={18} color="#94a3b8" />
+            <Ionicons name="search" size={18} color={COLORS.slate[400]} />
             <TextInput
               value={search}
               onChangeText={setSearch}
               placeholder="Type to search all items…"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={COLORS.slate[400]}
               className="flex-1 py-2.5 px-2 text-sm text-slate-800"
               autoFocus
             />

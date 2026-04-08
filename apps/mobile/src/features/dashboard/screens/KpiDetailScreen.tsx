@@ -20,6 +20,7 @@ import { invoiceApi } from "../../billing/api/invoiceApi";
 import { customerApi } from "../../parties/api/customerApi";
 import { summaryApi } from "../../accounting/api/accountingApi";
 import { Skeleton } from "../../../components/ui/Skeleton";
+import { COLORS } from "../../../lib/constants";
 import type { MoreStackParams } from "../../../navigation";
 
 type Props = NativeStackScreenProps<MoreStackParams, "KpiDetail">;
@@ -29,7 +30,10 @@ const today = new Date().toISOString().slice(0, 10);
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: Invoice["status"] }) {
-  const map: Record<Invoice["status"], { bg: string; text: string; label: string }> = {
+  const map: Record<
+    Invoice["status"],
+    { bg: string; text: string; label: string }
+  > = {
     draft: { bg: "bg-slate-100", text: "text-slate-500", label: "Draft" },
     confirmed: { bg: "bg-blue-100", text: "text-blue-600", label: "Pending" },
     paid: { bg: "bg-green-100", text: "text-green-700", label: "Paid" },
@@ -57,7 +61,10 @@ function InvoiceRow({ inv }: { inv: Invoice }) {
   return (
     <View className="flex-row items-center px-4 py-3 border-b border-slate-100">
       <View className="flex-1 mr-3">
-        <Text className="text-sm font-semibold text-slate-800" numberOfLines={1}>
+        <Text
+          className="text-sm font-semibold text-slate-800"
+          numberOfLines={1}
+        >
           {customerName}
         </Text>
         <Text className="text-xs text-slate-400 mt-0.5">
@@ -65,7 +72,9 @@ function InvoiceRow({ inv }: { inv: Invoice }) {
         </Text>
       </View>
       <View className="items-end gap-1">
-        <Text className="text-sm font-bold text-slate-800">₹{inr(inv.total)}</Text>
+        <Text className="text-sm font-bold text-slate-800">
+          ₹{inr(inv.total)}
+        </Text>
         <StatusBadge status={inv.status} />
       </View>
     </View>
@@ -87,11 +96,16 @@ function CustomerRow({ customer }: { customer: Customer }) {
         </Text>
       </View>
       <View className="flex-1 mr-3">
-        <Text className="text-sm font-semibold text-slate-800" numberOfLines={1}>
+        <Text
+          className="text-sm font-semibold text-slate-800"
+          numberOfLines={1}
+        >
           {customer.name}
         </Text>
         {customer.phone ? (
-          <Text className="text-xs text-slate-400 mt-0.5">{customer.phone}</Text>
+          <Text className="text-xs text-slate-400 mt-0.5">
+            {customer.phone}
+          </Text>
         ) : null}
       </View>
       <View className="items-end">
@@ -113,13 +127,19 @@ function CustomerRow({ customer }: { customer: Customer }) {
 function RateRow({ customer }: { customer: Customer }) {
   const rate =
     customer.totalPurchases > 0
-      ? Math.min(100, Math.round((customer.totalPayments / customer.totalPurchases) * 100))
+      ? Math.min(
+          100,
+          Math.round((customer.totalPayments / customer.totalPurchases) * 100),
+        )
       : 0;
   const barWidth = `${rate}%` as `${number}%`;
   return (
     <View className="px-4 py-3 border-b border-slate-100">
       <View className="flex-row items-center justify-between mb-1.5">
-        <Text className="text-sm font-semibold text-slate-800 flex-1 mr-2" numberOfLines={1}>
+        <Text
+          className="text-sm font-semibold text-slate-800 flex-1 mr-2"
+          numberOfLines={1}
+        >
           {customer.name}
         </Text>
         <Text
@@ -222,7 +242,9 @@ export function KpiDetailScreen({ route, navigation }: Props) {
 
   const overdueCustomers = useMemo(() => {
     const all: Customer[] = (customersData as any)?.customers ?? [];
-    return all.filter((c) => c.balance > 0).sort((a, b) => b.balance - a.balance);
+    return all
+      .filter((c) => c.balance > 0)
+      .sort((a, b) => b.balance - a.balance);
   }, [customersData]);
 
   const topCollectors = useMemo(() => {
@@ -230,8 +252,10 @@ export function KpiDetailScreen({ route, navigation }: Props) {
     return all
       .filter((c) => c.totalPurchases > 0)
       .sort((a, b) => {
-        const rateA = a.totalPurchases > 0 ? a.totalPayments / a.totalPurchases : 0;
-        const rateB = b.totalPurchases > 0 ? b.totalPayments / b.totalPurchases : 0;
+        const rateA =
+          a.totalPurchases > 0 ? a.totalPayments / a.totalPurchases : 0;
+        const rateB =
+          b.totalPurchases > 0 ? b.totalPayments / b.totalPurchases : 0;
         return rateB - rateA;
       })
       .slice(0, 30);
@@ -243,31 +267,36 @@ export function KpiDetailScreen({ route, navigation }: Props) {
 
   const meta: Record<
     "sales" | "pending" | "collected" | "rate",
-    { title: string; subtitle: string; icon: keyof typeof Ionicons.glyphMap; iconColor: string }
+    {
+      title: string;
+      subtitle: string;
+      icon: keyof typeof Ionicons.glyphMap;
+      iconColor: string;
+    }
   > = {
     sales: {
       title: "Today's Sales",
       subtitle: "Invoices created today",
       icon: "receipt-outline",
-      iconColor: "#3b82f6",
+      iconColor: COLORS.secondary,
     },
     pending: {
       title: "Pending Dues",
       subtitle: "Customers with outstanding balance",
       icon: "time-outline",
-      iconColor: "#f59e0b",
+      iconColor: COLORS.warning,
     },
     collected: {
       title: "Collected",
       subtitle: "Payments received today by mode",
       icon: "checkmark-circle-outline",
-      iconColor: "#22c55e",
+      iconColor: COLORS.success,
     },
     rate: {
       title: "Collection Rate",
       subtitle: "Collection % per customer (top 30)",
       icon: "bar-chart-outline",
-      iconColor: "#8b5cf6",
+      iconColor: COLORS.secondary,
     },
   };
 
@@ -297,7 +326,9 @@ export function KpiDetailScreen({ route, navigation }: Props) {
       return (
         <View className="mx-4 mt-4 mb-2 bg-blue-50 rounded-xl p-4 flex-row items-center">
           <View className="flex-1">
-            <Text className="text-xs text-blue-500 font-medium">Total Today</Text>
+            <Text className="text-xs text-blue-500 font-medium">
+              Total Today
+            </Text>
             <Text className="text-xl font-bold text-blue-700 mt-0.5">
               ₹{inr(totalSales)}
             </Text>
@@ -316,13 +347,17 @@ export function KpiDetailScreen({ route, navigation }: Props) {
       return (
         <View className="mx-4 mt-4 mb-2 bg-amber-50 rounded-xl p-4 flex-row items-center">
           <View className="flex-1">
-            <Text className="text-xs text-amber-500 font-medium">Total Pending</Text>
+            <Text className="text-xs text-amber-500 font-medium">
+              Total Pending
+            </Text>
             <Text className="text-xl font-bold text-amber-700 mt-0.5">
               ₹{inr(totalPending)}
             </Text>
           </View>
           <View className="items-end">
-            <Text className="text-xs text-amber-500 font-medium">Customers</Text>
+            <Text className="text-xs text-amber-500 font-medium">
+              Customers
+            </Text>
             <Text className="text-xl font-bold text-amber-700 mt-0.5">
               {overdueCustomers.length}
             </Text>
@@ -338,16 +373,33 @@ export function KpiDetailScreen({ route, navigation }: Props) {
         <View className="mx-4 mt-4 mb-2">
           <View className="bg-green-50 rounded-xl p-4 mb-3 flex-row items-center">
             <View className="flex-1">
-              <Text className="text-xs text-green-500 font-medium">Total Collected</Text>
+              <Text className="text-xs text-green-500 font-medium">
+                Total Collected
+              </Text>
               <Text className="text-xl font-bold text-green-700 mt-0.5">
                 ₹{inr(summary?.totalPayments ?? 0)}
               </Text>
             </View>
           </View>
           <View className="flex-row gap-2">
-            <PaymentModeCard label="Cash" amount={cash} icon="cash-outline" color="#16a34a" />
-            <PaymentModeCard label="UPI" amount={upi} icon="phone-portrait-outline" color="#7c3aed" />
-            <PaymentModeCard label="Other" amount={other} icon="card-outline" color="#0284c7" />
+            <PaymentModeCard
+              label="Cash"
+              amount={cash}
+              icon="cash-outline"
+              color={COLORS.success}
+            />
+            <PaymentModeCard
+              label="UPI"
+              amount={upi}
+              icon="phone-portrait-outline"
+              color={COLORS.secondary}
+            />
+            <PaymentModeCard
+              label="Other"
+              amount={other}
+              icon="card-outline"
+              color={COLORS.warning}
+            />
           </View>
         </View>
       );
@@ -369,11 +421,17 @@ export function KpiDetailScreen({ route, navigation }: Props) {
       return (
         <View className="mx-4 mt-4 mb-2 bg-purple-50 rounded-xl p-4 flex-row items-center">
           <View className="flex-1">
-            <Text className="text-xs text-purple-500 font-medium">Avg Collection Rate</Text>
-            <Text className="text-xl font-bold text-purple-700 mt-0.5">{avgRate}%</Text>
+            <Text className="text-xs text-purple-500 font-medium">
+              Avg Collection Rate
+            </Text>
+            <Text className="text-xl font-bold text-purple-700 mt-0.5">
+              {avgRate}%
+            </Text>
           </View>
           <View className="items-end">
-            <Text className="text-xs text-purple-500 font-medium">Customers</Text>
+            <Text className="text-xs text-purple-500 font-medium">
+              Customers
+            </Text>
             <Text className="text-xl font-bold text-purple-700 mt-0.5">
               {withPurchases.length}
             </Text>
@@ -401,8 +459,14 @@ export function KpiDetailScreen({ route, navigation }: Props) {
       if (todayInvoices.length === 0) {
         return (
           <View className="items-center mt-16">
-            <Ionicons name="receipt-outline" size={44} color="#cbd5e1" />
-            <Text className="text-slate-400 mt-3 text-sm">No invoices created today</Text>
+            <Ionicons
+              name="receipt-outline"
+              size={44}
+              color={COLORS.slate[300]}
+            />
+            <Text className="text-slate-400 mt-3 text-sm">
+              No invoices created today
+            </Text>
           </View>
         );
       }
@@ -419,8 +483,14 @@ export function KpiDetailScreen({ route, navigation }: Props) {
       if (overdueCustomers.length === 0) {
         return (
           <View className="items-center mt-16">
-            <Ionicons name="checkmark-circle-outline" size={44} color="#86efac" />
-            <Text className="text-slate-400 mt-3 text-sm">No pending dues — all clear!</Text>
+            <Ionicons
+              name="checkmark-circle-outline"
+              size={44}
+              color={COLORS.bg.success}
+            />
+            <Text className="text-slate-400 mt-3 text-sm">
+              No pending dues — all clear!
+            </Text>
           </View>
         );
       }
@@ -435,12 +505,21 @@ export function KpiDetailScreen({ route, navigation }: Props) {
 
     if (type === "collected") {
       const all: Customer[] = (customersData as any)?.customers ?? [];
-      const payers = all.filter((c) => c.totalPayments > 0).sort((a, b) => b.totalPayments - a.totalPayments).slice(0, 30);
+      const payers = all
+        .filter((c) => c.totalPayments > 0)
+        .sort((a, b) => b.totalPayments - a.totalPayments)
+        .slice(0, 30);
       if (payers.length === 0) {
         return (
           <View className="items-center mt-16">
-            <Ionicons name="wallet-outline" size={44} color="#cbd5e1" />
-            <Text className="text-slate-400 mt-3 text-sm">No payments recorded yet</Text>
+            <Ionicons
+              name="wallet-outline"
+              size={44}
+              color={COLORS.slate[300]}
+            />
+            <Text className="text-slate-400 mt-3 text-sm">
+              No payments recorded yet
+            </Text>
           </View>
         );
       }
@@ -460,7 +539,10 @@ export function KpiDetailScreen({ route, navigation }: Props) {
                     {(c.name ?? "?")[0].toUpperCase()}
                   </Text>
                 </View>
-                <Text className="flex-1 text-sm font-semibold text-slate-800" numberOfLines={1}>
+                <Text
+                  className="flex-1 text-sm font-semibold text-slate-800"
+                  numberOfLines={1}
+                >
                   {c.name}
                 </Text>
                 <Text className="text-sm font-bold text-green-600">
@@ -477,8 +559,14 @@ export function KpiDetailScreen({ route, navigation }: Props) {
       if (topCollectors.length === 0) {
         return (
           <View className="items-center mt-16">
-            <Ionicons name="bar-chart-outline" size={44} color="#cbd5e1" />
-            <Text className="text-slate-400 mt-3 text-sm">No customer purchase data yet</Text>
+            <Ionicons
+              name="bar-chart-outline"
+              size={44}
+              color={COLORS.slate[300]}
+            />
+            <Text className="text-slate-400 mt-3 text-sm">
+              No customer purchase data yet
+            </Text>
           </View>
         );
       }
@@ -502,7 +590,7 @@ export function KpiDetailScreen({ route, navigation }: Props) {
           hitSlop={8}
           className="w-8 h-8 rounded-full bg-white border border-slate-200 items-center justify-center"
         >
-          <Ionicons name="chevron-back" size={18} color="#0f172a" />
+          <Ionicons name="chevron-back" size={18} color={COLORS.text.primary} />
         </Pressable>
         <View
           className="w-9 h-9 rounded-full items-center justify-center"
@@ -520,9 +608,13 @@ export function KpiDetailScreen({ route, navigation }: Props) {
           className="w-8 h-8 rounded-full bg-white border border-slate-200 items-center justify-center"
         >
           {isRefreshing ? (
-            <ActivityIndicator size="small" color="#64748b" />
+            <ActivityIndicator size="small" color={COLORS.slate[500]} />
           ) : (
-            <Ionicons name="refresh-outline" size={16} color="#64748b" />
+            <Ionicons
+              name="refresh-outline"
+              size={16}
+              color={COLORS.slate[500]}
+            />
           )}
         </Pressable>
       </View>

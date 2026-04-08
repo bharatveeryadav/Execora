@@ -17,6 +17,7 @@ import { fuzzyFilter, type BillingItem, type Product } from "@execora/shared";
 import { productApi } from "../../../lib/api";
 import { BarcodeScanner } from "../../../components/common/BarcodeScanner";
 import { showError } from "../../../shared/lib/alerts";
+import { COLORS } from "../../../lib/constants";
 
 interface PriceTier {
   key: number;
@@ -194,7 +195,7 @@ export function MobileItemRow({
               onFocus={() => setFocused(true)}
               onBlur={() => setTimeout(() => setFocused(false), 200)}
               placeholder="Type or scan product…"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={COLORS.slate[400]}
               className="flex-1 min-w-0 px-3 h-9 text-sm text-slate-800"
               autoFocus={isFirst && item.name === ""}
             />
@@ -203,7 +204,7 @@ export function MobileItemRow({
               className="w-9 h-9 items-center justify-center border-l border-slate-200"
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="barcode-outline" size={20} color="#e67e22" />
+              <Ionicons name="barcode-outline" size={20} color={COLORS.primary} />
             </TouchableOpacity>
           </View>
           <BarcodeScanner
@@ -243,7 +244,7 @@ export function MobileItemRow({
               onPress={() => setExpanded(false)}
               className="p-1"
             >
-              <Ionicons name="chevron-up" size={18} color="#64748b" />
+              <Ionicons name="chevron-up" size={18} color={COLORS.slate[500]} />
             </TouchableOpacity>
           </View>
           {/* 2x2 grid so Qty/Unit/Rate/Disc have room for full text */}
@@ -264,7 +265,7 @@ export function MobileItemRow({
                   value={item.unit}
                   onChangeText={(v) => onUpdate({ unit: v })}
                   placeholder="pcs"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor={COLORS.slate[400]}
                   className="border border-slate-200 rounded-lg px-2 h-9 text-sm"
                 />
               </View>
@@ -279,7 +280,7 @@ export function MobileItemRow({
                   onChangeText={(v) => onUpdate({ rate: v })}
                   keyboardType="decimal-pad"
                   placeholder="0"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor={COLORS.slate[400]}
                   className="border border-slate-200 rounded-lg px-2 h-9 text-sm"
                 />
               </View>
@@ -292,7 +293,7 @@ export function MobileItemRow({
                   onChangeText={(v) => onUpdate({ discount: v })}
                   keyboardType="decimal-pad"
                   placeholder="0"
-                  placeholderTextColor="#94a3b8"
+                  placeholderTextColor={COLORS.slate[400]}
                   className="border border-slate-200 rounded-lg px-2 h-9 text-sm"
                 />
               </View>
@@ -375,7 +376,7 @@ export function MobileItemRow({
               className="h-7 w-7 items-center justify-center"
               hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
             >
-              <Ionicons name="remove" size={14} color="#475569" />
+              <Ionicons name="remove" size={14} color={COLORS.slate[600]} />
             </TouchableOpacity>
             <Text className="min-w-[32px] text-center text-xs font-semibold text-slate-700">
               {Number.isInteger(qtyNumber) ? qtyNumber : qtyNumber.toFixed(2)}
@@ -385,7 +386,7 @@ export function MobileItemRow({
               className="h-7 w-7 items-center justify-center"
               hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
             >
-              <Ionicons name="add" size={14} color="#475569" />
+              <Ionicons name="add" size={14} color={COLORS.slate[600]} />
             </TouchableOpacity>
           </View>
 
@@ -398,7 +399,7 @@ export function MobileItemRow({
             className="h-8 w-8 items-center justify-center rounded-lg bg-red-50"
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons name="trash-outline" size={15} color="#dc2626" />
+            <Ionicons name="trash-outline" size={15} color={COLORS.error} />
           </TouchableOpacity>
         </View>
       )}

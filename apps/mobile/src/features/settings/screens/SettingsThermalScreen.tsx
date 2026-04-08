@@ -22,6 +22,7 @@ import {
 import { printReceipt } from "../../../lib/printReceipt";
 import { useResponsive } from "../../../hooks/useResponsive";
 import type { ReceiptData } from "../../../lib/thermalReceipt";
+import { COLORS } from "../../../lib/constants";
 
 type Props = NativeStackScreenProps<import("../../../navigation").MoreStackParams, "SettingsThermal">;
 
@@ -79,7 +80,7 @@ export function SettingsThermalScreen({ navigation }: Props) {
     <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
       <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="flex-row items-center border-b border-slate-200">
         <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 -ml-2">
-          <Ionicons name="arrow-back" size={24} color="#0f172a" />
+          <Ionicons name="arrow-back" size={24} color={COLORS.text.primary} />
         </TouchableOpacity>
         <Text className="text-lg font-bold text-slate-800 flex-1 ml-2">
           Thermal Print
@@ -122,7 +123,7 @@ export function SettingsThermalScreen({ navigation }: Props) {
           value={header}
           onChangeText={setHeader}
           placeholder="e.g. Visit again!"
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor={COLORS.slate[400]}
           className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 mb-4"
         />
 
@@ -133,7 +134,7 @@ export function SettingsThermalScreen({ navigation }: Props) {
           value={footer}
           onChangeText={setFooter}
           placeholder="Thank you! Visit again."
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor={COLORS.slate[400]}
           className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 mb-6"
         />
 
@@ -148,7 +149,7 @@ export function SettingsThermalScreen({ navigation }: Props) {
           onPress={() => void handleTestPrint()}
           className="flex-row items-center justify-center gap-2 py-3 rounded-xl border border-slate-200"
         >
-          <Ionicons name="print-outline" size={20} color="#64748b" />
+          <Ionicons name="print-outline" size={20} color={COLORS.slate[500]} />
           <Text className="font-semibold text-slate-600">Test Print</Text>
         </TouchableOpacity>
 
