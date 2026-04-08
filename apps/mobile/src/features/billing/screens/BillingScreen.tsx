@@ -272,7 +272,6 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
       productPickerOpen,
       newCustName,
       newCustPhone,
-      billingSetupExpanded,
       invoiceStyleExpanded,
       showInvoiceBarEdit,
       showPreview,
@@ -302,7 +301,6 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
     setNewCustPhone,
     toggleProductPicker,
     toggleDraftBanner,
-    toggleBillingSetup,
     toggleInvoiceStyle,
     toggleInvoiceBarEdit,
     togglePreview,
@@ -1021,13 +1019,6 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
     computedDueDate,
   ]);
 
-  const handleCompositionSchemeChange = useCallback((v: boolean) => {
-    setCompositionScheme(v);
-    const stored = readBizProfile();
-    stored.compositionScheme = v;
-    storage.set(BIZ_STORAGE_KEY, JSON.stringify(stored));
-  }, []);
-
   const handleRoundOffChange = useCallback(
     (v: boolean) => {
       setRoundOff(v);
@@ -1037,11 +1028,6 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
     },
     [setRoundOff],
   );
-
-  const handleNavigateSettings = useCallback(() => {
-    toggleBillingSetup(false);
-    (navigation as any).getParent()?.navigate("Settings");
-  }, [navigation, toggleBillingSetup]);
 
   const handlePriceTierChange = useCallback(
     (idx: number) => {
@@ -1098,95 +1084,6 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                   </Button>
                 </View>
               )}
-
-              {/* ── Billing setup (collapsible) ───────────────────────────── */}
-              <Accordion
-                type="single"
-                isCollapsible
-                value={billingSetupExpanded ? ["billing-setup"] : []}
-                onValueChange={(value) =>
-                  toggleBillingSetup(value.includes("billing-setup"))
-                }
-                className="mb-2"
-              >
-                <AccordionItem
-                  value="billing-setup"
-                  className="rounded-xl border border-slate-200 bg-white overflow-hidden"
-                >
-                  <AccordionHeader>
-                    <AccordionTrigger className="px-3 py-2.5">
-                      {({ isExpanded }: { isExpanded?: boolean }) => (
-                        <View className="flex-row items-center justify-between w-full">
-                          <View className="flex-row items-center gap-1.5">
-                            <Ionicons
-                              name="settings-outline"
-                              size={14}
-                              color={UI_COLORS.muted}
-                            />
-                            <AccordionTitleText className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                              Billing setup
-                            </AccordionTitleText>
-                          </View>
-                          <Text
-                            className="text-[11px] text-slate-500 truncate max-w-[45%]"
-                            numberOfLines={1}
-                          >
-                            {shopName || supplierGstin
-                              ? `${shopName}${supplierGstin ? ` · ${supplierGstin}` : ""}`
-                              : "Configure in Settings"}
-                          </Text>
-                          <Ionicons
-                            name={isExpanded ? "chevron-up" : "chevron-down"}
-                            size={16}
-                            color={UI_COLORS.subtle}
-                          />
-                        </View>
-                      )}
-                    </AccordionTrigger>
-                  </AccordionHeader>
-                  <AccordionContent className="border-t border-slate-100 px-3 py-3">
-                    <View className="gap-3">
-                      <View className="flex-row items-center justify-between">
-                        <Text className="text-sm text-slate-800">
-                          Composition scheme
-                        </Text>
-                        <Switch
-                          value={compositionScheme}
-                          onValueChange={handleCompositionSchemeChange}
-                          trackColor={{ false: UI_COLORS.border, true: UI_COLORS.primary }}
-                          thumbColor={compositionScheme ? UI_COLORS.primary : UI_COLORS.switchThumbOff}
-                        />
-                      </View>
-                      <View className="flex-row items-center justify-between">
-                        <Text className="text-sm text-slate-800">
-                          Round off total
-                        </Text>
-                        <Switch
-                          value={roundOffEnabled}
-                          onValueChange={handleRoundOffChange}
-                          trackColor={{ false: UI_COLORS.border, true: UI_COLORS.primary }}
-                          thumbColor={roundOffEnabled ? UI_COLORS.primary : UI_COLORS.switchThumbOff}
-                        />
-                      </View>
-                      <Pressable
-                        onPress={handleNavigateSettings}
-                        className="flex-row items-center gap-2 py-2"
-                        accessibilityRole="button"
-                        accessibilityLabel="Open billing settings"
-                      >
-                        <Ionicons
-                          name="settings-outline"
-                          size={16}
-                          color={UI_COLORS.primary}
-                        />
-                        <Text className="text-sm font-medium text-primary">
-                          Billing settings (GSTIN, address, bank…)
-                        </Text>
-                      </Pressable>
-                    </View>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
 
               {/* ── Invoice Style (collapsible) ───────────────────────────── */}
               <Accordion
@@ -1319,63 +1216,69 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
               />
 
               {/* ── GST ──────────────────────────────────────────────────── */}
-              <Card className="mb-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                <View>
-                  <Text className="text-sm font-semibold text-slate-800">
-                    Include GST
-                  </Text>
-                  <Text className="text-xs text-slate-500 mt-0.5">
-                    Adds 18% GST (CGST+SGST)
-                  </Text>
+              <Card className="mb-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5">
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-row items-center gap-1.5">
+                    <Ionicons
+                      name="receipt-outline"
+                      size={14}
+                      color={UI_COLORS.muted}
+                    />
+                    <Text className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                      GST
+                    </Text>
+                  </View>
+                  <Switch
+                    value={withGst}
+                    onValueChange={setWithGst}
+                    trackColor={{ false: "#cbd5e1", true: "#93c5fd" }}
+                    thumbColor={withGst ? "#2563eb" : "#f8fafc"}
+                    accessibilityLabel="Include GST"
+                    style={{ transform: [{ scaleX: 0.9 }, { scaleY: 0.9 }] }}
+                  />
                 </View>
-                <Switch
-                  value={withGst}
-                  onValueChange={setWithGst}
-                  trackColor={{ false: UI_COLORS.border, true: UI_COLORS.primary }}
-                  thumbColor={withGst ? UI_COLORS.primary : UI_COLORS.switchThumbOff}
-                />
               </Card>
 
               {/* ── Discount ─────────────────────────────────────────────── */}
               <Card className="mb-3 rounded-2xl border border-slate-200 bg-white p-4">
                 <View className="flex-row gap-3">
                   <View className="flex-1">
-                  <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                    Bill Disc %
-                  </Text>
-                  <Input className="flex-row items-center border border-slate-200 rounded-xl px-3 bg-white">
-                    <InputField
-                      value={discountPct}
-                      onChangeText={(v) => {
-                        setDiscountPct(v);
-                        if (v) setDiscountFlat("");
-                      }}
-                      keyboardType="decimal-pad"
-                      placeholder="0"
-                      placeholderTextColor={UI_COLORS.subtle}
-                      className="flex-1 h-12 text-base text-slate-800"
-                    />
-                    <Text className="text-slate-400 text-sm">%</Text>
-                  </Input>
+                    <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                      Bill Disc %
+                    </Text>
+                    <Input className="flex-row items-center border border-slate-200 rounded-xl px-3 bg-white">
+                      <InputField
+                        value={discountPct}
+                        onChangeText={(v) => {
+                          setDiscountPct(v);
+                          if (v) setDiscountFlat("");
+                        }}
+                        keyboardType="decimal-pad"
+                        placeholder="0"
+                        placeholderTextColor={UI_COLORS.subtle}
+                        className="flex-1 h-12 text-base text-slate-800"
+                      />
+                      <Text className="text-slate-400 text-sm">%</Text>
+                    </Input>
                   </View>
                   <View className="flex-1">
-                  <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                    Flat Disc ₹
-                  </Text>
-                  <Input className="flex-row items-center border border-slate-200 rounded-xl px-3 bg-white">
-                    <Text className="text-slate-400 text-sm mr-1">₹</Text>
-                    <InputField
-                      value={discountFlat}
-                      onChangeText={(v) => {
-                        setDiscountFlat(v);
-                        if (v) setDiscountPct("");
-                      }}
-                      keyboardType="decimal-pad"
-                      placeholder="0.00"
-                      placeholderTextColor={UI_COLORS.subtle}
-                      className="flex-1 h-12 text-base text-slate-800"
-                    />
-                  </Input>
+                    <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                      Flat Disc ₹
+                    </Text>
+                    <Input className="flex-row items-center border border-slate-200 rounded-xl px-3 bg-white">
+                      <Text className="text-slate-400 text-sm mr-1">₹</Text>
+                      <InputField
+                        value={discountFlat}
+                        onChangeText={(v) => {
+                          setDiscountFlat(v);
+                          if (v) setDiscountPct("");
+                        }}
+                        keyboardType="decimal-pad"
+                        placeholder="0.00"
+                        placeholderTextColor={UI_COLORS.subtle}
+                        className="flex-1 h-12 text-base text-slate-800"
+                      />
+                    </Input>
                   </View>
                 </View>
               </Card>
