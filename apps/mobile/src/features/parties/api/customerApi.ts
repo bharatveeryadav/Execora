@@ -43,7 +43,7 @@ export const customerExtApi = {
         smsEnabled?: boolean;
         preferredLanguage?: string;
       } | null;
-    }>(`/api/v1/customers/${id}/comm-prefs`),
+    }>(`/api/v1/customers/${id}/communication-prefs`),
 
   updateCommPrefs: (
     id: string,
@@ -56,7 +56,7 @@ export const customerExtApi = {
       preferredLanguage?: string;
     },
   ) =>
-    apiFetch<{ prefs: unknown }>(`/api/v1/customers/${id}/comm-prefs`, {
+    apiFetch<{ prefs: unknown }>(`/api/v1/customers/${id}/communication-prefs`, {
       method: "PUT",
       body: JSON.stringify(data),
     }),
@@ -71,7 +71,16 @@ export const reminderApi = {
         scheduledTime: string;
         message?: string;
       }>;
-    }>(`/api/v1/reminders${customerId ? `?customerId=${customerId}` : ""}`),
+    }>(`/api/v1/reminders${customerId ? `?customerId=${customerId}` : ""}`) as Promise<{
+      reminders: Array<{
+        id: string;
+        customerId?: string;
+        amount?: number;
+        status: string;
+        scheduledTime: string;
+        message?: string;
+      }>;
+    }>,
 
   create: (data: {
     customerId: string;
@@ -104,6 +113,11 @@ export const reminderApi = {
     }>("/api/v1/reminders/bulk", {
       method: "POST",
       body: JSON.stringify(data),
+    }),
+
+  cancel: (id: string) =>
+    apiFetch<{ reminder: unknown }>(`/api/v1/reminders/${id}/cancel`, {
+      method: "POST",
     }),
 };
 
