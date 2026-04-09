@@ -667,7 +667,6 @@ const TAB_ICONS_OUTLINE: Record<string, keyof typeof Ionicons.glyphMap> = {
 
 const TAB_ACTIVE_COLOR = "#0f172a";
 const TAB_INACTIVE_COLOR = "#475569";
-import { useResponsive, BREAKPOINTS } from "../hooks/useResponsive";
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   const iconName = focused
@@ -678,20 +677,7 @@ function TabIcon({ name, focused }: { name: string; focused: boolean }) {
 }
 
 function ResponsiveTabBar(props: React.ComponentProps<typeof BottomTabBar>) {
-  const { width, isTablet } = useResponsive();
-  const constrainWidth = isTablet || width > BREAKPOINTS.maxContentWidth;
-  return (
-    <View style={{ alignItems: "center", width: "100%" }}>
-      <View
-        style={{
-          width: constrainWidth ? BREAKPOINTS.maxContentWidth : "100%",
-          maxWidth: "100%",
-        }}
-      >
-        <BottomTabBar {...props} />
-      </View>
-    </View>
-  );
+  return <BottomTabBar {...props} />;
 }
 
 function MainTabs() {

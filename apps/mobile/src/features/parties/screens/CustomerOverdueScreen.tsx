@@ -46,7 +46,7 @@ type Props = NativeStackScreenProps<
 
 export function OverdueScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
-  const { contentPad, contentWidth } = useResponsive();
+  const { contentPad } = useResponsive();
 
   const { data, isFetching, refetch } = useQuery({
     queryKey: ["customers", "overdue"],
@@ -139,7 +139,7 @@ export function OverdueScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={{ flex: 1, width: "100%", alignItems: "center" }}>
-        <View style={{ width: "100%", maxWidth: contentWidth, flex: 1 }}>
+        <View style={{ width: "100%", flex: 1 }}>
           {/* Header */}
           <View style={[styles.header, { paddingHorizontal: contentPad }]}>
             <Text style={styles.headerTitle}>Overdue / Udhaar</Text>

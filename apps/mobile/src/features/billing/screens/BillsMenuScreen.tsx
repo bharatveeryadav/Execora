@@ -21,7 +21,7 @@ type Props = NativeStackScreenProps<InvoicesStackParams, "BillsMenu">;
 
 export function BillsMenuScreen({ navigation }: Props) {
   const nav = navigation as any;
-  const { contentPad: pad, contentWidth } = useResponsive();
+  const { contentPad: pad } = useResponsive();
 
   function navigateToForm(documentType: DocumentType) {
     navigation.navigate("InvoiceForm", { documentType });
@@ -45,7 +45,7 @@ export function BillsMenuScreen({ navigation }: Props) {
           paddingBottom: 24,
         }}
       >
-        <View style={{ width: "100%", maxWidth: contentWidth }}>
+        <View style={{ width: "100%" }}>
           <View className="rounded-2xl border border-slate-200 bg-white px-4 py-4 mb-3">
             <Text className={TYPO.pageTitle}>Bills Actions</Text>
             <Text className="text-xs text-slate-500 mt-1">

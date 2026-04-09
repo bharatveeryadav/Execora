@@ -47,6 +47,7 @@ import { MAX_FONT_SIZE_MULTIPLIER } from "./lib/typography";
 import { useModuleStore } from "./stores/moduleStore";
 import { GluestackUIProvider } from "@gluestack-ui/themed";
 import { config as gluestackConfig } from "@gluestack-ui/config";
+import { BREAKPOINTS } from "./hooks/useResponsive";
 
 // Boot the API client once (token storage injected)
 bootApi();
@@ -241,7 +242,11 @@ function AppContentInner() {
         }}
       >
         <StatusBar style="auto" />
-        <RootNavigator />
+        <View style={styles.navFrameOuter}>
+          <View style={styles.navFrameInner}>
+            <RootNavigator />
+          </View>
+        </View>
       </NavigationContainer>
     </>
   );
@@ -318,6 +323,16 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "600",
     fontSize: SIZES.FONT.lg,
+  },
+  navFrameOuter: {
+    flex: 1,
+    width: "100%",
+    alignItems: "center",
+  },
+  navFrameInner: {
+    flex: 1,
+    width: "100%",
+    maxWidth: BREAKPOINTS.maxContentWidth,
   },
 });
 

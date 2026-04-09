@@ -220,7 +220,7 @@ type Props = NativeStackScreenProps<
 >;
 
 export function MoreScreen({ navigation }: Props) {
-  const { contentPad, contentWidth } = useResponsive();
+  const { contentPad } = useResponsive();
 
   const handlePress = (tile: Tile) => {
     const parent = navigation.getParent() as any;
@@ -247,7 +247,7 @@ export function MoreScreen({ navigation }: Props) {
         }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={{ width: "100%", maxWidth: contentWidth }}>
+        <View style={{ width: "100%" }}>
           {/* Header */}
           <View style={{ paddingBottom: 24 }}>
             <Text className={TYPO.pageTitle}>More</Text>
@@ -270,7 +270,9 @@ export function MoreScreen({ navigation }: Props) {
                       onPress={() => handlePress(tile)}
                       className="flex-row items-center gap-3 px-4 py-3.5"
                       style={({ pressed }) => ({
-                        backgroundColor: pressed ? COLORS.bg.primary : COLORS.text.inverted,
+                        backgroundColor: pressed
+                          ? COLORS.bg.primary
+                          : COLORS.text.inverted,
                         minHeight: MIN_TOUCH + 8,
                         borderBottomWidth:
                           idx < section.tiles.length - 1 ? 1 : 0,

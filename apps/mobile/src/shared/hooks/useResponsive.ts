@@ -20,7 +20,7 @@ export const BREAKPOINTS = {
   small: 360,
   large: 430,
   tablet: 768,
-  maxContentWidth: 480,
+  maxContentWidth: 430,
 } as const;
 
 export function useResponsive() {

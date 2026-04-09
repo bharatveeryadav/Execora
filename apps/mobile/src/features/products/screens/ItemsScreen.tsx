@@ -471,9 +471,7 @@ export function ItemsScreen({ navigation }: Props) {
         }}
         className=""
       >
-        <View
-          style={{ width: "100%", maxWidth: contentWidth, alignSelf: "center" }}
-        >
+        <View style={{ width: "100%", alignSelf: "center" }}>
           <View
             className={`rounded-[24px] border border-slate-200 bg-white ${
               isSmall ? "px-3.5 pt-3 pb-3" : "px-4 pt-3.5 pb-3.5"
@@ -724,7 +722,11 @@ export function ItemsScreen({ navigation }: Props) {
                   {/* Categories */}
                   <View className="mb-2 flex-row items-center">
                     <View className="mr-2 h-6 w-6 items-center justify-center rounded-lg bg-slate-100">
-                      <Ionicons name="grid-outline" size={13} color={COLORS.slate[500]} />
+                      <Ionicons
+                        name="grid-outline"
+                        size={13}
+                        color={COLORS.slate[500]}
+                      />
                     </View>
                     <ScrollView
                       horizontal
@@ -947,9 +949,6 @@ export function ItemsScreen({ navigation }: Props) {
       {showHint && (
         <View
           style={{
-            width: "100%",
-            maxWidth: contentWidth,
-            alignSelf: "center",
             marginTop: 12,
           }}
           className="rounded-2xl border border-primary/30 bg-primary/5 px-4 py-4"
@@ -995,9 +994,6 @@ export function ItemsScreen({ navigation }: Props) {
           <Pressable
             onPress={() => requestAnimationFrame(() => setFilter("low"))}
             style={{
-              width: "100%",
-              maxWidth: contentWidth,
-              alignSelf: "center",
               marginTop: 12,
             }}
             className="bg-amber-50 border border-amber-200 rounded-xl flex-row items-center px-3 py-2.5"
@@ -1063,7 +1059,7 @@ export function ItemsScreen({ navigation }: Props) {
         scrollEventThrottle={200}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={{ width: "100%", maxWidth: contentWidth }}>
+        <View style={{ width: "100%" }}>
           {isFetching && allProducts.length === 0 && (
             <View
               className="rounded-[24px] border border-slate-200 bg-white py-12 items-center"
@@ -2013,7 +2009,11 @@ function AddProductModal({
                   accessibilityLabel="Scan item barcode"
                   className="w-12 h-12 items-center justify-center border-l border-slate-200"
                 >
-                  <Ionicons name="barcode-outline" size={24} color={COLORS.primary} />
+                  <Ionicons
+                    name="barcode-outline"
+                    size={24}
+                    color={COLORS.primary}
+                  />
                 </Pressable>
               </View>
             </FormField>

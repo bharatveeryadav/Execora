@@ -26,7 +26,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function CreditNotesScreen() {
-  const { contentPad, contentWidth } = useResponsive();
+  const { contentPad } = useResponsive();
   const { data, isFetching, isError, refetch } = useQuery({
     queryKey: ["credit-notes"],
     queryFn: () => creditNoteApi.list({ limit: 50 }),
@@ -52,7 +52,9 @@ export function CreditNotesScreen() {
           </Text>
         </View>
         <View className="items-end">
-          <Text className="font-bold text-primary">{formatCurrency(item.total)}</Text>
+          <Text className="font-bold text-primary">
+            {formatCurrency(item.total)}
+          </Text>
           <View className={`mt-1 px-2 py-0.5 rounded-full ${sc}`}>
             <Text className="text-[10px] font-semibold">{item.status}</Text>
           </View>
@@ -64,8 +66,17 @@ export function CreditNotesScreen() {
   if (isError) {
     return (
       <SafeAreaView className="flex-1 bg-background">
-        <View style={{ flex: 1, justifyContent: "center", paddingHorizontal: contentPad }}>
-          <ErrorCard message="Failed to load credit notes" onRetry={() => refetch()} />
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            paddingHorizontal: contentPad,
+          }}
+        >
+          <ErrorCard
+            message="Failed to load credit notes"
+            onRetry={() => refetch()}
+          />
         </View>
       </SafeAreaView>
     );
@@ -74,38 +85,47 @@ export function CreditNotesScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "bottom"]}>
       <View style={{ flex: 1, width: "100%", alignItems: "center" }}>
-        <View style={{ width: "100%", maxWidth: contentWidth, flex: 1 }}>
-      <View style={{ paddingHorizontal: contentPad, paddingTop: contentPad, paddingBottom: 12 }} className="border-b border-slate-200 bg-card">
-        <Text className="text-xl font-bold tracking-tight text-slate-800">Credit Notes</Text>
-      </View>
+        <View style={{ width: "100%", flex: 1 }}>
+          <View
+            style={{
+              paddingHorizontal: contentPad,
+              paddingTop: contentPad,
+              paddingBottom: 12,
+            }}
+            className="border-b border-slate-200 bg-card"
+          >
+            <Text className="text-xl font-bold tracking-tight text-slate-800">
+              Credit Notes
+            </Text>
+          </View>
 
-      <FlatList
-        data={notes}
-        keyExtractor={keyExtractor}
-        refreshControl={
-          <RefreshControl refreshing={isFetching} onRefresh={refetch} />
-        }
-        contentContainerStyle={{ padding: contentPad, paddingBottom: 32 }}
-        initialNumToRender={12}
-        maxToRenderPerBatch={12}
-        windowSize={7}
-        removeClippedSubviews
-        ItemSeparatorComponent={() => <View className="h-2" />}
-        ListEmptyComponent={
-          isFetching ? (
-            <View className="py-16 items-center">
-              <ActivityIndicator size="large" color="#e67e22" />
-            </View>
-          ) : (
-            <EmptyState
-              iconName="document-outline"
-              title="No credit notes"
-              description="Create credit notes from invoice returns"
-            />
-          )
-        }
-        renderItem={renderCreditNote}
-      />
+          <FlatList
+            data={notes}
+            keyExtractor={keyExtractor}
+            refreshControl={
+              <RefreshControl refreshing={isFetching} onRefresh={refetch} />
+            }
+            contentContainerStyle={{ padding: contentPad, paddingBottom: 32 }}
+            initialNumToRender={12}
+            maxToRenderPerBatch={12}
+            windowSize={7}
+            removeClippedSubviews
+            ItemSeparatorComponent={() => <View className="h-2" />}
+            ListEmptyComponent={
+              isFetching ? (
+                <View className="py-16 items-center">
+                  <ActivityIndicator size="large" color="#e67e22" />
+                </View>
+              ) : (
+                <EmptyState
+                  iconName="document-outline"
+                  title="No credit notes"
+                  description="Create credit notes from invoice returns"
+                />
+              )
+            }
+            renderItem={renderCreditNote}
+          />
         </View>
       </View>
     </SafeAreaView>

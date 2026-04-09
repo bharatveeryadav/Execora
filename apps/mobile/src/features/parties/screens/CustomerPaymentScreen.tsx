@@ -37,7 +37,7 @@ const PAYMENT_METHODS = [
 export function PaymentScreen({ navigation, route }: Props) {
   const { customerId } = route.params ?? {};
   const qc = useQueryClient();
-  const { contentPad, contentWidth } = useResponsive();
+  const { contentPad } = useResponsive();
 
   // Search state (if no customerId pre-filled)
   const [search, setSearch] = useState("");
@@ -124,7 +124,7 @@ export function PaymentScreen({ navigation, route }: Props) {
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={["top", "bottom"]}>
       <View style={{ flex: 1, width: "100%", alignItems: "center" }}>
-        <View style={{ width: "100%", maxWidth: contentWidth, flex: 1 }}>
+        <View style={{ width: "100%", flex: 1 }}>
           {/* Header */}
           <View
             style={{ paddingHorizontal: contentPad, paddingVertical: 12 }}

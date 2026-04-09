@@ -164,17 +164,25 @@ function readDocumentSettings(): {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     return {
       invoicePrefix:
-        typeof parsed.invoicePrefix === "string" ? parsed.invoicePrefix : undefined,
+        typeof parsed.invoicePrefix === "string"
+          ? parsed.invoicePrefix
+          : undefined,
       invoiceSuffix:
-        typeof parsed.invoiceSuffix === "string" ? parsed.invoiceSuffix : undefined,
+        typeof parsed.invoiceSuffix === "string"
+          ? parsed.invoiceSuffix
+          : undefined,
       nextInvoiceNumber:
         typeof parsed.nextInvoiceNumber === "number"
           ? parsed.nextInvoiceNumber
           : undefined,
       defaultDueDays:
-        typeof parsed.defaultDueDays === "number" ? parsed.defaultDueDays : undefined,
+        typeof parsed.defaultDueDays === "number"
+          ? parsed.defaultDueDays
+          : undefined,
       defaultNotes:
-        typeof parsed.defaultNotes === "string" ? parsed.defaultNotes : undefined,
+        typeof parsed.defaultNotes === "string"
+          ? parsed.defaultNotes
+          : undefined,
       termsAndConditions:
         typeof parsed.termsAndConditions === "string"
           ? parsed.termsAndConditions
@@ -228,7 +236,7 @@ const UI_COLORS = {
 export function BillingScreen({ navigation, route }: InvoiceProps) {
   const qc = useQueryClient();
   const { isOffline } = useOffline();
-  const { contentPad, contentWidth } = useResponsive();
+  const { contentPad } = useResponsive();
   const insets = useSafeAreaInsets();
   const startAsWalkIn = route.params?.startAsWalkIn;
   const documentType = route.params?.documentType ?? "invoice";
@@ -394,15 +402,15 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
   const [nextInvoiceNumber, setNextInvoiceNumber] = useState(() =>
     Math.max(1, Math.floor(documentSettingsRef.current.nextInvoiceNumber ?? 1)),
   );
-  const draftInvoiceCounter =
-    `${String(nextInvoiceNumber).padStart(4, "0")}${invoiceSuffix}`;
+  const draftInvoiceCounter = `${String(nextInvoiceNumber).padStart(4, "0")}${invoiceSuffix}`;
   const [documentDate, setDocumentDate] = useState(() => {
     const today = new Date().toISOString().slice(0, 10);
     return (readInvoiceBar().documentDate as string) ?? today;
   });
   const [dueDateDays, setDueDateDays] = useState<number | "custom">(() => {
     const v = readInvoiceBar().dueDateDays;
-    return v === "custom" || (typeof v === "number" && [0, 15, 30, 60].includes(v))
+    return v === "custom" ||
+      (typeof v === "number" && [0, 15, 30, 60].includes(v))
       ? (v as number | "custom")
       : typeof documentSettingsRef.current.defaultDueDays === "number" &&
           [0, 15, 30, 60].includes(documentSettingsRef.current.defaultDueDays)
@@ -600,7 +608,11 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
               resizeMode="cover"
             />
           ) : (
-            <Ionicons name="document-text-outline" size={24} color={UI_COLORS.text} />
+            <Ionicons
+              name="document-text-outline"
+              size={24}
+              color={UI_COLORS.text}
+            />
           )}
         </Button>
       ),
@@ -1059,7 +1071,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
         keyboardVerticalOffset={60}
       >
         <View style={{ flex: 1, width: "100%", alignItems: "center" }}>
-          <View style={{ width: "100%", maxWidth: contentWidth, flex: 1 }}>
+          <View style={{ width: "100%", flex: 1 }}>
             <ScrollView
               style={{ flex: 1, paddingHorizontal: contentPad }}
               keyboardShouldPersistTaps="handled"
@@ -1241,6 +1253,14 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
 
               {/* ── Discount ─────────────────────────────────────────────── */}
               <Card className="mb-3 rounded-2xl border border-slate-200 bg-white p-4">
+                <View className="mb-2 flex-row items-center justify-between">
+                  <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Discount
+                  </Text>
+                  <Text className="text-[11px] text-slate-400">
+                    Use % or flat amount
+                  </Text>
+                </View>
                 <View className="flex-row gap-3">
                   <View className="flex-1">
                     <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
@@ -1325,8 +1345,15 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                         <Switch
                           value={roundOffEnabled}
                           onValueChange={handleRoundOffChange}
-                          trackColor={{ false: UI_COLORS.border, true: UI_COLORS.primary }}
-                          thumbColor={roundOffEnabled ? UI_COLORS.primary : UI_COLORS.switchThumbOff}
+                          trackColor={{
+                            false: UI_COLORS.border,
+                            true: UI_COLORS.primary,
+                          }}
+                          thumbColor={
+                            roundOffEnabled
+                              ? UI_COLORS.primary
+                              : UI_COLORS.switchThumbOff
+                          }
                         />
                       </View>
                     </View>
@@ -1341,30 +1368,43 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
               )}
 
               {/* ── Payment ───────────────────────────────────────────────── */}
-              <View className="mb-2">
-                <View className="flex-row items-center justify-between mb-2">
+              <Card className="mb-3 rounded-[26px] border border-slate-200 bg-white p-4">
+                <View className="mb-3 flex-row items-center justify-between">
                   <View className="flex-row items-center gap-1.5">
-                    <Ionicons name="card-outline" size={14} color={UI_COLORS.muted} />
+                    <Ionicons
+                      name="card-outline"
+                      size={14}
+                      color={UI_COLORS.muted}
+                    />
                     <Text className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                       Payment
                     </Text>
                   </View>
-                  <View className="flex-row items-center gap-2">
-                    <Text className="text-xs text-slate-500">Split</Text>
+                  <View className="flex-row items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5">
+                    <Text className="text-xs font-medium text-slate-500">
+                      Split
+                    </Text>
                     <Switch
                       value={splitEnabled}
                       onValueChange={(v) => {
                         toggleSplit(v);
                       }}
-                      trackColor={{ false: UI_COLORS.border, true: UI_COLORS.primary }}
-                      thumbColor={splitEnabled ? UI_COLORS.primary : UI_COLORS.switchThumbOff}
+                      trackColor={{
+                        false: UI_COLORS.border,
+                        true: UI_COLORS.primary,
+                      }}
+                      thumbColor={
+                        splitEnabled
+                          ? UI_COLORS.primary
+                          : UI_COLORS.switchThumbOff
+                      }
                     />
                   </View>
                 </View>
 
                 {!splitEnabled ? (
                   <>
-                    <View className="flex-row gap-2 mb-2">
+                    <View className="mb-3 flex-row flex-wrap gap-2">
                       {PAY_MODES.map(({ id, label }) => (
                         <Button
                           key={id}
@@ -1372,54 +1412,67 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                           variant="outline"
                           action="secondary"
                           style={{
-                            flex: 1,
-                            borderRadius: 12,
+                            width: "48.5%",
+                            borderRadius: 16,
                             borderWidth: 2,
-                            borderColor: paymentMode === id ? UI_COLORS.primary : UI_COLORS.border,
+                            borderColor:
+                              paymentMode === id
+                                ? UI_COLORS.primary
+                                : UI_COLORS.border,
                             backgroundColor:
-                              paymentMode === id ? UI_COLORS.primarySoft : UI_COLORS.surface,
-                            minHeight: 56,
+                              paymentMode === id
+                                ? UI_COLORS.primarySoft
+                                : UI_COLORS.surface,
+                            minHeight: 60,
                           }}
                         >
-                          <Ionicons
-                            name={PAY_MODE_ICONS[id]}
-                            size={28}
-                            color={paymentMode === id ? UI_COLORS.primary : UI_COLORS.muted}
-                          />
-                          <Text
-                            className={`text-xs font-semibold mt-0.5 ${paymentMode === id ? "text-primary" : "text-slate-500"}`}
-                          >
-                            {label}
-                          </Text>
+                          <View className="items-center justify-center">
+                            <Ionicons
+                              name={PAY_MODE_ICONS[id]}
+                              size={24}
+                              color={
+                                paymentMode === id
+                                  ? UI_COLORS.primary
+                                  : UI_COLORS.muted
+                              }
+                            />
+                            <Text
+                              className={`mt-1 text-xs font-semibold ${paymentMode === id ? "text-primary" : "text-slate-500"}`}
+                            >
+                              {label}
+                            </Text>
+                          </View>
                         </Button>
                       ))}
                     </View>
                     {paymentMode !== "credit" && (
-                      <View className="flex-row items-center gap-2">
-                        <Input className="flex-row flex-1 items-center border border-slate-200 rounded-xl px-3 bg-white">
-                          <Text className="text-slate-400 mr-1">₹</Text>
-                          <InputField
-                            value={paymentAmount}
-                            onChangeText={setPaymentAmount}
-                            keyboardType="decimal-pad"
-                            placeholder={`Amount paid (₹${inr(finalTotal)})`}
-                            placeholderTextColor={UI_COLORS.subtle}
-                            className="flex-1 h-12 text-base text-slate-800"
-                          />
-                        </Input>
-                        <Button
-                          onPress={() => setPaymentAmount(String(finalTotal))}
-                          variant="outline"
-                          action="secondary"
-                          className="border border-slate-200 rounded-xl px-4 h-12 items-center justify-center"
-                          style={{ borderRadius: 12, minHeight: 48 }}
-                        >
-                          <ButtonText>Full</ButtonText>
-                        </Button>
-                      </View>
+                      <>
+                        <View className="flex-row items-center gap-2">
+                          <Input className="flex-row flex-1 items-center border border-slate-200 rounded-2xl px-3 bg-white">
+                            <Text className="text-slate-400 mr-1">₹</Text>
+                            <InputField
+                              value={paymentAmount}
+                              onChangeText={setPaymentAmount}
+                              keyboardType="decimal-pad"
+                              placeholder={`Amount paid (₹${inr(finalTotal)})`}
+                              placeholderTextColor={UI_COLORS.subtle}
+                              className="flex-1 h-12 text-base text-slate-800"
+                            />
+                          </Input>
+                          <Button
+                            onPress={() => setPaymentAmount(String(finalTotal))}
+                            variant="outline"
+                            action="secondary"
+                            className="h-12 items-center justify-center rounded-2xl border border-slate-200 px-4"
+                            style={{ minHeight: 48, borderRadius: 16 }}
+                          >
+                            <ButtonText>Full</ButtonText>
+                          </Button>
+                        </View>
+                      </>
                     )}
                     {paymentMode === "credit" && (
-                      <View className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+                      <View className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3">
                         <Text className="text-xs text-amber-700">
                           Full amount added to customer credit account
                         </Text>
@@ -1427,7 +1480,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                     )}
                   </>
                 ) : (
-                  <View className="border-2 border-slate-200 rounded-xl overflow-hidden bg-white">
+                  <View className="overflow-hidden rounded-2xl border-2 border-slate-200 bg-white">
                     <View className="px-4 py-3 bg-slate-50">
                       <View className="flex-row justify-between text-xs mb-2">
                         <Text className="text-slate-500">Total</Text>
@@ -1479,9 +1532,14 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                                 height: 36,
                                 borderRadius: 8,
                                 borderWidth: 1,
-                                borderColor: sp.mode === id ? UI_COLORS.primary : "transparent",
+                                borderColor:
+                                  sp.mode === id
+                                    ? UI_COLORS.primary
+                                    : "transparent",
                                 backgroundColor:
-                                  sp.mode === id ? UI_COLORS.primarySoft : "transparent",
+                                  sp.mode === id
+                                    ? UI_COLORS.primarySoft
+                                    : "transparent",
                                 paddingHorizontal: 0,
                                 paddingVertical: 0,
                               }}
@@ -1489,7 +1547,11 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                               <Ionicons
                                 name={PAY_MODE_ICONS[id]}
                                 size={22}
-                                color={sp.mode === id ? UI_COLORS.primary : UI_COLORS.muted}
+                                color={
+                                  sp.mode === id
+                                    ? UI_COLORS.primary
+                                    : UI_COLORS.muted
+                                }
                               />
                             </Button>
                           ))}
@@ -1553,10 +1615,16 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                           variant="link"
                           action="negative"
                           className="ml-2 items-center justify-center"
-                          style={{ width: 44, height: 44, paddingHorizontal: 0 }}
+                          style={{
+                            width: 44,
+                            height: 44,
+                            paddingHorizontal: 0,
+                          }}
                           accessibilityLabel="Remove split payment row"
                         >
-                          <ButtonText className="text-red-400 text-lg">×</ButtonText>
+                          <ButtonText className="text-red-400 text-lg">
+                            ×
+                          </ButtonText>
                         </Button>
                       </View>
                     ))}
@@ -1585,7 +1653,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                     )}
                   </View>
                 )}
-              </View>
+              </Card>
 
               {/* ── Notes + Due Date ──────────────────────────────────────── */}
               <Card className="mb-4 rounded-2xl border border-slate-200 bg-white p-4">
@@ -1664,12 +1732,14 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
             alignItems: "center",
             justifyContent: "center",
             backgroundColor:
-              validItemCount > 0 && !isSubmitting ? UI_COLORS.primary : UI_COLORS.disabled,
+              validItemCount > 0 && !isSubmitting
+                ? UI_COLORS.primary
+                : UI_COLORS.disabled,
             shadowColor: UI_COLORS.shadow,
-            shadowOpacity: 0.2,
-            shadowRadius: 6,
-            shadowOffset: { width: 0, height: 3 },
-            elevation: 6,
+            shadowOpacity: 0.24,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 4 },
+            elevation: 8,
             paddingHorizontal: 0,
             paddingVertical: 0,
           }}
@@ -1942,7 +2012,9 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                       : "border-slate-300"
                   }`}
                 />
-                <ButtonText className="text-sm text-slate-800">Invoice</ButtonText>
+                <ButtonText className="text-sm text-slate-800">
+                  Invoice
+                </ButtonText>
               </Button>
               <Button
                 onPress={() => setDocumentTitle("billOfSupply")}
@@ -1958,7 +2030,9 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                       : "border-slate-300"
                   }`}
                 />
-                <ButtonText className="text-sm text-slate-800">Bill of Supply</ButtonText>
+                <ButtonText className="text-sm text-slate-800">
+                  Bill of Supply
+                </ButtonText>
               </Button>
             </View>
             <Text className="text-xs font-semibold text-slate-500 uppercase mb-1">
@@ -2103,7 +2177,9 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                 flex: 1,
                 height: 48,
                 borderRadius: 12,
-                backgroundColor: newCustName.trim() ? UI_COLORS.primary : UI_COLORS.disabled,
+                backgroundColor: newCustName.trim()
+                  ? UI_COLORS.primary
+                  : UI_COLORS.disabled,
               }}
             >
               {createCustomerInline.isPending ? (
