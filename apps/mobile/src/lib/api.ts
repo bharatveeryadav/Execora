@@ -27,10 +27,16 @@ export {
   purchaseApi,
 } from "../features/expenses/api/expensesApi";
 
-/** API base URL — treats empty/whitespace as fallback (emulator: 10.0.2.2:3006) */
+/** API base URL — auto-resolved, no hardcoding needed.
+ *  Priority: EXPO_PUBLIC_API_URL env var → Android emulator fallback.
+ *  Run `pnpm sync-ip` (or just `pnpm dev`) to auto-write the LAN IP. */
 export const getApiBaseUrl = (): string => {
   const v = (process.env.EXPO_PUBLIC_API_URL ?? "").trim();
-  return v || "http://10.0.2.2:3006";
+  if (v) return v;
+  // Android emulator reaches host via 10.0.2.2; iOS simulator uses localhost
+  return typeof navigator !== "undefined" && /android/i.test(navigator.userAgent ?? "")
+    ? "http://10.0.2.2:3006"
+    : "http://localhost:3006";
 };
 
 // ── Global auth-expiry callback ───────────────────────────────────────────────

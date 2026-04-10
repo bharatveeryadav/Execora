@@ -114,6 +114,7 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
       "@execora/shared": path.resolve(__dirname, "../../packages/shared/src/index.ts"),
+      "@execora/types": path.resolve(__dirname, "../../packages/types/src/index.ts"),
     },
     dedupe: ["react", "react-dom"],
   },

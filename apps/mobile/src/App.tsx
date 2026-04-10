@@ -197,7 +197,7 @@ function AppContentInner() {
       .catch(() => {
         /* show login screen on failure */
       });
-  }, [login, loginWithUser]);
+  }, [login, loginWithUser, isLoggedIn]);
 
   const handleAuthExpired = useCallback(() => {
     queryClient.clear();

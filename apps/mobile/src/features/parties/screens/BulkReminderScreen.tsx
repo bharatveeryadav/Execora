@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ionicons } from "@expo/vector-icons";
-import { customerApi, reminderApi } from "..";
+import { customerApi, reminderApi } from "../api/customerApi";
 import { invoiceApi } from "../../../lib/api";
 import { showAlert } from "../../../lib/alerts";
 import { useResponsive } from "../../../hooks/useResponsive";

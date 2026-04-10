@@ -10,6 +10,8 @@
   "scripts": {
     "setup": "node scripts/setup.mjs",
     "copy-env": "node scripts/copy-env.mjs",
+    "sync-ip": "node scripts/sync-ip.mjs",
+    "predev": "node scripts/sync-ip.mjs",
     "dev:personal": "node scripts/personal-dev.mjs",
     "env:sync:personal": "node scripts/sync-personal-env.mjs",
     "start:all": "node scripts/start-all.mjs",

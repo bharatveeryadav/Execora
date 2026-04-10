@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { customerApi } from ".."; // customerApi from feature;
+import { customerApi } from "../api/customerApi";
 import { useWsInvalidation } from "../../../hooks/useWsInvalidation";
 import { useResponsive } from "../../../hooks/useResponsive";
 import { inr, type Customer } from "@execora/shared";

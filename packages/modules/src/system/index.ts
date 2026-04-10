@@ -7,7 +7,6 @@
 export * from "./audit";
 export * from "./audit/tamper-detection";
 export * from "./backup";
-export * from "./logs";
 export * from "./notifications";
 export * from "./notifications/notification-prefs";
 export * from "./storage";

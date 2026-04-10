@@ -19,8 +19,12 @@ import { COLORS } from "../../../lib/constants";
 
 export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
   const { loginWithUser } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState(
+    process.env.EXPO_PUBLIC_LOGIN_EMAIL ?? "",
+  );
+  const [password, setPassword] = useState(
+    process.env.EXPO_PUBLIC_LOGIN_PASSWORD ?? "",
+  );
   const [backendReachable, setBackendReachable] = useState<boolean | null>(
     null,
   );

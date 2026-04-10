@@ -50,7 +50,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(u);
           saveUser(u);
         }
-      }).catch(() => {});
+      }).catch(() => {
+        // Token is invalid/expired — clear it so auto-login can run fresh
+        tokenStorage.clearTokens();
+        setUser(null);
+        saveUser(null);
+        setIsLoggedIn(false);
+      });
     }
   }, [isLoggedIn, user]);
 

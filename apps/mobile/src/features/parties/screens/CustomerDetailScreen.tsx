@@ -20,8 +20,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { customerApi, reminderApi, customerExtApi } from ".."; // APIs from feature;
-import { useCustomerDetail, useCustomerInvoices, useCustomerLedger } from ".."; // Re-exported from feature;
+import { customerApi, reminderApi, customerExtApi } from "../api/customerApi";
+import { useCustomerDetail, useCustomerInvoices, useCustomerLedger } from "../hooks/useCustomerQueries";
 import {
   formatCurrency,
   formatDate,

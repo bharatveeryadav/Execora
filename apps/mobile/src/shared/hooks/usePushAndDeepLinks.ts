@@ -166,6 +166,9 @@ export function usePushAndDeepLinks(
 
   // ── Notification tap → deep link ────────────────────────────────────────────
   useEffect(() => {
+    // Push notifications are not available on web
+    if (Platform.OS === "web") return;
+
     const sub = Notifications.addNotificationResponseReceivedListener(
       (response) => {
         const url = response.notification.request.content.data?.url as

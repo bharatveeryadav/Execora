@@ -34,7 +34,7 @@ import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import * as Print from "expo-print";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { customerApi, customerExtApi } from ".."; // Customer APIs from feature;
+import { customerApi, customerExtApi } from "../api/customerApi";
 import { purchaseApi, invoiceApi, supplierApi } from "../../../lib/api"; // Cross-feature APIs from compatibility shell
 import { useWsInvalidation } from "../../../hooks/useWsInvalidation";
 import { useResponsive } from "../../../hooks/useResponsive";
