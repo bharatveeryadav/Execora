@@ -8,40 +8,18 @@
 import { Decimal } from "@prisma/client/runtime/library";
 import type { CustomerSearchResult } from "@execora/types";
 export declare function getCustomerById(id: string): Promise<({
-    reminders: {
+    invoices: {
         tenantId: string;
         id: string;
-        customerId: string | null;
-        status: import(".prisma/client").$Enums.ReminderStatus;
+        tags: string[];
         notes: string | null;
         createdBy: string | null;
         createdAt: Date;
         updatedAt: Date;
-        invoiceId: string | null;
-        productId: string | null;
-        userId: string | null;
-        scheduledTime: Date;
-        reminderType: import(".prisma/client").$Enums.ReminderType;
-        priority: import(".prisma/client").$Enums.ReminderPriority;
-        recurringPattern: import("@prisma/client/runtime/library").JsonValue | null;
-        expiresAt: Date | null;
-        messageTemplateId: string | null;
-        customMessage: string | null;
-        parameters: import("@prisma/client/runtime/library").JsonValue | null;
-        channels: import(".prisma/client").$Enums.MessageChannel[];
-        sentAt: Date | null;
-        deliveredAt: Date | null;
-        readAt: Date | null;
-        retryCount: number;
-        maxRetries: number;
-        lastAttempt: Date | null;
-        lastError: string | null;
-    }[];
-    invoices: {
-        tenantId: string;
-        id: string;
-        invoiceNo: string;
+        deletedAt: Date | null;
+        status: import(".prisma/client").$Enums.InvoiceStatus;
         customerId: string | null;
+        invoiceNo: string;
         subtotal: Decimal;
         discount: Decimal;
         discountType: string | null;
@@ -63,29 +41,45 @@ export declare function getCustomerById(id: string): Promise<({
         ackNo: string | null;
         ackDate: Date | null;
         qrCode: string | null;
-        status: import(".prisma/client").$Enums.InvoiceStatus;
         paymentMethod: import(".prisma/client").$Enums.PaymentMethod | null;
         invoiceDate: Date;
         dueDate: Date | null;
         paidAt: Date | null;
-        notes: string | null;
-        tags: string[];
         pdfObjectKey: string | null;
         pdfUrl: string | null;
+    }[];
+    reminders: {
+        tenantId: string;
+        id: string;
+        notes: string | null;
         createdBy: string | null;
         createdAt: Date;
         updatedAt: Date;
-        deletedAt: Date | null;
+        status: import(".prisma/client").$Enums.ReminderStatus;
+        scheduledTime: Date;
+        customerId: string | null;
+        invoiceId: string | null;
+        productId: string | null;
+        userId: string | null;
+        reminderType: import(".prisma/client").$Enums.ReminderType;
+        priority: import(".prisma/client").$Enums.ReminderPriority;
+        recurringPattern: import("@prisma/client/runtime/library").JsonValue | null;
+        expiresAt: Date | null;
+        messageTemplateId: string | null;
+        customMessage: string | null;
+        parameters: import("@prisma/client/runtime/library").JsonValue | null;
+        channels: import(".prisma/client").$Enums.MessageChannel[];
+        sentAt: Date | null;
+        deliveredAt: Date | null;
+        readAt: Date | null;
+        retryCount: number;
+        maxRetries: number;
+        lastAttempt: Date | null;
+        lastError: string | null;
     }[];
 } & {
     tenantId: string;
     id: string;
-    notes: string | null;
-    tags: string[];
-    createdBy: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-    deletedAt: Date | null;
     name: string;
     phone: string | null;
     alternatePhone: string[];
@@ -124,10 +118,16 @@ export declare function getCustomerById(id: string): Promise<({
     recencyScore: Decimal;
     monetaryScore: Decimal;
     overallScore: Decimal | null;
+    tags: string[];
+    notes: string | null;
     metadata: import("@prisma/client/runtime/library").JsonValue;
     voiceFingerprint: string | null;
     commonPhrases: string[];
+    createdBy: string | null;
     updatedBy: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    deletedAt: Date | null;
 }) | null>;
 export declare function getCustomerBalance(customerId: string): Promise<number>;
 export declare function searchCustomers(query: string): Promise<CustomerSearchResult[]>;
@@ -143,9 +143,9 @@ export declare function getTotalPending(): Promise<number>;
 export declare function getCustomerCommPrefs(customerId: string): Promise<{
     tenantId: string;
     id: string;
-    customerId: string;
     createdAt: Date;
     updatedAt: Date;
+    customerId: string;
     whatsappEnabled: boolean;
     whatsappNumber: string | null;
     whatsappOptInTime: Date | null;
@@ -186,12 +186,6 @@ export declare function createCustomer(data: {
 }): Promise<{
     tenantId: string;
     id: string;
-    notes: string | null;
-    tags: string[];
-    createdBy: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-    deletedAt: Date | null;
     name: string;
     phone: string | null;
     alternatePhone: string[];
@@ -230,10 +224,16 @@ export declare function createCustomer(data: {
     recencyScore: Decimal;
     monetaryScore: Decimal;
     overallScore: Decimal | null;
+    tags: string[];
+    notes: string | null;
     metadata: import("@prisma/client/runtime/library").JsonValue;
     voiceFingerprint: string | null;
     commonPhrases: string[];
+    createdBy: string | null;
     updatedBy: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    deletedAt: Date | null;
 }>;
 export declare function updateCustomer(id: string, data: {
     name?: string;
@@ -248,12 +248,6 @@ export declare function updateCustomer(id: string, data: {
 }): Promise<{
     tenantId: string;
     id: string;
-    notes: string | null;
-    tags: string[];
-    createdBy: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-    deletedAt: Date | null;
     name: string;
     phone: string | null;
     alternatePhone: string[];
@@ -292,20 +286,20 @@ export declare function updateCustomer(id: string, data: {
     recencyScore: Decimal;
     monetaryScore: Decimal;
     overallScore: Decimal | null;
+    tags: string[];
+    notes: string | null;
     metadata: import("@prisma/client/runtime/library").JsonValue;
     voiceFingerprint: string | null;
     commonPhrases: string[];
+    createdBy: string | null;
     updatedBy: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    deletedAt: Date | null;
 }>;
 export declare function updateCustomerBalance(customerId: string, amount: number): Promise<{
     tenantId: string;
     id: string;
-    notes: string | null;
-    tags: string[];
-    createdBy: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-    deletedAt: Date | null;
     name: string;
     phone: string | null;
     alternatePhone: string[];
@@ -344,10 +338,16 @@ export declare function updateCustomerBalance(customerId: string, amount: number
     recencyScore: Decimal;
     monetaryScore: Decimal;
     overallScore: Decimal | null;
+    tags: string[];
+    notes: string | null;
     metadata: import("@prisma/client/runtime/library").JsonValue;
     voiceFingerprint: string | null;
     commonPhrases: string[];
+    createdBy: string | null;
     updatedBy: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    deletedAt: Date | null;
 }>;
 export declare function upsertCustomerCommPrefs(customerId: string, data: {
     whatsappEnabled?: boolean;
@@ -359,9 +359,9 @@ export declare function upsertCustomerCommPrefs(customerId: string, data: {
 }): Promise<{
     tenantId: string;
     id: string;
-    customerId: string;
     createdAt: Date;
     updatedAt: Date;
+    customerId: string;
     whatsappEnabled: boolean;
     whatsappNumber: string | null;
     whatsappOptInTime: Date | null;

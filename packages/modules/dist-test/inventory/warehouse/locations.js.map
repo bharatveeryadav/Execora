@@ -1,0 +1,1 @@
+{"version":3,"file":"locations.js","sourceRoot":"","sources":["../../../src/inventory/warehouse/locations.ts"],"names":[],"mappings":";;AAgBA,wDAEC;AACD,0DAIC;AAPM,KAAK,UAAU,sBAAsB,CAAC,SAAiB;IAC5D,OAAO,EAAE,CAAC;AACZ,CAAC;AACM,KAAK,UAAU,uBAAuB,CAC3C,KAAoC;IAEpC,OAAO,EAAE,GAAG,KAAK,EAAE,EAAE,EAAE,MAAM,IAAI,CAAC,GAAG,EAAE,EAAE,EAAE,CAAC;AAC9C,CAAC"}

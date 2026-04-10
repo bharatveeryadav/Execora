@@ -33,7 +33,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // Re-exports everything from sales/invoice.ts via the compat wrapper
 __exportStar(require("../sales/invoicing/create-invoice"), exports);
 // ── Credit notes ──────────────────────────────────────────────────────────────
-__exportStar(require("../sales/credit-notes/credit-note"), exports);
+// Note: credit-notes are exported from the accounting module
 // ── Purchase orders ───────────────────────────────────────────────────────────
 __exportStar(require("../purchases/purchase/purchase-order"), exports);
 // ── Suppliers ─────────────────────────────────────────────────────────────────

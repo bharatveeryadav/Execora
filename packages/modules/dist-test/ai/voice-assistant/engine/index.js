@@ -1,0 +1,28 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+/**
+ * ai/voice-assistant/engine
+ *
+ * Feature: core intent→handler dispatch for the voice assistant.
+ * Owner: ai domain (isolation rule: no domain state, contracts only)
+ * Source of truth: modules/voice/engine.ts + modules/voice/engine/
+ *
+ * AI Isolation Rule: this module may call sales/purchases/crm/finance via
+ * their public contracts only. Never directly imports Prisma or Redis.
+ */
+__exportStar(require("../../../modules/voice/engine"), exports);
+//# sourceMappingURL=index.js.map

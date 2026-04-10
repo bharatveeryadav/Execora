@@ -1,0 +1,1 @@
+{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../../../../src/compliance/ewaybill/generation/index.ts"],"names":[],"mappings":"AAAA,yEAAyE;AACzE,MAAM,WAAW,mBAAmB;IAClC,KAAK,EAAE,MAAM,CAAC;IACd,KAAK,EAAE,MAAM,CAAC;IACd,YAAY,EAAE,MAAM,CAAC;CACtB;AACD,wBAAsB,gBAAgB,CAAC,QAAQ,EAAE,MAAM,CAAC,MAAM,EAAE,OAAO,CAAC,GAAG,OAAO,CAAC,mBAAmB,CAAC,CAEtG"}

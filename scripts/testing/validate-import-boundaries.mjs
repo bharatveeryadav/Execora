@@ -71,12 +71,12 @@ async function main() {
         // Check extracted route constraints
         const constraints = EXTRACTED_ROUTES[file];
         if (constraints) {
-            for (const required of constraints.required ? ? []) {
+            for (const required of constraints.required ?? []) {
                 if (!source.includes(required)) {
                     violations.push(`${file}: must use extracted adapter "${required}"`);
                 }
             }
-            for (const forbidden of constraints.forbidden ? ? []) {
+            for (const forbidden of constraints.forbidden ?? []) {
                 if (source.includes(forbidden)) {
                     violations.push(`${file}: must not call legacy service directly ("${forbidden}")`);
                 }

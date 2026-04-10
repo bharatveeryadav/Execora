@@ -6,6 +6,8 @@ yarn-error.log*
 
 # Environment — NEVER commit real credentials
 .env
+.env.personal
+.env.personal.*
 .env.local
 .env.*.local
 .env.production
@@ -58,3 +60,4 @@ tmp/
 temp/
 *.tmp
 .turbo/
+.env.backup*

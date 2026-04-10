@@ -1,0 +1,1 @@
+{"version":3,"file":"ledger.d.ts","sourceRoot":"","sources":["../../../src/accounting/payments/ledger.ts"],"names":[],"mappings":"AAAA;;;;GAIG;AAEH,OAAO,EACL,aAAa,EACb,kBAAkB,EAClB,SAAS,EACT,cAAc,EACd,iBAAiB,EACjB,gBAAgB,EAChB,qBAAqB,GACtB,MAAM,YAAY,CAAC;AAIpB,YAAY,EACV,kBAAkB,EAClB,cAAc,EACd,iBAAiB,GAClB,MAAM,SAAS,CAAC"}

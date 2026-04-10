@@ -6,9 +6,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.openaiService = exports.llmService = void 0;
 const crypto_1 = __importDefault(require("crypto"));
 const core_1 = require("@execora/core");
+const llm_cache_1 = require("../../utils/llm-cache");
 const core_2 = require("@execora/core");
 const core_3 = require("@execora/core");
-const core_4 = require("@execora/core");
 const types_1 = require("@execora/types");
 const conversation_1 = require("../../modules/voice/conversation");
 const devanagari_1 = require("../../utils/devanagari");
@@ -57,18 +57,18 @@ class LLMService {
     }
     // ── Metrics ───────────────────────────────────────────────────────────────
     recordUsage(operation, intent, model, usage, cache) {
-        core_3.llmRequestsTotal.inc({ model, operation, intent, cache });
+        core_2.llmRequestsTotal.inc({ model, operation, intent, cache });
         if (!usage)
             return;
         const { promptTokens = 0, completionTokens = 0, totalTokens = promptTokens + completionTokens } = usage;
-        core_3.llmTokensTotal.inc({ model, operation, intent, type: 'prompt' }, promptTokens);
-        core_3.llmTokensTotal.inc({ model, operation, intent, type: 'completion' }, completionTokens);
-        core_3.llmTokensTotal.inc({ model, operation, intent, type: 'total' }, totalTokens);
-        const rt = (0, core_4.getRuntimeConfig)();
+        core_2.llmTokensTotal.inc({ model, operation, intent, type: 'prompt' }, promptTokens);
+        core_2.llmTokensTotal.inc({ model, operation, intent, type: 'completion' }, completionTokens);
+        core_2.llmTokensTotal.inc({ model, operation, intent, type: 'total' }, totalTokens);
+        const rt = (0, core_3.getRuntimeConfig)();
         const cost = (promptTokens / 1000) * rt.llm.cost.inputPer1k +
             (completionTokens / 1000) * rt.llm.cost.outputPer1k;
         if (cost > 0)
-            core_3.llmCostUsdTotal.inc({ model, operation, intent }, cost);
+            core_2.llmCostUsdTotal.inc({ model, operation, intent }, cost);
     }
     // ── Cache helpers ─────────────────────────────────────────────────────────
     buildResponseCacheKey(intent, result, scope) {
@@ -121,7 +121,7 @@ class LLMService {
         }
         core_1.logger.warn({ text, partialResult: local }, 'Local transliteration incomplete — LLM fallback');
         const cacheKey = `translit:${sha256(text)}`;
-        const cached = await core_2.llmCache.get(cacheKey);
+        const cached = await llm_cache_1.llmCache.get(cacheKey);
         if (cached)
             return cached;
         const adapter = utilAdapter();
@@ -133,7 +133,7 @@ class LLMService {
             const { text: result } = await (0, middleware_1.withProvider)({ provider: adapter.name, providerType: 'llm', operation: 'transliterate_fallback', maxRetries: 1 }, () => adapter.extractIntent(text, prompts_1.TRANSLITERATE_PROMPT));
             this.recordUsage('transliterate_fallback', 'UNKNOWN', adapter.name, undefined, 'miss');
             const out = result.trim() || local;
-            await core_2.llmCache.set(cacheKey, out, 86_400);
+            await llm_cache_1.llmCache.set(cacheKey, out, 86_400);
             return out;
         }
         catch (err) {
@@ -253,7 +253,7 @@ class LLMService {
      */
     async generateResponse(executionResult, originalIntent, _conversationId, onChunk, options) {
         try {
-            const rt = (0, core_4.getRuntimeConfig)();
+            const rt = (0, core_3.getRuntimeConfig)();
             const intentKey = originalIntent;
             const policy = rt.llm.responseCachePolicy[intentKey];
             const cacheKey = policy ? this.buildResponseCacheKey(intentKey, executionResult, policy.scope) : null;
@@ -264,9 +264,9 @@ class LLMService {
             }
             // Cache hit
             if (cacheKey) {
-                const cached = await core_2.llmCache.get(cacheKey);
+                const cached = await llm_cache_1.llmCache.get(cacheKey);
                 if (cached) {
-                    core_3.llmRequestsTotal.inc({ model: adapter.name, operation: 'generate_response', intent: intentKey, cache: 'hit' });
+                    core_2.llmRequestsTotal.inc({ model: adapter.name, operation: 'generate_response', intent: intentKey, cache: 'hit' });
                     onChunk?.(cached);
                     return cached;
                 }
@@ -279,7 +279,7 @@ class LLMService {
             const finalText = text || 'Theek hai.';
             this.recordUsage('generate_response', intentKey, model, usage, 'miss');
             if (cacheKey && policy && finalText !== 'Theek hai.') {
-                await core_2.llmCache.set(cacheKey, finalText, policy.ttlSeconds);
+                await llm_cache_1.llmCache.set(cacheKey, finalText, policy.ttlSeconds);
             }
             return finalText;
         }

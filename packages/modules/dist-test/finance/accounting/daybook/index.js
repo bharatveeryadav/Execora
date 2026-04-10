@@ -1,0 +1,28 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getDayBook = void 0;
+/**
+ * finance/accounting/daybook
+ *
+ * Feature: day-book — all transactions (debit+credit) ledger for a given date.
+ * Owner: finance domain
+ * Source of truth: accounting/reports/day-book.ts
+ */
+__exportStar(require("./contracts/queries"), exports);
+var day_book_1 = require("../../../accounting/reports/day-book");
+Object.defineProperty(exports, "getDayBook", { enumerable: true, get: function () { return day_book_1.getDayBook; } });
+//# sourceMappingURL=index.js.map

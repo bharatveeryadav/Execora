@@ -1,0 +1,1 @@
+{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../../../../src/compliance/gst/schema-updates/index.ts"],"names":[],"mappings":"AAAA;;;;;GAKG;AACH,MAAM,WAAW,iBAAiB;IAChC,OAAO,EAAE,MAAM,CAAC;IAChB,aAAa,EAAE,MAAM,CAAC;IACtB,SAAS,EAAE,MAAM,EAAE,CAAC;CACrB;AACD,eAAO,MAAM,2BAA2B,QAAQ,CAAC;AACjD,wBAAsB,sBAAsB,IAAI,OAAO,CAAC,iBAAiB,CAAC,CAMzE"}

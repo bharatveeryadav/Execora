@@ -27,9 +27,9 @@ const invoice_service_1 = require("../modules/invoice/invoice.service");
 const reminder_service_1 = require("../modules/reminder/reminder.service");
 const product_service_1 = require("../modules/product/product.service");
 const conversation_1 = require("../modules/voice/conversation");
-const core_1 = require("@execora/core");
+const email_1 = require("../infra/email");
 const types_1 = require("@execora/types");
-const core_2 = require("@execora/core");
+const core_1 = require("@execora/core");
 const fixtures_1 = require("./helpers/fixtures");
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 /** Build a minimal IntentExtraction for a given type and entities. */
@@ -347,7 +347,7 @@ function callSpy() {
         r.push((0, fixtures_1.patchMethod)(conversation_1.conversationMemory, 'setContext', async () => { }));
         r.push((0, fixtures_1.patchMethod)(conversation_1.conversationMemory, 'setShopPendingInvoice', async () => { }));
         r.push((0, fixtures_1.patchMethod)(invoice_service_1.invoiceService, 'confirmInvoice', async () => makeConfirmedInvoice()));
-        r.push((0, fixtures_1.patchMethod)(core_1.emailService, 'sendInvoiceEmail', emailSpy.fn));
+        r.push((0, fixtures_1.patchMethod)(email_1.emailService, 'sendInvoiceEmail', emailSpy.fn));
         const res = await engine_1.businessEngine.execute(intent(types_1.IntentType.CONFIRM_INVOICE), CONV);
         // Let the fire-and-forget email settle
         await new Promise((resolve) => setTimeout(resolve, 50));
@@ -393,7 +393,7 @@ function callSpy() {
         r.push((0, fixtures_1.patchMethod)(conversation_1.conversationMemory, 'setContext', async () => { }));
         r.push((0, fixtures_1.patchMethod)(conversation_1.conversationMemory, 'setShopPendingInvoice', async () => { }));
         r.push((0, fixtures_1.patchMethod)(invoice_service_1.invoiceService, 'confirmInvoice', async () => makeConfirmedInvoice()));
-        r.push((0, fixtures_1.patchMethod)(core_1.emailService, 'sendInvoiceEmail', emailSpy.fn));
+        r.push((0, fixtures_1.patchMethod)(email_1.emailService, 'sendInvoiceEmail', emailSpy.fn));
         const res = await engine_1.businessEngine.execute(intent(types_1.IntentType.CONFIRM_INVOICE), 'new-session-after-reconnect');
         await new Promise((r2) => setTimeout(r2, 50));
         strict_1.default.equal(res.success, true);
@@ -526,7 +526,7 @@ function callSpy() {
         r.push((0, fixtures_1.patchMethod)(conversation_1.conversationMemory, 'getContext', async (_id, key) => key === 'pendingInvoiceEmail' ? pending : null));
         r.push((0, fixtures_1.patchMethod)(conversation_1.conversationMemory, 'getShopPendingEmail', async () => null));
         r.push((0, fixtures_1.patchMethod)(customer_service_1.customerService, 'updateCustomer', async () => true));
-        r.push((0, fixtures_1.patchMethod)(core_1.emailService, 'sendInvoiceEmail', emailSpy.fn));
+        r.push((0, fixtures_1.patchMethod)(email_1.emailService, 'sendInvoiceEmail', emailSpy.fn));
         r.push((0, fixtures_1.patchMethod)(conversation_1.conversationMemory, 'setContext', async () => { }));
         r.push((0, fixtures_1.patchMethod)(conversation_1.conversationMemory, 'setShopPendingEmail', async () => { }));
         const res = await engine_1.businessEngine.execute(intent(types_1.IntentType.PROVIDE_EMAIL, { email: 'rahul@example.com' }), CONV);
@@ -551,7 +551,7 @@ function callSpy() {
         r.push((0, fixtures_1.patchMethod)(conversation_1.conversationMemory, 'getContext', async () => null)); // session miss
         r.push((0, fixtures_1.patchMethod)(conversation_1.conversationMemory, 'getShopPendingEmail', async () => pending));
         r.push((0, fixtures_1.patchMethod)(customer_service_1.customerService, 'updateCustomer', async () => true));
-        r.push((0, fixtures_1.patchMethod)(core_1.emailService, 'sendInvoiceEmail', emailSpy.fn));
+        r.push((0, fixtures_1.patchMethod)(email_1.emailService, 'sendInvoiceEmail', emailSpy.fn));
         r.push((0, fixtures_1.patchMethod)(conversation_1.conversationMemory, 'setContext', async () => { }));
         r.push((0, fixtures_1.patchMethod)(conversation_1.conversationMemory, 'setShopPendingEmail', async () => { }));
         const res = await engine_1.businessEngine.execute(intent(types_1.IntentType.PROVIDE_EMAIL, { email: 'rahul@shop.in' }), 'new-session-after-reconnect');
@@ -966,7 +966,7 @@ function callSpy() {
             pendingAmount: 700,
             extraPayments: 0,
         })));
-        r.push((0, fixtures_1.patchMethod)(core_1.emailService, 'isEnabled', () => false));
+        r.push((0, fixtures_1.patchMethod)(email_1.emailService, 'isEnabled', () => false));
         const res = await engine_1.businessEngine.execute(intent(types_1.IntentType.DAILY_SUMMARY), CONV);
         strict_1.default.equal(res.success, true);
         strict_1.default.match(res.message, /₹2500/);
@@ -984,7 +984,7 @@ function callSpy() {
             date: new Date(), invoiceCount: 3, totalSales: 900, totalPayments: 900,
             cashPayments: 900, upiPayments: 0, pendingAmount: 0, extraPayments: 0,
         })));
-        r.push((0, fixtures_1.patchMethod)(core_1.emailService, 'isEnabled', () => false));
+        r.push((0, fixtures_1.patchMethod)(email_1.emailService, 'isEnabled', () => false));
         const res = await engine_1.businessEngine.execute(intent(types_1.IntentType.DAILY_SUMMARY), CONV);
         strict_1.default.equal(res.success, true);
         strict_1.default.match(res.message, /clear/i);
@@ -1131,7 +1131,7 @@ function callSpy() {
         r.push((0, fixtures_1.patchMethod)(customer_service_1.customerService, 'searchCustomerRanked', async () => [CUSTOMER_WITH_EMAIL]));
         r.push((0, fixtures_1.patchMethod)(customer_service_1.customerService, 'setActiveCustomer', () => { }));
         r.push((0, fixtures_1.patchMethod)(conversation_1.conversationMemory, 'setActiveCustomer', async () => { }));
-        r.push((0, fixtures_1.patchMethod)(core_1.emailService, 'sendAdminDeletionOtpEmail', emailSpy.fn));
+        r.push((0, fixtures_1.patchMethod)(email_1.emailService, 'sendAdminDeletionOtpEmail', emailSpy.fn));
         const res = await engine_1.businessEngine.execute(intent(types_1.IntentType.DELETE_CUSTOMER_DATA, {
             customer: 'Bharat',
             operatorRole: 'admin',
@@ -1229,7 +1229,7 @@ function callSpy() {
         r.push((0, fixtures_1.patchMethod)(conversation_1.conversationMemory, 'getContext', async (_id, key) => key === 'pendingInvoice' ? storedDraft : null));
         r.push((0, fixtures_1.patchMethod)(conversation_1.conversationMemory, 'getShopPendingInvoice', async () => null));
         r.push((0, fixtures_1.patchMethod)(invoice_service_1.invoiceService, 'confirmInvoice', async () => makeConfirmedInvoice()));
-        r.push((0, fixtures_1.patchMethod)(core_1.emailService, 'sendInvoiceEmail', emailSpy.fn));
+        r.push((0, fixtures_1.patchMethod)(email_1.emailService, 'sendInvoiceEmail', emailSpy.fn));
         const t2 = await engine_1.businessEngine.execute(intent(types_1.IntentType.CONFIRM_INVOICE), CONV);
         await new Promise((resolve) => setTimeout(resolve, 50));
         strict_1.default.equal(t2.success, true);
@@ -1270,7 +1270,7 @@ function callSpy() {
             confirmedWithItems = items;
             return makeConfirmedInvoice({ total: new library_1.Decimal(262.5) });
         }));
-        r.push((0, fixtures_1.patchMethod)(core_1.emailService, 'sendInvoiceEmail', async () => true));
+        r.push((0, fixtures_1.patchMethod)(email_1.emailService, 'sendInvoiceEmail', async () => true));
         const t3 = await engine_1.businessEngine.execute(intent(types_1.IntentType.CONFIRM_INVOICE), CONV);
         strict_1.default.equal(t3.success, true);
         // Confirmed items should reflect GST-inclusive totals
@@ -1343,7 +1343,7 @@ function callSpy() {
         r.push((0, fixtures_1.patchMethod)(conversation_1.conversationMemory, 'getContext', async (_id, key) => key === 'pendingInvoiceEmail' ? pendingEmailState : null));
         r.push((0, fixtures_1.patchMethod)(conversation_1.conversationMemory, 'getShopPendingEmail', async () => null));
         r.push((0, fixtures_1.patchMethod)(customer_service_1.customerService, 'updateCustomer', async () => true));
-        r.push((0, fixtures_1.patchMethod)(core_1.emailService, 'sendInvoiceEmail', emailSpy.fn));
+        r.push((0, fixtures_1.patchMethod)(email_1.emailService, 'sendInvoiceEmail', emailSpy.fn));
         r.push((0, fixtures_1.patchMethod)(conversation_1.conversationMemory, 'setShopPendingEmail', async () => { }));
         const t3 = await engine_1.businessEngine.execute(intent(types_1.IntentType.PROVIDE_EMAIL, { email: 'rahul@gmail.com' }), CONV);
         strict_1.default.equal(t3.success, true);
@@ -1435,7 +1435,7 @@ function callSpy() {
 // ─── Cleanup ─────────────────────────────────────────────────────────────────
 node_test_1.default.after(async () => {
     try {
-        await (0, core_2.disconnectDB)();
+        await (0, core_1.disconnectDB)();
     }
     catch {
         // ignore cleanup errors

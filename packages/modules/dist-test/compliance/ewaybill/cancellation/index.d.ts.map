@@ -1,0 +1,1 @@
+{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../../../../src/compliance/ewaybill/cancellation/index.ts"],"names":[],"mappings":"AAAA,oDAAoD;AACpD,MAAM,WAAW,gBAAgB;IAC/B,KAAK,EAAE,MAAM,CAAC;IACd,YAAY,EAAE,CAAC,GAAG,CAAC,GAAG,CAAC,GAAG,CAAC,CAAC;IAC5B,YAAY,CAAC,EAAE,MAAM,CAAC;CACvB;AACD,wBAAsB,cAAc,CAAC,IAAI,EAAE,gBAAgB,GAAG,OAAO,CAAC,OAAO,CAAC,CAE7E"}

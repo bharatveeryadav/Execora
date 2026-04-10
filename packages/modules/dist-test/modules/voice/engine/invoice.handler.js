@@ -20,8 +20,8 @@ const core_1 = require("@execora/core");
 const invoice_service_1 = require("../../invoice/invoice.service");
 const customer_service_1 = require("../../customer/customer.service");
 const ledger_service_1 = require("../../ledger/ledger.service");
+const email_1 = require("../../../infra/email");
 const core_2 = require("@execora/core");
-const core_3 = require("@execora/core");
 const conversation_1 = require("../conversation");
 const shared_1 = require("./shared");
 // ── CREATE_INVOICE ───────────────────────────────────────────────────────────
@@ -335,7 +335,7 @@ async function executeProvideEmail(entities, conversationId) {
     let freshPdfUrl = pending.pdfUrl || undefined;
     if (pending.pdfObjectKey) {
         try {
-            freshPdfUrl = await core_3.minioClient.getPresignedUrl(pending.pdfObjectKey, 7 * 24 * 60 * 60);
+            freshPdfUrl = await core_2.minioClient.getPresignedUrl(pending.pdfObjectKey, 7 * 24 * 60 * 60);
             await invoice_service_1.invoiceService.savePdfUrl(pending.invoiceId, pending.pdfObjectKey, freshPdfUrl);
         }
         catch (err) {
@@ -343,7 +343,7 @@ async function executeProvideEmail(entities, conversationId) {
         }
     }
     const shopName = process.env.SHOP_NAME || 'Execora Shop';
-    await core_2.emailService.sendInvoiceEmail(rawEmail, pending.customerName, pending.invoiceId, pending.items, pending.total, shopName, undefined, freshPdfUrl, pending.invoiceNo || pending.invoiceId);
+    await email_1.emailService.sendInvoiceEmail(rawEmail, pending.customerName, pending.invoiceId, pending.items, pending.total, shopName, undefined, freshPdfUrl, pending.invoiceNo || pending.invoiceId);
     if (conversationId)
         await conversation_1.conversationMemory.setContext(conversationId, 'pendingInvoiceEmail', null);
     await conversation_1.conversationMemory.setShopPendingEmail(null);

@@ -5,10 +5,10 @@ const core_1 = require("@execora/core");
 const core_2 = require("@execora/core");
 const core_3 = require("@execora/core");
 const core_4 = require("@execora/core");
-const core_5 = require("@execora/core");
+const reminder_ops_1 = require("../../infra/reminder-ops");
 const date_fns_1 = require("date-fns");
 const date_fns_tz_1 = require("date-fns-tz");
-const core_6 = require("@execora/core");
+const core_5 = require("@execora/core");
 class ReminderService {
     normalizeSpokenNumbers(input) {
         const devanagariDigits = {
@@ -208,7 +208,7 @@ class ReminderService {
                 date = (0, date_fns_1.setHours)(date, 19);
                 date = (0, date_fns_1.setMinutes)(date, 0);
             }
-            return (0, date_fns_tz_1.fromZonedTime)(date, core_6.config.timezone);
+            return (0, date_fns_tz_1.fromZonedTime)(date, core_5.config.timezone);
         }
         // "aaj" / "today"
         if (lowerStr.includes('aaj') || lowerStr.includes('today')) {
@@ -220,7 +220,7 @@ class ReminderService {
                 date = (0, date_fns_1.setHours)(date, hour);
                 date = (0, date_fns_1.setMinutes)(date, 0);
             }
-            return (0, date_fns_tz_1.fromZonedTime)(date, core_6.config.timezone);
+            return (0, date_fns_tz_1.fromZonedTime)(date, core_5.config.timezone);
         }
         // Specific hour today
         const hourMatch = lowerStr.match(/(\d+)\s*(baje|pm|am)/);
@@ -232,7 +232,7 @@ class ReminderService {
             if (date < now) {
                 date = (0, date_fns_1.addDays)(date, 1);
             }
-            return (0, date_fns_tz_1.fromZonedTime)(date, core_6.config.timezone);
+            return (0, date_fns_tz_1.fromZonedTime)(date, core_5.config.timezone);
         }
         // Default: 1 hour from now
         return (0, date_fns_1.addHours)(now, 1);
@@ -400,13 +400,13 @@ class ReminderService {
      * Mark reminder as sent
      */
     async markAsSent(reminderId, options) {
-        return (0, core_5.markReminderSent)(reminderId, options);
+        return (0, reminder_ops_1.markReminderSent)(reminderId, options);
     }
     /**
      * Mark reminder as failed
      */
     async markAsFailed(reminderId) {
-        return (0, core_5.markReminderFailed)(reminderId);
+        return (0, reminder_ops_1.markReminderFailed)(reminderId);
     }
     /**
      * Get reminders due now
@@ -422,7 +422,7 @@ class ReminderService {
         });
     }
     async scheduleNextOccurrence(reminderId) {
-        return (0, core_5.scheduleNextReminderOccurrence)(reminderId);
+        return (0, reminder_ops_1.scheduleNextReminderOccurrence)(reminderId);
     }
     /**
      * Bulk-schedule reminders for multiple customers (e.g. all with overdue balance).
@@ -431,7 +431,7 @@ class ReminderService {
     async bulkScheduleReminders(data) {
         const { customerIds, message, daysOffset = 0 } = data;
         // Schedule time: today (+ daysOffset) at 18:00 IST
-        const tz = core_6.config.timezone ?? 'Asia/Kolkata';
+        const tz = core_5.config.timezone ?? 'Asia/Kolkata';
         const base = new Date();
         base.setDate(base.getDate() + daysOffset);
         base.setHours(0, 0, 0, 0);

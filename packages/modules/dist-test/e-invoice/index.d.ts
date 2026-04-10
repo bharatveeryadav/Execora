@@ -13,5 +13,4 @@
  *  - Gstr1* types / PnlReport → report shape interfaces
  */
 export * from "../modules/gst/gst.service";
-export * from "../modules/gst/gstr1.service";
 //# sourceMappingURL=index.d.ts.map

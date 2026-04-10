@@ -45,7 +45,7 @@ async function main() {
 
     const raw = await readFile(ownershipFile, "utf8");
     const manifest = JSON.parse(raw);
-    const mapped = manifest ? .routes ? ? {};
+    const mapped = manifest ?.routes ?? {};
     const mappedFiles = Object.keys(mapped).sort();
 
     const missing = routeFiles.filter((name) => !(name in mapped));

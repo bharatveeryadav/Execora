@@ -27,6 +27,9 @@ exports.getTopSelling = getTopSelling;
 exports.getSummaryRange = getSummaryRange;
 exports.getDailySummary = getDailySummary;
 const core_1 = require("@execora/core");
+const email_1 = require("../infra/email");
+const pdf_1 = require("../utils/pdf");
+const whatsapp_service_1 = require("../infra/whatsapp-service");
 const library_1 = require("@prisma/client/runtime/library");
 const gst_service_1 = require("../modules/gst/gst.service");
 const monitoring_service_1 = require("../modules/monitoring/monitoring.service");
@@ -1005,7 +1008,7 @@ async function dispatchInvoicePdfEmail(invoiceId) {
                 ? Math.round(rawTotal) - rawTotal
                 : undefined;
             const discountAmount = parseFloat((invoice.discount ?? 0).toString()) || undefined;
-            pdfBuffer = await (0, core_1.generateInvoicePdf)({
+            pdfBuffer = await (0, pdf_1.generateInvoicePdf)({
                 invoiceNo: invoice.invoiceNo || invoice.id,
                 invoiceId: invoice.id,
                 invoiceDate: invoice.invoiceDate ?? invoice.createdAt,
@@ -1080,7 +1083,7 @@ async function dispatchInvoicePdfEmail(invoiceId) {
             if (!customerEmail || !autoSendEmail)
                 return false;
             try {
-                await core_1.emailService.sendInvoiceEmail(customerEmail, invoice.customer.name, invoice.id, emailItems, grandTotal, shopName, pdfBuffer, pdfUrl, invoiceRef);
+                await email_1.emailService.sendInvoiceEmail(customerEmail, invoice.customer.name, invoice.id, emailItems, grandTotal, shopName, pdfBuffer, pdfUrl, invoiceRef);
                 log.info({ customerEmail, durationMs: Date.now() - start }, "invoice.pdf.email.sent");
                 return true;
             }
@@ -1092,12 +1095,12 @@ async function dispatchInvoicePdfEmail(invoiceId) {
         const tryWhatsApp = customerPhone &&
             pdfUrl &&
             autoSendWhatsApp &&
-            core_1.whatsappService.isConfigured();
+            whatsapp_service_1.whatsappService.isConfigured();
         if (tryWhatsApp && customerPhone && pdfUrl) {
             const invoiceCaption = `${shopName} — Invoice ${invoiceRef}\n₹${grandTotal.toFixed(2)} | Please find your invoice attached.`;
             let waDelivered = false;
             try {
-                const waResult = await core_1.whatsappService.sendDocumentMessage(customerPhone, pdfUrl, invoiceCaption, `invoice-${invoiceRef}.pdf`);
+                const waResult = await whatsapp_service_1.whatsappService.sendDocumentMessage(customerPhone, pdfUrl, invoiceCaption, `invoice-${invoiceRef}.pdf`);
                 waDelivered = waResult.success;
                 log.info({
                     customerPhone,

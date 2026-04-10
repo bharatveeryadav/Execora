@@ -4,12 +4,12 @@ exports.invoiceService = void 0;
 const core_1 = require("@execora/core");
 const core_2 = require("@execora/core");
 const core_3 = require("@execora/core");
+const email_1 = require("../../infra/email");
+const pdf_1 = require("../../utils/pdf");
 const core_4 = require("@execora/core");
-const core_5 = require("@execora/core");
-const core_6 = require("@execora/core");
-const core_7 = require("@execora/core");
+const whatsapp_service_1 = require("../../infra/whatsapp-service");
 const library_1 = require("@prisma/client/runtime/library");
-const core_8 = require("@execora/core");
+const core_5 = require("@execora/core");
 const gst_service_1 = require("../gst/gst.service");
 const monitoring_service_1 = require("../monitoring/monitoring.service");
 /**
@@ -350,7 +350,7 @@ class InvoiceService {
                     itemCount: resolvedItems.length,
                     tenantId: core_3.tenantContext.get().tenantId,
                 }, "Invoice confirmed and created");
-                core_8.invoiceOperations.inc({
+                core_5.invoiceOperations.inc({
                     operation: "create",
                     status: "success",
                     tenantId: core_3.tenantContext.get().tenantId,
@@ -360,7 +360,7 @@ class InvoiceService {
         }
         catch (error) {
             core_2.logger.error({ error, customerId, tenantId: core_3.tenantContext.get().tenantId }, "Invoice confirm failed");
-            core_8.invoiceOperations.inc({
+            core_5.invoiceOperations.inc({
                 operation: "create",
                 status: "error",
                 tenantId: core_3.tenantContext.get().tenantId,
@@ -579,7 +579,7 @@ class InvoiceService {
                     autoCreatedProducts,
                     tenantId: core_3.tenantContext.get().tenantId,
                 }, isProforma ? "Proforma invoice created" : "Invoice created");
-                core_8.invoiceOperations.inc({
+                core_5.invoiceOperations.inc({
                     operation: "create",
                     status: "success",
                     tenantId: core_3.tenantContext.get().tenantId,
@@ -614,7 +614,7 @@ class InvoiceService {
         }
         catch (error) {
             core_2.logger.error({ error, customerId, items, tenantId: core_3.tenantContext.get().tenantId }, "Invoice creation failed");
-            core_8.invoiceOperations.inc({
+            core_5.invoiceOperations.inc({
                 operation: "create",
                 status: "error",
                 tenantId: core_3.tenantContext.get().tenantId,
@@ -1001,7 +1001,7 @@ class InvoiceService {
             const logoObjectKey = settings.logoObjectKey;
             if (logoObjectKey) {
                 try {
-                    logoBuffer = await core_6.minioClient.getFile(logoObjectKey);
+                    logoBuffer = await core_4.minioClient.getFile(logoObjectKey);
                 }
                 catch {
                     /* non-fatal: PDF will render without logo */
@@ -1056,7 +1056,7 @@ class InvoiceService {
                 const rawTotal = subtotal - parseFloat((invoice.discount ?? 0).toString()) + totalTax;
                 const roundOffAmount = roundOff ? Math.round(rawTotal) - rawTotal : undefined;
                 const discountAmount = parseFloat((invoice.discount ?? 0).toString()) || undefined;
-                pdfBuffer = await (0, core_5.generateInvoicePdf)({
+                pdfBuffer = await (0, pdf_1.generateInvoicePdf)({
                     invoiceNo: invoice.invoiceNo || invoice.id,
                     invoiceId: invoice.id,
                     invoiceDate: invoice.invoiceDate ?? invoice.createdAt,
@@ -1102,10 +1102,10 @@ class InvoiceService {
             let pdfUrl;
             try {
                 const objectKey = `invoices/${invoice.tenantId}/${invoice.id}.pdf`;
-                await core_6.minioClient.uploadFile(objectKey, pdfBuffer, {
+                await core_4.minioClient.uploadFile(objectKey, pdfBuffer, {
                     contentType: "application/pdf",
                 });
-                pdfUrl = await core_6.minioClient.getPresignedUrl(objectKey, 7 * 24 * 60 * 60);
+                pdfUrl = await core_4.minioClient.getPresignedUrl(objectKey, 7 * 24 * 60 * 60);
                 await this.savePdfUrl(invoice.id, objectKey, pdfUrl);
             }
             catch (err) {
@@ -1133,7 +1133,7 @@ class InvoiceService {
                 if (!customerEmail || !autoSendEmail)
                     return false;
                 try {
-                    await core_4.emailService.sendInvoiceEmail(customerEmail, invoice.customer.name, invoice.id, emailItems, grandTotal, shopName, pdfBuffer, pdfUrl, invoiceRef);
+                    await email_1.emailService.sendInvoiceEmail(customerEmail, invoice.customer.name, invoice.id, emailItems, grandTotal, shopName, pdfBuffer, pdfUrl, invoiceRef);
                     log.info({ customerEmail, durationMs: Date.now() - start }, "invoice.pdf.email.sent");
                     return true;
                 }
@@ -1146,14 +1146,14 @@ class InvoiceService {
             const tryWhatsApp = customerPhone &&
                 pdfUrl &&
                 autoSendWhatsApp &&
-                core_7.whatsappService.isConfigured();
+                whatsapp_service_1.whatsappService.isConfigured();
             if (tryWhatsApp && customerPhone && pdfUrl) {
                 const phone = customerPhone;
                 const url = pdfUrl;
                 const invoiceCaption = `${shopName} — Invoice ${invoiceRef}\n₹${grandTotal.toFixed(2)} | Please find your invoice attached.`;
                 let waDelivered = false;
                 try {
-                    const waResult = await core_7.whatsappService.sendDocumentMessage(phone, url, invoiceCaption, `invoice-${invoiceRef}.pdf`);
+                    const waResult = await whatsapp_service_1.whatsappService.sendDocumentMessage(phone, url, invoiceCaption, `invoice-${invoiceRef}.pdf`);
                     waDelivered = waResult.success;
                     log.info({
                         customerPhone: phone,

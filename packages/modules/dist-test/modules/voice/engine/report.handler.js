@@ -11,15 +11,15 @@ exports.executeExportPnl = executeExportPnl;
 const core_1 = require("@execora/core");
 const invoice_service_1 = require("../../invoice/invoice.service");
 const product_service_1 = require("../../product/product.service");
-const core_2 = require("@execora/core");
+const email_1 = require("../../../infra/email");
 const gstr1_service_1 = require("../../gst/gstr1.service");
 // ── DAILY_SUMMARY ────────────────────────────────────────────────────────────
 async function executeDailySummary() {
     const summary = await invoice_service_1.invoiceService.getDailySummary();
     const adminEmail = process.env.ADMIN_EMAIL;
-    if (adminEmail && core_2.emailService.isEnabled()) {
+    if (adminEmail && email_1.emailService.isEnabled()) {
         const today = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-        core_2.emailService.sendDailySummaryEmail(adminEmail, {
+        email_1.emailService.sendDailySummaryEmail(adminEmail, {
             date: today,
             totalSales: Number(summary.totalSales ?? 0),
             invoiceCount: Number(summary.invoiceCount ?? 0),
@@ -75,7 +75,7 @@ async function executeExportGstr1(entities) {
     }
     const report = await gstr1_service_1.gstr1Service.getGstr1Report(tenantId, from, to);
     const { totals } = report;
-    const canEmail = core_2.emailService.isEnabled();
+    const canEmail = email_1.emailService.isEnabled();
     const adminEmail = entities.email ?? process.env.ADMIN_EMAIL;
     const msg = [
         `GSTR-1 FY ${report.fy}: ${totals.invoiceCount} invoices,`,
@@ -133,7 +133,7 @@ async function executeExportPnl(entities) {
     const { totals } = report;
     const collectionRate = totals.collectionRate.toFixed(1);
     const monthLabel = from.toLocaleString('en-IN', { month: 'short', year: 'numeric' });
-    const canEmail = core_2.emailService.isEnabled();
+    const canEmail = email_1.emailService.isEnabled();
     const msg = [
         `P&L ${monthLabel}:`,
         `Revenue ₹${totals.revenue.toLocaleString('en-IN')},`,

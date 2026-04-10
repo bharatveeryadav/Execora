@@ -16,7 +16,7 @@ exports.executeDeleteCustomerData = executeDeleteCustomerData;
 const core_1 = require("@execora/core");
 const customer_service_1 = require("../../customer/customer.service");
 const conversation_1 = require("../conversation");
-const core_2 = require("@execora/core");
+const email_1 = require("../../../infra/email");
 const openai_1 = require("../../../integrations/openai");
 const shared_1 = require("./shared");
 // ── TOTAL_PENDING_AMOUNT ─────────────────────────────────────────────────────
@@ -213,7 +213,7 @@ async function executeDeleteCustomerData(entities, conversationId) {
             const otp = Math.floor(100000 + Math.random() * 900000).toString();
             core_1.logger.info({ customerId: customer.id, adminEmail, otp }, 'Delete: Sending OTP');
             try {
-                await core_2.emailService.sendAdminDeletionOtpEmail(adminEmail, customer.name, otp);
+                await email_1.emailService.sendAdminDeletionOtpEmail(adminEmail, customer.name, otp);
             }
             catch (e) {
                 core_1.logger.error({ error: e.message }, 'Delete: OTP email failed');

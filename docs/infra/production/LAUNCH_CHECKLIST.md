@@ -4,6 +4,7 @@
 > Backend Truth: Active runtime behavior is defined by packages/api/src/index.ts, packages/api/src/api/index.ts, and packages/api/src/ws/enhanced-handler.ts.\n> Canonical refs: docs/README.md, docs/features/README.md, docs/api/API.md, docs/AUTH.md.\n\n
 
 # Execora — Launch Checklist
+
 ## Last Updated: March 17, 2026
 
 **Invoice requirements**: See `docs/INVOICE_REQUIREMENTS.md` for full improvement checklist.
@@ -25,7 +26,6 @@
 - [ ] Startup assertion: throw if `ADMIN_API_KEY` < 16 chars in production
 - [ ] Login rate limit: 5 req/min per IP on `POST /api/v1/auth/login` separately from global rate limit
 - [ ] CORS fail-closed: if `ALLOWED_ORIGINS` empty in production, set `origin: false` (reject all cross-origin requests)
-- [ ] Remove `allowedHosts` tailscale hostname from `apps/web/vite.config.ts`
 - [ ] Enable Helmet CSP (at minimum `default-src 'self'`)
 - [ ] Add `tenantId` filter audit: scan all `prisma.*` calls in `packages/modules/src/` to verify `tenantId` is in every `where` clause
 - [x] ~~GSTIN checksum validation~~ **FIXED 2026-03**: Reject B2B invoices with malformed GSTIN at API; Luhn mod 36 checksum in `packages/shared/src/gstin.ts`; UI red border + message in ClassicBilling + InvoiceCreation
@@ -115,6 +115,7 @@
 ---
 
 ## 🏢 MEDIUM-SCALE BUSINESS FEATURE GAPS
+
 > Based on full code audit March 15, 2026 — focus: kirana → medium retail/wholesale.
 > These are required before Segment B (5–50 staff, ₹50L–₹10Cr SME) launch.
 

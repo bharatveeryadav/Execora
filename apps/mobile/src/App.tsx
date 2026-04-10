@@ -25,6 +25,7 @@ import {
   Inter_500Medium,
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
+import { Ionicons } from "@expo/vector-icons";
 import { bootApi, setAuthExpiredHandler, authApi } from "./lib/api";
 import { ENV } from "./lib/env";
 
@@ -106,6 +107,7 @@ function AppContent() {
     Inter_400Regular,
     Inter_500Medium,
     Inter_700Bold,
+    ...Ionicons.font,
   });
 
   // Hide splash once fonts are ready or failed (render with system font fallback)

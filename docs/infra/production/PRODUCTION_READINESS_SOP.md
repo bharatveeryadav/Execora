@@ -133,21 +133,21 @@ Rule 5: types package is safe everywhere
 
 ### `packages/shared/src/` — Must Contain
 
-| What | File | Consumed By |
-|------|------|-------------|
-| All domain types | `types.ts` | web, mobile, api (via modules) |
-| API client + `apiFetch` | `api-client.ts` | web, mobile |
-| `computeTotals()` | `billing-logic.ts` | web (ClassicBilling), mobile (BillingScreen) |
-| `computeAmount()` | `billing-logic.ts` | web, mobile (line item calc) |
-| `amountInWords()` | `billing-logic.ts` | web, mobile (invoice footer) |
-| `inr()` formatter | `billing-logic.ts` | web, mobile (all currency display) |
-| `fuzzyFilter()` | `billing-logic.ts` | web, mobile (product search) |
-| `isDraftExpired()` | `billing-logic.ts` | mobile (MMKV draft recovery) |
-| `PAY_MODES` constant | `billing-logic.ts` | web, mobile (payment method lists) |
-| `DEFAULT_GST_RATE` | `billing-logic.ts` | web, mobile (GST = 18%) |
-| `DRAFT_MAX_AGE_MINUTES` | `billing-logic.ts` | mobile (draft expiry = 480 min) |
-| `authApi`, `customerApi` | `api-client.ts` | web, mobile |
-| `productApi`, `invoiceApi` | `api-client.ts` | web, mobile |
+| What                       | File               | Consumed By                                  |
+| -------------------------- | ------------------ | -------------------------------------------- |
+| All domain types           | `types.ts`         | web, mobile, api (via modules)               |
+| API client + `apiFetch`    | `api-client.ts`    | web, mobile                                  |
+| `computeTotals()`          | `billing-logic.ts` | web (ClassicBilling), mobile (BillingScreen) |
+| `computeAmount()`          | `billing-logic.ts` | web, mobile (line item calc)                 |
+| `amountInWords()`          | `billing-logic.ts` | web, mobile (invoice footer)                 |
+| `inr()` formatter          | `billing-logic.ts` | web, mobile (all currency display)           |
+| `fuzzyFilter()`            | `billing-logic.ts` | web, mobile (product search)                 |
+| `isDraftExpired()`         | `billing-logic.ts` | mobile (MMKV draft recovery)                 |
+| `PAY_MODES` constant       | `billing-logic.ts` | web, mobile (payment method lists)           |
+| `DEFAULT_GST_RATE`         | `billing-logic.ts` | web, mobile (GST = 18%)                      |
+| `DRAFT_MAX_AGE_MINUTES`    | `billing-logic.ts` | mobile (draft expiry = 480 min)              |
+| `authApi`, `customerApi`   | `api-client.ts`    | web, mobile                                  |
+| `productApi`, `invoiceApi` | `api-client.ts`    | web, mobile                                  |
 
 ### `packages/shared/src/` — Must NOT Contain
 
@@ -171,26 +171,26 @@ Buffer, process.env (Node-only)
 // These are THE contract between all frontends and the backend.
 // Any field addition or removal requires updating this file FIRST.
 
-Customer         // id, tenantId, name, phone?, email?, balance, totalPurchases, totalPayments
-Product          // id, tenantId?, name, price?, unit?, stock?, category?, sku?, hsnCode?, barcode?
-InvoiceItem      // productName, quantity, unitPrice?, lineDiscountPercent?, amount?, hsnCode?
-Invoice          // id, invoiceNo?, customerId, customer?, items[], subtotal, discountAmount?,
-                 // gstAmount?, total, notes?, status, createdAt, updatedAt
-BillingItem      // id, name, qty, rate, unit, discount, amount, productId?, hsnCode? (UI state)
-BillingDraft     // Full draft shape — persisted to MMKV (mobile) or localStorage (web)
-PaymentSplit     // id, mode, amount (one entry per payment method in split payment)
-PaymentMode      // 'cash' | 'upi' | 'card' | 'credit'
-CreateInvoicePayload   // POST /api/v1/invoices request body
-PaginatedCustomers     // { customers: Customer[], total: number }
-PaginatedProducts      // { products: Product[], total: number }
-PaginatedInvoices      // { invoices: Invoice[], total: number }
+Customer; // id, tenantId, name, phone?, email?, balance, totalPurchases, totalPayments
+Product; // id, tenantId?, name, price?, unit?, stock?, category?, sku?, hsnCode?, barcode?
+InvoiceItem; // productName, quantity, unitPrice?, lineDiscountPercent?, amount?, hsnCode?
+Invoice; // id, invoiceNo?, customerId, customer?, items[], subtotal, discountAmount?,
+// gstAmount?, total, notes?, status, createdAt, updatedAt
+BillingItem; // id, name, qty, rate, unit, discount, amount, productId?, hsnCode? (UI state)
+BillingDraft; // Full draft shape — persisted to MMKV (mobile) or localStorage (web)
+PaymentSplit; // id, mode, amount (one entry per payment method in split payment)
+PaymentMode; // 'cash' | 'upi' | 'card' | 'credit'
+CreateInvoicePayload; // POST /api/v1/invoices request body
+PaginatedCustomers; // { customers: Customer[], total: number }
+PaginatedProducts; // { products: Product[], total: number }
+PaginatedInvoices; // { invoices: Invoice[], total: number }
 ```
 
 ### Valid Invoice Status Values
 
 ```typescript
 // ONLY these — 'issued' is legacy and must never be used:
-type InvoiceStatus = 'draft' | 'pending' | 'partial' | 'paid' | 'cancelled'
+type InvoiceStatus = "draft" | "pending" | "partial" | "paid" | "cancelled";
 
 // Allowed transitions:
 // draft     → pending    (confirmed)
@@ -203,19 +203,19 @@ type InvoiceStatus = 'draft' | 'pending' | 'partial' | 'paid' | 'cancelled'
 
 ### Platform-Specific Code — Stays in Apps, Never Crosses
 
-| Concern | Web (`apps/web/`) | Mobile (`apps/mobile/`) |
-|---------|-------------------|------------------------|
-| Routing | React Router v6 (`src/App.tsx`) | @react-navigation v7 (`src/navigation/index.tsx`) |
-| Storage | localStorage (AuthContext) | MMKV encrypted (`src/lib/storage.ts`) |
-| Auth persistence | `AuthContext.tsx` | `tokenStorage` in `storage.ts` |
-| API client init | `src/lib/api.ts` → `initApiClient({ getToken: () => localStorage.getItem('execora_token') })` | `src/lib/api.ts` → `initApiClient({ getToken: tokenStorage.getToken })` |
-| UI components | shadcn/ui + Tailwind CSS + Radix | NativeWind + React Native primitives |
-| Charts | recharts | victory-native (planned) |
-| WebSocket | `src/lib/ws.ts` singleton | planned |
-| Alerts | shadcn Toast / Sonner | `Alert.alert()` from react-native |
-| Share | Web Share API | `Share.share()` from react-native |
-| Links | `<a href target="_blank">` | `Linking.openURL()` |
-| PDF download | `fetch` + blob URL + `<a>.click()` | expo-sharing (planned) |
+| Concern          | Web (`apps/web/`)                                                                             | Mobile (`apps/mobile/`)                                                 |
+| ---------------- | --------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Routing          | React Router v6 (`src/App.tsx`)                                                               | @react-navigation v7 (`src/navigation/index.tsx`)                       |
+| Storage          | localStorage (AuthContext)                                                                    | MMKV encrypted (`src/lib/storage.ts`)                                   |
+| Auth persistence | `AuthContext.tsx`                                                                             | `tokenStorage` in `storage.ts`                                          |
+| API client init  | `src/lib/api.ts` → `initApiClient({ getToken: () => localStorage.getItem('execora_token') })` | `src/lib/api.ts` → `initApiClient({ getToken: tokenStorage.getToken })` |
+| UI components    | shadcn/ui + Tailwind CSS + Radix                                                              | NativeWind + React Native primitives                                    |
+| Charts           | recharts                                                                                      | victory-native (planned)                                                |
+| WebSocket        | `src/lib/ws.ts` singleton                                                                     | planned                                                                 |
+| Alerts           | shadcn Toast / Sonner                                                                         | `Alert.alert()` from react-native                                       |
+| Share            | Web Share API                                                                                 | `Share.share()` from react-native                                       |
+| Links            | `<a href target="_blank">`                                                                    | `Linking.openURL()`                                                     |
+| PDF download     | `fetch` + blob URL + `<a>.click()`                                                            | expo-sharing (planned)                                                  |
 
 ---
 
@@ -260,6 +260,7 @@ Every screen in both web and mobile follows this strict separation:
 ### How to Add a New Feature Correctly
 
 **Step 1 — Define the type in `packages/shared/src/types.ts`**
+
 ```typescript
 export interface Expense {
   id: string;
@@ -280,15 +281,16 @@ export interface CreateExpensePayload {
 ```
 
 **Step 2 — Add the API call in `packages/shared/src/api-client.ts`**
+
 ```typescript
 export const expenseApi = {
   list: (page = 1, limit = 20) =>
     apiFetch<{ expenses: Expense[]; total: number }>(
-      `/api/v1/expenses?page=${page}&limit=${limit}`
+      `/api/v1/expenses?page=${page}&limit=${limit}`,
     ),
   create: (data: CreateExpensePayload) =>
-    apiFetch<{ expense: Expense }>('/api/v1/expenses', {
-      method: 'POST',
+    apiFetch<{ expense: Expense }>("/api/v1/expenses", {
+      method: "POST",
       body: JSON.stringify(data),
     }),
 };
@@ -296,6 +298,7 @@ export const expenseApi = {
 ```
 
 **Step 3 — Add business logic if needed in `packages/shared/src/billing-logic.ts`**
+
 ```typescript
 // Only if there are shared calculations (e.g. monthly expense total)
 export function sumExpenses(expenses: Expense[]): number {
@@ -304,22 +307,25 @@ export function sumExpenses(expenses: Expense[]): number {
 ```
 
 **Step 4 — Build the web page (`apps/web/src/pages/Expenses.tsx`)**
+
 ```tsx
-import { expenseApi, sumExpenses, type Expense } from '@execora/shared';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { expenseApi, sumExpenses, type Expense } from "@execora/shared";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 // Web-specific JSX: <div>, shadcn Button, Input, Dialog, Table, etc.
 // All business logic delegated to shared functions
 ```
 
 **Step 5 — Build the mobile screen (`apps/mobile/src/screens/ExpensesScreen.tsx`)**
+
 ```tsx
-import { expenseApi, sumExpenses, type Expense } from '@execora/shared';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { expenseApi, sumExpenses, type Expense } from "@execora/shared";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 // Mobile-specific JSX: <View>, <Text>, <TouchableOpacity>, NativeWind classes
 // Exact same logic, different UI primitives
 ```
 
 **Step 6 — Wire into mobile navigation (`apps/mobile/src/navigation/index.tsx`)**
+
 ```typescript
 // Add ExpensesScreen to appropriate stack + tab
 export type MainTabParams = {
@@ -368,40 +374,34 @@ All cache keys follow this convention — mentally shared between web and mobile
 
 ```typescript
 // Customer queries:
-['customers']                            // full list (web default)
-['customers', search, page]             // searched/paginated list (mobile)
-['customer', id]                         // single customer profile
-['customer-invoices', customerId]        // all invoices for a customer
-['customer-ledger', customerId]          // ledger entries
-['comm-prefs', customerId]              // notification preferences
-['reminders', customerId]               // scheduled reminders
-
-// Invoice queries:
-['invoices']                             // invoice list (web default)
-['invoices', page]                       // paginated (mobile)
-['invoice', id]                          // single invoice detail
-
-// Product queries:
-['products']                             // full product catalog
-['products', 'search', query]           // search results
-['products', 'low-stock']              // low stock alerts
-
-// Dashboard queries:
-['daily-summary', date]                  // today's KPIs (refetch every 60s)
-['dashboard-stats']                      // charts data
+["customers"][("customers", search, page)][("customer", id)][ // full list (web default) // searched/paginated list (mobile) // single customer profile
+  ("customer-invoices", customerId)
+][("customer-ledger", customerId)][("comm-prefs", customerId)][ // all invoices for a customer // ledger entries // notification preferences
+  ("reminders", customerId)
+][ // scheduled reminders
+  // Invoice queries:
+  "invoices"
+][("invoices", page)][("invoice", id)][ // invoice list (web default) // paginated (mobile) // single invoice detail
+  // Product queries:
+  "products"
+][("products", "search", query)][("products", "low-stock")][ // full product catalog // search results // low stock alerts
+  // Dashboard queries:
+  ("daily-summary", date)
+]["dashboard-stats"]; // today's KPIs (refetch every 60s) // charts data
 ```
 
 **Cache invalidation after every mutation — always invalidate related keys:**
+
 ```typescript
 // Example: after recording a payment
 onSuccess: () => {
-  qc.invalidateQueries({ queryKey: ['customers'] });           // list
-  qc.invalidateQueries({ queryKey: ['customer', customerId] }); // profile
-  qc.invalidateQueries({ queryKey: ['customer-ledger', customerId] });
-  qc.invalidateQueries({ queryKey: ['invoices'] });            // list
-  qc.invalidateQueries({ queryKey: ['invoice', invoiceId] });  // detail
-  qc.invalidateQueries({ queryKey: ['daily-summary', today] }); // dashboard
-}
+  qc.invalidateQueries({ queryKey: ["customers"] }); // list
+  qc.invalidateQueries({ queryKey: ["customer", customerId] }); // profile
+  qc.invalidateQueries({ queryKey: ["customer-ledger", customerId] });
+  qc.invalidateQueries({ queryKey: ["invoices"] }); // list
+  qc.invalidateQueries({ queryKey: ["invoice", invoiceId] }); // detail
+  qc.invalidateQueries({ queryKey: ["daily-summary", today] }); // dashboard
+};
 ```
 
 ---
@@ -413,41 +413,50 @@ onSuccess: () => {
 ```typescript
 // ── From types.ts ─────────────────────────────────────────
 export type {
-  Customer, Product, Invoice, InvoiceItem,
-  BillingItem, BillingDraft, PaymentSplit, PaymentMode,
+  Customer,
+  Product,
+  Invoice,
+  InvoiceItem,
+  BillingItem,
+  BillingDraft,
+  PaymentSplit,
+  PaymentMode,
   CreateInvoicePayload,
-  PaginatedCustomers, PaginatedProducts, PaginatedInvoices,
-}
+  PaginatedCustomers,
+  PaginatedProducts,
+  PaginatedInvoices,
+};
 
 // ── From billing-logic.ts ─────────────────────────────────
 export {
-  computeTotals,          // (items, discountPct, discountFlat, withGst, roundOff) → totals object
-  computeAmount,          // (rate, qty, discount) → number
-  amountInWords,          // (amount) → "One Thousand Rupees Only"
-  inr,                    // (n) → "1,00,000.00" (en-IN locale)
-  fuzzyScore,             // (text, query) → 0-100 relevance score
-  fuzzyFilter,            // (products, query) → top 8 matching products
-  isDraftExpired,         // (savedAt) → boolean (> 8 hours = expired)
-  PAY_MODES,              // [{ id, label, icon }] — cash, upi, card, credit
-  DEFAULT_GST_RATE,       // 18
-  DRAFT_MAX_AGE_MINUTES,  // 480
-}
+  computeTotals, // (items, discountPct, discountFlat, withGst, roundOff) → totals object
+  computeAmount, // (rate, qty, discount) → number
+  amountInWords, // (amount) → "One Thousand Rupees Only"
+  inr, // (n) → "1,00,000.00" (en-IN locale)
+  fuzzyScore, // (text, query) → 0-100 relevance score
+  fuzzyFilter, // (products, query) → top 8 matching products
+  isDraftExpired, // (savedAt) → boolean (> 8 hours = expired)
+  PAY_MODES, // [{ id, label, icon }] — cash, upi, card, credit
+  DEFAULT_GST_RATE, // 18
+  DRAFT_MAX_AGE_MINUTES, // 480
+};
 
 // ── From api-client.ts ────────────────────────────────────
 export {
-  initApiClient,          // call once on app boot with storage adapters
-  apiFetch,               // generic authenticated fetch with auto-refresh
-  authApi,                // { login, sendOtp, me }
-  customerApi,            // { list, search, get, create, update }
-  productApi,             // { list, search, get, byBarcode }
-  invoiceApi,             // { list, get, create, pdf }
-}
-export type { ApiAdapters }
+  initApiClient, // call once on app boot with storage adapters
+  apiFetch, // generic authenticated fetch with auto-refresh
+  authApi, // { login, sendOtp, me }
+  customerApi, // { list, search, get, create, update }
+  productApi, // { list, search, get, byBarcode }
+  invoiceApi, // { list, get, create, pdf }
+};
+export type { ApiAdapters };
 ```
 
 ### `@execora/shared` — Breaking Change Policy
 
 A change to `packages/shared` is BREAKING if it:
+
 - Removes or renames any exported function, type, or constant
 - Adds a required field to `CreateInvoicePayload` or any input type
 - Changes the return type or parameter types of any `*Api` function
@@ -455,6 +464,7 @@ A change to `packages/shared` is BREAKING if it:
 - Changes the shape of `BillingDraft` (breaks persisted MMKV drafts on mobile)
 
 **Breaking changes require:**
+
 1. Mark old export with `@deprecated` JSDoc
 2. Keep old export working and tested for minimum 2 releases
 3. Document migration path in `CHANGELOG.md` under "Breaking Changes"
@@ -535,6 +545,7 @@ pnpm dev:all
 ### Environment Variables — Complete Reference
 
 **`packages/api/.env`**
+
 ```bash
 DATABASE_URL=postgresql://execora:execora@localhost:5432/execora_dev
 REDIS_URL=redis://localhost:6379
@@ -550,12 +561,14 @@ NODE_ENV=development
 ```
 
 **`apps/web/.env`**
+
 ```bash
 VITE_API_BASE_URL=http://localhost:3006
 VITE_WS_URL=ws://localhost:3006
 ```
 
 **`apps/mobile/.env`**
+
 ```bash
 # Option A — Android emulator (default):
 EXPO_PUBLIC_API_URL=http://10.0.2.2:3006
@@ -569,14 +582,14 @@ EXPO_PUBLIC_API_URL=http://10.0.2.2:3006
 
 ### Development Ports
 
-| Service | Port | Access |
-|---------|------|--------|
-| API (Fastify) | 3006 | http://localhost:3006 |
-| Web (Vite) | 5173 | http://localhost:5173 |
-| Prisma Studio | 5555 | http://localhost:5555 (`pnpm db:studio`) |
-| MinIO Console | 9001 | http://localhost:9001 (admin/minioadmin) |
-| Prometheus metrics | 3006/metrics | http://localhost:3006/metrics |
-| Expo Metro | 8081 | http://localhost:8081 |
+| Service            | Port         | Access                                   |
+| ------------------ | ------------ | ---------------------------------------- |
+| API (Fastify)      | 3006         | http://localhost:3006                    |
+| Web (Vite)         | 5173         | http://localhost:5173                    |
+| Prisma Studio      | 5555         | http://localhost:5555 (`pnpm db:studio`) |
+| MinIO Console      | 9001         | http://localhost:9001 (admin/minioadmin) |
+| Prometheus metrics | 3006/metrics | http://localhost:3006/metrics            |
+| Expo Metro         | 8081         | http://localhost:8081                    |
 
 ### Physical Device Testing
 
@@ -591,7 +604,7 @@ pnpm --filter @execora/mobile android                    # installs dev client t
 # 3. Restart Metro:              pnpm --filter @execora/mobile start --clear
 
 # External network (different WiFi, mobile data):
-# 1. Install ngrok or use Tailscale: pnpm deploy:tailscale
+# 1. Install ngrok:               npx ngrok http 3006
 # 2. Set in apps/mobile/.env:    EXPO_PUBLIC_API_URL=https://<tunnel-url>
 # 3. Restart Metro
 ```
@@ -1097,10 +1110,10 @@ PostgreSQL
 ```typescript
 // packages/api/src/api/routes/invoices.ts
 fastify.post<{ Body: CreateInvoicePayload }>(
-  '/api/v1/invoices',
+  "/api/v1/invoices",
   {
-    preHandler: [requirePermission('invoices:create')],
-    schema: { body: createInvoiceBodySchema },   // ← REQUIRED on every POST/PATCH/PUT
+    preHandler: [requirePermission("invoices:create")],
+    schema: { body: createInvoiceBodySchema }, // ← REQUIRED on every POST/PATCH/PUT
   },
   async (request, reply) => {
     const invoice = await invoiceService.createInvoice(
@@ -1109,7 +1122,7 @@ fastify.post<{ Body: CreateInvoicePayload }>(
       request.body,
     );
     reply.code(201).send({ invoice });
-  }
+  },
 );
 ```
 
@@ -1237,11 +1250,11 @@ Monitoring:
 
 ```yaml
 # Every PR triggers all 5 jobs — all must be green before merge:
-lint:      pnpm lint                      # zero warnings
-typecheck: pnpm typecheck                 # zero errors across all packages
-test:      pnpm test                      # all suites pass
-build:     pnpm build                     # all packages build
-audit:     pnpm audit --audit-level high  # zero high/critical CVEs
+lint: pnpm lint # zero warnings
+typecheck: pnpm typecheck # zero errors across all packages
+test: pnpm test # all suites pass
+build: pnpm build # all packages build
+audit: pnpm audit --audit-level high # zero high/critical CVEs
 ```
 
 ### Branch Protection (GitHub Settings)
@@ -1520,13 +1533,16 @@ SECURITY.md                   @execora/maintainers
 <!-- .github/pull_request_template.md -->
 
 ## What changed
+
 <!-- Describe what this PR adds, fixes, or removes. Be specific. -->
 
 ## Why
+
 <!-- Link to issue or describe the user problem this solves. -->
 <!-- Must map to a use case in docs/PRODUCT_REQUIREMENTS.md -->
 
 ## Type of change
+
 - [ ] feat: New feature
 - [ ] fix: Bug fix
 - [ ] refactor: Refactor (no behavior change)
@@ -1534,11 +1550,13 @@ SECURITY.md                   @execora/maintainers
 - [ ] docs: Documentation only
 
 ## How was this tested
+
 - [ ] Unit tests added/updated
 - [ ] Integration test added/updated
 - [ ] Manual test on: [ ] Web [ ] Mobile emulator [ ] Physical device
 
 ## Checklist
+
 - [ ] `pnpm lint && pnpm typecheck && pnpm test && pnpm build` all green locally
 - [ ] No `any` added to `packages/shared`
 - [ ] No platform-specific code added to `packages/shared`
@@ -2080,6 +2098,7 @@ const navigation = useNavigation<any>(); # typed any acceptable for now
 ### Appendix D: Tech Libraries Quick Reference
 
 **Web (`apps/web`)**
+
 ```
 React 18.3 + React Router 6.30   — UI + routing
 Vite 5.4                          — build tool + dev server (HMR)
@@ -2094,6 +2113,7 @@ date-fns 3.6                      — date formatting
 ```
 
 **Mobile (`apps/mobile`)**
+
 ```
 React Native 0.76.6 + Expo 52.0           — mobile framework
 @react-navigation/native-stack v7          — stack navigation
@@ -2107,6 +2127,7 @@ react-native-gesture-handler 2.20          — gesture recognition
 ```
 
 **Backend (`packages/api`, `apps/worker`, `packages/*`)**
+
 ```
 Fastify 4.x                — HTTP server (type-safe routes)
 Prisma 5.9                 — ORM + migrations
@@ -2120,7 +2141,7 @@ node:crypto (built-in)     — JWT (HS256, no external dep)
 
 ---
 
-*Last updated: 2026-03-12*
-*Update this document when: new package added, new screen added, shared API changes,
-new security requirement identified, production incident reveals a gap.*
-*This is a living contract — stale documentation is worse than no documentation.*
+_Last updated: 2026-03-12_
+_Update this document when: new package added, new screen added, shared API changes,
+new security requirement identified, production incident reveals a gap._
+_This is a living contract — stale documentation is worse than no documentation._

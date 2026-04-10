@@ -7,8 +7,7 @@ import {
 const userArgs = process.argv.slice(2);
 const hasComposeFileFlag = userArgs.includes("-f") || userArgs.includes("--file");
 const normalizedArgs = hasComposeFileFlag ?
-    userArgs :
-    ["-f", "infra/docker/docker-compose.yml", ...userArgs];
+    userArgs : ["-f", "infra/docker/docker-compose.yml", ...userArgs];
 
 function run(command, args, options = {}) {
     return spawnSync(command, args, {
@@ -51,4 +50,4 @@ if (hasDockerComposePlugin()) {
 }
 
 const result = run(cmd, args);
-process.exit(result.status ? ? 1);
+process.exit(result.status ?? 1);

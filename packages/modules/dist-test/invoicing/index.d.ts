@@ -14,7 +14,6 @@
  *  - invoiceService / customerService / reminderService   — singleton classes
  */
 export * from "../sales/invoicing/create-invoice";
-export * from "../sales/credit-notes/credit-note";
 export * from "../purchases/purchase/purchase-order";
 export * from "../purchases/vendors/supplier-profile";
 export * from "../crm/parties/customer-profile";

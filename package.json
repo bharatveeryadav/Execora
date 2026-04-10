@@ -8,6 +8,12 @@
     "pnpm": ">=9.0.0"
   },
   "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "copy-env": "node scripts/copy-env.mjs",
+    "dev:personal": "node scripts/personal-dev.mjs",
+    "env:sync:personal": "node scripts/sync-personal-env.mjs",
+    "start:all": "node scripts/start-all.mjs",
+    "start:backend": "node scripts/start-all.mjs --no-mobile",
     "dev": "turbo run dev --filter=@execora/api",
     "dev:web": "turbo run dev --filter=@execora/web",
     "worker": "turbo run dev --filter=@execora/worker",
@@ -17,9 +23,6 @@
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
     "typecheck:web": "turbo run typecheck --filter=@execora/web",
-    "deploy:tailscale": "bash scripts/deploy/tailscale-public.sh",
-    "deploy:tailscale:all": "bash scripts/deploy/tailscale-expose-all.sh",
-    "deploy:tailscale:stop": "bash scripts/deploy/tailscale-stop.sh",
     "start": "turbo run start --filter=@execora/api",
     "start:worker": "turbo run start --filter=@execora/worker",
     "db:generate": "prisma generate",

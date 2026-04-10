@@ -1,0 +1,1 @@
+{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../../../../src/compliance/ewaybill/status-sync/index.ts"],"names":[],"mappings":"AAAA,gEAAgE;AAChE,MAAM,WAAW,eAAe;IAC9B,KAAK,EAAE,MAAM,CAAC;IACd,MAAM,EAAE,QAAQ,GAAG,WAAW,CAAC;IAC/B,SAAS,EAAE,MAAM,CAAC;CACnB;AACD,wBAAsB,iBAAiB,CAAC,MAAM,EAAE,MAAM,GAAG,OAAO,CAAC,eAAe,GAAG,IAAI,CAAC,CAEvF"}

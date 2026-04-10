@@ -1,0 +1,1 @@
+{"version":3,"file":"index.js","sourceRoot":"","sources":["../../../../src/platform/feature-toggle/manifest-validator/index.ts"],"names":[],"mappings":";;AAYA,sDAKC;AAED,oDAKC;AAZM,KAAK,UAAU,qBAAqB,CACzC,SAAiB,EACjB,QAAgB;IAEhB,OAAO,EAAE,OAAO,EAAE,QAAQ,EAAE,OAAO,EAAE,KAAK,EAAE,CAAC;AAC/C,CAAC;AAEM,KAAK,UAAU,oBAAoB,CACxC,SAAiB,EACjB,SAAmB;IAEnB,OAAO,EAAE,CAAC;AACZ,CAAC"}

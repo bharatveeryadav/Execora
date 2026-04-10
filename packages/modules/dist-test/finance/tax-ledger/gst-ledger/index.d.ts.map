@@ -1,0 +1,1 @@
+{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../../../../src/finance/tax-ledger/gst-ledger/index.ts"],"names":[],"mappings":"AAAA;;;;;GAKG;AACH,cAAc,qBAAqB,CAAC;AACpC,OAAO,EAAE,YAAY,EAAE,MAAM,uCAAuC,CAAC;AACrE,wBAAsB,YAAY,CAChC,QAAQ,EAAE,MAAM,EAChB,MAAM,EAAE;IAAE,IAAI,EAAE,MAAM,CAAC;IAAC,EAAE,EAAE,MAAM,CAAA;CAAE,GACnC,OAAO,CAAC,OAAO,qBAAqB,EAAE,eAAe,CAAC,CAWxD"}

@@ -30,6 +30,5 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 // ── GST calculation & tax service ────────────────────────────────────────────
 __exportStar(require("../modules/gst/gst.service"), exports);
-// ── GSTR-1 filing & P&L reporting ────────────────────────────────────────────
-__exportStar(require("../modules/gst/gstr1.service"), exports);
+// Note: gstr1.service (GSTR-1 reports + P&L) is exported from the accounting module
 //# sourceMappingURL=index.js.map

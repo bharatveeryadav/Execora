@@ -100,40 +100,18 @@ declare class CustomerService {
      * Get multiple customers in batch (Real-time optimized)
      */
     getMultipleCustomersWithContext(customerIds: string[], conversationId: string): Promise<(({
-        reminders: {
+        invoices: {
             tenantId: string;
             id: string;
-            customerId: string | null;
-            status: import(".prisma/client").$Enums.ReminderStatus;
+            tags: string[];
             notes: string | null;
             createdBy: string | null;
             createdAt: Date;
             updatedAt: Date;
-            invoiceId: string | null;
-            productId: string | null;
-            userId: string | null;
-            scheduledTime: Date;
-            reminderType: import(".prisma/client").$Enums.ReminderType;
-            priority: import(".prisma/client").$Enums.ReminderPriority;
-            recurringPattern: import("@prisma/client/runtime/library").JsonValue | null;
-            expiresAt: Date | null;
-            messageTemplateId: string | null;
-            customMessage: string | null;
-            parameters: import("@prisma/client/runtime/library").JsonValue | null;
-            channels: import(".prisma/client").$Enums.MessageChannel[];
-            sentAt: Date | null;
-            deliveredAt: Date | null;
-            readAt: Date | null;
-            retryCount: number;
-            maxRetries: number;
-            lastAttempt: Date | null;
-            lastError: string | null;
-        }[];
-        invoices: {
-            tenantId: string;
-            id: string;
-            invoiceNo: string;
+            deletedAt: Date | null;
+            status: import(".prisma/client").$Enums.InvoiceStatus;
             customerId: string | null;
+            invoiceNo: string;
             subtotal: Decimal;
             discount: Decimal;
             discountType: string | null;
@@ -155,29 +133,45 @@ declare class CustomerService {
             ackNo: string | null;
             ackDate: Date | null;
             qrCode: string | null;
-            status: import(".prisma/client").$Enums.InvoiceStatus;
             paymentMethod: import(".prisma/client").$Enums.PaymentMethod | null;
             invoiceDate: Date;
             dueDate: Date | null;
             paidAt: Date | null;
-            notes: string | null;
-            tags: string[];
             pdfObjectKey: string | null;
             pdfUrl: string | null;
+        }[];
+        reminders: {
+            tenantId: string;
+            id: string;
+            notes: string | null;
             createdBy: string | null;
             createdAt: Date;
             updatedAt: Date;
-            deletedAt: Date | null;
+            status: import(".prisma/client").$Enums.ReminderStatus;
+            scheduledTime: Date;
+            customerId: string | null;
+            invoiceId: string | null;
+            productId: string | null;
+            userId: string | null;
+            reminderType: import(".prisma/client").$Enums.ReminderType;
+            priority: import(".prisma/client").$Enums.ReminderPriority;
+            recurringPattern: import("@prisma/client/runtime/library").JsonValue | null;
+            expiresAt: Date | null;
+            messageTemplateId: string | null;
+            customMessage: string | null;
+            parameters: import("@prisma/client/runtime/library").JsonValue | null;
+            channels: import(".prisma/client").$Enums.MessageChannel[];
+            sentAt: Date | null;
+            deliveredAt: Date | null;
+            readAt: Date | null;
+            retryCount: number;
+            maxRetries: number;
+            lastAttempt: Date | null;
+            lastError: string | null;
         }[];
     } & {
         tenantId: string;
         id: string;
-        notes: string | null;
-        tags: string[];
-        createdBy: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
         name: string;
         phone: string | null;
         alternatePhone: string[];
@@ -216,10 +210,16 @@ declare class CustomerService {
         recencyScore: Decimal;
         monetaryScore: Decimal;
         overallScore: Decimal | null;
+        tags: string[];
+        notes: string | null;
         metadata: import("@prisma/client/runtime/library").JsonValue;
         voiceFingerprint: string | null;
         commonPhrases: string[];
+        createdBy: string | null;
         updatedBy: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
     }) | null)[]>;
     /**
      * Stream real-time balance updates (WebSocket)
@@ -256,12 +256,6 @@ declare class CustomerService {
         customer: {
             tenantId: string;
             id: string;
-            notes: string | null;
-            tags: string[];
-            createdBy: string | null;
-            createdAt: Date;
-            updatedAt: Date;
-            deletedAt: Date | null;
             name: string;
             phone: string | null;
             alternatePhone: string[];
@@ -300,10 +294,16 @@ declare class CustomerService {
             recencyScore: Decimal;
             monetaryScore: Decimal;
             overallScore: Decimal | null;
+            tags: string[];
+            notes: string | null;
             metadata: import("@prisma/client/runtime/library").JsonValue;
             voiceFingerprint: string | null;
             commonPhrases: string[];
+            createdBy: string | null;
             updatedBy: string | null;
+            createdAt: Date;
+            updatedAt: Date;
+            deletedAt: Date | null;
         };
         message: string;
     }>;
@@ -341,40 +341,18 @@ declare class CustomerService {
      * Confirm customer selection and update context
      */
     confirmCustomerSelection(customerId: string, conversationId: string, updateFields?: CustomerUpdateData): Promise<{
-        reminders: {
+        invoices: {
             tenantId: string;
             id: string;
-            customerId: string | null;
-            status: import(".prisma/client").$Enums.ReminderStatus;
+            tags: string[];
             notes: string | null;
             createdBy: string | null;
             createdAt: Date;
             updatedAt: Date;
-            invoiceId: string | null;
-            productId: string | null;
-            userId: string | null;
-            scheduledTime: Date;
-            reminderType: import(".prisma/client").$Enums.ReminderType;
-            priority: import(".prisma/client").$Enums.ReminderPriority;
-            recurringPattern: import("@prisma/client/runtime/library").JsonValue | null;
-            expiresAt: Date | null;
-            messageTemplateId: string | null;
-            customMessage: string | null;
-            parameters: import("@prisma/client/runtime/library").JsonValue | null;
-            channels: import(".prisma/client").$Enums.MessageChannel[];
-            sentAt: Date | null;
-            deliveredAt: Date | null;
-            readAt: Date | null;
-            retryCount: number;
-            maxRetries: number;
-            lastAttempt: Date | null;
-            lastError: string | null;
-        }[];
-        invoices: {
-            tenantId: string;
-            id: string;
-            invoiceNo: string;
+            deletedAt: Date | null;
+            status: import(".prisma/client").$Enums.InvoiceStatus;
             customerId: string | null;
+            invoiceNo: string;
             subtotal: Decimal;
             discount: Decimal;
             discountType: string | null;
@@ -396,29 +374,45 @@ declare class CustomerService {
             ackNo: string | null;
             ackDate: Date | null;
             qrCode: string | null;
-            status: import(".prisma/client").$Enums.InvoiceStatus;
             paymentMethod: import(".prisma/client").$Enums.PaymentMethod | null;
             invoiceDate: Date;
             dueDate: Date | null;
             paidAt: Date | null;
-            notes: string | null;
-            tags: string[];
             pdfObjectKey: string | null;
             pdfUrl: string | null;
+        }[];
+        reminders: {
+            tenantId: string;
+            id: string;
+            notes: string | null;
             createdBy: string | null;
             createdAt: Date;
             updatedAt: Date;
-            deletedAt: Date | null;
+            status: import(".prisma/client").$Enums.ReminderStatus;
+            scheduledTime: Date;
+            customerId: string | null;
+            invoiceId: string | null;
+            productId: string | null;
+            userId: string | null;
+            reminderType: import(".prisma/client").$Enums.ReminderType;
+            priority: import(".prisma/client").$Enums.ReminderPriority;
+            recurringPattern: import("@prisma/client/runtime/library").JsonValue | null;
+            expiresAt: Date | null;
+            messageTemplateId: string | null;
+            customMessage: string | null;
+            parameters: import("@prisma/client/runtime/library").JsonValue | null;
+            channels: import(".prisma/client").$Enums.MessageChannel[];
+            sentAt: Date | null;
+            deliveredAt: Date | null;
+            readAt: Date | null;
+            retryCount: number;
+            maxRetries: number;
+            lastAttempt: Date | null;
+            lastError: string | null;
         }[];
     } & {
         tenantId: string;
         id: string;
-        notes: string | null;
-        tags: string[];
-        createdBy: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
         name: string;
         phone: string | null;
         alternatePhone: string[];
@@ -457,10 +451,16 @@ declare class CustomerService {
         recencyScore: Decimal;
         monetaryScore: Decimal;
         overallScore: Decimal | null;
+        tags: string[];
+        notes: string | null;
         metadata: import("@prisma/client/runtime/library").JsonValue;
         voiceFingerprint: string | null;
         commonPhrases: string[];
+        createdBy: string | null;
         updatedBy: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
     }>;
     /**
      * Clear conversation cache and streams
@@ -474,40 +474,18 @@ declare class CustomerService {
      * Get customer by ID
      */
     getCustomerById(id: string): Promise<({
-        reminders: {
+        invoices: {
             tenantId: string;
             id: string;
-            customerId: string | null;
-            status: import(".prisma/client").$Enums.ReminderStatus;
+            tags: string[];
             notes: string | null;
             createdBy: string | null;
             createdAt: Date;
             updatedAt: Date;
-            invoiceId: string | null;
-            productId: string | null;
-            userId: string | null;
-            scheduledTime: Date;
-            reminderType: import(".prisma/client").$Enums.ReminderType;
-            priority: import(".prisma/client").$Enums.ReminderPriority;
-            recurringPattern: import("@prisma/client/runtime/library").JsonValue | null;
-            expiresAt: Date | null;
-            messageTemplateId: string | null;
-            customMessage: string | null;
-            parameters: import("@prisma/client/runtime/library").JsonValue | null;
-            channels: import(".prisma/client").$Enums.MessageChannel[];
-            sentAt: Date | null;
-            deliveredAt: Date | null;
-            readAt: Date | null;
-            retryCount: number;
-            maxRetries: number;
-            lastAttempt: Date | null;
-            lastError: string | null;
-        }[];
-        invoices: {
-            tenantId: string;
-            id: string;
-            invoiceNo: string;
+            deletedAt: Date | null;
+            status: import(".prisma/client").$Enums.InvoiceStatus;
             customerId: string | null;
+            invoiceNo: string;
             subtotal: Decimal;
             discount: Decimal;
             discountType: string | null;
@@ -529,29 +507,45 @@ declare class CustomerService {
             ackNo: string | null;
             ackDate: Date | null;
             qrCode: string | null;
-            status: import(".prisma/client").$Enums.InvoiceStatus;
             paymentMethod: import(".prisma/client").$Enums.PaymentMethod | null;
             invoiceDate: Date;
             dueDate: Date | null;
             paidAt: Date | null;
-            notes: string | null;
-            tags: string[];
             pdfObjectKey: string | null;
             pdfUrl: string | null;
+        }[];
+        reminders: {
+            tenantId: string;
+            id: string;
+            notes: string | null;
             createdBy: string | null;
             createdAt: Date;
             updatedAt: Date;
-            deletedAt: Date | null;
+            status: import(".prisma/client").$Enums.ReminderStatus;
+            scheduledTime: Date;
+            customerId: string | null;
+            invoiceId: string | null;
+            productId: string | null;
+            userId: string | null;
+            reminderType: import(".prisma/client").$Enums.ReminderType;
+            priority: import(".prisma/client").$Enums.ReminderPriority;
+            recurringPattern: import("@prisma/client/runtime/library").JsonValue | null;
+            expiresAt: Date | null;
+            messageTemplateId: string | null;
+            customMessage: string | null;
+            parameters: import("@prisma/client/runtime/library").JsonValue | null;
+            channels: import(".prisma/client").$Enums.MessageChannel[];
+            sentAt: Date | null;
+            deliveredAt: Date | null;
+            readAt: Date | null;
+            retryCount: number;
+            maxRetries: number;
+            lastAttempt: Date | null;
+            lastError: string | null;
         }[];
     } & {
         tenantId: string;
         id: string;
-        notes: string | null;
-        tags: string[];
-        createdBy: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
         name: string;
         phone: string | null;
         alternatePhone: string[];
@@ -590,10 +584,16 @@ declare class CustomerService {
         recencyScore: Decimal;
         monetaryScore: Decimal;
         overallScore: Decimal | null;
+        tags: string[];
+        notes: string | null;
         metadata: import("@prisma/client/runtime/library").JsonValue;
         voiceFingerprint: string | null;
         commonPhrases: string[];
+        createdBy: string | null;
         updatedBy: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
     }) | null>;
     /**
      * Create new customer
@@ -607,12 +607,6 @@ declare class CustomerService {
     }): Promise<{
         tenantId: string;
         id: string;
-        notes: string | null;
-        tags: string[];
-        createdBy: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
         name: string;
         phone: string | null;
         alternatePhone: string[];
@@ -651,10 +645,16 @@ declare class CustomerService {
         recencyScore: Decimal;
         monetaryScore: Decimal;
         overallScore: Decimal | null;
+        tags: string[];
+        notes: string | null;
         metadata: import("@prisma/client/runtime/library").JsonValue;
         voiceFingerprint: string | null;
         commonPhrases: string[];
+        createdBy: string | null;
         updatedBy: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
     }>;
     /**
      * Update customer balance
@@ -662,12 +662,6 @@ declare class CustomerService {
     updateBalance(customerId: string, amount: number): Promise<{
         tenantId: string;
         id: string;
-        notes: string | null;
-        tags: string[];
-        createdBy: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
         name: string;
         phone: string | null;
         alternatePhone: string[];
@@ -706,10 +700,16 @@ declare class CustomerService {
         recencyScore: Decimal;
         monetaryScore: Decimal;
         overallScore: Decimal | null;
+        tags: string[];
+        notes: string | null;
         metadata: import("@prisma/client/runtime/library").JsonValue;
         voiceFingerprint: string | null;
         commonPhrases: string[];
+        createdBy: string | null;
         updatedBy: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
     }>;
     /**
      * Get customer balance
@@ -759,12 +759,6 @@ declare class CustomerService {
     }): Promise<{
         tenantId: string;
         id: string;
-        notes: string | null;
-        tags: string[];
-        createdBy: string | null;
-        createdAt: Date;
-        updatedAt: Date;
-        deletedAt: Date | null;
         name: string;
         phone: string | null;
         alternatePhone: string[];
@@ -803,17 +797,23 @@ declare class CustomerService {
         recencyScore: Decimal;
         monetaryScore: Decimal;
         overallScore: Decimal | null;
+        tags: string[];
+        notes: string | null;
         metadata: import("@prisma/client/runtime/library").JsonValue;
         voiceFingerprint: string | null;
         commonPhrases: string[];
+        createdBy: string | null;
         updatedBy: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+        deletedAt: Date | null;
     }>;
     getCommPrefs(customerId: string): Promise<{
         tenantId: string;
         id: string;
-        customerId: string;
         createdAt: Date;
         updatedAt: Date;
+        customerId: string;
         whatsappEnabled: boolean;
         whatsappNumber: string | null;
         whatsappOptInTime: Date | null;
@@ -850,9 +850,9 @@ declare class CustomerService {
     }): Promise<{
         tenantId: string;
         id: string;
-        customerId: string;
         createdAt: Date;
         updatedAt: Date;
+        customerId: string;
         whatsappEnabled: boolean;
         whatsappNumber: string | null;
         whatsappOptInTime: Date | null;
