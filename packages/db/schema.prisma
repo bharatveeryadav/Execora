@@ -1,3 +1,29 @@
+model TenantQuota {
+  tenantId    String   @id @map("tenant_id")
+  maxUsers    Int?     @default(5)
+  maxInvoices Int?     @default(1000)
+  maxStorage  Int?     @default(100) // MB
+  maxCustomers Int?    @default(500)
+  maxProducts Int?     @default(500)
+  notes       String?
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_quotas")
+}
+model PlatformEmail {
+  id         String    @id @default(uuid())
+  subject    String
+  body       String
+  sentTo     String[]  // array of recipient emails
+  sentBy     String    // 'superadmin' or admin email
+  sentAt     DateTime  @default(now()) @map("sent_at")
+
+  @@index([sentAt(sort: Desc)])
+  @@map("platform_emails")
+}
 // prisma/schema.prisma
 
 generator client {
@@ -27,6 +53,21 @@ enum TenantPlan {
   free
   pro
   enterprise
+}
+
+enum AnnouncementType {
+  info
+  warning
+  critical
+}
+
+enum BillingEventType {
+  plan_change
+  trial_extended
+  credits_added
+  subscription_renewed
+  suspended
+  reactivated
 }
 
 enum TenantStatus {
@@ -241,6 +282,8 @@ model Tenant {
   monitoringConfig       MonitoringConfig?
   feedback               Feedback[]
   pushDevices            PushDevice[]
+  billingEvents          BillingEvent[]
+  tenantCredits          TenantCredit[]
 
   @@index([status, plan])
   @@index([createdAt])
@@ -1661,4 +1704,68 @@ model PushDevice {
   @@unique([tenantId, userId, token])
   @@index([tenantId])
   @@map("push_devices")
+}
+
+// =====================================================
+// PLATFORM ADMIN MODELS (Super Admin)
+// =====================================================
+
+model Announcement {
+  id         String    @id @default(uuid())
+  title      String
+  message    String
+  type       AnnouncementType @default(info)
+  expiresAt  DateTime? @map("expires_at")
+  createdBy  String    @map("created_by") // 'superadmin' or admin email
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([createdAt(sort: Desc)])
+  @@index([expiresAt])
+  @@map("announcements")
+}
+
+model MaintenanceWindow {
+  id           String    @id @default(uuid())
+  enabled      Boolean   @default(false)
+  reason       String?
+  estimatedEnd DateTime? @map("estimated_end")
+  enabledAt    DateTime? @map("enabled_at")
+  enabledBy    String?   @map("enabled_by")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@map("maintenance_windows")
+}
+
+model BillingEvent {
+  id          String           @id @default(uuid())
+  tenantId    String           @map("tenant_id")
+  type        BillingEventType
+  fromPlan    TenantPlan?      @map("from_plan")
+  toPlan      TenantPlan?      @map("to_plan")
+  fromStatus  TenantStatus?    @map("from_status")
+  toStatus    TenantStatus?    @map("to_status")
+  note        String?
+  performedBy String           @map("performed_by") // 'superadmin' or admin email
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@map("billing_events")
+}
+
+model TenantCredit {
+  id         String    @id @default(uuid())
+  tenantId   String    @map("tenant_id")
+  amount     Int       // credits in whole units
+  reason     String
+  expiresAt  DateTime? @map("expires_at")
+  grantedBy  String    @map("granted_by")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("tenant_credits")
 }

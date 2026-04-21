@@ -2,7 +2,7 @@
 
 /**
  * Execora — Single-command launcher
- * Starts: infra (Docker) → API → Worker → Web → Mobile
+ * Starts: infra (Docker) → API → Worker → Web → Admin → SuperAdmin → Mobile
  * Works on: macOS · Linux · Windows
  *
  * Usage:
@@ -228,12 +228,26 @@ startService({
     args: ["--filter", "@execora/worker", "dev"],
 });
 
-// 4. Start frontend web
+// 4. Start frontend apps
 startService({
     label: "  web  ",
     color: COLORS[2],
     cmd: IS_WIN ? "pnpm.cmd" : "pnpm",
     args: ["--filter", "@execora/web", "dev"],
+});
+
+startService({
+    label: " admin ",
+    color: HAS_COLOR ? "\x1b[95m" : "", // bright magenta
+    cmd: IS_WIN ? "pnpm.cmd" : "pnpm",
+    args: ["--filter", "@execora/admin", "dev"],
+});
+
+startService({
+    label: " saadm ",
+    color: HAS_COLOR ? "\x1b[93m" : "", // bright yellow
+    cmd: IS_WIN ? "pnpm.cmd" : "pnpm",
+    args: ["--filter", "@execora/superadmin", "dev"],
 });
 
 // 5. Start mobile (Expo)
@@ -250,9 +264,11 @@ if (!NO_MOBILE) {
 console.log(`
 ${BOLD}${COLORS[0]}  Services starting...${R}
 
-  ${BOLD}API   ${R}  →  http://localhost:3006
-  ${BOLD}Web   ${R}  →  http://localhost:5173
-  ${BOLD}Mobile${R}  →  http://localhost:8084  ${DIM}(Expo — scan QR for device)${R}
+  ${BOLD}API        ${R}  →  http://localhost:3006
+  ${BOLD}Web        ${R}  →  http://localhost:5173
+  ${BOLD}Admin      ${R}  →  http://localhost:5174
+  ${BOLD}Super Admin${R}  →  http://localhost:5175
+  ${BOLD}Mobile     ${R}  →  http://localhost:8084  ${DIM}(Expo — scan QR for device)${R}
 
   ${DIM}Press Ctrl+C to stop all services.${R}
 `);

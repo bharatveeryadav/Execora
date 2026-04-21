@@ -18,6 +18,7 @@
     "start:backend": "node scripts/start-all.mjs --no-mobile",
     "dev": "turbo run dev --filter=@execora/api",
     "dev:web": "turbo run dev --filter=@execora/web",
+    "dev:admin": "turbo run dev --filter=@execora/admin",
     "worker": "turbo run dev --filter=@execora/worker",
     "dev:all": "turbo run dev",
     "build": "turbo run build",

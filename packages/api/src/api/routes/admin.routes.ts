@@ -1,3 +1,111 @@
+      // ── Tenant Quota ───────────────────────────────────────────────────────
+      fastify.get<{ Params: { id: string } }>(
+        '/admin/tenants/:id/quota',
+        async (request, reply) => {
+          const quota = await prisma.tenantQuota.findUnique({ where: { tenantId: request.params.id } });
+          if (!quota) return reply.send({ quota: null });
+          return reply.send({ quota });
+        },
+      );
+
+      fastify.put<{ Params: { id: string }; Body: Partial<{ maxUsers: number; maxInvoices: number; maxStorage: number; maxCustomers: number; maxProducts: number; notes: string }> }>(
+        '/admin/tenants/:id/quota',
+        async (request, reply) => {
+          const data = request.body;
+          const quota = await prisma.tenantQuota.upsert({
+            where: { tenantId: request.params.id },
+            update: data,
+            create: { tenantId: request.params.id, ...data },
+          });
+          return reply.send({ quota });
+        },
+      );
+    // ── Platform Email (SAComms) ───────────────────────────────────────────
+    fastify.post('/admin/communications/email', {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['subject', 'body', 'sentTo'],
+          properties: {
+            subject: { type: 'string', minLength: 3 },
+            body:    { type: 'string', minLength: 3 },
+            sentTo:  { type: 'array', items: { type: 'string', format: 'email' }, minItems: 1 },
+          },
+          additionalProperties: false,
+        },
+      },
+    }, async (request, reply) => {
+      const { subject, body, sentTo } = request.body;
+      // TODO: Actually send email via provider (for now, just log)
+      const email = await prisma.platformEmail.create({
+        data: {
+          subject,
+          body,
+          sentTo,
+          sentBy: 'superadmin',
+        },
+      });
+      // Log to ActivityLog
+      await prisma.activityLog.create({
+        data: {
+          action: 'platform_email',
+          entityType: 'platform_email',
+          entityId: email.id,
+          meta: { subject, sentTo },
+        },
+      });
+      return reply.send({ email });
+    });
+
+    fastify.get('/admin/communications/email', async (_request, reply) => {
+      const emails = await prisma.platformEmail.findMany({
+        orderBy: { sentAt: 'desc' },
+        take: 50,
+      });
+      return reply.send({ data: emails });
+    });
+  // ── Impersonate Tenant ─────────────────────────────────────────────
+  fastify.post<{ Params: { id: string } }>(
+    '/admin/tenants/:id/impersonate',
+    async (request, reply) => {
+      const tenant = await prisma.tenant.findUnique({ where: { id: request.params.id } });
+      if (!tenant) return reply.code(404).send({ error: 'Tenant not found' });
+
+      // Find the owner user for this tenant
+      const owner = await prisma.user.findFirst({ where: { tenantId: tenant.id, role: 'owner' } });
+      if (!owner) return reply.code(404).send({ error: 'No owner user for tenant' });
+
+      // Short-lived JWT (15 min), with impersonation flag
+      const now = Math.floor(Date.now() / 1000);
+      const exp = now + 15 * 60;
+      const payload = {
+        userId: owner.id,
+        tenantId: tenant.id,
+        role: owner.role,
+        permissions: owner.permissions,
+        impersonated_by: 'superadmin',
+        iat: now,
+        exp,
+        type: 'access',
+      };
+      const { jwtEncode } = require('@execora/core/auth');
+      const token = jwtEncode(payload);
+
+      // Log impersonation event
+      await prisma.activityLog.create({
+        data: {
+          tenantId: tenant.id,
+          userId: null,
+          action: 'impersonate',
+          entityType: 'tenant',
+          entityId: tenant.id,
+          meta: { by: 'superadmin', ip: request.ip },
+        },
+      });
+
+      return reply.send({ token, expiresIn: 15 * 60 });
+    },
+  );
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@execora/core';
@@ -776,4 +884,454 @@ export async function adminRoutes(fastify: FastifyInstance) {
     logger.info({ targetUserId: request.params.id, targetEmail: user.email, tenantId: user.tenantId, ip: request.ip }, 'User password reset by platform admin');
     return reply.send({ success: true });
   });
+
+  // ── Activate / Deactivate user (cross-tenant) ─────────────────────────────
+  fastify.put<{ Params: { id: string }; Body: { isActive: boolean } }>(
+    '/admin/users/:id/status',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['isActive'],
+          properties: { isActive: { type: 'boolean' } },
+          additionalProperties: false,
+        },
+      },
+    },
+    async (request, reply) => {
+      const user = await prisma.user.findUnique({ where: { id: request.params.id } });
+      if (!user) return reply.code(404).send({ error: 'User not found' });
+      if (user.role === 'owner' && !request.body.isActive) {
+        return reply.code(403).send({ error: 'Cannot deactivate an owner account' });
+      }
+
+      await prisma.user.update({ where: { id: request.params.id }, data: { isActive: request.body.isActive } });
+      if (!request.body.isActive) {
+        await prisma.session.deleteMany({ where: { userId: request.params.id } });
+      }
+      logger.info({ targetUserId: request.params.id, isActive: request.body.isActive, ip: request.ip }, 'User status changed by platform admin');
+      return reply.send({ success: true, isActive: request.body.isActive });
+    },
+  );
+
+  // ── Sessions for a specific user (cross-tenant) ───────────────────────────
+  fastify.get<{ Params: { id: string } }>(
+    '/admin/users/:id/sessions',
+    async (request, reply) => {
+      const sessions = await prisma.session.findMany({
+        where:   { userId: request.params.id },
+        orderBy: { lastActivity: 'desc' },
+        select: {
+          id: true, deviceInfo: true, ipAddress: true, userAgent: true,
+          lastActivity: true, expiresAt: true, createdAt: true,
+        },
+      });
+      return reply.send({ data: sessions });
+    },
+  );
+
+  // ── Revoke all sessions for a user ────────────────────────────────────────
+  fastify.delete<{ Params: { id: string } }>(
+    '/admin/users/:id/sessions',
+    async (request, reply) => {
+      const result = await prisma.session.deleteMany({ where: { userId: request.params.id } });
+      logger.info({ targetUserId: request.params.id, count: result.count, ip: request.ip }, 'All user sessions revoked by platform admin');
+      return reply.send({ success: true, revokedCount: result.count });
+    },
+  );
+
+  // ── Delete (hard) a tenant ────────────────────────────────────────────────
+  // WARNING: cascades to all users, customers, invoices, products, etc.
+  fastify.delete<{ Params: { id: string }; Body: { confirm: string } }>(
+    '/admin/tenants/:id',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          required: ['confirm'],
+          properties: { confirm: { type: 'string' } },
+          additionalProperties: false,
+        },
+      },
+    },
+    async (request, reply) => {
+      const tenant = await prisma.tenant.findUnique({ where: { id: request.params.id } });
+      if (!tenant) return reply.code(404).send({ error: 'Tenant not found' });
+      if (request.body.confirm !== tenant.name) {
+        return reply.code(400).send({ error: 'Confirmation string must match the tenant name exactly' });
+      }
+      await prisma.tenant.delete({ where: { id: request.params.id } });
+      logger.warn({ tenantId: request.params.id, tenantName: tenant.name, ip: request.ip }, 'Tenant HARD DELETED by platform admin');
+      return reply.send({ success: true });
+    },
+  );
+
+  // ── Analytics: 30-day revenue trend ──────────────────────────────────────
+  fastify.get<{ Querystring: { days?: string } }>(
+    '/admin/analytics/revenue',
+    async (request, reply) => {
+      const days   = Math.min(90, Math.max(7, parseInt(request.query.days ?? '30', 10)));
+      const since  = new Date();
+      since.setDate(since.getDate() - days);
+      since.setHours(0, 0, 0, 0);
+
+      // Aggregate payments by day
+      const rows = await prisma.$queryRaw<{ day: string; amount: number; count: bigint }[]>`
+        SELECT
+          DATE(received_at AT TIME ZONE 'UTC') AS day,
+          COALESCE(SUM(amount), 0)             AS amount,
+          COUNT(*)                             AS count
+        FROM payments
+        WHERE received_at >= ${since}
+        GROUP BY day
+        ORDER BY day ASC
+      `;
+
+      return reply.send({
+        data: rows.map((r) => ({
+          date:    r.day,
+          amount:  Number(r.amount),
+          count:   Number(r.count),
+        })),
+        period: days,
+      });
+    },
+  );
+
+  // ── Analytics: top tenants by revenue ────────────────────────────────────
+  fastify.get<{ Querystring: { limit?: string } }>(
+    '/admin/analytics/top-tenants',
+    async (request, reply) => {
+      const limit = Math.min(20, Math.max(1, parseInt(request.query.limit ?? '10', 10)));
+
+      const rows = await prisma.$queryRaw<{ tenant_id: string; tenant_name: string; revenue: number; invoice_count: bigint }[]>`
+        SELECT
+          t.id          AS tenant_id,
+          t.name        AS tenant_name,
+          COALESCE(SUM(p.amount), 0) AS revenue,
+          COUNT(DISTINCT i.id)       AS invoice_count
+        FROM tenants t
+        LEFT JOIN payments p ON p.tenant_id = t.id
+        LEFT JOIN invoices i ON i.tenant_id = t.id
+        GROUP BY t.id, t.name
+        ORDER BY revenue DESC
+        LIMIT ${limit}
+      `;
+
+      return reply.send({
+        data: rows.map((r) => ({
+          tenantId:     r.tenant_id,
+          tenantName:   r.tenant_name,
+          revenue:      Number(r.revenue),
+          invoiceCount: Number(r.invoice_count),
+        })),
+      });
+    },
+  );
+
+  // ── Analytics: tenant summary stats ──────────────────────────────────────
+  fastify.get('/admin/analytics/tenants', async (_request, reply) => {
+    const [byPlan, byStatus, newThisMonth] = await Promise.all([
+      prisma.tenant.groupBy({ by: ['plan'],   _count: { id: true } }),
+      prisma.tenant.groupBy({ by: ['status'], _count: { id: true } }),
+      prisma.tenant.count({
+        where: {
+          createdAt: {
+            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+          },
+        },
+      }),
+    ]);
+    return reply.send({
+      byPlan:       Object.fromEntries(byPlan.map((r) => [r.plan, r._count.id])),
+      byStatus:     Object.fromEntries(byStatus.map((r) => [r.status, r._count.id])),
+      newThisMonth,
+    });
+  });
+
+  // ── Cross-tenant activity log ─────────────────────────────────────────────
+  fastify.get<{
+    Querystring: { page?: string; limit?: string; tenantId?: string; action?: string; entityType?: string };
+  }>(
+    '/admin/activity',
+    async (request, reply) => {
+      const page   = Math.max(1, parseInt(request.query.page  ?? '1',  10));
+      const limit  = Math.min(100, Math.max(1, parseInt(request.query.limit ?? '50', 10)));
+      const skip   = (page - 1) * limit;
+      const { tenantId, action, entityType } = request.query;
+
+      const where: Prisma.ActivityLogWhereInput = {};
+      if (tenantId)   where.tenantId   = tenantId;
+      if (action)     where.action     = { contains: action, mode: 'insensitive' };
+      if (entityType) where.entityType = entityType;
+
+      const [logs, total] = await Promise.all([
+        prisma.activityLog.findMany({
+          where,
+          skip,
+          take:    limit,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true, action: true, entityType: true, entityId: true,
+            details: true, ipAddress: true, createdAt: true,
+            tenant: { select: { id: true, name: true } },
+            user:   { select: { id: true, name: true, email: true } },
+          },
+        }),
+        prisma.activityLog.count({ where }),
+      ]);
+
+      return reply.send({
+        data: logs,
+        meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+      });
+    },
+  );
+
+  // ── Announcements ─────────────────────────────────────────────────────────
+  fastify.get('/admin/announcements', async (_request, reply) => {
+    const now = new Date();
+    const announcements = await prisma.announcement.findMany({
+      orderBy: { createdAt: 'desc' },
+      where: {
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: now } },
+        ],
+      },
+    });
+    return reply.send({ data: announcements });
+  });
+
+  fastify.post<{
+    Body: { title: string; message: string; type?: string; expiresAt?: string };
+  }>('/admin/announcements', async (request, reply) => {
+    const { title, message, type, expiresAt } = request.body;
+    if (!title || !message) {
+      return reply.status(400).send({ error: 'title and message are required' });
+    }
+    const validTypes = ['info', 'warning', 'critical'];
+    const announcementType = validTypes.includes(type ?? '') ? (type as 'info' | 'warning' | 'critical') : 'info';
+    const announcement = await prisma.announcement.create({
+      data: {
+        title,
+        message,
+        type: announcementType,
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        createdBy: 'superadmin',
+      },
+    });
+    return reply.status(201).send(announcement);
+  });
+
+  fastify.delete<{ Params: { id: string } }>('/admin/announcements/:id', async (request, reply) => {
+    const { id } = request.params;
+    try {
+      await prisma.announcement.delete({ where: { id } });
+    } catch {
+      return reply.status(404).send({ error: 'Announcement not found' });
+    }
+    return reply.send({ ok: true });
+  });
+
+  // ── Maintenance Mode ──────────────────────────────────────────────────────
+  fastify.get('/admin/maintenance', async (_request, reply) => {
+    const record = await prisma.maintenanceWindow.findFirst({
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!record) {
+      return reply.send({ enabled: false, reason: null, estimatedEnd: null, enabledAt: null });
+    }
+    return reply.send(record);
+  });
+
+  fastify.put<{
+    Body: { enabled: boolean; reason?: string; estimatedEnd?: string };
+  }>('/admin/maintenance', async (request, reply) => {
+    const { enabled, reason, estimatedEnd } = request.body;
+    if (typeof enabled !== 'boolean') {
+      return reply.status(400).send({ error: '"enabled" (boolean) is required' });
+    }
+    const existing = await prisma.maintenanceWindow.findFirst({
+      orderBy: { createdAt: 'desc' },
+    });
+    const data = {
+      enabled,
+      reason: reason ?? null,
+      estimatedEnd: estimatedEnd ? new Date(estimatedEnd) : null,
+      enabledAt: enabled ? new Date() : null,
+      enabledBy: enabled ? 'superadmin' : null,
+    };
+    const record = existing
+      ? await prisma.maintenanceWindow.update({ where: { id: existing.id }, data })
+      : await prisma.maintenanceWindow.create({ data });
+    logger.info({ enabled, reason }, '[admin] Maintenance mode updated');
+    return reply.send(record);
+  });
+
+  // ── Billing & Subscription Management ────────────────────────────────────
+  fastify.get<{ Params: { id: string } }>('/admin/tenants/:id/billing', async (request, reply) => {
+    const { id } = request.params;
+    const tenant = await prisma.tenant.findUnique({
+      where: { id },
+      select: { id: true, name: true, plan: true, status: true, trialEndsAt: true, subscriptionEndsAt: true },
+    });
+    if (!tenant) return reply.status(404).send({ error: 'Tenant not found' });
+
+    const [events, credits] = await Promise.all([
+      prisma.billingEvent.findMany({
+        where: { tenantId: id },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+      prisma.tenantCredit.findMany({
+        where: { tenantId: id },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+    return reply.send({ tenant, events, credits });
+  });
+
+  fastify.post<{
+    Params: { id: string };
+    Body: { days: number; note?: string };
+  }>('/admin/tenants/:id/billing/extend-trial', async (request, reply) => {
+    const { id } = request.params;
+    const { days, note } = request.body;
+    if (!days || days < 1) return reply.status(400).send({ error: 'days must be >= 1' });
+
+    const tenant = await prisma.tenant.findUnique({ where: { id } });
+    if (!tenant) return reply.status(404).send({ error: 'Tenant not found' });
+
+    const base = tenant.trialEndsAt && tenant.trialEndsAt > new Date() ? tenant.trialEndsAt : new Date();
+    const newTrialEnd = new Date(base.getTime() + days * 86_400_000);
+
+    const [updated] = await Promise.all([
+      prisma.tenant.update({ where: { id }, data: { trialEndsAt: newTrialEnd, status: 'trial' } }),
+      prisma.billingEvent.create({
+        data: {
+          tenantId: id,
+          type: 'trial_extended',
+          note: note ?? `Trial extended by ${days} day(s)`,
+          performedBy: 'superadmin',
+        },
+      }),
+    ]);
+    return reply.send(updated);
+  });
+
+  fastify.post<{
+    Params: { id: string };
+    Body: { plan: string; note?: string };
+  }>('/admin/tenants/:id/billing/change-plan', async (request, reply) => {
+    const { id } = request.params;
+    const { plan, note } = request.body;
+    const validPlans = ['free', 'pro', 'enterprise'];
+    if (!validPlans.includes(plan)) return reply.status(400).send({ error: `plan must be one of: ${validPlans.join(', ')}` });
+
+    const tenant = await prisma.tenant.findUnique({ where: { id } });
+    if (!tenant) return reply.status(404).send({ error: 'Tenant not found' });
+
+    const [updated] = await Promise.all([
+      prisma.tenant.update({ where: { id }, data: { plan: plan as 'free' | 'pro' | 'enterprise' } }),
+      prisma.billingEvent.create({
+        data: {
+          tenantId: id,
+          type: 'plan_change',
+          fromPlan: tenant.plan,
+          toPlan: plan as 'free' | 'pro' | 'enterprise',
+          note: note ?? null,
+          performedBy: 'superadmin',
+        },
+      }),
+    ]);
+    return reply.send(updated);
+  });
+
+  fastify.post<{
+    Params: { id: string };
+    Body: { amount: number; reason: string; expiresAt?: string };
+  }>('/admin/tenants/:id/billing/add-credits', async (request, reply) => {
+    const { id } = request.params;
+    const { amount, reason, expiresAt } = request.body;
+    if (!amount || amount < 1) return reply.status(400).send({ error: 'amount must be >= 1' });
+    if (!reason) return reply.status(400).send({ error: 'reason is required' });
+
+    const tenant = await prisma.tenant.findUnique({ where: { id } });
+    if (!tenant) return reply.status(404).send({ error: 'Tenant not found' });
+
+    const [credit] = await Promise.all([
+      prisma.tenantCredit.create({
+        data: {
+          tenantId: id,
+          amount,
+          reason,
+          expiresAt: expiresAt ? new Date(expiresAt) : null,
+          grantedBy: 'superadmin',
+        },
+      }),
+      prisma.billingEvent.create({
+        data: {
+          tenantId: id,
+          type: 'credits_added',
+          note: `${amount} credits added — ${reason}`,
+          performedBy: 'superadmin',
+        },
+      }),
+    ]);
+    return reply.status(201).send(credit);
+  });
+
+  fastify.post<{
+    Params: { id: string };
+    Body: { reason?: string };
+  }>('/admin/tenants/:id/billing/suspend', async (request, reply) => {
+    const { id } = request.params;
+    const { reason } = request.body ?? {};
+
+    const tenant = await prisma.tenant.findUnique({ where: { id } });
+    if (!tenant) return reply.status(404).send({ error: 'Tenant not found' });
+    if (tenant.status === 'suspended') return reply.send({ message: 'Already suspended', tenant });
+
+    const [updated] = await Promise.all([
+      prisma.tenant.update({ where: { id }, data: { status: 'suspended' } }),
+      prisma.billingEvent.create({
+        data: {
+          tenantId: id,
+          type: 'suspended',
+          fromStatus: tenant.status,
+          toStatus: 'suspended',
+          note: reason ?? null,
+          performedBy: 'superadmin',
+        },
+      }),
+    ]);
+    return reply.send(updated);
+  });
+
+  fastify.post<{ Params: { id: string }; Body: { note?: string } }>(
+    '/admin/tenants/:id/billing/reactivate',
+    async (request, reply) => {
+      const { id } = request.params;
+      const { note } = request.body ?? {};
+
+      const tenant = await prisma.tenant.findUnique({ where: { id } });
+      if (!tenant) return reply.status(404).send({ error: 'Tenant not found' });
+
+      const [updated] = await Promise.all([
+        prisma.tenant.update({ where: { id }, data: { status: 'active' } }),
+        prisma.billingEvent.create({
+          data: {
+            tenantId: id,
+            type: 'reactivated',
+            fromStatus: tenant.status,
+            toStatus: 'active',
+            note: note ?? null,
+            performedBy: 'superadmin',
+          },
+        }),
+      ]);
+      return reply.send(updated);
+    },
+  );
 }
