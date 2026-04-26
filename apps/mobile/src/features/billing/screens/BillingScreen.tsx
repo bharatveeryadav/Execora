@@ -97,6 +97,7 @@ import { SuccessModal } from "../components/SuccessModal";
 import { printReceipt } from "../../../lib/printReceipt";
 import { useOffline } from "../../../contexts/OfflineContext";
 import { useResponsive } from "../../../shared/hooks/useResponsive";
+import { ScreenInner } from "../../../components/ui/ScreenLayout";
 import { enqueueInvoice } from "../../../lib/offlineQueue";
 import {
   hapticSuccess,
@@ -1070,8 +1071,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={60}
       >
-        <View style={{ flex: 1, width: "100%", alignItems: "center" }}>
-          <View style={{ width: "100%", flex: 1 }}>
+        <ScreenInner style={{ flex: 1 }}>
             <ScrollView
               style={{ flex: 1, paddingHorizontal: contentPad }}
               keyboardShouldPersistTaps="handled"
@@ -1707,8 +1707,7 @@ export function BillingScreen({ navigation, route }: InvoiceProps) {
                 </FormControl>
               </Card>
             </ScrollView>
-          </View>
-        </View>
+        </ScreenInner>
       </KeyboardAvoidingView>
 
       <View

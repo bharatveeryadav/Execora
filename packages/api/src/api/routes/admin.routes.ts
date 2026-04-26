@@ -1,111 +1,3 @@
-      // ── Tenant Quota ───────────────────────────────────────────────────────
-      fastify.get<{ Params: { id: string } }>(
-        '/admin/tenants/:id/quota',
-        async (request, reply) => {
-          const quota = await prisma.tenantQuota.findUnique({ where: { tenantId: request.params.id } });
-          if (!quota) return reply.send({ quota: null });
-          return reply.send({ quota });
-        },
-      );
-
-      fastify.put<{ Params: { id: string }; Body: Partial<{ maxUsers: number; maxInvoices: number; maxStorage: number; maxCustomers: number; maxProducts: number; notes: string }> }>(
-        '/admin/tenants/:id/quota',
-        async (request, reply) => {
-          const data = request.body;
-          const quota = await prisma.tenantQuota.upsert({
-            where: { tenantId: request.params.id },
-            update: data,
-            create: { tenantId: request.params.id, ...data },
-          });
-          return reply.send({ quota });
-        },
-      );
-    // ── Platform Email (SAComms) ───────────────────────────────────────────
-    fastify.post('/admin/communications/email', {
-      schema: {
-        body: {
-          type: 'object',
-          required: ['subject', 'body', 'sentTo'],
-          properties: {
-            subject: { type: 'string', minLength: 3 },
-            body:    { type: 'string', minLength: 3 },
-            sentTo:  { type: 'array', items: { type: 'string', format: 'email' }, minItems: 1 },
-          },
-          additionalProperties: false,
-        },
-      },
-    }, async (request, reply) => {
-      const { subject, body, sentTo } = request.body;
-      // TODO: Actually send email via provider (for now, just log)
-      const email = await prisma.platformEmail.create({
-        data: {
-          subject,
-          body,
-          sentTo,
-          sentBy: 'superadmin',
-        },
-      });
-      // Log to ActivityLog
-      await prisma.activityLog.create({
-        data: {
-          action: 'platform_email',
-          entityType: 'platform_email',
-          entityId: email.id,
-          meta: { subject, sentTo },
-        },
-      });
-      return reply.send({ email });
-    });
-
-    fastify.get('/admin/communications/email', async (_request, reply) => {
-      const emails = await prisma.platformEmail.findMany({
-        orderBy: { sentAt: 'desc' },
-        take: 50,
-      });
-      return reply.send({ data: emails });
-    });
-  // ── Impersonate Tenant ─────────────────────────────────────────────
-  fastify.post<{ Params: { id: string } }>(
-    '/admin/tenants/:id/impersonate',
-    async (request, reply) => {
-      const tenant = await prisma.tenant.findUnique({ where: { id: request.params.id } });
-      if (!tenant) return reply.code(404).send({ error: 'Tenant not found' });
-
-      // Find the owner user for this tenant
-      const owner = await prisma.user.findFirst({ where: { tenantId: tenant.id, role: 'owner' } });
-      if (!owner) return reply.code(404).send({ error: 'No owner user for tenant' });
-
-      // Short-lived JWT (15 min), with impersonation flag
-      const now = Math.floor(Date.now() / 1000);
-      const exp = now + 15 * 60;
-      const payload = {
-        userId: owner.id,
-        tenantId: tenant.id,
-        role: owner.role,
-        permissions: owner.permissions,
-        impersonated_by: 'superadmin',
-        iat: now,
-        exp,
-        type: 'access',
-      };
-      const { jwtEncode } = require('@execora/core/auth');
-      const token = jwtEncode(payload);
-
-      // Log impersonation event
-      await prisma.activityLog.create({
-        data: {
-          tenantId: tenant.id,
-          userId: null,
-          action: 'impersonate',
-          entityType: 'tenant',
-          entityId: tenant.id,
-          meta: { by: 'superadmin', ip: request.ip },
-        },
-      });
-
-      return reply.send({ token, expiresIn: 15 * 60 });
-    },
-  );
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@execora/core';
@@ -725,6 +617,74 @@ export async function adminRoutes(fastify: FastifyInstance) {
     return reply.send({ tenant });
   });
 
+  fastify.put('/admin/tenants/:id/owner-credentials', {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['email', 'name'],
+        properties: {
+          email: { type: 'string', format: 'email' },
+          name: { type: 'string', minLength: 1 },
+          newPassword: { type: 'string', minLength: 8 },
+        },
+        additionalProperties: false,
+      },
+    },
+  }, async (request: FastifyRequest<{
+    Params: { id: string };
+    Body: { email: string; name: string; newPassword?: string };
+  }>, reply) => {
+    const tenant = await prisma.tenant.findUnique({ where: { id: request.params.id } });
+    if (!tenant) return reply.code(404).send({ error: 'Tenant not found' });
+
+    const owner = await prisma.user.findFirst({ where: { tenantId: tenant.id, role: 'owner' } });
+    if (!owner) return reply.code(404).send({ error: 'No owner user found for tenant' });
+
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        email: request.body.email,
+        NOT: { id: owner.id },
+      },
+      select: { id: true },
+    });
+    if (existingUser) return reply.code(409).send({ error: 'Email already in use by another user' });
+
+    const data: Prisma.UserUpdateInput = {
+      email: request.body.email,
+      name: request.body.name,
+    };
+    if (request.body.newPassword) {
+      data.passwordHash = await hashPassword(request.body.newPassword);
+    }
+
+    const updatedOwner = await prisma.user.update({
+      where: { id: owner.id },
+      data,
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        tenantId: true,
+      },
+    });
+
+    await prisma.session.deleteMany({ where: { userId: owner.id } });
+
+    logger.info(
+      {
+        tenantId: tenant.id,
+        targetUserId: owner.id,
+        targetEmail: updatedOwner.email,
+        passwordReset: Boolean(request.body.newPassword),
+        ip: request.ip,
+      },
+      'Tenant owner credentials updated by platform admin',
+    );
+
+    return reply.send({ user: updatedOwner, sessionsRevoked: true });
+  });
+
   fastify.put('/admin/tenants/:id', {
     schema: {
       body: {
@@ -816,6 +776,119 @@ export async function adminRoutes(fastify: FastifyInstance) {
     );
     return reply.send({ features: merged });
   });
+
+  // ── Tenant Quota ───────────────────────────────────────────────────────
+  fastify.get<{ Params: { id: string } }>(
+    '/admin/tenants/:id/quota',
+    async (request, reply) => {
+      const quota = await prisma.tenantQuota.findUnique({ where: { tenantId: request.params.id } });
+      if (!quota) return reply.send({ quota: null });
+      return reply.send({ quota });
+    },
+  );
+
+  fastify.put<{
+    Params: { id: string };
+    Body: Partial<{ maxUsers: number; maxInvoices: number; maxStorage: number; maxCustomers: number; maxProducts: number; notes: string }>;
+  }>(
+    '/admin/tenants/:id/quota',
+    async (request, reply) => {
+      const data = request.body;
+      const quota = await prisma.tenantQuota.upsert({
+        where: { tenantId: request.params.id },
+        update: data,
+        create: { tenantId: request.params.id, ...data },
+      });
+      return reply.send({ quota });
+    },
+  );
+
+  // ── Platform Email (SAComms) ───────────────────────────────────────────
+  fastify.post<{
+    Body: { subject: string; body: string; sentTo: string[] };
+  }>('/admin/communications/email', {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['subject', 'body', 'sentTo'],
+        properties: {
+          subject: { type: 'string', minLength: 3 },
+          body:    { type: 'string', minLength: 3 },
+          sentTo:  { type: 'array', items: { type: 'string', format: 'email' }, minItems: 1 },
+        },
+        additionalProperties: false,
+      },
+    },
+  }, async (request, reply) => {
+    const { subject, body, sentTo } = request.body;
+    const email = await prisma.platformEmail.create({
+      data: {
+        subject,
+        body,
+        sentTo,
+        sentBy: 'superadmin',
+      },
+    });
+
+    await prisma.activityLog.create({
+      data: {
+        action: 'platform_email',
+        entityType: 'platform_email',
+        entityId: email.id,
+        meta: { subject, sentTo },
+      },
+    });
+
+    return reply.send({ email });
+  });
+
+  fastify.get('/admin/communications/email', async (_request, reply) => {
+    const emails = await prisma.platformEmail.findMany({
+      orderBy: { sentAt: 'desc' },
+      take: 50,
+    });
+    return reply.send({ data: emails });
+  });
+
+  // ── Impersonate Tenant ─────────────────────────────────────────────
+  fastify.post<{ Params: { id: string } }>(
+    '/admin/tenants/:id/impersonate',
+    async (request, reply) => {
+      const tenant = await prisma.tenant.findUnique({ where: { id: request.params.id } });
+      if (!tenant) return reply.code(404).send({ error: 'Tenant not found' });
+
+      const owner = await prisma.user.findFirst({ where: { tenantId: tenant.id, role: 'owner' } });
+      if (!owner) return reply.code(404).send({ error: 'No owner user for tenant' });
+
+      const now = Math.floor(Date.now() / 1000);
+      const exp = now + 15 * 60;
+      const payload = {
+        userId: owner.id,
+        tenantId: tenant.id,
+        role: owner.role,
+        permissions: owner.permissions,
+        impersonated_by: 'superadmin',
+        iat: now,
+        exp,
+        type: 'access',
+      };
+      const { jwtEncode } = require('@execora/core/auth');
+      const token = jwtEncode(payload);
+
+      await prisma.activityLog.create({
+        data: {
+          tenantId: tenant.id,
+          userId: null,
+          action: 'impersonate',
+          entityType: 'tenant',
+          entityId: tenant.id,
+          meta: { by: 'superadmin', ip: request.ip },
+        },
+      });
+
+      return reply.send({ token, expiresIn: 15 * 60 });
+    },
+  );
 
   // ── Cross-tenant users (platform-level) ──────────────────────────────────
   fastify.get('/admin/users', async (request: FastifyRequest<{

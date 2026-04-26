@@ -28,6 +28,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { tokenStorage } from "../../../lib/storage";
 import { getApiBaseUrl } from "../../../lib/api";
 import { useResponsive } from "../../../hooks/useResponsive";
+import { ScreenInner } from "../../../components/ui/ScreenLayout";
 import { COLORS, SIZES } from "../../../lib/constants";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -193,6 +194,7 @@ export function VoiceScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <ScreenInner style={{ flex: 1 }}>
       {/* Header */}
       <View style={[styles.header, { paddingHorizontal: contentPad }]}>
         <Text style={styles.headerTitle}>Voice Billing</Text>
@@ -278,6 +280,7 @@ export function VoiceScreen() {
           Tip: "Mic support coming soon — type Hinglish commands above"
         </Text>
       </KeyboardAvoidingView>
+      </ScreenInner>
     </SafeAreaView>
   );
 }

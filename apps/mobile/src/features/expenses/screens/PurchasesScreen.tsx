@@ -21,6 +21,7 @@ import { Button } from "../../../components/ui/Button";
 import { Input } from "../../../components/ui/Input";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import { useResponsive } from "../../../hooks/useResponsive";
+import { ScreenInner } from "../../../components/ui/ScreenLayout";
 import { COLORS, SIZES } from "../../../lib/constants";
 
 const CATEGORIES = [
@@ -195,8 +196,7 @@ export function PurchasesScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
-      <View style={{ flex: 1, width: "100%", alignItems: "center" }}>
-        <View style={{ width: "100%", flex: 1 }}>
+      <ScreenInner style={{ flex: 1 }}>
           <View
             style={{
               paddingHorizontal: contentPad,
@@ -290,8 +290,7 @@ export function PurchasesScreen() {
               )
             }
           />
-        </View>
-      </View>
+      </ScreenInner>
 
       <BottomSheet
         visible={addOpen}

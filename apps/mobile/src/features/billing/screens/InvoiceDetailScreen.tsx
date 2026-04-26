@@ -23,6 +23,7 @@ import { formatCurrency, formatDate, toFloat } from "../../../shared/lib/utils";
 import { STATUS_STYLES, PAYMENT_METHODS } from "../../../shared/lib/constants";
 import { useWsInvalidation } from "../../../shared/hooks/useWsInvalidation";
 import { useResponsive } from "../../../shared/hooks/useResponsive";
+import { ScreenInner } from "../../../components/ui/ScreenLayout";
 import { COLORS } from "../../../lib/constants";
 import {
   useInvoiceById,
@@ -156,8 +157,7 @@ export function InvoiceDetailScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={["top", "bottom"]}>
-      <View style={{ flex: 1, width: "100%", alignItems: "center" }}>
-        <View style={{ width: "100%", flex: 1 }}>
+      <ScreenInner style={{ flex: 1 }}>
           {/* Header */}
           <View
             style={{ paddingHorizontal: contentPad, paddingVertical: 12 }}
@@ -474,8 +474,7 @@ export function InvoiceDetailScreen({ navigation, route }: Props) {
 
             <View className="h-6" />
           </ScrollView>
-        </View>
-      </View>
+      </ScreenInner>
 
       {/* ── Cancel confirmation modal ── */}
       <Modal

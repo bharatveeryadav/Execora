@@ -25,6 +25,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@execora/shared";
 import { inr } from "@execora/shared";
 import { useResponsive } from "../../../hooks/useResponsive";
+import { ScreenInner } from "../../../components/ui/ScreenLayout";
 import { SIZES } from "../../../lib/constants";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -138,8 +139,7 @@ export function OverdueScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={{ flex: 1, width: "100%", alignItems: "center" }}>
-        <View style={{ width: "100%", flex: 1 }}>
+      <ScreenInner style={{ flex: 1 }}>
           {/* Header */}
           <View style={[styles.header, { paddingHorizontal: contentPad }]}>
             <Text style={styles.headerTitle}>Overdue / Udhaar</Text>
@@ -198,8 +198,7 @@ export function OverdueScreen({ navigation }: Props) {
               )
             }
           />
-        </View>
-      </View>
+      </ScreenInner>
     </SafeAreaView>
   );
 }

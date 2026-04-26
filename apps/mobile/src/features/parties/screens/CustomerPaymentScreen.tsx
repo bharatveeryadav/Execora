@@ -22,6 +22,7 @@ import { formatCurrency, toFloat } from "../../../lib/utils";
 import { showAlert, showError } from "../../../lib/alerts";
 import { hapticSuccess, hapticError } from "../../../lib/haptics";
 import { useResponsive } from "../../../hooks/useResponsive";
+import { ScreenInner } from "../../../components/ui/ScreenLayout";
 import type { PartiesStackParams } from "../../../navigation";
 
 type Props = NativeStackScreenProps<PartiesStackParams, "Payment">;
@@ -123,8 +124,7 @@ export function PaymentScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={["top", "bottom"]}>
-      <View style={{ flex: 1, width: "100%", alignItems: "center" }}>
-        <View style={{ width: "100%", flex: 1 }}>
+      <ScreenInner style={{ flex: 1 }}>
           {/* Header */}
           <View
             style={{ paddingHorizontal: contentPad, paddingVertical: 12 }}
@@ -411,8 +411,7 @@ export function PaymentScreen({ navigation, route }: Props) {
               )}
             </TouchableOpacity>
           </View>
-        </View>
-      </View>
+      </ScreenInner>
     </SafeAreaView>
   );
 }

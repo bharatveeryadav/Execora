@@ -18,6 +18,7 @@ import { formatCurrency } from "../../../lib/utils";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import { ErrorCard } from "../../../components/ui/ErrorCard";
 import { COLORS } from "../../../lib/constants";
+import { ScreenInner } from "../../../components/ui/ScreenLayout";
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-slate-100 text-slate-600",
@@ -77,7 +78,8 @@ export function PurchaseOrdersScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "bottom"]}>
-      <View className="px-4 pt-4 pb-3 border-b border-slate-200 bg-card">
+      <ScreenInner style={{ flex: 1 }}>
+        <View className="px-4 pt-4 pb-3 border-b border-slate-200 bg-card">
         <Text className="text-xl font-bold tracking-tight text-slate-800">
           Purchase Orders
         </Text>
@@ -110,6 +112,7 @@ export function PurchaseOrdersScreen() {
         }
         renderItem={renderOrder}
       />
+      </ScreenInner>
     </SafeAreaView>
   );
 }

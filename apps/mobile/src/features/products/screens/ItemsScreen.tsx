@@ -52,6 +52,7 @@ import type { Product } from "@execora/shared";
 import { Ionicons } from "@expo/vector-icons";
 import { useWsInvalidation } from "../../../hooks/useWsInvalidation";
 import { useResponsive } from "../../../hooks/useResponsive";
+import { ScreenInner } from "../../../components/ui/ScreenLayout";
 import { productExtApi } from "../../../lib/api";
 import { QUERY_KEYS } from "../../../lib/queryKeys";
 import { COLORS } from "../../../lib/constants";
@@ -462,6 +463,7 @@ export function ItemsScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
+      <ScreenInner style={{ flex: 1 }}>
       {/* ── Header ─────────────────────────────────────────────────── */}
       <View
         style={{
@@ -471,13 +473,12 @@ export function ItemsScreen({ navigation }: Props) {
         }}
         className=""
       >
-        <View style={{ width: "100%", alignSelf: "center" }}>
-          <View
-            className={`rounded-[24px] border border-slate-200 bg-white ${
-              isSmall ? "px-3.5 pt-3 pb-3" : "px-4 pt-3.5 pb-3.5"
-            }`}
-            style={styles.surfaceShadow}
-          >
+        <View
+          className={`rounded-[24px] border border-slate-200 bg-white ${
+            isSmall ? "px-3.5 pt-3 pb-3" : "px-4 pt-3.5 pb-3.5"
+          }`}
+          style={styles.surfaceShadow}
+        >
             {showSearch ? (
               <View className="flex-row items-center gap-2 mb-2.5">
                 <View className="flex-1 flex-row items-center bg-slate-100 rounded-2xl px-3 min-h-[48]">
@@ -941,7 +942,6 @@ export function ItemsScreen({ navigation }: Props) {
                 </View>
               )}
             </View>
-          </View>
         </View>
       </View>
 
@@ -1355,6 +1355,7 @@ export function ItemsScreen({ navigation }: Props) {
         <Ionicons name="add" size={22} color={COLORS.text.inverted} />
         <Text className="text-white font-bold text-sm">Add Items</Text>
       </Pressable>
+      </ScreenInner>
     </SafeAreaView>
   );
 }

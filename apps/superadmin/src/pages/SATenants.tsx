@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   saGetTenants, saCreateTenant, saUpdateTenant, saDeleteTenant, saUpdateTenantFeatures,
-  SATenant,
+  saGetTenantQuota, saUpdateTenantQuota, saGetTenant, saImpersonateTenant,
+  saSendPlatformEmail, saUpdateTenantOwnerCredentials, SATenant, SATenantDetail, SATenantQuota,
 } from "@/lib/sa-api";
 import {
   SAPage, SATable, TR, TD, Badge, Pagination, SALoading, SAError,
@@ -39,6 +40,8 @@ export default function SATenants() {
   const [deleteTarget, setDeleteTarget] = useState<SATenant | null>(null);
   const [editTarget, setEditTarget] = useState<SATenant | null>(null);
   const [featuresTarget, setFeaturesTarget] = useState<SATenant | null>(null);
+  const [quotaTarget, setQuotaTarget] = useState<SATenant | null>(null);
+  const [credentialsTarget, setCredentialsTarget] = useState<SATenant | null>(null);
   const qc = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
@@ -51,12 +54,7 @@ export default function SATenants() {
 
   const impersonateTenant = async (tenant: SATenant) => {
     try {
-      const res = await fetch(`/admin/tenants/${tenant.id}/impersonate`, {
-        method: "POST",
-        headers: { "x-admin-api-key": localStorage.getItem("execora_admin_key") || "" },
-      });
-      if (!res.ok) throw new Error("Failed to impersonate tenant");
-      const { token } = await res.json();
+      const { token } = await saImpersonateTenant(tenant.id);
       const url = `/admin?impersonation_token=${encodeURIComponent(token)}`;
       window.open(url, "_blank");
     } catch (e) {
@@ -145,6 +143,20 @@ export default function SATenants() {
                       <UserPlus className="w-3.5 h-3.5" />
                     </button>
                     <button
+                      onClick={() => setCredentialsTarget(t)}
+                      className="text-xs text-cyan-400 hover:text-cyan-300"
+                      title="Change tenant admin login details"
+                    >
+                      Owner Login
+                    </button>
+                    <button
+                      onClick={() => setQuotaTarget(t)}
+                      className="text-xs text-violet-400 hover:text-violet-300"
+                      title="Tenant quota"
+                    >
+                      Quota
+                    </button>
+                    <button
                       onClick={() => setDeleteTarget(t)}
                       className="text-red-500/60 hover:text-red-400"
                     >
@@ -171,14 +183,33 @@ export default function SATenants() {
       {editTarget && (
         <EditTenantModal tenant={editTarget} onClose={() => setEditTarget(null)} onSaved={invalidate} />
       )}
-      {editTarget && (
-        <TenantQuotaModal tenant={editTarget} onClose={() => setEditTarget(null)} />
+      {quotaTarget && (
+        <TenantQuotaModal tenant={quotaTarget} onClose={() => setQuotaTarget(null)} />
       )}
       {featuresTarget && (
         <FeatureFlagsModal tenant={featuresTarget} onClose={() => setFeaturesTarget(null)} onSaved={invalidate} />
       )}
+      {credentialsTarget && (
+        <OwnerCredentialsModal tenant={credentialsTarget} onClose={() => setCredentialsTarget(null)} onSaved={invalidate} />
+      )}
     </SAPage>
   );
+}
+
+function generatePassword(length = 14): string {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
+  const bytes = new Uint32Array(length);
+  window.crypto.getRandomValues(bytes);
+  return Array.from(bytes, (value) => alphabet[value % alphabet.length]).join("");
+}
+
+function buildOwnerCredentialMessage(tenantName: string, email: string, password: string): string {
+  return [
+    `Tenant: ${tenantName}`,
+    `Login Email: ${email}`,
+    `Temporary Password: ${password}`,
+    "Please sign in and change this password immediately.",
+  ].join("\n");
 }
 
 // ── Create modal ───────────────────────────────────────────────────────────
@@ -407,9 +438,168 @@ function FeatureFlagsModal({ tenant, onClose, onSaved }: { tenant: SATenant; onC
   );
 }
 
-// ── Tenant Quota Modal ─────────────────────────────────────────────────────
-// Duplicate import removed: useQuery, useMutation from "@tanstack/react-query"
-import { saGetTenantQuota, saUpdateTenantQuota, SATenantQuota } from "@/lib/sa-api";
+// ── Owner Credentials Modal ────────────────────────────────────────────────
+function OwnerCredentialsModal({ tenant, onClose, onSaved }: { tenant: SATenant; onClose: () => void; onSaved: () => void }) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["sa-tenant-detail", tenant.id],
+    queryFn: () => saGetTenant(tenant.id),
+  });
+  const owner = data?.tenant.users.find((user) => user.role === "owner") ?? null;
+  const [form, setForm] = useState({ email: "", name: "", password: "" });
+  const [err, setErr] = useState("");
+  const [info, setInfo] = useState("");
+
+  useEffect(() => {
+    if (!owner) return;
+    setForm({ email: owner.email, name: owner.name, password: "" });
+  }, [owner]);
+
+  const mut = useMutation({
+    mutationFn: () => saUpdateTenantOwnerCredentials(tenant.id, {
+      email: form.email.trim(),
+      name: form.name.trim(),
+      newPassword: form.password.trim() || undefined,
+    }),
+    onSuccess: () => {
+      onSaved();
+      onClose();
+    },
+    onError: (mutationError: Error) => setErr(mutationError.message),
+  });
+
+  const recoveryMut = useMutation({
+    mutationFn: async ({ sendEmail }: { sendEmail: boolean }) => {
+      const password = generatePassword();
+      const email = form.email.trim();
+      const name = form.name.trim();
+      const message = buildOwnerCredentialMessage(tenant.name, email, password);
+
+      await saUpdateTenantOwnerCredentials(tenant.id, {
+        email,
+        name,
+        newPassword: password,
+      });
+
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(message);
+      }
+
+      if (sendEmail) {
+        await saSendPlatformEmail(
+          `Execora login reset for ${tenant.name}`,
+          `Hello ${name},\n\n${message}\n\nIf you did not request this reset, contact support immediately.`,
+          [email],
+        );
+      }
+
+      return { password, sendEmail };
+    },
+    onSuccess: ({ password, sendEmail }) => {
+      setErr("");
+      setForm((current) => ({ ...current, password }));
+      setInfo(sendEmail ? "Temporary password reset, copied, and emailed to tenant owner." : "Temporary password reset and copied to clipboard.");
+      onSaved();
+    },
+    onError: (mutationError: Error) => setErr(mutationError.message),
+  });
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-900 rounded-xl border border-gray-700 w-full max-w-md p-6 space-y-4">
+        <div>
+          <h2 className="text-base font-semibold text-white">Owner Credentials</h2>
+          <p className="text-sm text-gray-400">{tenant.name}</p>
+        </div>
+        {isLoading && <p className="text-sm text-gray-400">Loading tenant owner…</p>}
+        {error && <p className="text-sm text-red-400">{String(error)}</p>}
+        {!isLoading && !error && !owner && (
+          <p className="text-sm text-red-400">No owner account found for this tenant.</p>
+        )}
+        {!isLoading && !error && owner && (
+          <>
+            {err && <p className="text-sm text-red-400">{err}</p>}
+            {info && <p className="text-sm text-green-400">{info}</p>}
+            <div className="rounded-lg border border-gray-800 bg-gray-950/60 p-3 text-xs text-gray-400">
+              Saving here updates the tenant owner login and revokes active sessions automatically.
+            </div>
+            <div className="rounded-lg border border-cyan-900/60 bg-cyan-950/20 p-3 space-y-2">
+              <p className="text-xs text-cyan-200">Quick recovery</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => recoveryMut.mutate({ sendEmail: false })}
+                  disabled={recoveryMut.isPending || !form.email.trim() || !form.name.trim()}
+                  className="px-3 py-2 text-xs bg-cyan-700 hover:bg-cyan-600 text-white rounded-md disabled:opacity-40"
+                >
+                  {recoveryMut.isPending ? "Resetting…" : "Reset + Copy"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => recoveryMut.mutate({ sendEmail: true })}
+                  disabled={recoveryMut.isPending || !form.email.trim() || !form.name.trim()}
+                  className="px-3 py-2 text-xs bg-sky-700 hover:bg-sky-600 text-white rounded-md disabled:opacity-40"
+                >
+                  {recoveryMut.isPending ? "Sending…" : "Reset + Email"}
+                </button>
+              </div>
+              <p className="text-[11px] text-cyan-100/80">These actions generate a temporary password automatically, revoke old sessions, and copy the new login details for you.</p>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Owner Name</label>
+                <input
+                  value={form.name}
+                  onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))}
+                  className="w-full bg-gray-800 border border-gray-700 text-white rounded-md px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Owner Email</label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm((current) => ({ ...current, email: e.target.value }))}
+                  className="w-full bg-gray-800 border border-gray-700 text-white rounded-md px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+                />
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-gray-400 block">Temporary Password</label>
+                  <button
+                    type="button"
+                    onClick={() => setForm((current) => ({ ...current, password: generatePassword() }))}
+                    className="text-xs text-cyan-400 hover:text-cyan-300"
+                  >
+                    Generate
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={form.password}
+                  onChange={(e) => setForm((current) => ({ ...current, password: e.target.value }))}
+                  placeholder="Leave blank to keep current password"
+                  className="w-full bg-gray-800 border border-gray-700 text-white rounded-md px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+                />
+              </div>
+            </div>
+          </>
+        )}
+        <div className="flex gap-2 justify-end pt-2">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-400 hover:text-white">Cancel</button>
+          {owner && (
+            <button
+              onClick={() => mut.mutate()}
+              disabled={mut.isPending || recoveryMut.isPending || !form.email.trim() || !form.name.trim() || (form.password.length > 0 && form.password.length < 8)}
+              className="px-4 py-2 text-sm bg-amber-600 hover:bg-amber-500 text-white rounded-md disabled:opacity-40"
+            >
+              {mut.isPending ? "Saving…" : "Save Credentials"}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function TenantQuotaModal({ tenant, onClose }: { tenant: SATenant; onClose: () => void }) {
   const { data, isLoading } = useQuery({

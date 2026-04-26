@@ -23,6 +23,7 @@ import { printReceipt } from "../../../lib/printReceipt";
 import { useResponsive } from "../../../hooks/useResponsive";
 import type { ReceiptData } from "../../../lib/thermalReceipt";
 import { COLORS } from "../../../lib/constants";
+import { ScreenInner } from "../../../components/ui/ScreenLayout";
 
 type Props = NativeStackScreenProps<import("../../../navigation").MoreStackParams, "SettingsThermal">;
 
@@ -78,85 +79,90 @@ export function SettingsThermalScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
-      <View style={{ paddingHorizontal: contentPad, paddingVertical: 12 }} className="flex-row items-center border-b border-slate-200">
-        <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 -ml-2">
-          <Ionicons name="arrow-back" size={24} color={COLORS.text.primary} />
-        </TouchableOpacity>
-        <Text className="text-lg font-bold text-slate-800 flex-1 ml-2">
-          Thermal Print
-        </Text>
-      </View>
-
-      <ScrollView style={{ flex: 1, paddingHorizontal: contentPad, paddingVertical: contentPad }}>
-        <Text className="text-xs text-slate-500 uppercase font-semibold mb-2">
-          Paper Width
-        </Text>
-        <View className="flex-row gap-3 mb-4">
-          <TouchableOpacity
-            onPress={() => setWidth(58)}
-            className={`flex-1 py-3 rounded-xl border-2 items-center ${
-              width === 58 ? "border-primary bg-primary/5" : "border-slate-200"
-            }`}
-          >
-            <Text className={`font-semibold ${width === 58 ? "text-primary" : "text-slate-600"}`}>
-              58mm
-            </Text>
-            <Text className="text-xs text-slate-500">32 chars/line</Text>
+      <ScreenInner style={{ flex: 1 }}>
+        <View
+          style={{ paddingHorizontal: contentPad, paddingVertical: 12 }}
+          className="flex-row items-center border-b border-slate-200"
+        >
+          <TouchableOpacity onPress={() => navigation.goBack()} className="p-2 -ml-2">
+            <Ionicons name="arrow-back" size={24} color={COLORS.text.primary} />
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setWidth(80)}
-            className={`flex-1 py-3 rounded-xl border-2 items-center ${
-              width === 80 ? "border-primary bg-primary/5" : "border-slate-200"
-            }`}
-          >
-            <Text className={`font-semibold ${width === 80 ? "text-primary" : "text-slate-600"}`}>
-              80mm
-            </Text>
-            <Text className="text-xs text-slate-500">48 chars/line</Text>
-          </TouchableOpacity>
+          <Text className="text-lg font-bold text-slate-800 flex-1 ml-2">
+            Thermal Print
+          </Text>
         </View>
 
-        <Text className="text-xs text-slate-500 uppercase font-semibold mb-2">
-          Custom Header (optional)
-        </Text>
-        <TextInput
-          value={header}
-          onChangeText={setHeader}
-          placeholder="e.g. Visit again!"
-          placeholderTextColor={COLORS.slate[400]}
-          className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 mb-4"
-        />
+        <ScrollView style={{ flex: 1, paddingHorizontal: contentPad, paddingVertical: contentPad }}>
+          <Text className="text-xs text-slate-500 uppercase font-semibold mb-2">
+            Paper Width
+          </Text>
+          <View className="flex-row gap-3 mb-4">
+            <TouchableOpacity
+              onPress={() => setWidth(58)}
+              className={`flex-1 py-3 rounded-xl border-2 items-center ${
+                width === 58 ? "border-primary bg-primary/5" : "border-slate-200"
+              }`}
+            >
+              <Text className={`font-semibold ${width === 58 ? "text-primary" : "text-slate-600"}`}>
+                58mm
+              </Text>
+              <Text className="text-xs text-slate-500">32 chars/line</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setWidth(80)}
+              className={`flex-1 py-3 rounded-xl border-2 items-center ${
+                width === 80 ? "border-primary bg-primary/5" : "border-slate-200"
+              }`}
+            >
+              <Text className={`font-semibold ${width === 80 ? "text-primary" : "text-slate-600"}`}>
+                80mm
+              </Text>
+              <Text className="text-xs text-slate-500">48 chars/line</Text>
+            </TouchableOpacity>
+          </View>
 
-        <Text className="text-xs text-slate-500 uppercase font-semibold mb-2">
-          Footer Text
-        </Text>
-        <TextInput
-          value={footer}
-          onChangeText={setFooter}
-          placeholder="Thank you! Visit again."
-          placeholderTextColor={COLORS.slate[400]}
-          className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 mb-6"
-        />
+          <Text className="text-xs text-slate-500 uppercase font-semibold mb-2">
+            Custom Header (optional)
+          </Text>
+          <TextInput
+            value={header}
+            onChangeText={setHeader}
+            placeholder="e.g. Visit again!"
+            placeholderTextColor={COLORS.slate[400]}
+            className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 mb-4"
+          />
 
-        <TouchableOpacity
-          onPress={handleSave}
-          className="bg-primary py-3 rounded-xl items-center mb-3"
-        >
-          <Text className="text-white font-bold">Save Settings</Text>
-        </TouchableOpacity>
+          <Text className="text-xs text-slate-500 uppercase font-semibold mb-2">
+            Footer Text
+          </Text>
+          <TextInput
+            value={footer}
+            onChangeText={setFooter}
+            placeholder="Thank you! Visit again."
+            placeholderTextColor={COLORS.slate[400]}
+            className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-800 mb-6"
+          />
 
-        <TouchableOpacity
-          onPress={() => void handleTestPrint()}
-          className="flex-row items-center justify-center gap-2 py-3 rounded-xl border border-slate-200"
-        >
-          <Ionicons name="print-outline" size={20} color={COLORS.slate[500]} />
-          <Text className="font-semibold text-slate-600">Test Print</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleSave}
+            className="bg-primary py-3 rounded-xl items-center mb-3"
+          >
+            <Text className="text-white font-bold">Save Settings</Text>
+          </TouchableOpacity>
 
-        <Text className="text-xs text-slate-400 mt-6 text-center">
-          Receipt prints as PDF via share sheet. Use "Print" from billing after saving an invoice.
-        </Text>
-      </ScrollView>
+          <TouchableOpacity
+            onPress={() => void handleTestPrint()}
+            className="flex-row items-center justify-center gap-2 py-3 rounded-xl border border-slate-200"
+          >
+            <Ionicons name="print-outline" size={20} color={COLORS.slate[500]} />
+            <Text className="font-semibold text-slate-600">Test Print</Text>
+          </TouchableOpacity>
+
+          <Text className="text-xs text-slate-400 mt-6 text-center">
+            Receipt prints as PDF via share sheet. Use "Print" from billing after saving an invoice.
+          </Text>
+        </ScrollView>
+      </ScreenInner>
     </SafeAreaView>
   );
 }

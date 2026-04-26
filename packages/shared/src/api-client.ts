@@ -98,6 +98,7 @@ export async function apiFetch<T = unknown>(
 ): Promise<T> {
   const a = adapters();
   const token = a.getToken();
+  const isAuthRoute = path.startsWith("/api/v1/auth/");
 
   const doFetch = async (t: string | null): Promise<Response> =>
     fetch(`${a.baseUrl}${path}`, {
@@ -111,7 +112,7 @@ export async function apiFetch<T = unknown>(
 
   let res = await doFetch(token);
 
-  if (res.status === 401) {
+  if (res.status === 401 && !isAuthRoute) {
     const newToken = await tryRefresh();
     if (!newToken) {
       a.onAuthExpired();

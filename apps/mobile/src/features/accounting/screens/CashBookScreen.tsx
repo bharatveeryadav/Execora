@@ -14,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { cashbookApi } from "../../../lib/api";
 import { useWsInvalidation } from "../../../hooks/useWsInvalidation";
 import { useResponsive } from "../../../hooks/useResponsive";
+import { ScreenInner } from "../../../components/ui/ScreenLayout";
 import { formatCurrency } from "../../../lib/utils";
 
 function getMonthRange() {
@@ -77,7 +78,8 @@ export function CashBookScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
-      <View className="px-4 py-3 border-b border-slate-100">
+      <ScreenInner style={{ flex: 1 }}>
+        <View className="px-4 py-3 border-b border-slate-100">
         <Text className="text-xl font-bold text-slate-800">Cash Book</Text>
       </View>
 
@@ -107,6 +109,7 @@ export function CashBookScreen() {
           <Text className="text-slate-500 text-center py-8">No entries</Text>
         }
       />
+      </ScreenInner>
     </SafeAreaView>
   );
 }

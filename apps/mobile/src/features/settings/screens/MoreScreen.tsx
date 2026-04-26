@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useResponsive } from "../../../hooks/useResponsive";
 import { TYPO } from "../../../lib/typography";
 import { COLORS } from "../../../lib/constants";
+import { ScreenInner } from "../../../components/ui/ScreenLayout";
 
 const MIN_TOUCH = 44;
 
@@ -237,17 +238,16 @@ export function MoreScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={["top", "bottom"]}>
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{
-          paddingHorizontal: contentPad,
-          paddingTop: contentPad,
-          paddingBottom: 24,
-          alignItems: "center",
-        }}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={{ width: "100%" }}>
+      <ScreenInner style={{ flex: 1 }}>
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{
+            paddingHorizontal: contentPad,
+            paddingTop: contentPad,
+            paddingBottom: 24,
+          }}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Header */}
           <View style={{ paddingBottom: 24 }}>
             <Text className={TYPO.pageTitle}>More</Text>
@@ -303,8 +303,8 @@ export function MoreScreen({ navigation }: Props) {
               </View>
             ))}
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </ScreenInner>
     </SafeAreaView>
   );
 }

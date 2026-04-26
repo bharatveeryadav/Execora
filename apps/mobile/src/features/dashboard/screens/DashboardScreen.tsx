@@ -45,6 +45,7 @@ import { useWS } from "../../../hooks/useWS";
 import { wsClient } from "../../../lib/ws";
 import { PressableCard } from "../../../components/ui/Card";
 import { Skeleton } from "../../../components/ui/Skeleton";
+import { ScreenInner } from "../../../components/ui/ScreenLayout";
 import { TabBar, type TabItem } from "../../../components/composites/TabBar";
 import {
   QuickActionsSection,
@@ -2324,145 +2325,143 @@ export function DashboardScreen({ navigation, route }: Props) {
           className="flex-1 bg-black/50 justify-end"
           onPress={() => setQuickActionPopupOpen(false)}
         >
-          <Pressable
-            onPress={(e) => e.stopPropagation()}
-            className="bg-white rounded-t-[30px] pt-3 pb-6 border-t border-slate-200"
-            style={{
-              width: "100%",
-              maxWidth: contentWidth,
-              alignSelf: "center",
-              paddingHorizontal: popupHorizontalPad,
-            }}
-          >
-            <View className="w-8 h-0.5 rounded-full bg-slate-200 self-center mb-2" />
-            <View className="flex-row items-center justify-between mb-3">
-              <View className="min-w-0 flex-1 pr-2">
-                <Text className={TYPO.sectionTitle}>Quick Actions</Text>
-                <Text className={TYPO.caption} numberOfLines={1}>
-                  Launch billing, parties, stock, and business flows
-                </Text>
-              </View>
-              <Pressable
-                onPress={() => setQuickActionPopupOpen(false)}
-                accessibilityRole="button"
-                accessibilityLabel="Close quick actions"
-                className="h-10 w-10 rounded-xl bg-slate-100 items-center justify-center"
-              >
-                <Ionicons name="close" size={20} color={COLORS.slate[500]} />
-              </Pressable>
-            </View>
-
-            <ScrollView
-              style={{ maxHeight: popupMaxHeight }}
-              contentContainerStyle={{ paddingBottom: 4 }}
-              showsVerticalScrollIndicator={false}
+          <ScreenInner>
+            <Pressable
+              onPress={(e) => e.stopPropagation()}
+              className="bg-white rounded-t-[30px] pt-3 pb-6 border-t border-slate-200"
+              style={{
+                paddingHorizontal: popupHorizontalPad,
+              }}
             >
-              <View className="mb-3">
+              <View className="w-8 h-0.5 rounded-full bg-slate-200 self-center mb-2" />
+              <View className="flex-row items-center justify-between mb-3">
+                <View className="min-w-0 flex-1 pr-2">
+                  <Text className={TYPO.sectionTitle}>Quick Actions</Text>
+                  <Text className={TYPO.caption} numberOfLines={1}>
+                    Launch billing, parties, stock, and business flows
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => setQuickActionPopupOpen(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close quick actions"
+                  className="h-10 w-10 rounded-xl bg-slate-100 items-center justify-center"
+                >
+                  <Ionicons name="close" size={20} color={COLORS.slate[500]} />
+                </Pressable>
+              </View>
+
+              <ScrollView
+                style={{ maxHeight: popupMaxHeight }}
+                contentContainerStyle={{ paddingBottom: 4 }}
+                showsVerticalScrollIndicator={false}
+              >
+                <View className="mb-3">
+                  <Text className="mb-2 text-[11px] font-semibold uppercase tracking-[1px] text-slate-500">
+                    Quick Access
+                  </Text>
+                  {QUICK_ACTION_SHEET_GROUPS.map((group, groupIndex) => (
+                    <View
+                      key={group.label}
+                      style={{
+                        paddingTop: groupIndex === 0 ? 0 : 8,
+                        marginTop: groupIndex === 0 ? 0 : 10,
+                        marginBottom:
+                          groupIndex === QUICK_ACTION_SHEET_GROUPS.length - 1
+                            ? 0
+                            : 10,
+                        borderRadius: 14,
+                        borderWidth: 1,
+                        borderColor: COLORS.border.light,
+                        backgroundColor: COLORS.slate[50],
+                        paddingHorizontal: popupGroupPad,
+                        paddingBottom: compactAddPopup ? 8 : 12,
+                      }}
+                    >
+                      <View className="flex-row items-center gap-2 mb-2">
+                        <View
+                          className="h-6 w-6 rounded-full items-center justify-center"
+                          style={{ backgroundColor: `${group.color}22` }}
+                        >
+                          <Ionicons
+                            name={group.icon}
+                            size={14}
+                            color={group.color}
+                          />
+                        </View>
+                        <Text className={TYPO.labelBold}>{group.label}</Text>
+                        <View className="ml-auto rounded-full bg-white px-2 py-0.5 border border-slate-200">
+                          <Text className="text-[10px] font-semibold text-slate-500">
+                            {group.actions.length}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={{ gap: popupGridGap }}>
+                        {chunkItems(group.actions, popupColumns).map(
+                          (row, rowIdx) => (
+                            <View
+                              key={`${group.label}-row-${rowIdx}`}
+                              style={{ flexDirection: "row", gap: popupGridGap }}
+                            >
+                              {row.map((item) => (
+                                <Pressable
+                                  key={`quick-${group.label}-${item.label}`}
+                                  onPress={() => {
+                                    setQuickActionPopupOpen(false);
+                                    handleQuickAction(item.route, item.params);
+                                  }}
+                                  className="items-center justify-center rounded-xl border border-slate-200 bg-white"
+                                  style={{
+                                    width: popupTileWidth,
+                                    minHeight: compactAddPopup
+                                      ? SIZES.TOUCH_MIN + 14
+                                      : SIZES.TOUCH_MIN + 18,
+                                    gap: 4,
+                                    paddingVertical: compactAddPopup ? 6 : 8,
+                                    paddingHorizontal: contentWidth < 360 ? 2 : 4,
+                                  }}
+                                  accessibilityRole="button"
+                                  accessibilityLabel={item.label}
+                                  accessibilityHint="Opens this workflow"
+                                >
+                                  <Ionicons
+                                    name={item.icon}
+                                    size={compactAddPopup ? 16 : 18}
+                                    color={
+                                      item.primary
+                                        ? ACTION_COLORS.primary
+                                        : item.color
+                                    }
+                                  />
+                                  <Text
+                                    className={`${TYPO.micro} font-semibold text-center ${item.primary ? "text-primary" : "text-slate-600"}`}
+                                    numberOfLines={2}
+                                  >
+                                    {item.label}
+                                  </Text>
+                                </Pressable>
+                              ))}
+                            </View>
+                          ),
+                        )}
+                      </View>
+                    </View>
+                  ))}
+                </View>
+
                 <Text className="mb-2 text-[11px] font-semibold uppercase tracking-[1px] text-slate-500">
-                  Quick Access
+                  Add Transaction
                 </Text>
-                {QUICK_ACTION_SHEET_GROUPS.map((group, groupIndex) => (
+                {ADD_TRANSACTION_GROUPS.map((group, groupIndex) => (
                   <View
                     key={group.label}
                     style={{
                       paddingTop: groupIndex === 0 ? 0 : 8,
                       marginTop: groupIndex === 0 ? 0 : 10,
                       marginBottom:
-                        groupIndex === QUICK_ACTION_SHEET_GROUPS.length - 1
-                          ? 0
-                          : 10,
+                        groupIndex === ADD_TRANSACTION_GROUPS.length - 1 ? 0 : 10,
                       borderRadius: 14,
-                      borderWidth: 1,
-                      borderColor: COLORS.border.light,
-                      backgroundColor: COLORS.slate[50],
-                      paddingHorizontal: popupGroupPad,
-                      paddingBottom: compactAddPopup ? 8 : 12,
-                    }}
-                  >
-                    <View className="flex-row items-center gap-2 mb-2">
-                      <View
-                        className="h-6 w-6 rounded-full items-center justify-center"
-                        style={{ backgroundColor: `${group.color}22` }}
-                      >
-                        <Ionicons
-                          name={group.icon}
-                          size={14}
-                          color={group.color}
-                        />
-                      </View>
-                      <Text className={TYPO.labelBold}>{group.label}</Text>
-                      <View className="ml-auto rounded-full bg-white px-2 py-0.5 border border-slate-200">
-                        <Text className="text-[10px] font-semibold text-slate-500">
-                          {group.actions.length}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={{ gap: popupGridGap }}>
-                      {chunkItems(group.actions, popupColumns).map(
-                        (row, rowIdx) => (
-                          <View
-                            key={`${group.label}-row-${rowIdx}`}
-                            style={{ flexDirection: "row", gap: popupGridGap }}
-                          >
-                            {row.map((item) => (
-                              <Pressable
-                                key={`quick-${group.label}-${item.label}`}
-                                onPress={() => {
-                                  setQuickActionPopupOpen(false);
-                                  handleQuickAction(item.route, item.params);
-                                }}
-                                className="items-center justify-center rounded-xl border border-slate-200 bg-white"
-                                style={{
-                                  width: popupTileWidth,
-                                  minHeight: compactAddPopup
-                                    ? SIZES.TOUCH_MIN + 14
-                                    : SIZES.TOUCH_MIN + 18,
-                                  gap: 4,
-                                  paddingVertical: compactAddPopup ? 6 : 8,
-                                  paddingHorizontal: contentWidth < 360 ? 2 : 4,
-                                }}
-                                accessibilityRole="button"
-                                accessibilityLabel={item.label}
-                                accessibilityHint="Opens this workflow"
-                              >
-                                <Ionicons
-                                  name={item.icon}
-                                  size={compactAddPopup ? 16 : 18}
-                                  color={
-                                    item.primary
-                                      ? ACTION_COLORS.primary
-                                      : item.color
-                                  }
-                                />
-                                <Text
-                                  className={`${TYPO.micro} font-semibold text-center ${item.primary ? "text-primary" : "text-slate-600"}`}
-                                  numberOfLines={2}
-                                >
-                                  {item.label}
-                                </Text>
-                              </Pressable>
-                            ))}
-                          </View>
-                        ),
-                      )}
-                    </View>
-                  </View>
-                ))}
-              </View>
-
-              <Text className="mb-2 text-[11px] font-semibold uppercase tracking-[1px] text-slate-500">
-                Add Transaction
-              </Text>
-              {ADD_TRANSACTION_GROUPS.map((group, groupIndex) => (
-                <View
-                  key={group.label}
-                  style={{
-                    paddingTop: groupIndex === 0 ? 0 : 8,
-                    marginTop: groupIndex === 0 ? 0 : 10,
-                    marginBottom:
-                      groupIndex === ADD_TRANSACTION_GROUPS.length - 1 ? 0 : 10,
-                    borderRadius: 14,
                     borderWidth: 1,
                     borderColor: COLORS.border.light,
                     backgroundColor: COLORS.slate[50],
@@ -2545,6 +2544,7 @@ export function DashboardScreen({ navigation, route }: Props) {
               ))}
             </ScrollView>
           </Pressable>
+          </ScreenInner>
         </Pressable>
       </Modal>
 

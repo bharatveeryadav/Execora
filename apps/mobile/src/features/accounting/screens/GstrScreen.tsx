@@ -16,6 +16,7 @@ import { reportsApi } from "../../../lib/api";
 import { Chip } from "../../../components/ui/Chip";
 import { ErrorCard } from "../../../components/ui/ErrorCard";
 import { COLORS } from "../../../lib/constants";
+import { ScreenInner } from "../../../components/ui/ScreenLayout";
 
 export function GstrScreen() {
   const [fy, setFy] = useState<string | undefined>(undefined);
@@ -43,7 +44,8 @@ export function GstrScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "bottom"]}>
-      <View className="px-4 pt-4 pb-3 border-b border-slate-200 bg-card">
+      <ScreenInner style={{ flex: 1 }}>
+        <View className="px-4 pt-4 pb-3 border-b border-slate-200 bg-card">
         <Text className="text-xl font-bold tracking-tight text-slate-800 mb-3">GSTR-1 / GSTR-3B</Text>
         <View className="flex-row gap-2">
           <Chip label="Current FY" selected={!fy} onPress={() => setFy(undefined)} />
@@ -84,6 +86,7 @@ export function GstrScreen() {
           <Text className="text-slate-500 text-center py-8">No data</Text>
         )}
       </ScrollView>
+      </ScreenInner>
     </SafeAreaView>
   );
 }

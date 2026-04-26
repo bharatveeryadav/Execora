@@ -66,6 +66,8 @@ export const saGetTenants = (params?: { page?: number; limit?: number; q?: strin
   saFetch<SAListResponse<SATenant>>(`/admin/tenants?${buildQs(params)}`);
 export const saGetTenant = (id: string) =>
   saFetch<{ tenant: SATenantDetail }>(`/admin/tenants/${id}`);
+export const saImpersonateTenant = (id: string) =>
+  saFetch<{ token: string; expiresIn: number }>(`/admin/tenants/${id}/impersonate`, { method: "POST" });
 export const saCreateTenant = (body: {
   name: string; ownerEmail: string; ownerName: string; ownerPassword: string;
   businessType?: string; plan?: string;
@@ -82,6 +84,11 @@ export const saUpdateTenantFeatures = (id: string, features: Record<string, bool
   saFetch<{ tenant: SATenant }>(`/admin/tenants/${id}/features`, {
     method: "PUT", body: JSON.stringify(features),
   });
+export const saUpdateTenantOwnerCredentials = (id: string, body: {
+  email: string; name: string; newPassword?: string;
+}) => saFetch<{ user: SATenantUser; sessionsRevoked: boolean }>(`/admin/tenants/${id}/owner-credentials`, {
+  method: "PUT", body: JSON.stringify(body),
+});
 
 // ── Users ──────────────────────────────────────────────────────────────────
 export const saGetUsers = (params?: { page?: number; limit?: number; q?: string; role?: string }) =>
@@ -217,7 +224,16 @@ export interface SATenant {
 
 export interface SATenantDetail extends SATenant {
   _count: { users: number; customers: number; invoices: number; payments: number; reminders: number };
-  users: { id: string; email: string; name: string; role: string; isActive: boolean; lastLogin: string | null }[];
+  users: SATenantUser[];
+}
+
+export interface SATenantUser {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  isActive: boolean;
+  lastLogin: string | null;
 }
 
 export interface SAUser {

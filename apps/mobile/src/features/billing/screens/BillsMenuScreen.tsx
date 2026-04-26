@@ -10,6 +10,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { TYPO } from "../../../shared/lib/typography";
 import { useResponsive } from "../../../shared/hooks/useResponsive";
 import { COLORS } from "../../../shared/lib/constants";
+import { ScreenInner } from "../../../components/ui/ScreenLayout";
 import type { InvoicesStackParams, DocumentType } from "../../../navigation";
 import {
   BILLING_DOC_SHORTCUTS,
@@ -37,15 +38,15 @@ export function BillsMenuScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={["top", "bottom"]}>
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{
-          padding: pad,
-          alignItems: "center",
-          paddingBottom: 24,
-        }}
-      >
-        <View style={{ width: "100%" }}>
+      <ScreenInner style={{ flex: 1 }}>
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{
+            padding: pad,
+            paddingBottom: 24,
+          }}
+        >
+          <View>
           <View className="rounded-2xl border border-slate-200 bg-white px-4 py-4 mb-3">
             <Text className={TYPO.pageTitle}>Bills Actions</Text>
             <Text className="text-xs text-slate-500 mt-1">
@@ -119,8 +120,9 @@ export function BillsMenuScreen({ navigation }: Props) {
           >
             <Text className={TYPO.body}>Close</Text>
           </Pressable>
-        </View>
-      </ScrollView>
+          </View>
+        </ScrollView>
+      </ScreenInner>
     </SafeAreaView>
   );
 }

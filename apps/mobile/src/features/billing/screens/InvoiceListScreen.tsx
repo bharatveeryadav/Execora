@@ -1472,128 +1472,127 @@ export function InvoiceListScreen({ navigation, route }: Props) {
           className="flex-1 bg-black/50 justify-end"
           onPress={() => setQuickAddPopupOpen(false)}
         >
-          <Pressable
-            onPress={(e) => e.stopPropagation()}
-            className="bg-white rounded-t-[30px] pt-3 pb-6 border-t border-slate-200"
-            style={{
-              width: "100%",
-              maxWidth: contentWidth,
-              alignSelf: "center",
-              paddingHorizontal: isVerySmall ? 10 : 14,
-            }}
-          >
-            <View className="w-8 h-0.5 rounded-full bg-slate-200 self-center mb-2" />
-            <View className="flex-row items-center justify-between mb-3">
-              <View className="min-w-0 flex-1 pr-2">
-                <Text className={TYPO.sectionTitle}>Add Transaction</Text>
-                <Text className={TYPO.caption} numberOfLines={1}>
-                  Create sales, purchase, and expense entries
-                </Text>
-              </View>
-              <Pressable
-                onPress={() => setQuickAddPopupOpen(false)}
-                accessibilityRole="button"
-                accessibilityLabel="Close add transaction"
-                className="h-10 w-10 rounded-xl bg-slate-100 items-center justify-center"
-              >
-                <Ionicons name="close" size={20} color={COLORS.slate[500]} />
-              </Pressable>
-            </View>
-
-            <ScrollView
-              style={{ maxHeight: contentWidth < 360 ? 440 : 520 }}
-              contentContainerStyle={{ paddingBottom: 4 }}
-              showsVerticalScrollIndicator={false}
+          <ScreenInner>
+            <Pressable
+              onPress={(e) => e.stopPropagation()}
+              className="bg-white rounded-t-[30px] pt-3 pb-6 border-t border-slate-200"
+              style={{
+                paddingHorizontal: isVerySmall ? 10 : 14,
+              }}
             >
-              {addTransactionGroups.map((group, groupIndex) => (
-                <View
-                  key={group.label}
-                  style={{
-                    paddingTop: groupIndex === 0 ? 0 : 8,
-                    marginTop: groupIndex === 0 ? 0 : 10,
-                    marginBottom:
-                      groupIndex === addTransactionGroups.length - 1 ? 0 : 10,
-                    borderRadius: 14,
-                    borderWidth: 1,
-                    borderColor: COLORS.border.light,
-                    backgroundColor: COLORS.slate[50],
-                    paddingHorizontal: isVerySmall ? 8 : 10,
-                    paddingBottom: isVerySmall ? 8 : 12,
-                  }}
-                >
-                  <View className="flex-row items-center gap-2 mb-2">
-                    <View
-                      className="h-6 w-6 rounded-full items-center justify-center"
-                      style={{ backgroundColor: `${group.color}22` }}
-                    >
-                      <Ionicons
-                        name="add-circle-outline"
-                        size={14}
-                        color={group.color}
-                      />
-                    </View>
-                    <Text className={TYPO.labelBold}>{group.label}</Text>
-                    <View className="ml-auto rounded-full bg-white px-2 py-0.5 border border-slate-200">
-                      <Text className="text-[10px] font-semibold text-slate-500">
-                        {group.actions.length}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={{ gap: quickAddGap }}>
-                    {chunkItems(group.actions, quickAddColumns).map(
-                      (row, rowIdx) => (
-                        <View
-                          key={`${group.label}-row-${rowIdx}`}
-                          style={{ flexDirection: "row", gap: quickAddGap }}
-                        >
-                          {row.map((item) => (
-                            <Pressable
-                              key={`${group.label}-${item.id}`}
-                              onPress={() => handleQuickAddAction(item)}
-                              style={({ pressed }) => ({
-                                width: quickAddTileWidth,
-                                minHeight: isVerySmall
-                                  ? SIZES.TOUCH_MIN + 14
-                                  : SIZES.TOUCH_MIN + 18,
-                                alignItems: "center",
-                                justifyContent: "center",
-                                gap: 4,
-                                borderRadius: 12,
-                                borderWidth: 1,
-                                borderColor: COLORS.border.light,
-                                backgroundColor: pressed
-                                  ? COLORS.slate[50]
-                                  : COLORS.text.inverted,
-                                paddingVertical: isVerySmall ? 6 : 8,
-                                paddingHorizontal: contentWidth < 360 ? 2 : 4,
-                              })}
-                              accessibilityRole="button"
-                              accessibilityLabel={item.label}
-                            >
-                              <Ionicons
-                                name={
-                                  item.icon as keyof typeof Ionicons.glyphMap
-                                }
-                                size={isVerySmall ? 16 : 18}
-                                color={group.color}
-                              />
-                              <Text
-                                className={`${TYPO.micro} font-semibold text-center text-slate-600`}
-                                numberOfLines={2}
-                              >
-                                {item.label}
-                              </Text>
-                            </Pressable>
-                          ))}
-                        </View>
-                      ),
-                    )}
-                  </View>
+              <View className="w-8 h-0.5 rounded-full bg-slate-200 self-center mb-2" />
+              <View className="flex-row items-center justify-between mb-3">
+                <View className="min-w-0 flex-1 pr-2">
+                  <Text className={TYPO.sectionTitle}>Add Transaction</Text>
+                  <Text className={TYPO.caption} numberOfLines={1}>
+                    Create sales, purchase, and expense entries
+                  </Text>
                 </View>
-              ))}
-            </ScrollView>
-          </Pressable>
+                <Pressable
+                  onPress={() => setQuickAddPopupOpen(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close add transaction"
+                  className="h-10 w-10 rounded-xl bg-slate-100 items-center justify-center"
+                >
+                  <Ionicons name="close" size={20} color={COLORS.slate[500]} />
+                </Pressable>
+              </View>
+
+              <ScrollView
+                style={{ maxHeight: contentWidth < 360 ? 440 : 520 }}
+                contentContainerStyle={{ paddingBottom: 4 }}
+                showsVerticalScrollIndicator={false}
+              >
+                {addTransactionGroups.map((group, groupIndex) => (
+                  <View
+                    key={group.label}
+                    style={{
+                      paddingTop: groupIndex === 0 ? 0 : 8,
+                      marginTop: groupIndex === 0 ? 0 : 10,
+                      marginBottom:
+                        groupIndex === addTransactionGroups.length - 1 ? 0 : 10,
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: COLORS.border.light,
+                      backgroundColor: COLORS.slate[50],
+                      paddingHorizontal: isVerySmall ? 8 : 10,
+                      paddingBottom: isVerySmall ? 8 : 12,
+                    }}
+                  >
+                    <View className="flex-row items-center gap-2 mb-2">
+                      <View
+                        className="h-6 w-6 rounded-full items-center justify-center"
+                        style={{ backgroundColor: `${group.color}22` }}
+                      >
+                        <Ionicons
+                          name="add-circle-outline"
+                          size={14}
+                          color={group.color}
+                        />
+                      </View>
+                      <Text className={TYPO.labelBold}>{group.label}</Text>
+                      <View className="ml-auto rounded-full bg-white px-2 py-0.5 border border-slate-200">
+                        <Text className="text-[10px] font-semibold text-slate-500">
+                          {group.actions.length}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={{ gap: quickAddGap }}>
+                      {chunkItems(group.actions, quickAddColumns).map(
+                        (row, rowIdx) => (
+                          <View
+                            key={`${group.label}-row-${rowIdx}`}
+                            style={{ flexDirection: "row", gap: quickAddGap }}
+                          >
+                            {row.map((item) => (
+                              <Pressable
+                                key={`${group.label}-${item.id}`}
+                                onPress={() => handleQuickAddAction(item)}
+                                style={({ pressed }) => ({
+                                  width: quickAddTileWidth,
+                                  minHeight: isVerySmall
+                                    ? SIZES.TOUCH_MIN + 14
+                                    : SIZES.TOUCH_MIN + 18,
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: 4,
+                                  borderRadius: 12,
+                                  borderWidth: 1,
+                                  borderColor: COLORS.border.light,
+                                  backgroundColor: pressed
+                                    ? COLORS.slate[50]
+                                    : COLORS.text.inverted,
+                                  paddingVertical: isVerySmall ? 6 : 8,
+                                  paddingHorizontal: contentWidth < 360 ? 2 : 4,
+                                })}
+                                accessibilityRole="button"
+                                accessibilityLabel={item.label}
+                              >
+                                <Ionicons
+                                  name={
+                                    item.icon as keyof typeof Ionicons.glyphMap
+                                  }
+                                  size={isVerySmall ? 16 : 18}
+                                  color={group.color}
+                                />
+                                <Text
+                                  className={`${TYPO.micro} font-semibold text-center text-slate-600`}
+                                  numberOfLines={2}
+                                >
+                                  {item.label}
+                                </Text>
+                              </Pressable>
+                            ))}
+                          </View>
+                        ),
+                      )}
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            </Pressable>
+          </ScreenInner>
         </Pressable>
       </Modal>
 

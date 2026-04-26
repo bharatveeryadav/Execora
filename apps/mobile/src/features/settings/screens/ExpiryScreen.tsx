@@ -21,6 +21,7 @@ import { ErrorCard } from "../../../components/ui/ErrorCard";
 import { hapticSuccess, hapticError } from "../../../lib/haptics";
 import { useResponsive } from "../../../hooks/useResponsive";
 import { COLORS } from "../../../lib/constants";
+import { ScreenInner } from "../../../components/ui/ScreenLayout";
 
 const FILTERS = ["expired", "7d", "30d", "90d", "all"] as const;
 const FILTER_LABELS: Record<(typeof FILTERS)[number], string> = {
@@ -132,78 +133,83 @@ export function ExpiryScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "bottom"]}>
-      <View className="px-4 pt-4 pb-3 border-b border-slate-200 bg-card">
-        <Text className="text-xl font-bold tracking-tight text-slate-800 mb-3">
-          Product Expiry
-        </Text>
-        <View className="flex-row flex-wrap gap-2">
-          {FILTERS.map((f) => (
-            <Chip
-              key={f}
-              label={FILTER_LABELS[f]}
-              selected={filter === f}
-              onPress={() => requestAnimationFrame(() => setFilter(f))}
-            />
-          ))}
-        </View>
-        <View className="flex-row flex-wrap gap-3 mt-3">
-          <Text className="text-xs text-slate-500">
-            Expired: {summary.expiredCount}
-          </Text>
-          <Text className="text-xs text-amber-600">
-            7d: {summary.critical7}
-          </Text>
-          <Text className="text-xs text-amber-500">
-            30d: {summary.warning30}
-          </Text>
-          <Text className="text-xs text-slate-500">
-            At risk: ₹{summary.valueAtRisk.toLocaleString("en-IN")}
-          </Text>
-        </View>
-      </View>
-
-      {isError ? (
+      <ScreenInner style={{ flex: 1 }}>
         <View
-          style={{
-            flex: 1,
-            justifyContent: "center",
-            paddingHorizontal: contentPad,
-          }}
+          className="pt-4 pb-3 border-b border-slate-200 bg-card"
+          style={{ paddingHorizontal: contentPad }}
         >
-          <ErrorCard
-            message="Failed to load expiry data"
-            onRetry={() => refetch()}
-          />
-        </View>
-      ) : (
-        <FlatList
-          data={batches}
-          keyExtractor={keyExtractor}
-          refreshControl={
-            <RefreshControl refreshing={isFetching} onRefresh={refetch} />
-          }
-          contentContainerStyle={{ padding: contentPad, paddingBottom: 32 }}
-          initialNumToRender={12}
-          maxToRenderPerBatch={12}
-          windowSize={7}
-          removeClippedSubviews
-          ItemSeparatorComponent={() => <View className="h-2" />}
-          ListEmptyComponent={
-            isFetching ? (
-              <View className="py-16 items-center">
-                <ActivityIndicator size="large" color={COLORS.primary} />
-              </View>
-            ) : (
-              <EmptyState
-                icon="✅"
-                title="No expiry concerns"
-                description="No batches found in this filter"
+          <Text className="text-xl font-bold tracking-tight text-slate-800 mb-3">
+            Product Expiry
+          </Text>
+          <View className="flex-row flex-wrap gap-2">
+            {FILTERS.map((f) => (
+              <Chip
+                key={f}
+                label={FILTER_LABELS[f]}
+                selected={filter === f}
+                onPress={() => requestAnimationFrame(() => setFilter(f))}
               />
-            )
-          }
-          renderItem={renderBatch}
-        />
-      )}
+            ))}
+          </View>
+          <View className="flex-row flex-wrap gap-3 mt-3">
+            <Text className="text-xs text-slate-500">
+              Expired: {summary.expiredCount}
+            </Text>
+            <Text className="text-xs text-amber-600">
+              7d: {summary.critical7}
+            </Text>
+            <Text className="text-xs text-amber-500">
+              30d: {summary.warning30}
+            </Text>
+            <Text className="text-xs text-slate-500">
+              At risk: ₹{summary.valueAtRisk.toLocaleString("en-IN")}
+            </Text>
+          </View>
+        </View>
+
+        {isError ? (
+          <View
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              paddingHorizontal: contentPad,
+            }}
+          >
+            <ErrorCard
+              message="Failed to load expiry data"
+              onRetry={() => refetch()}
+            />
+          </View>
+        ) : (
+          <FlatList
+            data={batches}
+            keyExtractor={keyExtractor}
+            refreshControl={
+              <RefreshControl refreshing={isFetching} onRefresh={refetch} />
+            }
+            contentContainerStyle={{ padding: contentPad, paddingBottom: 32 }}
+            initialNumToRender={12}
+            maxToRenderPerBatch={12}
+            windowSize={7}
+            removeClippedSubviews
+            ItemSeparatorComponent={() => <View className="h-2" />}
+            ListEmptyComponent={
+              isFetching ? (
+                <View className="py-16 items-center">
+                  <ActivityIndicator size="large" color={COLORS.primary} />
+                </View>
+              ) : (
+                <EmptyState
+                  icon="✅"
+                  title="No expiry concerns"
+                  description="No batches found in this filter"
+                />
+              )
+            }
+            renderItem={renderBatch}
+          />
+        )}
+      </ScreenInner>
     </SafeAreaView>
   );
 }

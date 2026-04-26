@@ -3,11 +3,10 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Alert,
 } from "react-native";
 import { showAlert } from "../../../lib/alerts";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -113,7 +112,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                 http://192.168.1.x:3006){"\n"}
                 4) On emulator: use http://10.0.2.2:3006
               </Text>
-              <TouchableOpacity
+              <Pressable
                 onPress={checkBackend}
                 disabled={checking}
                 className="mt-3 py-2 px-4 bg-destructive/30 rounded-lg self-start"
@@ -125,7 +124,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                     Retry connection
                   </Text>
                 )}
-              </TouchableOpacity>
+              </Pressable>
             </View>
           )}
 
@@ -159,7 +158,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
             className="border border-slate-200 rounded-2xl px-4 h-14 text-base text-slate-800 bg-slate-50 mb-6"
           />
 
-          <TouchableOpacity
+          <Pressable
             onPress={() => void login.mutateAsync()}
             disabled={!canSubmit || login.isPending}
             className={`h-14 rounded-2xl items-center justify-center ${canSubmit ? "bg-primary" : "bg-slate-300"}`}
@@ -169,7 +168,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
             ) : (
               <Text className="text-white font-bold text-base">Sign In</Text>
             )}
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

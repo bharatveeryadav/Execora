@@ -19,6 +19,7 @@ import { productApi, apiFetch } from "@execora/shared";
 import { Ionicons } from "@expo/vector-icons";
 import { useWsInvalidation } from "../../../hooks/useWsInvalidation";
 import { useResponsive } from "../../../hooks/useResponsive";
+import { ScreenInner } from "../../../components/ui/ScreenLayout";
 import { COLORS, SIZES } from "../../../lib/constants";
 
 function num(v: string | number | undefined | null): number {
@@ -164,6 +165,7 @@ export function ProductDetailScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
+      <ScreenInner style={{ flex: 1 }}>
       {/* Header: back, product name, menu */}
       <View
         style={{
@@ -279,6 +281,7 @@ export function ProductDetailScreen({ navigation, route }: Props) {
           )}
         </TouchableOpacity>
       </View>
+      </ScreenInner>
     </SafeAreaView>
   );
 }

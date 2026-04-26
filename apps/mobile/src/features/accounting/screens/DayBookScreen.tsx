@@ -15,6 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import { invoiceApi, expenseApi, cashbookApi } from "../../../lib/api";
 import { useWsInvalidation } from "../../../hooks/useWsInvalidation";
 import { useResponsive } from "../../../hooks/useResponsive";
+import { ScreenInner } from "../../../components/ui/ScreenLayout";
 import { formatCurrency } from "../../../lib/utils";
 import { SIZES } from "../../../lib/constants";
 
@@ -143,7 +144,8 @@ export function DayBookScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top", "bottom"]}>
-      <View className="px-4 py-3 border-b border-slate-100">
+      <ScreenInner style={{ flex: 1 }}>
+        <View className="px-4 py-3 border-b border-slate-100">
         <Text className="text-xl font-bold text-slate-800">Day Book</Text>
         <View className="flex-row gap-2 mt-2">
           {(["today", "week", "month"] as const).map((p) => (
@@ -189,6 +191,7 @@ export function DayBookScreen() {
         removeClippedSubviews
         ListEmptyComponent={<Text className="text-slate-500 text-center py-8">No transactions</Text>}
       />
+      </ScreenInner>
     </SafeAreaView>
   );
 }

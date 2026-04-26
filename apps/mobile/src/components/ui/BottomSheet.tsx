@@ -12,6 +12,7 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
+import { useResponsive } from "../../hooks/useResponsive";
 
 export interface BottomSheetProps {
   visible: boolean;
@@ -21,6 +22,8 @@ export interface BottomSheetProps {
 }
 
 export function BottomSheet({ visible, onClose, title, children }: BottomSheetProps) {
+  const { contentWidth } = useResponsive();
+
   return (
     <Modal
       visible={visible}
@@ -28,8 +31,12 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
       animationType="slide"
       onRequestClose={onClose}
     >
-      <Pressable onPress={onClose} className="flex-1 bg-black/40 justify-end">
-        <Pressable className="bg-white rounded-t-3xl max-h-[90%]" onPress={() => {}}>
+      <Pressable onPress={onClose} className="flex-1 bg-black/40 justify-end items-center">
+        <Pressable
+          style={{ maxWidth: contentWidth, width: "100%" }}
+          className="bg-white rounded-t-3xl max-h-[90%]"
+          onPress={() => {}}
+        >
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : undefined}
           >

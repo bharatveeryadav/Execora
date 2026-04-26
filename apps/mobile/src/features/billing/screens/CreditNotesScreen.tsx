@@ -18,6 +18,7 @@ import { useResponsive } from "../../../hooks/useResponsive";
 import { formatCurrency } from "../../../lib/utils";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import { ErrorCard } from "../../../components/ui/ErrorCard";
+import { ScreenInner } from "../../../components/ui/ScreenLayout";
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-slate-100 text-slate-600",
@@ -84,8 +85,7 @@ export function CreditNotesScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={["top", "bottom"]}>
-      <View style={{ flex: 1, width: "100%", alignItems: "center" }}>
-        <View style={{ width: "100%", flex: 1 }}>
+      <ScreenInner style={{ flex: 1 }}>
           <View
             style={{
               paddingHorizontal: contentPad,
@@ -126,8 +126,7 @@ export function CreditNotesScreen() {
             }
             renderItem={renderCreditNote}
           />
-        </View>
-      </View>
+      </ScreenInner>
     </SafeAreaView>
   );
 }

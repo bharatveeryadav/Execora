@@ -18,6 +18,7 @@ import { useResponsive } from "../../../hooks/useResponsive";
 import { inr, type Customer } from "@execora/shared";
 import { EmptyState } from "../../../components/ui/EmptyState";
 import { ErrorCard } from "../../../components/ui/ErrorCard";
+import { ScreenInner } from "../../../components/ui/ScreenLayout";
 import { COLORS } from "../../../lib/constants";
 
 export function CustomersScreen() {
@@ -87,6 +88,7 @@ export function CustomersScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-background">
+      <ScreenInner style={{ flex: 1 }}>
       {/* Header — matches web list headers */}
       <View
         style={{
@@ -165,6 +167,7 @@ export function CustomersScreen() {
         }
         renderItem={renderCustomerItem}
       />
+      </ScreenInner>
     </SafeAreaView>
   );
 }
